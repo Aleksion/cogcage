@@ -2,10 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { APIRoute } from 'astro';
 import { getFunnelCounts } from '../../lib/waitlist-db';
+import { getRuntimeDir } from '../../lib/runtime-paths';
 
 export const prerender = false;
 
-const LOG_DIR = process.env.COGCAGE_LOG_DIR ?? path.join(process.cwd(), '..', 'ops', 'runtime');
+const LOG_DIR = process.env.COGCAGE_LOG_DIR ?? getRuntimeDir();
 
 type RuntimeFile = {
   file: string;
