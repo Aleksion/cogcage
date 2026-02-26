@@ -1,357 +1,297 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
+
+const founderCheckoutUrl = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
 
 const globalStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:ital,wght@0,400;0,800;1,900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:wght@400;700;900&display=swap');
 
   :root {
     --c-yellow: #FFD600;
-    --c-orange: #FF9F1C;
     --c-red: #EB4D4B;
     --c-cyan: #00E5FF;
-    --c-dark: #1A1A1A;
-    --c-white: #FFFFFF;
+    --c-dark: #111;
+    --c-white: #fff;
     --f-display: 'Bangers', display;
     --f-body: 'Kanit', sans-serif;
-    --skew: -6deg;
-    --radius: 12px;
-    --shadow-hard: 6px 6px 0px rgba(0,0,0,0.2);
-    --shadow-pop: 0px 10px 20px rgba(255, 214, 0, 0.4);
   }
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; }
 
   body {
-    background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-    background-color: #F8F9FA;
+    margin: 0;
     font-family: var(--f-body);
     color: var(--c-dark);
-    overflow-x: hidden;
-  }
-
-  .bg-mesh {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    z-index: -1;
     background:
-      radial-gradient(circle at 10% 20%, rgba(255,214,0,0.15) 0%, transparent 40%),
-      radial-gradient(circle at 90% 80%, rgba(235,77,75,0.1) 0%, transparent 40%),
-      repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 20px);
+      radial-gradient(circle at 10% 20%, rgba(255,214,0,0.16) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(0,229,255,0.12) 0%, transparent 40%),
+      #f4f4f6;
   }
 
-  h1, h2, h3 {
-    font-family: var(--f-display);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    line-height: 0.9;
-  }
+  .shell { max-width: 1080px; margin: 0 auto; padding: 1rem 1rem 4rem; }
 
-  .text-stroke {
-    -webkit-text-stroke: 2px var(--c-dark);
-    color: var(--c-white);
-    text-shadow: 4px 4px 0px var(--c-orange);
-  }
-
-  .btn-arcade {
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    font-family: var(--f-display);
-    font-size: 1.5rem;
-    text-transform: uppercase;
-    padding: 1rem 3rem;
-    background: var(--c-yellow);
-    color: var(--c-dark);
-    border: 4px solid var(--c-dark);
-    border-radius: 50px;
-    box-shadow: 0 6px 0 var(--c-dark);
-    cursor: pointer;
-    transition: all 0.1s ease;
-    text-decoration: none;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .btn-arcade:active {
-    transform: translateY(6px);
-    box-shadow: 0 0 0 var(--c-dark);
-  }
-
-  .btn-arcade.red {
-    background: var(--c-red);
-    color: var(--c-white);
-  }
-
-  .btn-arcade::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 50%;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.6), transparent);
-    border-radius: 40px 40px 0 0;
-    pointer-events: none;
-  }
-
-  nav.cog-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem 4rem;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(255,255,255,0.9);
-    backdrop-filter: blur(10px);
-    border-bottom: 4px solid var(--c-dark);
-  }
+  .nav { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 
   .logo {
     font-family: var(--f-display);
-    font-size: 2.5rem;
+    font-size: 2.2rem;
     color: var(--c-red);
-    transform: skewX(var(--skew));
-    text-shadow: 2px 2px 0px var(--c-dark);
-    text-decoration: none;
+    text-shadow: 2px 2px 0 var(--c-dark);
+    letter-spacing: 1px;
   }
 
-  .nav-links { display: flex; gap: 2rem; }
-
-  .nav-link {
-    font-weight: 800;
-    text-transform: uppercase;
-    text-decoration: none;
-    color: var(--c-dark);
-    font-size: 1.1rem;
-    cursor: pointer;
-    background: none;
-    border: none;
-    font-family: var(--f-body);
-  }
-
-  .hero-section {
+  .hero {
+    margin-top: 1rem;
+    border: 4px solid var(--c-dark);
+    border-radius: 24px;
+    background: white;
+    padding: clamp(1.2rem, 2vw, 2rem);
+    box-shadow: 12px 12px 0 rgba(0,0,0,0.15);
     display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    min-height: 85vh;
-    padding: 0 4rem;
-    align-items: center;
-    position: relative;
-    overflow: hidden;
+    grid-template-columns: 1.1fr .9fr;
+    gap: 1.5rem;
   }
 
-  .hero-h1 {
-    font-size: 7rem;
-    line-height: 0.85;
-    margin-bottom: 1.5rem;
-    transform: rotate(-2deg);
+  h1 {
+    font-family: var(--f-display);
+    font-size: clamp(2.4rem, 7vw, 5rem);
+    line-height: .86;
+    margin: 0 0 .75rem;
+    text-transform: uppercase;
+    color: var(--c-yellow);
+    -webkit-text-stroke: 2px var(--c-dark);
   }
 
-  .hero-visual { display:flex; justify-content:center; align-items:center; }
+  .sub { font-size: 1.1rem; line-height: 1.5; max-width: 560px; }
 
-  .bot-card {
-    width: 400px;
-    height: 550px;
-    background: var(--c-white);
-    border: 5px solid var(--c-dark);
-    border-radius: 30px;
-    position: relative;
-    transform: rotate(4deg);
-    box-shadow: 20px 20px 0px rgba(0,0,0,0.1);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+  .kpis {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .6rem;
   }
 
-  .bot-header {
-    background: var(--c-red);
-    height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-bottom: 5px solid var(--c-dark);
+  .kpi {
+    border: 2px solid var(--c-dark);
+    border-radius: 12px;
+    padding: .6rem;
+    background: #fffdf2;
   }
 
-  .bot-face {
-    width: 80px;
-    height: 60px;
-    background: var(--c-dark);
+  .kpi strong { display: block; font-size: .8rem; text-transform: uppercase; }
+  .kpi span { font-size: 1.2rem; font-weight: 900; }
+
+  .card {
+    border: 4px solid var(--c-dark);
+    border-radius: 18px;
+    padding: 1rem;
+    background: linear-gradient(145deg, #fff 0%, #f6faff 100%);
+    align-self: start;
+  }
+
+  .card h2 {
+    margin: 0 0 .6rem;
+    font-family: var(--f-display);
+    letter-spacing: 1px;
+    font-size: 2rem;
+    color: var(--c-red);
+  }
+
+  .field {
+    display: grid;
+    gap: .35rem;
+    margin-bottom: .7rem;
+  }
+
+  input, select {
+    border: 2px solid var(--c-dark);
     border-radius: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
+    padding: .65rem .7rem;
+    font-size: 1rem;
+    font-family: var(--f-body);
+    background: white;
   }
 
-  .eye {
-    width: 20px;
-    height: 20px;
-    background: var(--c-cyan);
-    border-radius: 50%;
-    animation: blink 3s infinite;
-    box-shadow: 0 0 10px var(--c-cyan);
+  .btn {
+    width: 100%;
+    border: 3px solid var(--c-dark);
+    border-radius: 999px;
+    padding: .7rem .9rem;
+    font-size: 1rem;
+    font-weight: 900;
+    cursor: pointer;
+    background: var(--c-yellow);
+    box-shadow: 0 5px 0 var(--c-dark);
   }
 
-  .bot-body { padding: 2rem; flex-grow:1; background: repeating-linear-gradient(45deg, #fff, #fff 10px, #f4f4f4 10px, #f4f4f4 20px); }
-  .stat-bar { margin-bottom: 1rem; }
-  .stat-label { font-weight:900; text-transform:uppercase; font-size:.9rem; margin-bottom:.2rem; display:flex; justify-content:space-between; }
-  .bar-container { height:20px; background:#ddd; border:2px solid var(--c-dark); border-radius:10px; overflow:hidden; }
-  .bar-fill { height:100%; position:relative; transition:width 1s ease-out; }
+  .btn:disabled { opacity: .6; cursor: not-allowed; }
 
-  .ticker-wrap { width:100%; background:var(--c-dark); color:var(--c-yellow); padding:1rem 0; overflow:hidden; white-space:nowrap; border-top:4px solid var(--c-yellow); border-bottom:4px solid var(--c-yellow); transform:rotate(-1deg) scale(1.01); }
-  .ticker { display:inline-block; animation:ticker 20s linear infinite; }
-  .ticker-item { display:inline-block; padding:0 2rem; font-size:1.2rem; font-weight:800; font-family:var(--f-display); letter-spacing:1px; }
+  .btn.alt { margin-top: .5rem; background: var(--c-red); color: white; }
 
-  .section-config { padding: 6rem 4rem; }
-  .section-header { text-align:center; margin-bottom:4rem; }
-  .section-header h2 { font-size:5rem; color:var(--c-yellow); -webkit-text-stroke:3px var(--c-dark); text-shadow:5px 5px 0 var(--c-dark); }
-  .parts-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2rem; max-width:1200px; margin:0 auto; }
-  .part-card { background:var(--c-white); border:4px solid var(--c-dark); border-radius:20px; overflow:hidden; transition:transform .2s; cursor:pointer; }
-  .part-card:hover { transform: translateY(-10px) rotate(1deg); box-shadow:10px 10px 0 var(--c-cyan); }
-  .part-img { height:180px; display:flex; align-items:center; justify-content:center; border-bottom:4px solid var(--c-dark); font-size:4rem; }
-  .part-info { padding:1.5rem; }
+  .msg { margin-top: .6rem; font-size: .9rem; }
 
-  .section-arena { background: var(--c-yellow); padding:6rem 4rem; border-top:5px solid var(--c-dark); border-bottom:5px solid var(--c-dark); }
-  .leaderboard-container { max-width:1000px; margin:0 auto; background:var(--c-white); border:5px solid var(--c-dark); border-radius:10px; box-shadow:15px 15px 0 rgba(0,0,0,.8); padding:2rem; }
-  .rank-row { display:grid; grid-template-columns:.5fr 2fr 1fr 1fr; padding:1rem; border-bottom:2px solid #eee; align-items:center; font-weight:800; font-size:1.2rem; }
+  .fine { margin-top: .5rem; font-size: .76rem; opacity: .8; line-height: 1.4; }
 
-  @keyframes ticker { 0% { transform: translateX(0%);} 100% { transform: translateX(-50%);} }
-  @keyframes blink { 0%,90%,100% { transform:scaleY(1);} 95% { transform:scaleY(0.1);} }
+  .proof {
+    margin-top: 1rem;
+    border: 3px solid var(--c-dark);
+    border-radius: 16px;
+    background: #0f1118;
+    color: #d9ddff;
+    padding: .85rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+    font-size: .8rem;
+  }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; }
+  }
 `;
 
-const StatBar = ({ label, value, pct, color }) => {
-  const [width, setWidth] = useState('0%');
-  useEffect(() => {
-    const t = setTimeout(() => setWidth(pct), 100);
-    return () => clearTimeout(t);
-  }, [pct]);
-  return (
-    <div className="stat-bar">
-      <div className="stat-label"><span>{label}</span><span>{value}</span></div>
-      <div className="bar-container"><div className="bar-fill" style={{ width, background: color || 'var(--c-yellow)' }} /></div>
-    </div>
-  );
-};
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const BotCard = () => (
-  <div className="bot-card">
-    <div className="bot-header"><div className="bot-face"><div className="eye" /><div className="eye" /></div></div>
-    <div className="bot-body">
-      <h2 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', transform: 'skewX(-5deg)' }}>RUMBLE-V4</h2>
-      <StatBar label="Aggression" value="92%" pct="92%" color="var(--c-red)" />
-      <StatBar label="Armor" value="65%" pct="65%" color="var(--c-yellow)" />
-      <StatBar label="Compute Speed" value="88%" pct="88%" color="var(--c-cyan)" />
-      <div style={{ marginTop: '2rem', padding: '1rem', background: '#eee', borderRadius: '8px', fontWeight: 'bold', fontFamily: 'monospace' }}>
-        &gt; SYSTEM: TARGET ACQUIRED<br />
-        &gt; LOGIC: FLANK_LEFT<br />
-        &gt; STATUS: CHARGING CANNON...
-      </div>
-    </div>
-  </div>
-);
-
-const HomePage = () => {
-  const heroRef = useRef(null);
-  const buildRef = useRef(null);
-  const arenaRef = useRef(null);
-  const [toast, setToast] = useState(null);
-
-  const scrollTo = (section) => {
-    const map = { hero: heroRef, build: buildRef, arena: arenaRef };
-    map[section]?.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const parts = [
-    { emoji: '⚡', bgColor: '#FFF3CD', tag: 'WEAPON', title: 'Volt Smasher', desc: 'High voltage melee attachment.', stat: 'DMG: 85', price: '350 CR' },
-    { emoji: '🛡️', bgColor: '#D1F2EB', tag: 'ARMOR', title: 'Titan Plating', desc: 'Reinforced tungsten alloy.', stat: 'DEF: 120', price: '500 CR' },
-    { emoji: '🧠', bgColor: '#FADBD8', tag: 'MODEL', title: 'GPT-Tactician', desc: 'Fine-tuned for strategic dominance.', stat: 'IQ: 200', price: '1200 CR' },
-  ];
-
-  const onAdd = (name) => {
-    setToast(`${name} added to your loadout!`);
-    setTimeout(() => setToast(null), 1400);
-  };
-
-  return (
-    <>
-      <nav className="cog-nav">
-        <div className="logo" onClick={() => scrollTo('hero')} style={{ cursor: 'pointer' }}>COG CAGE</div>
-        <div className="nav-links">
-          <button className="nav-link" onClick={() => scrollTo('build')}>Builder</button>
-          <button className="nav-link" onClick={() => scrollTo('arena')}>Arena</button>
-          <button className="nav-link" onClick={() => scrollTo('build')}>Marketplace</button>
-          <button className="nav-link" onClick={() => scrollTo('hero')}>Guide</button>
-        </div>
-        <button className="btn-arcade" style={{ fontSize: '1rem', padding: '0.8rem 2rem' }} onClick={() => scrollTo('hero')}>Play Now</button>
-      </nav>
-
-      <section className="hero-section" ref={heroRef} id="hero">
-        <div>
-          <h1 className="hero-h1 text-stroke">CODE.<br /><span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>COMPETE.</span><br />CASH OUT.</h1>
-          <p style={{ fontSize: '1.4rem', maxWidth: '560px', marginBottom: '2rem', fontWeight: 500, lineHeight: 1.5 }}>
-            Build your LLM fighter. Tune strategy, loadouts, and model behavior. Enter skill-based arena battles and win prize pools.
-          </p>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button className="btn-arcade red">Join Alpha</button>
-            <button className="btn-arcade" style={{ background: 'var(--c-white)' }}>Watch Replay</button>
-          </div>
-        </div>
-        <div className="hero-visual"><BotCard /></div>
-      </section>
-
-      <div className="ticker-wrap"><div className="ticker">
-        <div className="ticker-item">USER SKULLCRUSHER WON 500 CREDITS ON MATCH #8842</div>
-        <div className="ticker-item">NEW CHAMPION CROWNED: NEURAL_KNIGHT</div>
-        <div className="ticker-item">PRIZE POOL UPDATED: $4,200 LIVE</div>
-        <div className="ticker-item">META UPDATE: TITAN PLATING PICK RATE +15%</div>
-      </div></div>
-
-      <section className="section-config" ref={buildRef} id="build">
-        {toast && <div style={{ position:'fixed', bottom:'2rem', left:'50%', transform:'translateX(-50%)', background:'var(--c-dark)', color:'#00E676', padding:'1rem 2rem', borderRadius:'50px', fontWeight:900, zIndex:9999 }}>✓ {toast}</div>}
-        <div className="section-header"><h2>BUILD YOUR CHAMPION</h2></div>
-        <div className="parts-grid">
-          {parts.map((p) => (
-            <div className="part-card" key={p.title} onClick={() => onAdd(p.title)}>
-              <div className="part-img" style={{ background: p.bgColor }}>{p.emoji}</div>
-              <div className="part-info">
-                <h3>{p.title}</h3>
-                <p>{p.desc}</p>
-                <div style={{ marginTop: '1rem', display:'flex', justifyContent:'space-between', fontWeight:800 }}><span>{p.stat}</span><span style={{ color:'var(--c-red)' }}>{p.price}</span></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="section-arena" ref={arenaRef} id="arena">
-        <div className="section-header"><h2 className="text-stroke" style={{ color:'var(--c-white)' }}>LIVE RANKINGS</h2></div>
-        <div className="leaderboard-container">
-          <div className="rank-row"><div>Rank</div><div>Bot Name</div><div>Win Rate</div><div>Status</div></div>
-          <div className="rank-row"><div>1</div><div>MECHA_GODZILLA_V9</div><div>98.4%</div><div>In Combat</div></div>
-          <div className="rank-row"><div>2</div><div>DeepBlue_Revenge</div><div>94.1%</div><div>Waiting...</div></div>
-          <div className="rank-row"><div>3</div><div>NullPointerEx</div><div>91.8%</div><div>In Combat</div></div>
-        </div>
-      </section>
-
-      <footer style={{ background:'var(--c-dark)', color:'var(--c-white)', padding:'4rem', textAlign:'center' }}>
-        <h2 style={{ fontFamily:'var(--f-display)', marginBottom:'1rem' }}>READY TO RUMBLE?</h2>
-        <p style={{ opacity:0.7 }}>Join 15,000+ engineers in the arena.</p>
-        <p style={{ marginTop:'1rem', opacity:0.7, fontSize:'0.9rem' }}>Skill-based competition. Real-money features may be unavailable in some regions.</p>
-      </footer>
-    </>
-  );
-};
+function track(event, payload = {}) {
+  return fetch('/api/events', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ event, ...payload }),
+    keepalive: true,
+  }).catch(() => undefined);
+}
 
 export default function CogCageLanding() {
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = globalStyles;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
+  const [email, setEmail] = useState('');
+  const [game, setGame] = useState('');
+  const [state, setState] = useState({ saving: false, msg: '' });
+
+  const canSubmit = useMemo(() => EMAIL_RE.test(email.trim()) && game.trim().length > 1, [email, game]);
+
+  async function submitWaitlist(e) {
+    e.preventDefault();
+    if (!canSubmit || state.saving) return;
+
+    const normalized = email.trim().toLowerCase();
+    setState({ saving: true, msg: '' });
+
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ email: normalized, game: game.trim(), source: 'hero-waitlist' }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to join waitlist');
+
+      localStorage.setItem('cogcage_email', normalized);
+      await track('waitlist_joined', { email: normalized, source: 'hero-waitlist', page: '/' });
+
+      setState({ saving: false, msg: '✅ You are on the alpha waitlist.' });
+    } catch (err) {
+      setState({ saving: false, msg: `⚠️ ${err instanceof Error ? err.message : 'Try again in a minute.'}` });
+    }
+  }
+
+  async function startFounderCheckout() {
+    const normalized = email.trim().toLowerCase();
+    if (!EMAIL_RE.test(normalized)) {
+      setState((s) => ({ ...s, msg: '⚠️ Enter a valid email before founder checkout.' }));
+      return;
+    }
+
+    localStorage.setItem('cogcage_email', normalized);
+
+    await fetch('/api/founder-intent', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ email: normalized, source: 'hero-founder-cta' }),
+      keepalive: true,
+    }).catch(() => undefined);
+
+    await track('founder_checkout_clicked', {
+      email: normalized,
+      tier: 'founder',
+      source: 'hero-founder-cta',
+      href: founderCheckoutUrl || undefined,
+      page: '/',
+    });
+
+    if (!founderCheckoutUrl) {
+      setState((s) => ({ ...s, msg: '⚠️ Founder checkout link not configured yet.' }));
+      return;
+    }
+
+    const joiner = founderCheckoutUrl.includes('?') ? '&' : '?';
+    window.location.href = `${founderCheckoutUrl}${joiner}prefilled_email=${encodeURIComponent(normalized)}`;
+  }
 
   return (
     <>
-      <div className="bg-mesh" />
-      <HomePage />
+      <style>{globalStyles}</style>
+      <main className="shell">
+        <header className="nav">
+          <div className="logo">COG CAGE</div>
+          <div><strong>AI Skill Arena</strong></div>
+        </header>
+
+        <section className="hero" id="join">
+          <div>
+            <h1>Code. Compete. Cash Out.</h1>
+            <p className="sub">
+              CogCage is building paid AI skill ladders where players tune model strategy and compete for cash prizes.
+              Join alpha now and secure a founder slot before public launch.
+            </p>
+
+            <div className="kpis">
+              <div className="kpi"><strong>Target</strong><span>$10/day by Day 30</span></div>
+              <div className="kpi"><strong>Offer</strong><span>Founder Access</span></div>
+              <div className="kpi"><strong>Loop</strong><span>Weekly Revenue Tests</span></div>
+            </div>
+
+            <div className="proof">
+              monetization_hypothesis: Email-first founder checkout increases paid conversion by reducing checkout friction.
+            </div>
+          </div>
+
+          <aside className="card">
+            <h2>Get Early Access</h2>
+            <form onSubmit={submitWaitlist}>
+              <label className="field">
+                <span>Email</span>
+                <input
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="field">
+                <span>Main game you play</span>
+                <select value={game} onChange={(e) => setGame(e.target.value)} required>
+                  <option value="">Choose one…</option>
+                  <option value="League of Legends">League of Legends</option>
+                  <option value="Valorant">Valorant</option>
+                  <option value="CS2">CS2</option>
+                  <option value="Dota 2">Dota 2</option>
+                  <option value="Rocket League">Rocket League</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+
+              <button className="btn" type="submit" disabled={!canSubmit || state.saving}>
+                {state.saving ? 'Saving…' : 'Join Alpha Waitlist'}
+              </button>
+            </form>
+
+            <button className="btn alt" type="button" onClick={startFounderCheckout}>
+              Reserve Founder Spot
+            </button>
+
+            {state.msg && <div className="msg">{state.msg}</div>}
+            <p className="fine">Founder checkout pre-fills your email and logs intent for follow-up if checkout is abandoned.</p>
+          </aside>
+        </section>
+      </main>
     </>
   );
 }
