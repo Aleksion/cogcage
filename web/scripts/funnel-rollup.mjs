@@ -44,9 +44,9 @@ function getPlayFounderDailySplit(windowStart, minSample) {
   const rows = db
     .prepare(
       `SELECT date(created_at) AS day,
-              SUM(CASE WHEN source = 'play-page-founder-cta-winner' THEN 1 ELSE 0 END) AS winner,
-              SUM(CASE WHEN source = 'play-page-founder-cta-loser' THEN 1 ELSE 0 END) AS loser,
-              SUM(CASE WHEN source = 'play-page-founder-cta-neutral' THEN 1 ELSE 0 END) AS neutral
+              SUM(CASE WHEN source LIKE 'play-page-founder-cta-winner%' THEN 1 ELSE 0 END) AS winner,
+              SUM(CASE WHEN source LIKE 'play-page-founder-cta-loser%' THEN 1 ELSE 0 END) AS loser,
+              SUM(CASE WHEN source LIKE 'play-page-founder-cta-neutral%' THEN 1 ELSE 0 END) AS neutral
        FROM conversion_events
        WHERE event_name = 'founder_checkout_clicked'
          AND source LIKE 'play-page-founder-cta-%'
@@ -184,7 +184,7 @@ const playFounderClicksBySource = {
     `SELECT COUNT(*) AS value
      FROM conversion_events
      WHERE event_name = 'founder_checkout_clicked'
-       AND source = 'play-page-founder-cta-neutral'
+       AND source LIKE 'play-page-founder-cta-neutral%'
        AND created_at >= @windowStart`,
     { windowStart },
   ),
@@ -192,7 +192,7 @@ const playFounderClicksBySource = {
     `SELECT COUNT(*) AS value
      FROM conversion_events
      WHERE event_name = 'founder_checkout_clicked'
-       AND source = 'play-page-founder-cta-winner'
+       AND source LIKE 'play-page-founder-cta-winner%'
        AND created_at >= @windowStart`,
     { windowStart },
   ),
@@ -200,7 +200,27 @@ const playFounderClicksBySource = {
     `SELECT COUNT(*) AS value
      FROM conversion_events
      WHERE event_name = 'founder_checkout_clicked'
-       AND source = 'play-page-founder-cta-loser'
+       AND source LIKE 'play-page-founder-cta-loser%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
+
+const playFounderClicksByCopyVariant = {
+  momentum: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source LIKE 'play-page-founder-cta-%-momentum'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  utility: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source LIKE 'play-page-founder-cta-%-utility'
        AND created_at >= @windowStart`,
     { windowStart },
   ),
@@ -441,6 +461,7 @@ const rollup = {
   totals,
   inWindow,
   playFounderClicksBySource,
+  playFounderClicksByCopyVariant,
   landingViewsByHeroVariant,
   landingFounderClicksByHeroVariant,
   landingFounderIntentsByHeroVariant,
@@ -521,6 +542,8 @@ const rollup = {
     playFounderClickWinnerSharePct: pct(playFounderClicksBySource.winner, inWindow.playFounderClicks),
     playFounderClickLoserSharePct: pct(playFounderClicksBySource.loser, inWindow.playFounderClicks),
     playFounderClickNeutralSharePct: pct(playFounderClicksBySource.neutral, inWindow.playFounderClicks),
+    playFounderClickMomentumSharePct: pct(playFounderClicksByCopyVariant.momentum, inWindow.playFounderClicks),
+    playFounderClickUtilitySharePct: pct(playFounderClicksByCopyVariant.utility, inWindow.playFounderClicks),
   },
 };
 
@@ -617,10 +640,12 @@ console.log(`- Play match completions: ${inWindow.playMatchCompletions}`);
 console.log(`- Play-page founder checkout clicks: ${inWindow.playFounderClicks}`);
 console.log('');
 
-console.log('Play founder clicks by source:');
-console.log(`- Neutral CTA (play-page-founder-cta-neutral): ${playFounderClicksBySource.neutral}`);
-console.log(`- Winner CTA (play-page-founder-cta-winner): ${playFounderClicksBySource.winner}`);
-console.log(`- Loser CTA (play-page-founder-cta-loser): ${playFounderClicksBySource.loser}`);
+console.log('Play founder clicks by source/copy:');
+console.log(`- Neutral CTA (play-page-founder-cta-neutral*): ${playFounderClicksBySource.neutral}`);
+console.log(`- Winner CTA (play-page-founder-cta-winner*): ${playFounderClicksBySource.winner}`);
+console.log(`- Loser CTA (play-page-founder-cta-loser*): ${playFounderClicksBySource.loser}`);
+console.log(`- Momentum copy clicks (*-momentum): ${playFounderClicksByCopyVariant.momentum}`);
+console.log(`- Utility copy clicks (*-utility): ${playFounderClicksByCopyVariant.utility}`);
 console.log('');
 
 console.log('Play winner vs loser daily guardrail:');
@@ -653,5 +678,6 @@ console.log(`- Play completion -> neutral CTA click: ${rollup.rates.playCompleti
 console.log(`- Play completion -> winner CTA click: ${rollup.rates.playCompletionToFounderClickWinnerPct.toFixed(2)}%`);
 console.log(`- Play completion -> loser CTA click: ${rollup.rates.playCompletionToFounderClickLoserPct.toFixed(2)}%`);
 console.log(`- Play founder click mix (neutral/winner/loser): ${rollup.rates.playFounderClickNeutralSharePct.toFixed(2)}% / ${rollup.rates.playFounderClickWinnerSharePct.toFixed(2)}% / ${rollup.rates.playFounderClickLoserSharePct.toFixed(2)}%`);
+console.log(`- Play founder copy mix (momentum/utility): ${rollup.rates.playFounderClickMomentumSharePct.toFixed(2)}% / ${rollup.rates.playFounderClickUtilitySharePct.toFixed(2)}%`);
 
 db.close();

@@ -430,6 +430,17 @@ type LeaderboardEntry = MatchResult & { rankScore: number };
 const LEADERBOARD_KEY = 'cogcage_demo_leaderboard_v1';
 const EMAIL_KEY = 'cogcage_email';
 const PLAY_VIEWED_KEY = 'cogcage_play_viewed';
+const PLAY_FOUNDER_COPY_VARIANT_KEY = 'cogcage_play_founder_copy_variant';
+
+const pickPlayFounderCopyVariant = () => {
+  if (typeof window === 'undefined') return 'momentum';
+  const existing = window.localStorage.getItem(PLAY_FOUNDER_COPY_VARIANT_KEY);
+  if (existing === 'momentum' || existing === 'utility') return existing;
+  const assigned = Math.random() < 0.5 ? 'momentum' : 'utility';
+  window.localStorage.setItem(PLAY_FOUNDER_COPY_VARIANT_KEY, assigned);
+  return assigned;
+};
+
 const founderCheckoutUrl =
   ((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? '').trim();
 
@@ -645,6 +656,7 @@ const Play = () => {
   const [email, setEmail] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [playFounderCopyVariant, setPlayFounderCopyVariant] = useState<'momentum' | 'utility'>('momentum');
   const timerRef = useRef<number | null>(null);
 
   const postEvent = async (event: string, meta: Record<string, unknown> = {}) => {
@@ -671,6 +683,14 @@ const Play = () => {
 
   const founderCtaVariant = useMemo(() => {
     if (!result) {
+      if (playFounderCopyVariant === 'utility') {
+        return {
+          key: 'neutral',
+          title: 'Get Founder Tools Before Launch',
+          message: 'Founder access adds deeper analytics, faster iteration loops, and priority ladder placement at $29/mo before launch pricing moves to $49/mo.',
+          button: 'Get Founder Tools',
+        };
+      }
       return {
         key: 'neutral',
         title: 'Unlock Founder Pricing',
@@ -680,11 +700,28 @@ const Play = () => {
     }
 
     if (result.winner === 'You') {
+      if (playFounderCopyVariant === 'utility') {
+        return {
+          key: 'winner',
+          title: 'Convert This Win Into Repeatable Edge',
+          message: 'Founder mode unlocks analytics and priority ladder access so this result becomes your baseline before pricing moves to $49/mo.',
+          button: 'Enable Founder Analytics',
+        };
+      }
       return {
         key: 'winner',
         title: 'You Won. Lock In Founder Advantage',
         message: 'Your build already performs. Keep momentum with founder access at $29/mo before it moves to $49/mo.',
         button: 'Claim Winner Founder Price',
+      };
+    }
+
+    if (playFounderCopyVariant === 'utility') {
+      return {
+        key: 'loser',
+        title: 'Debug Faster With Founder Mode',
+        message: 'Get extra reps, richer match analytics, and priority ladder slots so you can close the gap before launch pricing moves to $49/mo.',
+        button: 'Unlock Founder Rebuild Kit',
       };
     }
 
@@ -694,7 +731,7 @@ const Play = () => {
       message: 'Get more reps, analytics, and priority ladder access at $29/mo before launch pricing moves to $49/mo.',
       button: 'Unlock Founder Rematch Pass',
     };
-  }, [result]);
+  }, [playFounderCopyVariant, result]);
 
   useEffect(() => {
     const style = document.createElement('style');
@@ -711,10 +748,11 @@ const Play = () => {
     if (typeof window === 'undefined') return;
     const saved = window.localStorage.getItem(EMAIL_KEY) || '';
     if (saved) setEmail(saved);
+    setPlayFounderCopyVariant(pickPlayFounderCopyVariant());
 
     const viewedSent = window.localStorage.getItem(PLAY_VIEWED_KEY);
     if (!viewedSent) {
-      void postEvent('play_page_viewed');
+      void postEvent('play_page_viewed', { founderCopyVariant: pickPlayFounderCopyVariant() });
       window.localStorage.setItem(PLAY_VIEWED_KEY, '1');
     }
   }, []);
@@ -736,8 +774,9 @@ const Play = () => {
       playerScore: result.playerScore,
       opponentScore: result.opponentScore,
       ctaVariant: founderCtaVariant.key,
+      founderCopyVariant: playFounderCopyVariant,
     });
-  }, [founderCtaVariant.key, result]);
+  }, [founderCtaVariant.key, playFounderCopyVariant, result]);
 
   const startMatch = () => {
     if (running) return;
@@ -805,14 +844,14 @@ const Play = () => {
 
   const handleFounderCheckout = async () => {
     const normalizedEmail = email.trim().toLowerCase();
-    const checkoutSource = `play-page-founder-cta-${founderCtaVariant.key}`;
+    const checkoutSource = `play-page-founder-cta-${founderCtaVariant.key}-${playFounderCopyVariant}`;
     if (!normalizedEmail || !/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
       setCheckoutMessage('Enter a valid email to reserve founder pricing.');
       return;
     }
     if (!founderCheckoutUrl) {
       setCheckoutMessage('Checkout is temporarily unavailable. Please join the waitlist from home.');
-      void postEvent('founder_checkout_unavailable', { source: checkoutSource });
+      void postEvent('founder_checkout_unavailable', { source: checkoutSource, founderCopyVariant: playFounderCopyVariant });
       return;
     }
 
@@ -825,9 +864,9 @@ const Play = () => {
         fetch('/api/founder-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: normalizedEmail, source: checkoutSource }),
+          body: JSON.stringify({ email: normalizedEmail, source: checkoutSource, founderCopyVariant: playFounderCopyVariant }),
         }),
-        postEvent('founder_checkout_clicked', { source: checkoutSource, ctaVariant: founderCtaVariant.key }),
+        postEvent('founder_checkout_clicked', { source: checkoutSource, ctaVariant: founderCtaVariant.key, founderCopyVariant: playFounderCopyVariant }),
       ]);
 
       const url = new URL(founderCheckoutUrl);
