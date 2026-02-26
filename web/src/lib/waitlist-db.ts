@@ -179,6 +179,7 @@ export function insertConversionEvent(event: ConversionEvent) {
       @userAgent,
       @ipAddress
     )
+    ON CONFLICT(event_id) DO NOTHING
   `);
 
   insert.run(event);
