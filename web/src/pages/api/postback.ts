@@ -45,6 +45,22 @@ function authorize(request: Request): boolean {
   return provided === key;
 }
 
+function hashString(input: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function deriveFallbackEventId({ eventType, source, email, created, metadata }: { eventType: string; source: string; email?: string; created?: number; metadata?: Record<string, unknown> }) {
+  const day = new Date().toISOString().slice(0, 10);
+  const metadataPreview = JSON.stringify(metadata ?? {}).slice(0, 512);
+  const fingerprint = `${eventType}|${source}|${email || 'anon'}|${created || ''}|${metadataPreview}|${day}`;
+  return `postback:${day}:${hashString(fingerprint)}`;
+}
+
 export const POST: APIRoute = async ({ request }) => {
   const startedAt = Date.now();
   const requestId = crypto.randomUUID();
@@ -111,12 +127,6 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const object = payload.data?.object;
-  const eventId =
-    (typeof payload.eventId === 'string' && payload.eventId.trim() ? payload.eventId.trim() : undefined)
-    ?? (typeof payload.id === 'string' && payload.id.trim() ? payload.id.trim() : undefined)
-    ?? (typeof object?.id === 'string' && object.id.trim() ? object.id.trim() : undefined)
-    ?? `postback:${Date.now()}`;
-
   const email =
     normalizeEmail(payload.email)
     ?? normalizeEmail(object?.customer_email)
@@ -128,6 +138,12 @@ export const POST: APIRoute = async ({ request }) => {
     created: payload.created,
     metadata: payload.metadata ?? object?.metadata ?? {},
   };
+
+  const eventId =
+    (typeof payload.eventId === 'string' && payload.eventId.trim() ? payload.eventId.trim() : undefined)
+    ?? (typeof payload.id === 'string' && payload.id.trim() ? payload.id.trim() : undefined)
+    ?? (typeof object?.id === 'string' && object.id.trim() ? object.id.trim() : undefined)
+    ?? deriveFallbackEventId({ eventType, source, email, created: payload.created, metadata: meta.metadata as Record<string, unknown> });
 
   const conversionPayload = {
     eventName: 'paid_conversion_confirmed',

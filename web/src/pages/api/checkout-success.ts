@@ -23,6 +23,21 @@ function optionalString(value: unknown, maxLen = 300) {
   return normalized.length > 0 ? normalized : undefined;
 }
 
+function hashString(input: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function deriveFallbackEventId({ source, email, href, page, tier }: { source?: string; email?: string; href?: string; page?: string; tier?: string }) {
+  const day = new Date().toISOString().slice(0, 10);
+  const fingerprint = `${source || 'stripe-success'}|${email || 'anon'}|${href || ''}|${page || ''}|${tier || 'founder'}|${day}`;
+  return `checkout-success:${day}:${hashString(fingerprint)}`;
+}
+
 export const prerender = false;
 
 function safeMetaJson(meta: Record<string, unknown> | undefined) {
@@ -127,14 +142,15 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const eventId =
-    optionalString(payload.eventId, 180)
-    ?? optionalString(payload.session_id, 180)
-    ?? optionalString(payload.checkout_session_id, 180);
   const page = optionalString(payload.page, 120);
   const href = optionalString(payload.href, 600);
   const source = optionalString(payload.source, 120);
   const tier = optionalString(payload.tier, 60);
+  const eventId =
+    optionalString(payload.eventId, 180)
+    ?? optionalString(payload.session_id, 180)
+    ?? optionalString(payload.checkout_session_id, 180)
+    ?? deriveFallbackEventId({ source, email, href, page, tier });
   const meta = payload.meta && typeof payload.meta === 'object' ? (payload.meta as Record<string, unknown>) : undefined;
 
   try {
