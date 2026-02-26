@@ -8,6 +8,7 @@ import {
   type ConversionEvent,
 } from '../../lib/waitlist-db';
 import { appendEventsFallback, appendOpsLog, appendWaitlistFallback } from '../../lib/observability';
+import { drainFallbackQueues } from '../../lib/fallback-drain';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
@@ -274,6 +275,14 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     insertWaitlistLead(payload);
     appendOpsLog({ route: route, level: 'info', event: 'waitlist_saved', requestId, source: payload.source, emailHash: normalizedEmail.slice(0, 3), durationMs: Date.now() - startedAt });
+    try {
+      const drained = drainFallbackQueues(10);
+      if ((drained.waitlist.inserted + drained.founder.inserted + drained.events.inserted) > 0) {
+        appendOpsLog({ route, level: 'info', event: 'fallback_drain_after_waitlist', requestId, drained });
+      }
+    } catch {
+      // best-effort background healing only
+    }
     safeTrackConversion(route, requestId, {
       eventName: 'waitlist_submitted',
       source: payload.source,
