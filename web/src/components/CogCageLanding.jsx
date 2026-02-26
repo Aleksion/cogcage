@@ -789,6 +789,7 @@ const globalStyles = `
 const STRIPE_FOUNDER_URL = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COPY_VARIANT_KEY = 'cogcage_copy_variant';
+const FOUNDER_CTA_VARIANT_KEY = 'cogcage_founder_cta_variant';
 const FOUNDER_PRICE_TEXT = '$29/mo founder price';
 const FOUNDER_PRICE_FUTURE_TEXT = '$49/mo after beta';
 const HERO_COPY = {
@@ -807,6 +808,14 @@ const getOrCreateVariant = () => {
   if (existing === 'value' || existing === 'competition') return existing;
   const assigned = Math.random() < 0.5 ? 'value' : 'competition';
   localStorage.setItem(COPY_VARIANT_KEY, assigned);
+  return assigned;
+};
+
+const getOrCreateFounderCtaVariant = () => {
+  const existing = localStorage.getItem(FOUNDER_CTA_VARIANT_KEY);
+  if (existing === 'reserve' || existing === 'claim') return existing;
+  const assigned = Math.random() < 0.5 ? 'reserve' : 'claim';
+  localStorage.setItem(FOUNDER_CTA_VARIANT_KEY, assigned);
   return assigned;
 };
 
@@ -973,18 +982,21 @@ const HeroSection = ({ sectionRef }) => {
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [variant, setVariant] = useState('value');
+  const [founderCtaVariant, setFounderCtaVariant] = useState('reserve');
 
   useEffect(() => {
     const savedEmail = localStorage.getItem('cogcage_email');
     if (savedEmail) setEmail(savedEmail);
     const assignedVariant = getOrCreateVariant();
+    const assignedFounderCtaVariant = getOrCreateFounderCtaVariant();
     setVariant(assignedVariant);
+    setFounderCtaVariant(assignedFounderCtaVariant);
     postJson('/api/events', {
       event: 'landing_view',
       source: `hero-${assignedVariant}`,
       page: '/',
       variant: assignedVariant,
-      meta: { variant: assignedVariant },
+      meta: { variant: assignedVariant, founderCtaVariant: assignedFounderCtaVariant },
     });
   }, []);
 
@@ -1050,17 +1062,18 @@ const HeroSection = ({ sectionRef }) => {
     localStorage.setItem('cogcage_email', trimmed.toLowerCase());
     await postJson('/api/events', {
       event: 'founder_checkout_clicked',
-      source: `hero-founder-cta-${variant}`,
+      source: `hero-founder-cta-${variant}-${founderCtaVariant}`,
       email: trimmed.toLowerCase(),
       tier: 'founder',
       page: '/',
       variant,
-      meta: { variant },
+      meta: { variant, founderCtaVariant },
     });
     await postJson('/api/founder-intent', {
       email: trimmed.toLowerCase(),
-      source: `hero-founder-checkout-${variant}`,
+      source: `hero-founder-checkout-${variant}-${founderCtaVariant}`,
       variant,
+      founderCtaVariant,
     });
 
     if (STRIPE_FOUNDER_URL) {
@@ -1072,12 +1085,12 @@ const HeroSection = ({ sectionRef }) => {
 
     await postJson('/api/events', {
       event: 'founder_checkout_unavailable',
-      source: `hero-founder-cta-${variant}`,
+      source: `hero-founder-cta-${variant}-${founderCtaVariant}`,
       email: trimmed.toLowerCase(),
       tier: 'founder',
       page: '/',
       variant,
-      meta: { variant },
+      meta: { variant, founderCtaVariant },
     });
     setStatus('error');
     setMessage('Founder checkout link not configured yet.');
@@ -1124,7 +1137,9 @@ const HeroSection = ({ sectionRef }) => {
           </div>
         </div>
         <div className="hero-actions">
-          <button className="btn-arcade red" type="button" onClick={handleFounderCheckout}>Reserve Founder Spot</button>
+          <button className="btn-arcade red" type="button" onClick={handleFounderCheckout}>
+            {founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
+          </button>
           <button
             className="btn-arcade"
             style={{ background: 'var(--c-white)' }}
@@ -1257,10 +1272,13 @@ const FooterSection = () => {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [variant, setVariant] = useState('value');
+  const [founderCtaVariant, setFounderCtaVariant] = useState('reserve');
 
   useEffect(() => {
     const assignedVariant = getOrCreateVariant();
+    const assignedFounderCtaVariant = getOrCreateFounderCtaVariant();
     setVariant(assignedVariant);
+    setFounderCtaVariant(assignedFounderCtaVariant);
   }, []);
 
   const normalizedEmail = () => email.trim().toLowerCase();
@@ -1315,17 +1333,18 @@ const FooterSection = () => {
     localStorage.setItem('cogcage_email', trimmed);
     await postJson('/api/events', {
       event: 'founder_checkout_clicked',
-      source: `footer-founder-cta-${variant}`,
+      source: `footer-founder-cta-${variant}-${founderCtaVariant}`,
       email: trimmed,
       tier: 'founder',
       page: '/',
       variant,
-      meta: { variant },
+      meta: { variant, founderCtaVariant },
     });
     await postJson('/api/founder-intent', {
       email: trimmed,
-      source: `footer-founder-checkout-${variant}`,
+      source: `footer-founder-checkout-${variant}-${founderCtaVariant}`,
       variant,
+      founderCtaVariant,
     });
 
     if (STRIPE_FOUNDER_URL) {
@@ -1337,12 +1356,12 @@ const FooterSection = () => {
 
     await postJson('/api/events', {
       event: 'founder_checkout_unavailable',
-      source: `footer-founder-cta-${variant}`,
+      source: `footer-founder-cta-${variant}-${founderCtaVariant}`,
       email: trimmed,
       tier: 'founder',
       page: '/',
       variant,
-      meta: { variant },
+      meta: { variant, founderCtaVariant },
     });
     setError('Founder checkout link not configured yet.');
   };
@@ -1380,7 +1399,7 @@ const FooterSection = () => {
               Join Waitlist
             </button>
             <button className="btn-arcade" style={{ fontSize: '1rem', padding: '0.8rem 2rem' }} onClick={handleFooterFounderCheckout}>
-              Reserve Founder Spot
+              {founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
             </button>
           </div>
           <p style={{ color: '#f5d66b', fontWeight: 800, fontSize: '0.9rem' }}>
