@@ -452,8 +452,6 @@ const PLAY_FOUNDER_COPY_VARIANT_KEY = 'cogcage_play_founder_copy_variant';
 const FOUNDER_INTENT_REPLAY_QUEUE_KEY = 'cogcage_founder_intent_replay_queue';
 
 const GRID_SIZE = 8;
-const MAX_AP = 3;
-const ATTACK_RANGE = 2;
 
 const pickPlayFounderCopyVariant = () => {
   if (typeof window === 'undefined') return 'momentum';
@@ -703,17 +701,13 @@ const Play = () => {
   const [grid, setGrid] = useState<Cell[][]>([]);
   const [playerPos, setPlayerPos] = useState<Vec>({ x: 0, y: 0 });
   const [enemyPos, setEnemyPos] = useState<Vec>({ x: 0, y: 0 });
-  const [playerHp, setPlayerHp] = useState(100);
-  const [enemyHp, setEnemyHp] = useState(100);
-  const [playerAp, setPlayerAp] = useState(MAX_AP);
+  const [playerHp, setPlayerHp] = useState(HP_MAX);
+  const [enemyHp, setEnemyHp] = useState(HP_MAX);
+  const [playerEnergy, setPlayerEnergy] = useState(ENERGY_MAX);
   const [turn, setTurn] = useState(1);
   const [feed, setFeed] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
-  const [playerBlock, setPlayerBlock] = useState(0);
-  const [enemyBlock, setEnemyBlock] = useState(0);
-  const [playerScan, setPlayerScan] = useState(0);
-  const [enemyScan, setEnemyScan] = useState(0);
   const [opponentId, setOpponentId] = useState(OPPONENTS[0].id);
   const [playerBotConfig, setPlayerBotConfig] = useState<PlayerBotConfig>(DEFAULT_PLAYER_BOT);
   const [email, setEmail] = useState('');
@@ -722,6 +716,8 @@ const Play = () => {
   const [playFounderCopyVariant, setPlayFounderCopyVariant] = useState<'momentum' | 'utility'>('momentum');
 
   const rngRef = useRef<() => number>(() => Math.random);
+  const engineRef = useRef<any>(null);
+  const botRef = useRef<any>(null);
 
   const postEvent = async (event: string, meta: Record<string, unknown> = {}) => {
     try {
@@ -744,21 +740,6 @@ const Play = () => {
     () => OPPONENTS.find((bot) => bot.id === opponentId) || OPPONENTS[0],
     [opponentId]
   );
-
-  // Player combat bonuses derived from bot config (clamped to sane ranges)
-  const playerBonuses = useMemo(() => {
-    const agg = clamp(playerBotConfig.aggression, 0, 100);
-    const def = clamp(playerBotConfig.defense, 0, 100);
-    const risk = clamp(playerBotConfig.risk, 0, 100);
-    return {
-      // aggression: +0..+6 damage bonus (scales linearly)
-      attackBonus: Math.floor(agg / 100 * 6),
-      // defense: +0..+3 block bonus (absorbs extra damage)
-      blockBonus: Math.floor(def / 100 * 3),
-      // risk: 40%+ risk stat gives +1 range extension on scan (overclocked mode)
-      scanExtended: risk >= 40,
-    };
-  }, [playerBotConfig.aggression, playerBotConfig.defense, playerBotConfig.risk]);
 
   const founderCtaVariant = useMemo(() => {
     if (!winner) {
@@ -891,14 +872,12 @@ const Play = () => {
     setRunning(false);
     setWinner(null);
     setFeed([]);
-    setPlayerHp(100);
-    setEnemyHp(100);
-    setPlayerAp(MAX_AP);
+    setPlayerHp(HP_MAX);
+    setEnemyHp(HP_MAX);
+    setPlayerEnergy(ENERGY_MAX);
     setTurn(1);
-    setPlayerBlock(0);
-    setEnemyBlock(0);
-    setPlayerScan(0);
-    setEnemyScan(0);
+    engineRef.current = null;
+    botRef.current = null;
   };
 
   const startMatch = () => {
@@ -914,6 +893,24 @@ const Play = () => {
     setPlayerPos(map.playerPos);
     setEnemyPos(map.enemyPos);
     setActiveSeed(seed);
+
+    const actors = {
+      player: createActorState({
+        id: 'player',
+        position: { x: map.playerPos.x * UNIT_SCALE, y: map.playerPos.y * UNIT_SCALE },
+        facing: 'N',
+        armor: 'medium',
+      }),
+      enemy: createActorState({
+        id: 'enemy',
+        position: { x: map.enemyPos.x * UNIT_SCALE, y: map.enemyPos.y * UNIT_SCALE },
+        facing: 'S',
+        armor: 'medium',
+      }),
+    };
+    engineRef.current = createInitialState({ seed, actors });
+    botRef.current = createBot('balanced', new Rng(seed));
+
     setFeed([
       `Match initialized. Seed ${seed}.`,
       `Arena size ${GRID_SIZE}x${GRID_SIZE}. Opponent: ${opponent.name}.`,
@@ -922,209 +919,116 @@ const Play = () => {
     void postEvent('play_match_started', { seed, opponent: opponent.id, gridSize: GRID_SIZE });
   };
 
-  const endMatchIfNeeded = (nextPlayerHp: number, nextEnemyHp: number) => {
-    if (nextPlayerHp <= 0 && nextEnemyHp <= 0) {
-      setWinner('Draw');
-      setRunning(false);
-      return true;
-    }
-    if (nextEnemyHp <= 0) {
-      setWinner(playerBotConfig.name.trim() || 'My Bot');
-      setRunning(false);
-      return true;
-    }
-    if (nextPlayerHp <= 0) {
-      setWinner(opponent.name);
-      setRunning(false);
-      return true;
-    }
-    return false;
-  };
-
-  const canMoveTo = (pos: Vec) => {
-    if (pos.x < 0 || pos.y < 0 || pos.x >= GRID_SIZE || pos.y >= GRID_SIZE) return false;
-    if (grid[pos.y]?.[pos.x] === 'obstacle') return false;
-    if (isSame(pos, enemyPos)) return false;
-    return true;
-  };
-
   const logFeed = (lines: string[]) => {
     setFeed((prev) => [...lines, ...prev].slice(0, 50));
   };
 
+  const formatEvent = (event: { type: string; actorId: string | null; targetId: string | null; data: any }): string | null => {
+    const who = event.actorId === 'player' ? 'You' : opponent.name;
+    switch (event.type) {
+      case 'DAMAGE_APPLIED': {
+        const d = event.data;
+        const target = event.targetId === 'player' ? 'you' : opponent.name;
+        return `${who} struck ${target} for ${d.amount} dmg (guard: ${d.defenderGuarded}, armor: ${d.armorMult}x)`;
+      }
+      case 'STATUS_APPLIED':
+        return `${who} activated ${event.data.status} (expires tick ${event.data.endsAt})`;
+      case 'ILLEGAL_ACTION':
+        return `${who}: ${event.data.action.type} rejected — ${event.data.reason}`;
+      case 'ACTION_ACCEPTED': {
+        const d = event.data;
+        if (d.type === 'NO_OP') return null;
+        if (d.type === 'MOVE') return `${who} moves ${d.dir}.`;
+        if (d.type === 'DASH') return `${who} dashes ${d.dir}.`;
+        return `${who} uses ${d.type}.`;
+      }
+      case 'MATCH_END':
+        return `Match over — winner: ${event.actorId === 'player' ? 'You' : event.actorId === 'enemy' ? opponent.name : 'draw'} (${event.data.reason})`;
+      default:
+        return null;
+    }
+  };
+
+  const executeTurn = (playerAction: { type: string; dir?: string; targetId?: string }) => {
+    const state = engineRef.current;
+    if (!state || state.ended) return;
+
+    const startEventIdx = state.events.length;
+    const enemyAction = botRef.current?.decide(state, 'enemy') ?? null;
+
+    for (let i = 0; i < DECISION_WINDOW_TICKS; i++) {
+      const actionsByActor = new Map();
+      if (i === 0) {
+        if (playerAction.type !== 'NO_OP') {
+          actionsByActor.set('player', { ...playerAction, tick: state.tick, actorId: 'player' });
+        }
+        if (enemyAction) {
+          actionsByActor.set('enemy', enemyAction);
+        }
+      }
+      resolveTick(state, actionsByActor);
+      if (state.ended) break;
+    }
+
+    const pActor = state.actors.player;
+    const eActor = state.actors.enemy;
+    setPlayerPos({
+      x: clamp(Math.round(pActor.position.x / UNIT_SCALE), 0, GRID_SIZE - 1),
+      y: clamp(Math.round(pActor.position.y / UNIT_SCALE), 0, GRID_SIZE - 1),
+    });
+    setEnemyPos({
+      x: clamp(Math.round(eActor.position.x / UNIT_SCALE), 0, GRID_SIZE - 1),
+      y: clamp(Math.round(eActor.position.y / UNIT_SCALE), 0, GRID_SIZE - 1),
+    });
+
+    setPlayerHp(pActor.hp);
+    setEnemyHp(eActor.hp);
+    setPlayerEnergy(pActor.energy);
+
+    const newEvents = state.events.slice(startEventIdx);
+    const logEntries = newEvents.map(formatEvent).filter((e): e is string => e !== null);
+    if (logEntries.length) logFeed(logEntries);
+
+    if (state.ended) {
+      if (state.winnerId === 'player') setWinner('You');
+      else if (state.winnerId === 'enemy') setWinner(opponent.name);
+      else setWinner('Draw');
+      setRunning(false);
+    }
+
+    setTurn((prev) => prev + 1);
+  };
+
   const attemptMove = (dx: number, dy: number) => {
     if (!running || winner) return;
-    if (playerAp <= 0) {
-      logFeed(['No action points left. End turn.']);
-      return;
-    }
-    const next = { x: playerPos.x + dx, y: playerPos.y + dy };
-    if (!canMoveTo(next)) {
-      logFeed(['Move blocked by terrain or boundary.']);
-      return;
-    }
-    setPlayerPos(next);
-    setPlayerAp((prev) => prev - 1);
-    const botLabel = playerBotConfig.name.trim() || 'My Bot';
-    logFeed([`${botLabel} moves → (${next.x + 1}, ${GRID_SIZE - next.y}) [1 AP].`]);
+    let dir: string;
+    if (dx === 0 && dy === -1) dir = 'N';
+    else if (dx === 0 && dy === 1) dir = 'S';
+    else if (dx === -1 && dy === 0) dir = 'W';
+    else if (dx === 1 && dy === 0) dir = 'E';
+    else return;
+    executeTurn({ type: 'MOVE', dir });
   };
 
   const handleAttack = () => {
     if (!running || winner) return;
-    if (playerAp < 2) {
-      logFeed(['Attack needs 2 AP.']);
-      return;
-    }
-    const rng = rngRef.current;
-    const range = ATTACK_RANGE + (playerScan > 0 ? 1 : 0);
-    const dist = manhattan(playerPos, enemyPos);
-    if (dist > range) {
-      logFeed([`Target out of range (${dist}).`]);
-      return;
-    }
-    const botLabel = playerBotConfig.name.trim() || 'My Bot';
-    const directiveNote = playerBotConfig.directive.trim()
-      ? ` [directive:${playerBotConfig.directive.slice(0, 28).trim()}]`
-      : '';
-    const baseDamage = 8 + rngInt(rng, 0, 4) + (playerScan > 0 ? 2 : 0) + playerBonuses.attackBonus;
-    const mitigated = Math.max(0, baseDamage - enemyBlock);
-    const nextEnemyHp = clamp(enemyHp - mitigated, 0, 100);
-    setEnemyHp(nextEnemyHp);
-    setEnemyBlock(0);
-    setPlayerAp((prev) => prev - 2);
-    setPlayerScan(0);
-    logFeed([
-      `${botLabel} strikes for ${mitigated} [aggr:${playerBotConfig.aggression}→attack${directiveNote}] · ${opponent.name} HP ${nextEnemyHp}.`,
-    ]);
-    endMatchIfNeeded(playerHp, nextEnemyHp);
+    executeTurn({ type: 'MELEE_STRIKE', targetId: 'enemy' });
   };
 
   const handleBlock = () => {
     if (!running || winner) return;
-    if (playerAp < 1) {
-      logFeed(['Block needs 1 AP.']);
-      return;
-    }
-    const rng = rngRef.current;
-    const botLabel = playerBotConfig.name.trim() || 'My Bot';
-    const blockValue = 5 + rngInt(rng, 0, 2) + playerBonuses.blockBonus;
-    setPlayerBlock(blockValue);
-    setPlayerAp((prev) => prev - 1);
-    logFeed([`${botLabel} raises guard (${blockValue}) [def:${playerBotConfig.defense}→guard].`]);
+    executeTurn({ type: 'GUARD' });
   };
 
   const handleScan = () => {
     if (!running || winner) return;
-    if (playerAp < 1) {
-      logFeed(['Scan needs 1 AP.']);
-      return;
-    }
-    const botLabel = playerBotConfig.name.trim() || 'My Bot';
-    const extendedNote = playerBonuses.scanExtended ? '+2 range (risk overclock)' : '+1 range';
-    setPlayerScan(playerBonuses.scanExtended ? 3 : 2);
-    setPlayerAp((prev) => prev - 1);
-    logFeed([`${botLabel} scans the arena. Next strike gains ${extendedNote} [risk:${playerBotConfig.risk}].`]);
-  };
-
-  const enemyTurn = () => {
-    if (!running || winner) return;
-    const rng = rngRef.current;
-    let ap = MAX_AP;
-    let nextEnemyPos = { ...enemyPos };
-    let nextEnemyBlock = enemyBlock;
-    let nextEnemyScan = Math.max(0, enemyScan - 1);
-    let nextPlayerHp = playerHp;
-    let nextPlayerBlock = playerBlock;
-    const entries: string[] = [];
-
-    const enemyRange = () => ATTACK_RANGE + (nextEnemyScan > 0 ? 1 : 0);
-
-    const moveEnemy = () => {
-      const options = neighbors(nextEnemyPos, GRID_SIZE)
-        .filter((candidate) => grid[candidate.y]?.[candidate.x] !== 'obstacle')
-        .filter((candidate) => !isSame(candidate, playerPos));
-      if (options.length === 0) return false;
-      const currentDistance = manhattan(nextEnemyPos, playerPos);
-      const bestDistance = Math.min(...options.map((option) => manhattan(option, playerPos)));
-      const bestMoves = options.filter((option) => manhattan(option, playerPos) === bestDistance);
-      const chosen = bestMoves[rngInt(rng, 0, bestMoves.length - 1)] || options[0];
-      if (manhattan(chosen, playerPos) >= currentDistance && rng() < 0.4) {
-        return false;
-      }
-      nextEnemyPos = chosen;
-      const moveDist = manhattan(chosen, playerPos);
-      entries.push(`${opponent.name} moves → (${chosen.x + 1},${GRID_SIZE - chosen.y}) [chase: dist=${moveDist}]`);
-      return true;
-    };
-
-    while (ap > 0 && nextPlayerHp > 0 && enemyHp > 0) {
-      const distance = manhattan(nextEnemyPos, playerPos);
-      const attackThreshold = 0.35 + opponent.aggression / 150;
-      const blockThreshold = 0.2 + opponent.defense / 200;
-      const scanThreshold = 0.15 + opponent.risk / 200;
-
-      if (distance <= enemyRange() && ap >= 2 && rng() < attackThreshold) {
-        const baseDamage = 7 + rngInt(rng, 0, 4) + (nextEnemyScan > 0 ? 2 : 0);
-        const mitigated = Math.max(0, baseDamage - nextPlayerBlock);
-        nextPlayerHp = clamp(nextPlayerHp - mitigated, 0, 100);
-        nextPlayerBlock = 0;
-        nextEnemyScan = 0;
-        entries.push(`${opponent.name} strikes for ${mitigated} [aggr:${opponent.aggression}→attack] · your HP ${nextPlayerHp}`);
-        ap -= 2;
-        break;
-      }
-
-      if (ap >= 1 && rng() < blockThreshold) {
-        nextEnemyBlock = 5 + rngInt(rng, 0, 2);
-        entries.push(`${opponent.name} raises guard (${nextEnemyBlock}) [def:${opponent.defense}→guard]`);
-        ap -= 1;
-        continue;
-      }
-
-      if (ap >= 1 && rng() < scanThreshold) {
-        nextEnemyScan = 2;
-        entries.push(`${opponent.name} scans the arena [risk:${opponent.risk}→overclock]`);
-        ap -= 1;
-        continue;
-      }
-
-      if (ap >= 1) {
-        const moved = moveEnemy();
-        if (moved) {
-          ap -= 1;
-          continue;
-        }
-      }
-
-      ap = 0;
-    }
-
-    setEnemyPos(nextEnemyPos);
-    setEnemyBlock(nextEnemyBlock);
-    setEnemyScan(nextEnemyScan);
-    setPlayerBlock(nextPlayerBlock);
-    setPlayerScan((prev) => Math.max(0, prev - 1));
-    setPlayerHp(nextPlayerHp);
-    setPlayerAp(MAX_AP);
-    setTurn((prev) => prev + 1);
-    if (entries.length === 0) entries.push(`${opponent.name} holds position.`);
-    logFeed(entries);
-    endMatchIfNeeded(nextPlayerHp, enemyHp);
+    executeTurn({ type: 'UTILITY' });
   };
 
   const endTurn = () => {
     if (!running || winner) return;
-    enemyTurn();
+    executeTurn({ type: 'NO_OP' });
   };
-
-  useEffect(() => {
-    if (!running || winner) return;
-    if (playerAp > 0) return;
-    const timer = window.setTimeout(() => {
-      enemyTurn();
-    }, 250);
-    return () => window.clearTimeout(timer);
-  }, [playerAp, running, winner]);
 
   useEffect(() => {
     if (!running || winner) return;
@@ -1169,7 +1073,7 @@ const Play = () => {
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [running, winner, playerPos, playerAp, enemyPos, playerScan, enemyScan, enemyHp, playerHp]);
+  }, [running, winner]);
 
   const handleFounderCheckout = async () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -1231,7 +1135,7 @@ const Play = () => {
     }
   };
 
-  const range = ATTACK_RANGE + (playerScan > 0 ? 1 : 0);
+  const meleeRangeGrid = Math.ceil(MELEE_RANGE / UNIT_SCALE);
 
   return (
     <div className="play-root">
@@ -1267,7 +1171,7 @@ const Play = () => {
             </div>
             <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
               <span className="status-pill">Turn {turn}</span>
-              <span className="status-pill">AP {playerAp}/{MAX_AP}</span>
+              <span className="status-pill">Energy {Math.round(playerEnergy / ENERGY_MAX * 100)}%</span>
               <span className="seed-pill">Seed {activeSeed ?? '—'}</span>
             </div>
 
@@ -1351,13 +1255,13 @@ const Play = () => {
               <button className="action-btn secondary" onClick={() => attemptMove(1, 0)} disabled={!running || !!winner}>Right</button>
               <button className="action-btn secondary" onClick={() => attemptMove(-1, 0)} disabled={!running || !!winner}>Left</button>
               <button className="action-btn secondary" onClick={() => attemptMove(0, 1)} disabled={!running || !!winner}>Down</button>
-              <button className="action-btn" onClick={handleAttack} disabled={!running || !!winner}>Attack</button>
-              <button className="action-btn" onClick={handleBlock} disabled={!running || !!winner}>Block</button>
-              <button className="action-btn" onClick={handleScan} disabled={!running || !!winner}>Scan</button>
-              <button className="action-btn secondary" onClick={endTurn} disabled={!running || !!winner}>End Turn</button>
+              <button className="action-btn" onClick={handleAttack} disabled={!running || !!winner}>Strike</button>
+              <button className="action-btn" onClick={handleBlock} disabled={!running || !!winner}>Guard</button>
+              <button className="action-btn" onClick={handleScan} disabled={!running || !!winner}>Utility</button>
+              <button className="action-btn secondary" onClick={endTurn} disabled={!running || !!winner}>Skip Turn</button>
             </div>
             <div className="hint" style={{ marginBottom: '0.8rem' }}>
-              Attack range {range} · Block absorbs next hit · Scan adds +1 range to your next strike · Move with WASD/Arrows, J attack, K block, L scan, Enter end turn.
+              Strike (18e) · Guard (10e) · Utility (20e) · Move (4e) · WASD/Arrows move, J strike, K guard, L utility, Enter skip.
             </div>
 
             <div className="leaderboard" style={{ marginTop: '1.2rem' }}>
@@ -1393,25 +1297,21 @@ const Play = () => {
 
             <div className="stat-block">
               <div className="stat-title">
-                <span style={{ fontWeight: 900 }}>{playerBotConfig.name.trim() || 'My Bot'}</span>
+                <span style={{ fontWeight: 900 }}>{playerBotConfig.name.trim() || 'You'}</span>
                 <span className="status-pill">HP {playerHp}</span>
               </div>
               <div className="bar-shell">
                 <div className="bar-fill" style={{ width: `${playerHp}%` }} />
               </div>
-              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.3rem' }}>
-                {[
-                  { label: 'AGGR', value: playerBotConfig.aggression, color: 'var(--c-red, #ff4444)' },
-                  { label: 'DEF', value: playerBotConfig.defense, color: 'var(--c-cyan, #00e5ff)' },
-                  { label: 'RISK', value: playerBotConfig.risk, color: 'var(--c-yellow, #ffd700)' },
-                ].map(({ label, value, color }) => (
-                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flex: 1 }}>
-                    <span style={{ fontSize: '0.55rem', fontFamily: 'monospace', color: '#888', width: '2rem', flexShrink: 0 }}>{label}</span>
-                    <div style={{ flex: 1, height: '3px', background: '#2a2a2a', borderRadius: '2px', overflow: 'hidden' }}>
-                      <div style={{ width: `${value}%`, height: '100%', background: color, borderRadius: '2px' }} />
-                    </div>
-                  </div>
-                ))}
+            </div>
+
+            <div className="stat-block">
+              <div className="stat-title">
+                <span>Energy</span>
+                <span className="status-pill">{Math.round(playerEnergy / ENERGY_MAX * 100)}%</span>
+              </div>
+              <div className="bar-shell">
+                <div className="bar-fill" style={{ width: `${playerEnergy / ENERGY_MAX * 100}%`, background: 'linear-gradient(90deg, #00e5ff 0%, #0077b6 100%)' }} />
               </div>
             </div>
 
@@ -1429,7 +1329,7 @@ const Play = () => {
               {grid.map((row, y) =>
                 row.map((cell, x) => {
                   const pos = { x, y };
-                  const inRange = manhattan(playerPos, pos) <= range;
+                  const inRange = manhattan(playerPos, pos) <= meleeRangeGrid;
                   const isPlayer = isSame(pos, playerPos);
                   const isEnemy = isSame(pos, enemyPos);
                   const className = [
