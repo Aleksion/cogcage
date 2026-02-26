@@ -21,6 +21,37 @@ type ReplayResult = {
   archivedFile?: string;
 };
 
+type ReplayLock = {
+  lockPath: string;
+  release: () => void;
+};
+
+function tryAcquireReplayLock(runtimeDir: string, requestId: string): ReplayLock | null {
+  const lockPath = path.join(runtimeDir, 'replay-fallback.lock');
+  try {
+    fs.mkdirSync(runtimeDir, { recursive: true });
+    const fd = fs.openSync(lockPath, 'wx');
+    fs.writeFileSync(fd, JSON.stringify({ requestId, startedAt: new Date().toISOString() }));
+    return {
+      lockPath,
+      release: () => {
+        try {
+          fs.closeSync(fd);
+        } catch {
+          // no-op
+        }
+        try {
+          fs.rmSync(lockPath, { force: true });
+        } catch {
+          // no-op
+        }
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function replayFile(filePath: string, replayLine: (line: string) => void): Promise<ReplayResult> {
   if (!fs.existsSync(filePath)) return { replayed: 0, failed: 0 };
 
@@ -101,6 +132,21 @@ export const POST: APIRoute = async ({ request }) => {
   const waitlistFile = path.join(runtimeDir, 'waitlist-fallback.ndjson');
   const founderFile = path.join(runtimeDir, 'founder-intent-fallback.ndjson');
   const eventsFile = path.join(runtimeDir, 'events-fallback.ndjson');
+
+  const lock = tryAcquireReplayLock(runtimeDir, requestId);
+  if (!lock) {
+    appendOpsLog({
+      route: '/api/replay-fallback',
+      level: 'warn',
+      event: 'fallback_replay_in_progress',
+      requestId,
+      durationMs: Date.now() - startedAt,
+    });
+    return new Response(JSON.stringify({ ok: false, error: 'Replay already in progress', requestId }), {
+      status: 409,
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
+    });
+  }
 
   try {
     const waitlist = await replayFile(waitlistFile, (line) => {
@@ -196,5 +242,7 @@ export const POST: APIRoute = async ({ request }) => {
       status: 500,
       headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
+  } finally {
+    lock.release();
   }
 };
