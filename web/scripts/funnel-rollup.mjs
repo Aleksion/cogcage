@@ -52,6 +52,14 @@ const inWindow = {
        AND created_at >= @windowStart`,
     { windowStart },
   ),
+  landingFounderClicks: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source LIKE '%-founder-cta-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
   founderIntents: count(
     `SELECT COUNT(*) AS value
      FROM founder_intents
@@ -136,6 +144,42 @@ const playFounderClicksBySource = {
   ),
 };
 
+const landingFounderClicksByCtaVariant = {
+  reserve: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source LIKE '%-founder-cta-%-reserve'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  claim: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source LIKE '%-founder-cta-%-claim'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
+const landingFounderIntentsByCtaVariant = {
+  reserve: count(
+    `SELECT COUNT(*) AS value
+     FROM founder_intents
+     WHERE source LIKE '%-founder-checkout-%-reserve'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  claim: count(
+    `SELECT COUNT(*) AS value
+     FROM founder_intents
+     WHERE source LIKE '%-founder-checkout-%-claim'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
 const uniqueInWindow = {
   founderClickEmails: count(
     `SELECT COUNT(DISTINCT lower(email)) AS value
@@ -179,12 +223,20 @@ const rollup = {
   totals,
   inWindow,
   playFounderClicksBySource,
+  landingFounderClicksByCtaVariant,
+  landingFounderIntentsByCtaVariant,
   uniqueInWindow,
   rates: {
     founderClickToIntentPct: pct(inWindow.founderIntents, inWindow.founderClicks),
     founderIntentToPaidPct: pct(inWindow.paidConversions, inWindow.founderIntents),
     founderClickToPaidPct: pct(inWindow.paidConversions, inWindow.founderClicks),
     waitlistToPaidPct: pct(inWindow.paidConversions, inWindow.waitlistLeads),
+
+    reserveCtaSharePct: pct(landingFounderClicksByCtaVariant.reserve, inWindow.landingFounderClicks),
+    claimCtaSharePct: pct(landingFounderClicksByCtaVariant.claim, inWindow.landingFounderClicks),
+    reserveCtaClickToIntentPct: pct(landingFounderIntentsByCtaVariant.reserve, landingFounderClicksByCtaVariant.reserve),
+    claimCtaClickToIntentPct: pct(landingFounderIntentsByCtaVariant.claim, landingFounderClicksByCtaVariant.claim),
+
     playViewToMatchStartPct: pct(inWindow.playMatchStarts, inWindow.playPageViews),
     playStartToCompletionPct: pct(inWindow.playMatchCompletions, inWindow.playMatchStarts),
     playCompletionToFounderClickPct: pct(inWindow.playFounderClicks, inWindow.playMatchCompletions),
@@ -218,6 +270,7 @@ console.log('');
 console.log(`Windowed funnel (${days} day(s)):`);
 console.log(`- Landing views: ${inWindow.landingViews}`);
 console.log(`- Founder checkout clicks: ${inWindow.founderClicks}`);
+console.log(`- Landing founder checkout clicks: ${inWindow.landingFounderClicks}`);
 console.log(`- Founder intents logged: ${inWindow.founderIntents}`);
 console.log(`- Waitlist joined events: ${inWindow.waitlistJoinedEvents}`);
 console.log(`- Waitlist leads created: ${inWindow.waitlistLeads}`);
@@ -236,6 +289,16 @@ console.log(`- Founder click -> intent: ${rollup.rates.founderClickToIntentPct.t
 console.log(`- Founder intent -> paid: ${rollup.rates.founderIntentToPaidPct.toFixed(2)}%`);
 console.log(`- Founder click -> paid: ${rollup.rates.founderClickToPaidPct.toFixed(2)}%`);
 console.log(`- Waitlist lead -> paid: ${rollup.rates.waitlistToPaidPct.toFixed(2)}%`);
+console.log('');
+
+console.log('Landing founder CTA copy split:');
+console.log(`- Reserve clicks: ${landingFounderClicksByCtaVariant.reserve}`);
+console.log(`- Claim clicks: ${landingFounderClicksByCtaVariant.claim}`);
+console.log(`- Reserve intent logs: ${landingFounderIntentsByCtaVariant.reserve}`);
+console.log(`- Claim intent logs: ${landingFounderIntentsByCtaVariant.claim}`);
+console.log(`- Landing founder click mix (reserve/claim): ${rollup.rates.reserveCtaSharePct.toFixed(2)}% / ${rollup.rates.claimCtaSharePct.toFixed(2)}%`);
+console.log(`- Reserve click -> intent: ${rollup.rates.reserveCtaClickToIntentPct.toFixed(2)}%`);
+console.log(`- Claim click -> intent: ${rollup.rates.claimCtaClickToIntentPct.toFixed(2)}%`);
 console.log('');
 
 console.log(`Play funnel (${days} day(s)):`);
