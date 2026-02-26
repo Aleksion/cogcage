@@ -333,6 +333,15 @@ const globalStyles = `
     font-weight: 800;
   }
 
+  .waitlist-honeypot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
   .waitlist-submit {
     font-size: 1rem;
     padding: 0.85rem 1.6rem;
@@ -831,6 +840,43 @@ const postJson = async (url, payload) => {
   }
 };
 
+const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } = {}) => {
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const body = await response.json().catch(() => ({}));
+      if (response.ok && body.ok === true) {
+        return body;
+      }
+
+      const err = new Error(body?.error || `Request failed (${response.status})`);
+      if (response.status >= 500 && attempt < retries) {
+        lastError = err;
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    } catch (error) {
+      clearTimeout(timeout);
+      lastError = error;
+      if (attempt >= retries) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+
+  throw lastError || new Error('Request failed');
+};
+
 // ─── Reusable Components ───────────────────────────────────────────────────────
 
 const StatBar = ({ label, value, pct, color }) => {
@@ -982,6 +1028,7 @@ const HeroSection = ({ sectionRef }) => {
   const [lastSubmittedEmail, setLastSubmittedEmail] = useState('');
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
+  const [botField, setBotField] = useState('');
   const [variant, setVariant] = useState('value');
   const [founderCtaVariant, setFounderCtaVariant] = useState('reserve');
 
@@ -1009,11 +1056,23 @@ const HeroSection = ({ sectionRef }) => {
     if (!trimmed) {
       setStatus('error');
       setMessage('Enter your email to join the beta.');
+      void postJson('/api/events', {
+        event: 'waitlist_validation_failed',
+        source: `hero-waitlist-${variant}`,
+        page: '/',
+        reason: 'empty_email',
+      });
       return;
     }
     if (!EMAIL_RE.test(trimmed)) {
       setStatus('error');
       setMessage('Please use a valid email address.');
+      void postJson('/api/events', {
+        event: 'waitlist_validation_failed',
+        source: `hero-waitlist-${variant}`,
+        page: '/',
+        reason: 'invalid_email',
+      });
       return;
     }
 
@@ -1021,19 +1080,12 @@ const HeroSection = ({ sectionRef }) => {
     setMessage('');
 
     try {
-      const response = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          email: trimmed,
-          game: 'Unspecified',
-          source: `cogcage-hero-${variant}`
-        }),
+      const payload = await submitWithRetry('/api/waitlist', {
+        email: trimmed,
+        game: 'Unspecified',
+        source: `cogcage-hero-${variant}`,
+        company: botField,
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok || payload.ok !== true) {
-        throw new Error(payload.error || 'Something went wrong. Try again.');
-      }
       localStorage.setItem('cogcage_email', trimmed.toLowerCase());
       await postJson('/api/events', {
         event: 'waitlist_joined',
@@ -1041,13 +1093,19 @@ const HeroSection = ({ sectionRef }) => {
         email: trimmed.toLowerCase(),
         page: '/',
         variant,
-        meta: { variant },
+        meta: { variant, requestId: payload.requestId },
       });
       setLastSubmittedEmail(trimmed.toLowerCase());
       setStatus('success');
       setMessage('You are on the list. Watch for your invite.');
       setEmail('');
     } catch (err) {
+      void postJson('/api/events', {
+        event: 'waitlist_submit_failed',
+        source: `hero-waitlist-${variant}`,
+        page: '/',
+        error: err instanceof Error ? err.message : 'unknown',
+      });
       setStatus('error');
       setMessage(err instanceof Error ? err.message : 'Something went wrong. Try again.');
     }
@@ -1122,16 +1180,28 @@ const HeroSection = ({ sectionRef }) => {
         <div className="panel-skew hero-waitlist" style={{ background: 'var(--c-white)' }}>
           <div className="panel-content-unskew">
             <div className="waitlist-label">Join the beta waitlist</div>
-            <form className="waitlist-form" onSubmit={submitWaitlist}>
+            <form className="waitlist-form" onSubmit={submitWaitlist} action="/api/waitlist" method="POST">
+              <input
+                className="waitlist-honeypot"
+                type="text"
+                name="company"
+                value={botField}
+                onChange={(event) => setBotField(event.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+              />
               <input
                 className="waitlist-input"
                 type="email"
+                name="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@domain.com"
                 autoComplete="email"
                 aria-label="Email address"
               />
+              <input type="hidden" name="game" value="Unspecified" />
+              <input type="hidden" name="source" value={`cogcage-hero-${variant}`} />
               <button
                 className="btn-arcade red waitlist-submit"
                 type="submit"
@@ -1306,6 +1376,7 @@ const FooterSection = () => {
   const [submittedEmail, setSubmittedEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [botField, setBotField] = useState('');
   const [variant, setVariant] = useState('value');
   const [founderCtaVariant, setFounderCtaVariant] = useState('reserve');
 
@@ -1326,10 +1397,22 @@ const FooterSection = () => {
     const trimmed = normalizedEmail();
     if (!trimmed) {
       setError('Please enter your email!');
+      void postJson('/api/events', {
+        event: 'waitlist_validation_failed',
+        source: `footer-waitlist-${variant}`,
+        page: '/',
+        reason: 'empty_email',
+      });
       return null;
     }
     if (!EMAIL_RE.test(trimmed)) {
       setError('Invalid email address.');
+      void postJson('/api/events', {
+        event: 'waitlist_validation_failed',
+        source: `footer-waitlist-${variant}`,
+        page: '/',
+        reason: 'invalid_email',
+      });
       return null;
     }
     setError('');
@@ -1341,15 +1424,12 @@ const FooterSection = () => {
     if (!trimmed) return;
 
     try {
-      const response = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: trimmed, game: 'Unspecified', source: `cogcage-footer-${variant}` }),
+      const payload = await submitWithRetry('/api/waitlist', {
+        email: trimmed,
+        game: 'Unspecified',
+        source: `cogcage-footer-${variant}`,
+        company: botField,
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok || payload.ok !== true) {
-        throw new Error(payload.error || 'Could not create account.');
-      }
       localStorage.setItem('cogcage_email', trimmed);
       setSubmittedEmail(trimmed);
       await postJson('/api/events', {
@@ -1358,10 +1438,16 @@ const FooterSection = () => {
         page: '/',
         email: trimmed,
         variant,
-        meta: { variant },
+        meta: { variant, requestId: payload.requestId },
       });
       setSubmitted(true);
     } catch (err) {
+      void postJson('/api/events', {
+        event: 'waitlist_submit_failed',
+        source: `footer-waitlist-${variant}`,
+        page: '/',
+        error: err instanceof Error ? err.message : 'unknown',
+      });
       setError(err instanceof Error ? err.message : 'Could not create account.');
     }
   };
@@ -1424,6 +1510,15 @@ const FooterSection = () => {
 
       {!submitted ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <input
+            className="waitlist-honeypot"
+            type="text"
+            name="company"
+            value={botField}
+            onChange={(event) => setBotField(event.target.value)}
+            tabIndex={-1}
+            autoComplete="off"
+          />
           <input
             type="email"
             value={email}

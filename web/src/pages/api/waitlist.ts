@@ -19,9 +19,22 @@ function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function jsonResponse(body: Record<string, unknown>, status: number, requestId: string, extraHeaders: Record<string, string> = {}) {
+  return new Response(JSON.stringify({ ...body, requestId }), {
+    status,
+    headers: {
+      'content-type': 'application/json',
+      'x-request-id': requestId,
+      ...extraHeaders,
+    },
+  });
+}
+
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
+  const startedAt = Date.now();
+  const requestId = crypto.randomUUID();
   const contentType = request.headers.get('content-type') ?? '';
   let email = '';
   let game = '';
@@ -51,74 +64,61 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const ipAddress = getClientIp(request);
+  const normalizedEmail = email.toLowerCase();
+  const eventSource = source || 'cogcage-landing';
+
   const rateLimit = consumeRateLimit(ipAddress, 'waitlist', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
   if (!rateLimit.allowed) {
-    appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_rate_limited', ipAddress });
+    appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_rate_limited', requestId, ipAddress, durationMs: Date.now() - startedAt });
     insertConversionEvent({
       eventName: 'waitlist_rate_limited',
-      source: source || 'cogcage-landing',
-      email: email ? email.toLowerCase() : undefined,
+      source: eventSource,
+      email: normalizedEmail || undefined,
       metaJson: JSON.stringify({ resetMs: rateLimit.resetMs }),
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
-    return new Response(JSON.stringify({ ok: false, error: 'Too many attempts. Try again in a few minutes.' }), {
-      status: 429,
-      headers: {
-        'content-type': 'application/json',
-        'retry-after': String(Math.ceil(rateLimit.resetMs / 1000)),
-      },
+    return jsonResponse({ ok: false, error: 'Too many attempts. Try again in a few minutes.' }, 429, requestId, {
+      'retry-after': String(Math.ceil(rateLimit.resetMs / 1000)),
     });
   }
 
   if (honeypot) {
-    appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_honeypot_blocked', ipAddress });
+    appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_honeypot_blocked', requestId, ipAddress, durationMs: Date.now() - startedAt });
     insertConversionEvent({
       eventName: 'waitlist_honeypot_blocked',
-      source: source || 'cogcage-landing',
-      email: email ? email.toLowerCase() : undefined,
+      source: eventSource,
+      email: normalizedEmail || undefined,
       metaJson: JSON.stringify({ honeypot }),
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
-    return new Response(JSON.stringify({ ok: false, error: 'Submission blocked.' }), {
-      status: 400,
-      headers: { 'content-type': 'application/json' },
-    });
+    return jsonResponse({ ok: false, error: 'Submission blocked.' }, 400, requestId);
   }
 
   if (!EMAIL_RE.test(email)) {
-    appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_invalid_email', ipAddress });
+    appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_invalid_email', requestId, ipAddress, durationMs: Date.now() - startedAt });
     insertConversionEvent({
       eventName: 'waitlist_invalid_email',
-      source: source || 'cogcage-landing',
-      email: email ? email.toLowerCase() : undefined,
+      source: eventSource,
+      email: normalizedEmail || undefined,
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
-    return new Response(JSON.stringify({ ok: false, error: 'Valid email is required.' }), {
-      status: 400,
-      headers: { 'content-type': 'application/json' },
-    });
+    return jsonResponse({ ok: false, error: 'Valid email is required.' }, 400, requestId);
   }
 
-  if (game.length < 2) {
-    game = 'Unspecified';
-  }
-
-  const normalizedEmail = email.toLowerCase();
-  const requestId = crypto.randomUUID();
   const payload = {
     email: normalizedEmail,
-    game,
-    source: source || 'cogcage-landing',
+    game: game.length < 2 ? 'Unspecified' : game,
+    source: eventSource,
     userAgent: request.headers.get('user-agent') ?? undefined,
     ipAddress,
   };
 
   try {
     insertWaitlistLead(payload);
-    appendOpsLog({ route: '/api/waitlist', level: 'info', event: 'waitlist_saved', requestId, source: payload.source, emailHash: normalizedEmail.slice(0, 3) });
+    appendOpsLog({ route: '/api/waitlist', level: 'info', event: 'waitlist_saved', requestId, source: payload.source, emailHash: normalizedEmail.slice(0, 3), durationMs: Date.now() - startedAt });
     insertConversionEvent({
       eventName: 'waitlist_submitted',
       source: payload.source,
@@ -126,25 +126,34 @@ export const POST: APIRoute = async ({ request }) => {
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
+    return jsonResponse({ ok: true }, 200, requestId);
   } catch (error) {
-    appendOpsLog({ route: '/api/waitlist', level: 'error', event: 'waitlist_db_write_failed', requestId, error: error instanceof Error ? error.message : 'unknown-error' });
-    appendWaitlistFallback({ route: '/api/waitlist', requestId, ...payload });
-    insertConversionEvent({
-      eventName: 'waitlist_insert_failed',
-      source: payload.source,
-      email: normalizedEmail,
-      metaJson: JSON.stringify({ error: error instanceof Error ? error.message : 'unknown' }),
-      userAgent: request.headers.get('user-agent') ?? undefined,
-      ipAddress,
-    });
-    return new Response(JSON.stringify({ ok: false, error: 'Temporary storage issue. Please retry in 1 minute.', requestId }), {
-      status: 503,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
+    const errorMessage = error instanceof Error ? error.message : 'unknown-error';
+    appendOpsLog({ route: '/api/waitlist', level: 'error', event: 'waitlist_db_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
 
-  return new Response(JSON.stringify({ ok: true, requestId }), {
-    status: 200,
-    headers: { 'content-type': 'application/json' },
-  });
+    try {
+      appendWaitlistFallback({ route: '/api/waitlist', requestId, ...payload, reason: errorMessage });
+      insertConversionEvent({
+        eventName: 'waitlist_queued_fallback',
+        source: payload.source,
+        email: normalizedEmail,
+        metaJson: JSON.stringify({ error: errorMessage }),
+        userAgent: request.headers.get('user-agent') ?? undefined,
+        ipAddress,
+      });
+      appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
+      return jsonResponse({ ok: true, queued: true }, 202, requestId);
+    } catch (fallbackError) {
+      appendOpsLog({ route: '/api/waitlist', level: 'error', event: 'waitlist_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
+      insertConversionEvent({
+        eventName: 'waitlist_insert_failed',
+        source: payload.source,
+        email: normalizedEmail,
+        metaJson: JSON.stringify({ error: errorMessage }),
+        userAgent: request.headers.get('user-agent') ?? undefined,
+        ipAddress,
+      });
+      return jsonResponse({ ok: false, error: 'Temporary storage issue. Please retry in 1 minute.' }, 503, requestId);
+    }
+  }
 };
