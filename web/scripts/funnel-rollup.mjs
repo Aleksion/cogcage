@@ -180,6 +180,42 @@ const landingFounderIntentsByCtaVariant = {
   ),
 };
 
+const postWaitlistFounderClicksBySource = {
+  hero: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source LIKE 'hero-post-waitlist-founder-cta-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  footer: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source LIKE 'footer-post-waitlist-founder-cta-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
+const postWaitlistFounderIntentsBySource = {
+  hero: count(
+    `SELECT COUNT(*) AS value
+     FROM founder_intents
+     WHERE source LIKE 'hero-post-waitlist-founder-checkout-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  footer: count(
+    `SELECT COUNT(*) AS value
+     FROM founder_intents
+     WHERE source LIKE 'footer-post-waitlist-founder-checkout-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
 const uniqueInWindow = {
   founderClickEmails: count(
     `SELECT COUNT(DISTINCT lower(email)) AS value
@@ -225,6 +261,8 @@ const rollup = {
   playFounderClicksBySource,
   landingFounderClicksByCtaVariant,
   landingFounderIntentsByCtaVariant,
+  postWaitlistFounderClicksBySource,
+  postWaitlistFounderIntentsBySource,
   uniqueInWindow,
   rates: {
     founderClickToIntentPct: pct(inWindow.founderIntents, inWindow.founderClicks),
@@ -236,6 +274,27 @@ const rollup = {
     claimCtaSharePct: pct(landingFounderClicksByCtaVariant.claim, inWindow.landingFounderClicks),
     reserveCtaClickToIntentPct: pct(landingFounderIntentsByCtaVariant.reserve, landingFounderClicksByCtaVariant.reserve),
     claimCtaClickToIntentPct: pct(landingFounderIntentsByCtaVariant.claim, landingFounderClicksByCtaVariant.claim),
+
+    postWaitlistFounderClicksTotal:
+      postWaitlistFounderClicksBySource.hero + postWaitlistFounderClicksBySource.footer,
+    postWaitlistFounderIntentsTotal:
+      postWaitlistFounderIntentsBySource.hero + postWaitlistFounderIntentsBySource.footer,
+    heroPostWaitlistFounderClickSharePct: pct(
+      postWaitlistFounderClicksBySource.hero,
+      postWaitlistFounderClicksBySource.hero + postWaitlistFounderClicksBySource.footer,
+    ),
+    footerPostWaitlistFounderClickSharePct: pct(
+      postWaitlistFounderClicksBySource.footer,
+      postWaitlistFounderClicksBySource.hero + postWaitlistFounderClicksBySource.footer,
+    ),
+    postWaitlistWaitlistJoinToFounderClickPct: pct(
+      postWaitlistFounderClicksBySource.hero + postWaitlistFounderClicksBySource.footer,
+      inWindow.waitlistJoinedEvents,
+    ),
+    postWaitlistFounderClickToIntentPct: pct(
+      postWaitlistFounderIntentsBySource.hero + postWaitlistFounderIntentsBySource.footer,
+      postWaitlistFounderClicksBySource.hero + postWaitlistFounderClicksBySource.footer,
+    ),
 
     playViewToMatchStartPct: pct(inWindow.playMatchStarts, inWindow.playPageViews),
     playStartToCompletionPct: pct(inWindow.playMatchCompletions, inWindow.playMatchStarts),
@@ -299,6 +358,18 @@ console.log(`- Claim intent logs: ${landingFounderIntentsByCtaVariant.claim}`);
 console.log(`- Landing founder click mix (reserve/claim): ${rollup.rates.reserveCtaSharePct.toFixed(2)}% / ${rollup.rates.claimCtaSharePct.toFixed(2)}%`);
 console.log(`- Reserve click -> intent: ${rollup.rates.reserveCtaClickToIntentPct.toFixed(2)}%`);
 console.log(`- Claim click -> intent: ${rollup.rates.claimCtaClickToIntentPct.toFixed(2)}%`);
+console.log('');
+
+console.log('Post-waitlist founder upsell:');
+console.log(`- Hero post-waitlist founder clicks: ${postWaitlistFounderClicksBySource.hero}`);
+console.log(`- Footer post-waitlist founder clicks: ${postWaitlistFounderClicksBySource.footer}`);
+console.log(`- Hero post-waitlist founder intents: ${postWaitlistFounderIntentsBySource.hero}`);
+console.log(`- Footer post-waitlist founder intents: ${postWaitlistFounderIntentsBySource.footer}`);
+console.log(`- Post-waitlist founder clicks total: ${rollup.rates.postWaitlistFounderClicksTotal}`);
+console.log(`- Post-waitlist founder intents total: ${rollup.rates.postWaitlistFounderIntentsTotal}`);
+console.log(`- Post-waitlist founder click mix (hero/footer): ${rollup.rates.heroPostWaitlistFounderClickSharePct.toFixed(2)}% / ${rollup.rates.footerPostWaitlistFounderClickSharePct.toFixed(2)}%`);
+console.log(`- Waitlist joined -> post-waitlist founder click: ${rollup.rates.postWaitlistWaitlistJoinToFounderClickPct.toFixed(2)}%`);
+console.log(`- Post-waitlist founder click -> intent: ${rollup.rates.postWaitlistFounderClickToIntentPct.toFixed(2)}%`);
 console.log('');
 
 console.log(`Play funnel (${days} day(s)):`);
