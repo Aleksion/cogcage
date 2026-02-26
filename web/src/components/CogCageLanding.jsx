@@ -18,6 +18,9 @@ const globalStyles = `
     --radius: 12px;
     --shadow-hard: 6px 6px 0px rgba(0,0,0,0.2);
     --shadow-pop: 0px 10px 20px rgba(255, 214, 0, 0.4);
+    --page-padding: clamp(2rem, 4vw, 6rem);
+    --content-max: 1400px;
+    --copy-max: 680px;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -119,7 +122,7 @@ const globalStyles = `
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5rem 4rem;
+    padding: 1.5rem var(--page-padding);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -219,18 +222,27 @@ const globalStyles = `
     display: grid;
     grid-template-columns: 1.2fr 1fr;
     min-height: 85vh;
-    padding: 0 4rem;
+    padding: 0 var(--page-padding);
     align-items: center;
     position: relative;
     overflow: hidden;
+    column-gap: 3.5rem;
+    max-width: var(--content-max);
+    width: 100%;
+    margin: 0 auto;
   }
 
-  .hero-content { z-index: 2; }
+  .hero-content {
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 2.25rem;
+  }
 
   .hero-h1 {
     font-size: clamp(3.4rem, 8vw, 7rem);
     line-height: 0.85;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0;
     transform: rotate(-2deg);
   }
 
@@ -256,8 +268,8 @@ const globalStyles = `
 
   .hero-body {
     font-size: 1.35rem;
-    max-width: 520px;
-    margin-bottom: 2rem;
+    max-width: var(--copy-max);
+    margin-bottom: 0;
     font-weight: 500;
     line-height: 1.5;
   }
@@ -269,9 +281,9 @@ const globalStyles = `
   }
 
   .hero-waitlist {
-    margin-bottom: 2rem;
-    max-width: 520px;
-    width: min(520px, 100%);
+    margin-bottom: 0;
+    max-width: var(--copy-max);
+    width: 100%;
   }
 
   .waitlist-label {
@@ -316,7 +328,7 @@ const globalStyles = `
   }
 
   .bot-card {
-    width: min(400px, 90vw);
+    width: min(480px, 90vw);
     height: 550px;
     background: var(--c-white);
     border: 5px solid var(--c-dark);
@@ -426,7 +438,7 @@ const globalStyles = `
   .accent-text { color: var(--c-cyan); }
 
   .section-config {
-    padding: 6rem 4rem;
+    padding: 6rem var(--page-padding);
     position: relative;
   }
 
@@ -446,7 +458,7 @@ const globalStyles = `
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 2rem;
-    max-width: 1200px;
+    max-width: 1320px;
     margin: 0 auto;
   }
 
@@ -497,7 +509,7 @@ const globalStyles = `
 
   .section-arena {
     background: var(--c-yellow);
-    padding: 6rem 4rem;
+    padding: 6rem var(--page-padding);
     border-top: 5px solid var(--c-dark);
     border-bottom: 5px solid var(--c-dark);
     background-image:
@@ -511,7 +523,7 @@ const globalStyles = `
   }
 
   .leaderboard-container {
-    max-width: 1000px;
+    max-width: 1200px;
     margin: 0 auto;
     background: var(--c-white);
     border: 5px solid var(--c-dark);
@@ -597,12 +609,21 @@ const globalStyles = `
   }
 
   @media (max-width: 1200px) {
+    :root {
+      --page-padding: clamp(1.75rem, 5vw, 4.5rem);
+      --copy-max: 620px;
+    }
+
+    .hero-h1 {
+      font-size: clamp(2.9rem, 7vw, 6rem);
+    }
+
     .parts-grid { grid-template-columns: repeat(2, 1fr); }
   }
 
   @media (max-width: 900px) {
     nav.cog-nav {
-      padding: 1rem 1.5rem;
+      padding: 1rem var(--page-padding);
       flex-wrap: wrap;
       justify-content: space-between;
     }
@@ -618,8 +639,8 @@ const globalStyles = `
     .hero-section {
       grid-template-columns: 1fr;
       min-height: auto;
-      padding: 2.5rem 1.5rem 3rem;
-      gap: 2rem;
+      padding: 3rem var(--page-padding) 3.5rem;
+      gap: 2.5rem;
     }
 
     .hero-visual {
@@ -627,7 +648,8 @@ const globalStyles = `
     }
 
     .hero-body {
-      font-size: 1.1rem;
+      font-size: 1.2rem;
+      max-width: none;
     }
 
     .hero-actions {
@@ -639,21 +661,38 @@ const globalStyles = `
       width: 100%;
     }
 
+    .hero-waitlist {
+      max-width: none;
+      width: 100%;
+    }
+
     .waitlist-form {
       grid-template-columns: 1fr;
+    }
+
+    .waitlist-form .btn-arcade {
+      width: 100%;
+      min-height: 52px;
+      font-size: 1.05rem;
+    }
+
+    .waitlist-input {
+      min-height: 52px;
+      font-size: 1.05rem;
     }
 
     .bot-card {
       height: auto;
       min-height: 440px;
       transform: rotate(2deg);
+      width: min(520px, 100%);
     }
 
     .decor { opacity: 0.3; }
 
     .section-config,
     .section-arena {
-      padding: 4rem 1.5rem;
+      padding: 4rem var(--page-padding);
     }
 
     .leaderboard-container {
@@ -678,10 +717,51 @@ const globalStyles = `
   }
 
   @media (max-width: 520px) {
-    .hero-section { padding: 2rem 1.2rem 2.5rem; }
+    .hero-section { padding: 2.25rem var(--page-padding) 2.75rem; }
     .hero-h1 { letter-spacing: 1px; }
     .panel-skew { padding: 1.5rem; }
     .waitlist-label { font-size: 1rem; }
+  }
+
+  @media (max-width: 640px) {
+    nav.cog-nav {
+      padding: 0.9rem var(--page-padding);
+    }
+
+    .nav-links { display: none; }
+
+    .nav-cta {
+      display: inline-flex;
+      font-size: 1.05rem;
+      padding: 0.85rem 1.6rem;
+      min-height: 52px;
+    }
+
+    .nav-toggle {
+      display: none;
+    }
+
+    .nav-mobile {
+      display: none;
+    }
+
+    .hero-h1 {
+      font-size: clamp(2.6rem, 11vw, 4rem);
+    }
+
+    .hero-body {
+      font-size: 1.2rem;
+    }
+
+    .waitlist-input {
+      font-size: 1.1rem;
+    }
+
+    .waitlist-form .btn-arcade,
+    .hero-actions .btn-arcade {
+      font-size: 1.1rem;
+      min-height: 52px;
+    }
   }
 `;
 
@@ -992,7 +1072,7 @@ const HeroSection = ({ sectionRef }) => {
       <div className="decor plus-decor">+</div>
 
       <div className="hero-content">
-        <div className="panel-skew" style={{ display: 'inline-block', marginBottom: '2rem', background: 'var(--c-yellow)' }}>
+        <div className="panel-skew" style={{ display: 'inline-block', marginBottom: '0', background: 'var(--c-yellow)' }}>
           <div className="panel-content-unskew">
             <span style={{ fontWeight: 900, textTransform: 'uppercase', fontSize: '1.2rem' }}>Season 4 is Live!</span>
           </div>
@@ -1044,7 +1124,7 @@ const HeroSection = ({ sectionRef }) => {
             Play Demo
           </button>
         </div>
-        <div style={{ marginTop: '0.9rem', fontWeight: 900, fontSize: '0.98rem' }}>
+        <div style={{ marginTop: '0', fontWeight: 900, fontSize: '0.98rem' }}>
           🔒 <span style={{ color: 'var(--c-red)' }}>{FOUNDER_PRICE_TEXT}</span> for early builders · switches to {FOUNDER_PRICE_FUTURE_TEXT}
         </div>
       </div>

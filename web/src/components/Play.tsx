@@ -429,6 +429,7 @@ type LeaderboardEntry = MatchResult & { rankScore: number };
 
 const LEADERBOARD_KEY = 'cogcage_demo_leaderboard_v1';
 const EMAIL_KEY = 'cogcage_email';
+const PLAY_VIEWED_KEY = 'cogcage_play_viewed';
 const founderCheckoutUrl =
   ((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? '').trim();
 
@@ -668,6 +669,33 @@ const Play = () => {
     [opponentId]
   );
 
+  const founderCtaVariant = useMemo(() => {
+    if (!result) {
+      return {
+        key: 'neutral',
+        title: 'Unlock Founder Pricing',
+        message: 'Keep your edge: lock $29/mo before launch pricing moves to $49/mo.',
+        button: 'Reserve Founder Spot',
+      };
+    }
+
+    if (result.winner === 'You') {
+      return {
+        key: 'winner',
+        title: 'You Won. Lock In Founder Advantage',
+        message: 'Your build already performs. Keep momentum with founder access at $29/mo before it moves to $49/mo.',
+        button: 'Claim Winner Founder Price',
+      };
+    }
+
+    return {
+      key: 'loser',
+      title: 'Run It Back With Founder Access',
+      message: 'Get more reps, analytics, and priority ladder access at $29/mo before launch pricing moves to $49/mo.',
+      button: 'Unlock Founder Rematch Pass',
+    };
+  }, [result]);
+
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = globalStyles;
@@ -683,6 +711,12 @@ const Play = () => {
     if (typeof window === 'undefined') return;
     const saved = window.localStorage.getItem(EMAIL_KEY) || '';
     if (saved) setEmail(saved);
+
+    const viewedSent = window.localStorage.getItem(PLAY_VIEWED_KEY);
+    if (!viewedSent) {
+      void postEvent('play_page_viewed');
+      window.localStorage.setItem(PLAY_VIEWED_KEY, '1');
+    }
   }, []);
 
   const stopTimer = () => {
@@ -693,6 +727,17 @@ const Play = () => {
   };
 
   useEffect(() => () => stopTimer(), []);
+
+  useEffect(() => {
+    if (!result) return;
+    void postEvent('play_match_completed', {
+      winner: result.winner,
+      opponent: result.opponentName,
+      playerScore: result.playerScore,
+      opponentScore: result.opponentScore,
+      ctaVariant: founderCtaVariant.key,
+    });
+  }, [founderCtaVariant.key, result]);
 
   const startMatch = () => {
     if (running) return;
@@ -760,13 +805,14 @@ const Play = () => {
 
   const handleFounderCheckout = async () => {
     const normalizedEmail = email.trim().toLowerCase();
+    const checkoutSource = `play-page-founder-cta-${founderCtaVariant.key}`;
     if (!normalizedEmail || !/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
       setCheckoutMessage('Enter a valid email to reserve founder pricing.');
       return;
     }
     if (!founderCheckoutUrl) {
       setCheckoutMessage('Checkout is temporarily unavailable. Please join the waitlist from home.');
-      void postEvent('founder_checkout_unavailable', { source: 'play-page' });
+      void postEvent('founder_checkout_unavailable', { source: checkoutSource });
       return;
     }
 
@@ -779,9 +825,9 @@ const Play = () => {
         fetch('/api/founder-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: normalizedEmail, source: 'play-page-founder-cta' }),
+          body: JSON.stringify({ email: normalizedEmail, source: checkoutSource }),
         }),
-        postEvent('founder_checkout_clicked', { source: 'play-page-founder-cta' }),
+        postEvent('founder_checkout_clicked', { source: checkoutSource, ctaVariant: founderCtaVariant.key }),
       ]);
 
       const url = new URL(founderCheckoutUrl);
@@ -964,9 +1010,9 @@ const Play = () => {
             </div>
 
             <div className="leaderboard" style={{ marginTop: '1.2rem' }}>
-              <div className="section-label">Unlock Founder Pricing</div>
+              <div className="section-label">{founderCtaVariant.title}</div>
               <div className="hint" style={{ marginBottom: '0.7rem' }}>
-                Keep your edge: lock <strong>$29/mo</strong> before launch pricing moves to <strong>$49/mo</strong>.
+                {founderCtaVariant.message}
               </div>
               <input
                 className="prompt-box"
@@ -977,7 +1023,7 @@ const Play = () => {
                 style={{ minHeight: 'unset', height: '48px', marginBottom: '0.8rem' }}
               />
               <button className="cta-btn" onClick={handleFounderCheckout} disabled={checkoutBusy}>
-                {checkoutBusy ? 'Opening Checkout…' : 'Reserve Founder Spot'}
+                {checkoutBusy ? 'Opening Checkout…' : founderCtaVariant.button}
               </button>
               {checkoutMessage && (
                 <div className="hint" style={{ marginTop: '0.7rem' }}>{checkoutMessage}</div>
