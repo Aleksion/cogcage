@@ -1113,7 +1113,7 @@ const HeroSection = ({ sectionRef }) => {
           CASH IN.
         </h1>
         <p className="hero-body">
-          {heroCopy.body}
+          Build your bot. Watch it fight. Climb the leaderboard.
         </p>
         <div className="panel-skew hero-waitlist" style={{ background: 'var(--c-white)' }}>
           <div className="panel-content-unskew">
