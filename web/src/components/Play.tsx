@@ -394,6 +394,11 @@ const pickPlayFounderCopyVariant = () => {
 const founderCheckoutUrl =
   ((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? '').trim();
 
+const makeFounderIntentId = (email: string, source: string) => {
+  const day = new Date().toISOString().slice(0, 10);
+  return `intent:${day}:${hashString(`${email}|${source}|${day}`)}`;
+};
+
 const OPPONENTS: BotPreset[] = [
   {
     id: 'forge-titan',
@@ -897,13 +902,24 @@ const Play = () => {
     setCheckoutMessage(null);
 
     try {
+      const intentId = makeFounderIntentId(normalizedEmail, checkoutSource);
       await Promise.allSettled([
         fetch('/api/founder-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: normalizedEmail, source: checkoutSource, founderCopyVariant: playFounderCopyVariant }),
+          body: JSON.stringify({
+            email: normalizedEmail,
+            source: checkoutSource,
+            intentId,
+            founderCopyVariant: playFounderCopyVariant,
+          }),
         }),
-        postEvent('founder_checkout_clicked', { source: checkoutSource, ctaVariant: founderCtaVariant.key, founderCopyVariant: playFounderCopyVariant }),
+        postEvent('founder_checkout_clicked', {
+          source: checkoutSource,
+          ctaVariant: founderCtaVariant.key,
+          founderCopyVariant: playFounderCopyVariant,
+          intentId,
+        }),
       ]);
 
       if (typeof window !== 'undefined') {

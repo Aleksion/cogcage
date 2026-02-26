@@ -13,6 +13,7 @@ export type WaitlistLead = {
 export type FounderIntent = {
   email: string;
   source: string;
+  intentId?: string;
   userAgent?: string;
   ipAddress?: string;
 };
@@ -73,10 +74,15 @@ function getDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT NOT NULL,
       source TEXT NOT NULL,
+      intent_id TEXT,
       user_agent TEXT,
       ip_address TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_founder_intents_intent_id
+    ON founder_intents (intent_id)
+    WHERE intent_id IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS conversion_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,6 +104,10 @@ function getDb() {
 
     CREATE INDEX IF NOT EXISTS idx_conversion_events_email_created_at
     ON conversion_events (email, created_at);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_conversion_events_event_id
+    ON conversion_events (event_id)
+    WHERE event_id IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS rate_limits (
       ip_address TEXT NOT NULL,
@@ -130,8 +140,13 @@ export function insertWaitlistLead(lead: WaitlistLead) {
 export function insertFounderIntent(intent: FounderIntent) {
   const conn = getDb();
   const insert = conn.prepare(`
-    INSERT INTO founder_intents (email, source, user_agent, ip_address)
-    VALUES (@email, @source, @userAgent, @ipAddress)
+    INSERT INTO founder_intents (email, source, intent_id, user_agent, ip_address)
+    VALUES (@email, @source, @intentId, @userAgent, @ipAddress)
+    ON CONFLICT(intent_id) DO UPDATE SET
+      source=excluded.source,
+      user_agent=excluded.user_agent,
+      ip_address=excluded.ip_address,
+      created_at=CURRENT_TIMESTAMP
   `);
 
   insert.run(intent);
