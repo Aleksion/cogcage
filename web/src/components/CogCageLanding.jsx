@@ -794,12 +794,12 @@ const FOUNDER_PRICE_TEXT = '$29/mo founder price';
 const FOUNDER_PRICE_FUTURE_TEXT = '$49/mo after beta';
 const HERO_COPY = {
   value: {
-    headline: ['CODE YOUR BOT.', 'WATCH IT FIGHT.', 'WIN THE ARENA.'],
-    body: 'Build. Battle. Climb.',
+    headline: ['BUILD YOUR BOT.', 'BATTLE REAL OPPONENTS.', 'WIN THE ARENA.'],
+    body: 'No coding required. Tune strategy, enter matches, and watch your bot fight live.',
   },
   competition: {
-    headline: ['BUILD A BOT.', 'ENTER THE ARENA.', 'COMPETE FOR THE TOP.'],
-    body: 'Build. Battle. Climb.',
+    headline: ['BUILD YOUR BOT.', 'BATTLE REAL OPPONENTS.', 'WIN THE ARENA.'],
+    body: 'No coding required. Tune strategy, enter matches, and watch your bot fight live.',
   },
 };
 
