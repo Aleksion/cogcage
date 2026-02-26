@@ -688,6 +688,8 @@ const globalStyles = `
 const STRIPE_FOUNDER_URL = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COPY_VARIANT_KEY = 'cogcage_copy_variant';
+const FOUNDER_PRICE_TEXT = '$29/mo founder price';
+const FOUNDER_PRICE_FUTURE_TEXT = '$49/mo after beta';
 const HERO_COPY = {
   value: {
     headline: ['CODE YOUR BOT.', 'WATCH IT FIGHT.', 'WIN THE ARENA.'],
@@ -969,6 +971,15 @@ const HeroSection = ({ sectionRef }) => {
       return;
     }
 
+    await postJson('/api/events', {
+      event: 'founder_checkout_unavailable',
+      source: `hero-founder-cta-${variant}`,
+      email: trimmed.toLowerCase(),
+      tier: 'founder',
+      page: '/',
+      variant,
+      meta: { variant },
+    });
     setStatus('error');
     setMessage('Founder checkout link not configured yet.');
   };
@@ -1025,6 +1036,9 @@ const HeroSection = ({ sectionRef }) => {
         <div className="hero-actions">
           <button className="btn-arcade red" type="button" onClick={handleFounderCheckout}>Reserve Founder Spot</button>
           <button className="btn-arcade" style={{ background: 'var(--c-white)' }} type="button">Watch Live</button>
+        </div>
+        <div style={{ marginTop: '0.9rem', fontWeight: 900, fontSize: '0.98rem' }}>
+          🔒 <span style={{ color: 'var(--c-red)' }}>{FOUNDER_PRICE_TEXT}</span> for early builders · switches to {FOUNDER_PRICE_FUTURE_TEXT}
         </div>
       </div>
 
@@ -1152,18 +1166,26 @@ const FooterSection = () => {
     setVariant(assignedVariant);
   }, []);
 
-  const handleCreate = async () => {
-    const trimmed = email.trim();
+  const normalizedEmail = () => email.trim().toLowerCase();
+
+  const validateEmail = () => {
+    const trimmed = normalizedEmail();
     if (!trimmed) {
       setError('Please enter your email!');
-      return;
+      return null;
     }
     if (!EMAIL_RE.test(trimmed)) {
       setError('Invalid email address.');
-      return;
+      return null;
     }
-
     setError('');
+    return trimmed;
+  };
+
+  const handleCreate = async () => {
+    const trimmed = validateEmail();
+    if (!trimmed) return;
+
     try {
       const response = await fetch('/api/waitlist', {
         method: 'POST',
@@ -1174,12 +1196,12 @@ const FooterSection = () => {
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.error || 'Could not create account.');
       }
-      localStorage.setItem('cogcage_email', trimmed.toLowerCase());
+      localStorage.setItem('cogcage_email', trimmed);
       await postJson('/api/events', {
         event: 'waitlist_joined',
         source: `footer-waitlist-${variant}`,
         page: '/',
-        email: trimmed.toLowerCase(),
+        email: trimmed,
         variant,
         meta: { variant },
       });
@@ -1187,6 +1209,45 @@ const FooterSection = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create account.');
     }
+  };
+
+  const handleFooterFounderCheckout = async () => {
+    const trimmed = validateEmail();
+    if (!trimmed) return;
+
+    localStorage.setItem('cogcage_email', trimmed);
+    await postJson('/api/events', {
+      event: 'founder_checkout_clicked',
+      source: `footer-founder-cta-${variant}`,
+      email: trimmed,
+      tier: 'founder',
+      page: '/',
+      variant,
+      meta: { variant },
+    });
+    await postJson('/api/founder-intent', {
+      email: trimmed,
+      source: `footer-founder-checkout-${variant}`,
+      variant,
+    });
+
+    if (STRIPE_FOUNDER_URL) {
+      const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
+      target.searchParams.set('prefilled_email', trimmed);
+      window.location.href = target.toString();
+      return;
+    }
+
+    await postJson('/api/events', {
+      event: 'founder_checkout_unavailable',
+      source: `footer-founder-cta-${variant}`,
+      email: trimmed,
+      tier: 'founder',
+      page: '/',
+      variant,
+      meta: { variant },
+    });
+    setError('Founder checkout link not configured yet.');
   };
 
   return (
@@ -1217,9 +1278,17 @@ const FooterSection = () => {
             onKeyDown={e => e.key === 'Enter' && handleCreate()}
           />
           {error && <p style={{ color: 'var(--c-red)', fontWeight: 800 }}>{error}</p>}
-          <button className="btn-arcade red" style={{ fontSize: '1rem', padding: '0.8rem 2rem' }} onClick={handleCreate}>
-            Create Account
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button className="btn-arcade red" style={{ fontSize: '1rem', padding: '0.8rem 2rem' }} onClick={handleCreate}>
+              Join Waitlist
+            </button>
+            <button className="btn-arcade" style={{ fontSize: '1rem', padding: '0.8rem 2rem' }} onClick={handleFooterFounderCheckout}>
+              Reserve Founder Spot
+            </button>
+          </div>
+          <p style={{ color: '#f5d66b', fontWeight: 800, fontSize: '0.9rem' }}>
+            Founder offer: {FOUNDER_PRICE_TEXT} today · {FOUNDER_PRICE_FUTURE_TEXT}
+          </p>
         </div>
       ) : (
         <div style={{ color: '#00E676', fontWeight: 900, fontSize: '1.5rem', fontFamily: 'var(--f-display)' }}>
