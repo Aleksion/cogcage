@@ -7,9 +7,11 @@ const dbPath = process.env.COGCAGE_DB_PATH ?? path.join(process.cwd(), 'data', '
 const args = process.argv.slice(2);
 const daysArg = args.find((arg) => arg.startsWith('--days='));
 const playGuardrailMinSampleArg = args.find((arg) => arg.startsWith('--play-guardrail-min-sample='));
+const landingVariantMinSampleArg = args.find((arg) => arg.startsWith('--landing-variant-min-sample='));
 const jsonMode = args.includes('--json');
 const days = Number(daysArg?.split('=')[1] ?? '7');
 const playGuardrailMinSample = Number(playGuardrailMinSampleArg?.split('=')[1] ?? '5');
+const landingVariantMinSample = Number(landingVariantMinSampleArg?.split('=')[1] ?? '25');
 
 if (!Number.isFinite(days) || days <= 0) {
   console.error('Invalid --days value. Example: --days=7');
@@ -18,6 +20,11 @@ if (!Number.isFinite(days) || days <= 0) {
 
 if (!Number.isFinite(playGuardrailMinSample) || playGuardrailMinSample < 1) {
   console.error('Invalid --play-guardrail-min-sample value. Example: --play-guardrail-min-sample=5');
+  process.exit(1);
+}
+
+if (!Number.isFinite(landingVariantMinSample) || landingVariantMinSample < 1) {
+  console.error('Invalid --landing-variant-min-sample value. Example: --landing-variant-min-sample=25');
   process.exit(1);
 }
 
@@ -218,6 +225,126 @@ const landingFounderClicksByCtaVariant = {
   ),
 };
 
+
+const landingViewsByHeroVariant = {
+  value: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'landing_view'
+       AND source = 'hero-value'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  competition: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'landing_view'
+       AND source = 'hero-competition'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
+const landingFounderClicksByHeroVariant = {
+  value: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source LIKE '%-founder-cta-value-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  competition: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source LIKE '%-founder-cta-competition-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
+const landingFounderIntentsByHeroVariant = {
+  value: count(
+    `SELECT COUNT(*) AS value
+     FROM founder_intents
+     WHERE source LIKE '%-founder-checkout-value-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  competition: count(
+    `SELECT COUNT(*) AS value
+     FROM founder_intents
+     WHERE source LIKE '%-founder-checkout-competition-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
+const landingWaitlistJoinedByHeroVariant = {
+  value: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'waitlist_joined'
+       AND source LIKE '%-waitlist-value%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  competition: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'waitlist_joined'
+       AND source LIKE '%-waitlist-competition%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
+const landingVariantQualified = {
+  value: landingViewsByHeroVariant.value >= landingVariantMinSample,
+  competition: landingViewsByHeroVariant.competition >= landingVariantMinSample,
+};
+
+function landingVariantRecommendation() {
+  if (!landingVariantQualified.value || !landingVariantQualified.competition) {
+    return {
+      ready: false,
+      winner: null,
+      reason: 'insufficient_sample',
+    };
+  }
+
+  const valueClickRate = pct(landingFounderClicksByHeroVariant.value, landingViewsByHeroVariant.value);
+  const competitionClickRate = pct(
+    landingFounderClicksByHeroVariant.competition,
+    landingViewsByHeroVariant.competition,
+  );
+
+  if (valueClickRate === competitionClickRate) {
+    const valueIntentRate = pct(
+      landingFounderIntentsByHeroVariant.value,
+      landingFounderClicksByHeroVariant.value,
+    );
+    const competitionIntentRate = pct(
+      landingFounderIntentsByHeroVariant.competition,
+      landingFounderClicksByHeroVariant.competition,
+    );
+    return {
+      ready: true,
+      winner: valueIntentRate >= competitionIntentRate ? 'value' : 'competition',
+      reason: 'tie_broken_by_click_to_intent',
+    };
+  }
+
+  return {
+    ready: true,
+    winner: valueClickRate > competitionClickRate ? 'value' : 'competition',
+    reason: 'higher_founder_click_per_view',
+  };
+}
+
+const landingHeroVariantRecommendation = landingVariantRecommendation();
+
 const landingFounderIntentsByCtaVariant = {
   reserve: count(
     `SELECT COUNT(*) AS value
@@ -314,6 +441,10 @@ const rollup = {
   totals,
   inWindow,
   playFounderClicksBySource,
+  landingViewsByHeroVariant,
+  landingFounderClicksByHeroVariant,
+  landingFounderIntentsByHeroVariant,
+  landingWaitlistJoinedByHeroVariant,
   landingFounderClicksByCtaVariant,
   landingFounderIntentsByCtaVariant,
   postWaitlistFounderClicksBySource,
@@ -324,6 +455,9 @@ const rollup = {
     playGuardrailQualifiedDaysInWindow: playFounderDailySplit.filter((day) => day.guardrailQualified).length,
     loserCtaOutperformingWinnerStreakDays: loserBeatsWinnerStreakDays,
     loserCtaOutperformingWinnerGuardrailTriggered: loserBeatsWinnerStreakDays >= 3,
+    landingVariantMinSample,
+    landingVariantQualified,
+    landingHeroVariantRecommendation,
   },
   uniqueInWindow,
   rates: {
@@ -336,6 +470,25 @@ const rollup = {
     claimCtaSharePct: pct(landingFounderClicksByCtaVariant.claim, inWindow.landingFounderClicks),
     reserveCtaClickToIntentPct: pct(landingFounderIntentsByCtaVariant.reserve, landingFounderClicksByCtaVariant.reserve),
     claimCtaClickToIntentPct: pct(landingFounderIntentsByCtaVariant.claim, landingFounderClicksByCtaVariant.claim),
+
+    valueHeroViewToFounderClickPct: pct(landingFounderClicksByHeroVariant.value, landingViewsByHeroVariant.value),
+    competitionHeroViewToFounderClickPct: pct(
+      landingFounderClicksByHeroVariant.competition,
+      landingViewsByHeroVariant.competition,
+    ),
+    valueHeroFounderClickToIntentPct: pct(
+      landingFounderIntentsByHeroVariant.value,
+      landingFounderClicksByHeroVariant.value,
+    ),
+    competitionHeroFounderClickToIntentPct: pct(
+      landingFounderIntentsByHeroVariant.competition,
+      landingFounderClicksByHeroVariant.competition,
+    ),
+    valueHeroViewToWaitlistPct: pct(landingWaitlistJoinedByHeroVariant.value, landingViewsByHeroVariant.value),
+    competitionHeroViewToWaitlistPct: pct(
+      landingWaitlistJoinedByHeroVariant.competition,
+      landingViewsByHeroVariant.competition,
+    ),
 
     postWaitlistFounderClicksTotal:
       postWaitlistFounderClicksBySource.hero + postWaitlistFounderClicksBySource.footer,
@@ -420,6 +573,29 @@ console.log(`- Claim intent logs: ${landingFounderIntentsByCtaVariant.claim}`);
 console.log(`- Landing founder click mix (reserve/claim): ${rollup.rates.reserveCtaSharePct.toFixed(2)}% / ${rollup.rates.claimCtaSharePct.toFixed(2)}%`);
 console.log(`- Reserve click -> intent: ${rollup.rates.reserveCtaClickToIntentPct.toFixed(2)}%`);
 console.log(`- Claim click -> intent: ${rollup.rates.claimCtaClickToIntentPct.toFixed(2)}%`);
+console.log('');
+
+console.log('Landing hero message variant split (value vs competition):');
+console.log(`- Value landing views: ${landingViewsByHeroVariant.value}`);
+console.log(`- Competition landing views: ${landingViewsByHeroVariant.competition}`);
+console.log(`- Value founder clicks: ${landingFounderClicksByHeroVariant.value}`);
+console.log(`- Competition founder clicks: ${landingFounderClicksByHeroVariant.competition}`);
+console.log(`- Value founder intents: ${landingFounderIntentsByHeroVariant.value}`);
+console.log(`- Competition founder intents: ${landingFounderIntentsByHeroVariant.competition}`);
+console.log(`- Value waitlist joins: ${landingWaitlistJoinedByHeroVariant.value}`);
+console.log(`- Competition waitlist joins: ${landingWaitlistJoinedByHeroVariant.competition}`);
+console.log(`- Value view -> founder click: ${rollup.rates.valueHeroViewToFounderClickPct.toFixed(2)}%`);
+console.log(`- Competition view -> founder click: ${rollup.rates.competitionHeroViewToFounderClickPct.toFixed(2)}%`);
+console.log(`- Value founder click -> intent: ${rollup.rates.valueHeroFounderClickToIntentPct.toFixed(2)}%`);
+console.log(`- Competition founder click -> intent: ${rollup.rates.competitionHeroFounderClickToIntentPct.toFixed(2)}%`);
+console.log(`- Value view -> waitlist join: ${rollup.rates.valueHeroViewToWaitlistPct.toFixed(2)}%`);
+console.log(`- Competition view -> waitlist join: ${rollup.rates.competitionHeroViewToWaitlistPct.toFixed(2)}%`);
+console.log(`- Variant decision sample floor: ${landingVariantMinSample} views each (value qualified=${landingVariantQualified.value ? 'yes' : 'no'}, competition qualified=${landingVariantQualified.competition ? 'yes' : 'no'})`);
+if (landingHeroVariantRecommendation.ready) {
+  console.log(`- Recommended winner: ${landingHeroVariantRecommendation.winner} (${landingHeroVariantRecommendation.reason})`);
+} else {
+  console.log('- Recommended winner: pending (insufficient qualified sample)');
+}
 console.log('');
 
 console.log('Post-waitlist founder upsell:');
