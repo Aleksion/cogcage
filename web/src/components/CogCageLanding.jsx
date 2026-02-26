@@ -1312,8 +1312,12 @@ const FooterSection = () => {
   useEffect(() => {
     const assignedVariant = getOrCreateVariant();
     const assignedFounderCtaVariant = getOrCreateFounderCtaVariant();
+    const savedEmail = localStorage.getItem('cogcage_email');
     setVariant(assignedVariant);
     setFounderCtaVariant(assignedFounderCtaVariant);
+    if (savedEmail) {
+      setEmail(savedEmail);
+    }
   }, []);
 
   const normalizedEmail = () => email.trim().toLowerCase();
@@ -1367,7 +1371,10 @@ const FooterSection = () => {
     ctaSourcePrefix = 'footer-founder-cta',
     checkoutSourcePrefix = 'footer-founder-checkout',
   } = {}) => {
-    const trimmed = emailOverride || validateEmail();
+    const storedEmail = localStorage.getItem('cogcage_email')?.trim().toLowerCase() || '';
+    const typedEmail = normalizedEmail();
+    const candidateEmail = emailOverride || typedEmail || storedEmail;
+    const trimmed = EMAIL_RE.test(candidateEmail) ? candidateEmail : validateEmail();
     if (!trimmed) return;
 
     localStorage.setItem('cogcage_email', trimmed);
