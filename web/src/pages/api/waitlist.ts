@@ -28,6 +28,10 @@ function normalize(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function normalizeFormValue(value: FormDataEntryValue | null, maxLen = 300) {
+  return normalize(value).slice(0, maxLen);
+}
+
 function normalizeString(value: unknown, maxLen = 300) {
   if (typeof value !== 'string') return '';
   const normalized = value.trim();
@@ -82,11 +86,11 @@ export const POST: APIRoute = async ({ request }) => {
       );
     } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
-      email = normalize(formData.get('email'));
-      game = normalize(formData.get('game'));
-      source = normalize(formData.get('source'));
+      email = normalizeFormValue(formData.get('email'), 180);
+      game = normalizeFormValue(formData.get('game'), 120);
+      source = normalizeFormValue(formData.get('source'), 120);
       for (const field of HONEYPOT_FIELDS) {
-        const value = normalize(formData.get(field));
+        const value = normalizeFormValue(formData.get(field), 120);
         if (value) {
           honeypot = value;
           break;
