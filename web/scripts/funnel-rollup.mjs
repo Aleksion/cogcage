@@ -9,11 +9,13 @@ const daysArg = args.find((arg) => arg.startsWith('--days='));
 const playGuardrailMinSampleArg = args.find((arg) => arg.startsWith('--play-guardrail-min-sample='));
 const landingVariantMinSampleArg = args.find((arg) => arg.startsWith('--landing-variant-min-sample='));
 const playCopyVariantMinSampleArg = args.find((arg) => arg.startsWith('--play-copy-variant-min-sample='));
+const paidLaneMinSampleArg = args.find((arg) => arg.startsWith('--paid-lane-min-sample='));
 const jsonMode = args.includes('--json');
 const days = Number(daysArg?.split('=')[1] ?? '7');
 const playGuardrailMinSample = Number(playGuardrailMinSampleArg?.split('=')[1] ?? '5');
 const landingVariantMinSample = Number(landingVariantMinSampleArg?.split('=')[1] ?? '25');
 const playCopyVariantMinSample = Number(playCopyVariantMinSampleArg?.split('=')[1] ?? '25');
+const paidLaneMinSample = Number(paidLaneMinSampleArg?.split('=')[1] ?? '3');
 
 if (!Number.isFinite(days) || days <= 0) {
   console.error('Invalid --days value. Example: --days=7');
@@ -32,6 +34,11 @@ if (!Number.isFinite(landingVariantMinSample) || landingVariantMinSample < 1) {
 
 if (!Number.isFinite(playCopyVariantMinSample) || playCopyVariantMinSample < 1) {
   console.error('Invalid --play-copy-variant-min-sample value. Example: --play-copy-variant-min-sample=25');
+  process.exit(1);
+}
+
+if (!Number.isFinite(paidLaneMinSample) || paidLaneMinSample < 1) {
+  console.error('Invalid --paid-lane-min-sample value. Example: --paid-lane-min-sample=3');
   process.exit(1);
 }
 
@@ -521,6 +528,65 @@ const paidConversionsBySource = {
   ),
 };
 
+const paidLanePerformance = {
+  landing: {
+    clicks: inWindow.landingFounderClicks,
+    paid: paidConversionsBySource.landing,
+    clickToPaidPct: pct(paidConversionsBySource.landing, inWindow.landingFounderClicks),
+  },
+  play: {
+    clicks: inWindow.playFounderClicks,
+    paid: paidConversionsBySource.play,
+    clickToPaidPct: pct(paidConversionsBySource.play, inWindow.playFounderClicks),
+  },
+  postWaitlist: {
+    clicks: postWaitlistFounderClicksBySource.hero + postWaitlistFounderClicksBySource.footer,
+    paid: paidConversionsBySource.postWaitlist,
+    clickToPaidPct: pct(
+      paidConversionsBySource.postWaitlist,
+      postWaitlistFounderClicksBySource.hero + postWaitlistFounderClicksBySource.footer,
+    ),
+  },
+};
+
+const paidLaneQualified = {
+  landing: paidLanePerformance.landing.paid >= paidLaneMinSample,
+  play: paidLanePerformance.play.paid >= paidLaneMinSample,
+  postWaitlist: paidLanePerformance.postWaitlist.paid >= paidLaneMinSample,
+};
+
+function paidLaneRecommendation() {
+  const candidates = Object.entries(paidLanePerformance)
+    .filter(([lane]) => paidLaneQualified[lane])
+    .map(([lane, metrics]) => ({ lane, ...metrics }));
+
+  if (candidates.length < 2) {
+    return {
+      ready: false,
+      winner: null,
+      reason: 'insufficient_qualified_paid_sample',
+    };
+  }
+
+  candidates.sort((a, b) => {
+    if (b.clickToPaidPct !== a.clickToPaidPct) return b.clickToPaidPct - a.clickToPaidPct;
+    if (b.paid !== a.paid) return b.paid - a.paid;
+    return b.clicks - a.clicks;
+  });
+
+  const [winner, runnerUp] = candidates;
+  return {
+    ready: true,
+    winner: winner.lane,
+    reason:
+      winner.clickToPaidPct === runnerUp.clickToPaidPct
+        ? 'tie_broken_by_paid_then_click_volume'
+        : 'higher_click_to_paid',
+  };
+}
+
+const paidLaneWinnerRecommendation = paidLaneRecommendation();
+
 const uniqueInWindow = {
   founderClickEmails: count(
     `SELECT COUNT(DISTINCT lower(email)) AS value
@@ -575,6 +641,7 @@ const rollup = {
   postWaitlistFounderClicksBySource,
   postWaitlistFounderIntentsBySource,
   paidConversionsBySource,
+  paidLanePerformance,
   playFounderDailySplit,
   alerts: {
     playGuardrailMinSample,
@@ -587,6 +654,9 @@ const rollup = {
     playCopyVariantMinSample,
     playCopyVariantQualified,
     playFounderCopyVariantRecommendation,
+    paidLaneMinSample,
+    paidLaneQualified,
+    paidLaneWinnerRecommendation,
   },
   uniqueInWindow,
   rates: {
@@ -718,6 +788,12 @@ console.log(`- Unattributed paid conversions (legacy stripe-success): ${paidConv
 console.log(`- Landing founder click -> paid: ${rollup.rates.landingFounderClickToPaidPct.toFixed(2)}%`);
 console.log(`- Play founder click -> paid: ${rollup.rates.playFounderClickToPaidPct.toFixed(2)}%`);
 console.log(`- Post-waitlist founder click -> paid: ${rollup.rates.postWaitlistFounderClickToPaidPct.toFixed(2)}%`);
+console.log(`- Paid-lane decision sample floor: ${paidLaneMinSample} paid conversions each (landing qualified=${paidLaneQualified.landing ? 'yes' : 'no'}, play qualified=${paidLaneQualified.play ? 'yes' : 'no'}, postWaitlist qualified=${paidLaneQualified.postWaitlist ? 'yes' : 'no'})`);
+if (paidLaneWinnerRecommendation.ready) {
+  console.log(`- Recommended paid-performance winner: ${paidLaneWinnerRecommendation.winner} (${paidLaneWinnerRecommendation.reason})`);
+} else {
+  console.log('- Recommended paid-performance winner: pending (insufficient qualified paid sample)');
+}
 console.log('');
 
 console.log('Landing founder CTA copy split:');
