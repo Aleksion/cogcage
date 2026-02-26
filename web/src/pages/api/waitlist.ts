@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
-import { consumeRateLimit, insertConversionEvent, insertWaitlistLead } from '../../lib/waitlist-db';
-import { appendOpsLog, appendWaitlistFallback } from '../../lib/observability';
+import { consumeRateLimit, insertConversionEvent, insertWaitlistLead, type ConversionEvent } from '../../lib/waitlist-db';
+import { appendEventsFallback, appendOpsLog, appendWaitlistFallback } from '../../lib/observability';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
@@ -28,6 +28,20 @@ function jsonResponse(body: Record<string, unknown>, status: number, requestId: 
       ...extraHeaders,
     },
   });
+}
+
+function safeTrackConversion(route: string, requestId: string, event: ConversionEvent) {
+  try {
+    insertConversionEvent(event);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'unknown-error';
+    appendOpsLog({ route, level: 'error', event: 'conversion_event_write_failed', requestId, conversionEventName: event.eventName, error: errorMessage });
+    try {
+      appendEventsFallback({ route, requestId, ...event, reason: errorMessage });
+    } catch {
+      // Never break request flow because telemetry fallback failed.
+    }
+  }
 }
 
 export const prerender = false;
@@ -81,7 +95,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
   if (!rateLimit.allowed) {
     appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_rate_limited', requestId, ipAddress, durationMs: Date.now() - startedAt });
-    insertConversionEvent({
+    safeTrackConversion('/api/waitlist', requestId, {
       eventName: 'waitlist_rate_limited',
       source: eventSource,
       email: normalizedEmail || undefined,
@@ -96,7 +110,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (honeypot) {
     appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_honeypot_blocked', requestId, ipAddress, durationMs: Date.now() - startedAt });
-    insertConversionEvent({
+    safeTrackConversion('/api/waitlist', requestId, {
       eventName: 'waitlist_honeypot_blocked',
       source: eventSource,
       email: normalizedEmail || undefined,
@@ -109,7 +123,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (!EMAIL_RE.test(email)) {
     appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_invalid_email', requestId, ipAddress, durationMs: Date.now() - startedAt });
-    insertConversionEvent({
+    safeTrackConversion('/api/waitlist', requestId, {
       eventName: 'waitlist_invalid_email',
       source: eventSource,
       email: normalizedEmail || undefined,
@@ -130,7 +144,7 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     insertWaitlistLead(payload);
     appendOpsLog({ route: '/api/waitlist', level: 'info', event: 'waitlist_saved', requestId, source: payload.source, emailHash: normalizedEmail.slice(0, 3), durationMs: Date.now() - startedAt });
-    insertConversionEvent({
+    safeTrackConversion('/api/waitlist', requestId, {
       eventName: 'waitlist_submitted',
       source: payload.source,
       email: normalizedEmail,
@@ -144,7 +158,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     try {
       appendWaitlistFallback({ route: '/api/waitlist', requestId, ...payload, reason: errorMessage });
-      insertConversionEvent({
+      safeTrackConversion('/api/waitlist', requestId, {
         eventName: 'waitlist_queued_fallback',
         source: payload.source,
         email: normalizedEmail,
@@ -156,7 +170,7 @@ export const POST: APIRoute = async ({ request }) => {
       return jsonResponse({ ok: true, queued: true }, 202, requestId);
     } catch (fallbackError) {
       appendOpsLog({ route: '/api/waitlist', level: 'error', event: 'waitlist_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
-      insertConversionEvent({
+      safeTrackConversion('/api/waitlist', requestId, {
         eventName: 'waitlist_insert_failed',
         source: payload.source,
         email: normalizedEmail,
