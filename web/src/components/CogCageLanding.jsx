@@ -790,8 +790,8 @@ const STRIPE_FOUNDER_URL = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COPY_VARIANT_KEY = 'cogcage_copy_variant';
 const FOUNDER_CTA_VARIANT_KEY = 'cogcage_founder_cta_variant';
-const FOUNDER_PRICE_TEXT = '$29/mo founder price';
-const FOUNDER_PRICE_FUTURE_TEXT = '$49/mo after beta';
+const FOUNDER_PRICE_TEXT = 'Founder Pack $29 one-time';
+const FOUNDER_PRICE_FUTURE_TEXT = '$49 once beta opens';
 const HERO_COPY = {
   value: {
     headline: ['CODE YOUR BOT.', 'WATCH IT FIGHT.', 'WIN THE ARENA.'],
@@ -979,6 +979,7 @@ const NavBar = ({ onNavClick }) => {
 
 const HeroSection = ({ sectionRef }) => {
   const [email, setEmail] = useState('');
+  const [lastSubmittedEmail, setLastSubmittedEmail] = useState('');
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [variant, setVariant] = useState('value');
@@ -1042,6 +1043,7 @@ const HeroSection = ({ sectionRef }) => {
         variant,
         meta: { variant },
       });
+      setLastSubmittedEmail(trimmed.toLowerCase());
       setStatus('success');
       setMessage('You are on the list. Watch for your invite.');
       setEmail('');
@@ -1051,8 +1053,12 @@ const HeroSection = ({ sectionRef }) => {
     }
   };
 
-  const handleFounderCheckout = async () => {
-    const trimmed = email.trim() || localStorage.getItem('cogcage_email') || '';
+  const handleFounderCheckout = async ({
+    emailOverride = '',
+    ctaSourcePrefix = 'hero-founder-cta',
+    checkoutSourcePrefix = 'hero-founder-checkout',
+  } = {}) => {
+    const trimmed = emailOverride || email.trim() || localStorage.getItem('cogcage_email') || '';
     if (!EMAIL_RE.test(trimmed)) {
       setStatus('error');
       setMessage('Add your email first so we can reserve your founder slot.');
@@ -1062,7 +1068,7 @@ const HeroSection = ({ sectionRef }) => {
     localStorage.setItem('cogcage_email', trimmed.toLowerCase());
     await postJson('/api/events', {
       event: 'founder_checkout_clicked',
-      source: `hero-founder-cta-${variant}-${founderCtaVariant}`,
+      source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
       email: trimmed.toLowerCase(),
       tier: 'founder',
       page: '/',
@@ -1071,7 +1077,7 @@ const HeroSection = ({ sectionRef }) => {
     });
     await postJson('/api/founder-intent', {
       email: trimmed.toLowerCase(),
-      source: `hero-founder-checkout-${variant}-${founderCtaVariant}`,
+      source: `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`,
       variant,
       founderCtaVariant,
     });
@@ -1085,7 +1091,7 @@ const HeroSection = ({ sectionRef }) => {
 
     await postJson('/api/events', {
       event: 'founder_checkout_unavailable',
-      source: `hero-founder-cta-${variant}-${founderCtaVariant}`,
+      source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
       email: trimmed.toLowerCase(),
       tier: 'founder',
       page: '/',
@@ -1102,12 +1108,12 @@ const HeroSection = ({ sectionRef }) => {
     <section className="hero-section" ref={sectionRef} id="hero">
       <div className="hero-content">
         <h1 className="hero-h1 text-stroke">
-          PROGRAM.<br />
-          <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>FIGHT.</span><br />
-          CASH IN.
+          BUILD YOUR BOT.<br />
+          <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>WATCH IT FIGHT.</span><br />
+          WIN THE ARENA.
         </h1>
         <p className="hero-body">
-          {heroCopy.body}
+          Build your AI fighter, tune its strategy, and climb the leaderboard.
         </p>
         <div className="panel-skew hero-waitlist" style={{ background: 'var(--c-white)' }}>
           <div className="panel-content-unskew">
@@ -1137,7 +1143,7 @@ const HeroSection = ({ sectionRef }) => {
           </div>
         </div>
         <div className="hero-actions">
-          <button className="btn-arcade red" type="button" onClick={handleFounderCheckout}>
+          <button className="btn-arcade red" type="button" onClick={() => handleFounderCheckout()}>
             {founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
           </button>
           <button
@@ -1149,6 +1155,30 @@ const HeroSection = ({ sectionRef }) => {
             Play Demo
           </button>
         </div>
+        {status === 'success' && lastSubmittedEmail && (
+          <div style={{ marginTop: '0.5rem', fontWeight: 800 }}>
+            Want founder perks now?{' '}
+            <button
+              type="button"
+              onClick={() => handleFounderCheckout({
+                emailOverride: lastSubmittedEmail,
+                ctaSourcePrefix: 'hero-post-waitlist-founder-cta',
+                checkoutSourcePrefix: 'hero-post-waitlist-founder-checkout',
+              })}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--c-red)',
+                fontWeight: 900,
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontFamily: 'var(--f-body)',
+              }}
+            >
+              {founderCtaVariant === 'claim' ? 'Claim founder pricing' : 'Reserve your founder spot'}
+            </button>
+          </div>
+        )}
         <div style={{ marginTop: '0', fontWeight: 900, fontSize: '0.98rem' }}>
           🔒 <span style={{ color: 'var(--c-red)' }}>{FOUNDER_PRICE_TEXT}</span> for early builders · switches to {FOUNDER_PRICE_FUTURE_TEXT}
         </div>
@@ -1269,6 +1299,7 @@ const ArenaSection = ({ sectionRef }) => {
 
 const FooterSection = () => {
   const [email, setEmail] = useState('');
+  const [submittedEmail, setSubmittedEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [variant, setVariant] = useState('value');
@@ -1312,6 +1343,7 @@ const FooterSection = () => {
         throw new Error(payload.error || 'Could not create account.');
       }
       localStorage.setItem('cogcage_email', trimmed);
+      setSubmittedEmail(trimmed);
       await postJson('/api/events', {
         event: 'waitlist_joined',
         source: `footer-waitlist-${variant}`,
@@ -1326,14 +1358,18 @@ const FooterSection = () => {
     }
   };
 
-  const handleFooterFounderCheckout = async () => {
-    const trimmed = validateEmail();
+  const handleFooterFounderCheckout = async ({
+    emailOverride = '',
+    ctaSourcePrefix = 'footer-founder-cta',
+    checkoutSourcePrefix = 'footer-founder-checkout',
+  } = {}) => {
+    const trimmed = emailOverride || validateEmail();
     if (!trimmed) return;
 
     localStorage.setItem('cogcage_email', trimmed);
     await postJson('/api/events', {
       event: 'founder_checkout_clicked',
-      source: `footer-founder-cta-${variant}-${founderCtaVariant}`,
+      source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
       email: trimmed,
       tier: 'founder',
       page: '/',
@@ -1342,7 +1378,7 @@ const FooterSection = () => {
     });
     await postJson('/api/founder-intent', {
       email: trimmed,
-      source: `footer-founder-checkout-${variant}-${founderCtaVariant}`,
+      source: `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`,
       variant,
       founderCtaVariant,
     });
@@ -1356,7 +1392,7 @@ const FooterSection = () => {
 
     await postJson('/api/events', {
       event: 'founder_checkout_unavailable',
-      source: `footer-founder-cta-${variant}-${founderCtaVariant}`,
+      source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
       email: trimmed,
       tier: 'founder',
       page: '/',
@@ -1407,8 +1443,24 @@ const FooterSection = () => {
           </p>
         </div>
       ) : (
-        <div style={{ color: '#00E676', fontWeight: 900, fontSize: '1.5rem', fontFamily: 'var(--f-display)' }}>
-          ✓ WELCOME TO THE ARENA, ENGINEER!
+        <div>
+          <div style={{ color: '#00E676', fontWeight: 900, fontSize: '1.5rem', fontFamily: 'var(--f-display)' }}>
+            ✓ WELCOME TO THE ARENA, ENGINEER!
+          </div>
+          <button
+            className="btn-arcade"
+            style={{ marginTop: '1rem', fontSize: '1rem', padding: '0.8rem 2rem' }}
+            onClick={() => handleFooterFounderCheckout({
+              emailOverride: submittedEmail,
+              ctaSourcePrefix: 'footer-post-waitlist-founder-cta',
+              checkoutSourcePrefix: 'footer-post-waitlist-founder-checkout',
+            })}
+          >
+            {founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
+          </button>
+          <p style={{ marginTop: '0.75rem', color: '#f5d66b', fontWeight: 800, fontSize: '0.9rem' }}>
+            Optional upgrade: lock {FOUNDER_PRICE_TEXT} before it moves to {FOUNDER_PRICE_FUTURE_TEXT}.
+          </p>
         </div>
       )}
 
