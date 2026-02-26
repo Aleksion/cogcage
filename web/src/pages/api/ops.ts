@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { APIRoute } from 'astro';
 import { getFunnelCounts, getReliabilitySnapshot, getStorageHealth } from '../../lib/waitlist-db';
+import { drainFallbackQueues } from '../../lib/fallback-drain';
 import { getRuntimeDir } from '../../lib/runtime-paths';
 
 export const prerender = false;
@@ -56,15 +57,22 @@ function readTail(filePath: string, tailLines = 20): RuntimeFile {
   };
 }
 
-export const GET: APIRoute = async ({ request }) => {
+function isAuthorized(request: Request) {
   const key = process.env.COGCAGE_OPS_KEY;
   const provided = request.headers.get('x-ops-key') ?? new URL(request.url).searchParams.get('key');
+  return !key || provided === key;
+}
 
-  if (key && provided !== key) {
-    return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'content-type': 'application/json' },
-    });
+function unauthorized() {
+  return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
+    status: 401,
+    headers: { 'content-type': 'application/json' },
+  });
+}
+
+export const GET: APIRoute = async ({ request }) => {
+  if (!isAuthorized(request)) {
+    return unauthorized();
   }
 
   const files = [
@@ -113,4 +121,36 @@ export const GET: APIRoute = async ({ request }) => {
     status: 200,
     headers: { 'content-type': 'application/json' },
   });
+};
+
+export const POST: APIRoute = async ({ request }) => {
+  if (!isAuthorized(request)) {
+    return unauthorized();
+  }
+
+  const url = new URL(request.url);
+  const maxRows = Number(url.searchParams.get('maxRows') ?? '50');
+  const safeMaxRows = Number.isFinite(maxRows) ? Math.max(1, Math.min(500, Math.floor(maxRows))) : 50;
+
+  try {
+    const drained = drainFallbackQueues(safeMaxRows);
+    return new Response(JSON.stringify({
+      ok: true,
+      ts: new Date().toISOString(),
+      maxRowsPerFile: safeMaxRows,
+      drained,
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      ok: false,
+      error: 'Fallback drain failed',
+      detail: error instanceof Error ? error.message : 'unknown-error',
+    }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
 };

@@ -1,11 +1,33 @@
 import type { APIRoute } from 'astro';
-import { consumeRateLimit, insertConversionEvent, insertFounderIntent, type ConversionEvent } from '../../lib/waitlist-db';
+import {
+  consumeRateLimit,
+  insertConversionEvent,
+  insertFounderIntent,
+  readApiRequestReceipt,
+  writeApiRequestReceipt,
+  type ConversionEvent,
+} from '../../lib/waitlist-db';
 import { appendEventsFallback, appendFounderIntentFallback, appendOpsLog } from '../../lib/observability';
+import { drainFallbackQueues } from '../../lib/fallback-drain';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
 const RATE_LIMIT_MAX = 8;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+
+function hashString(input: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function deriveIntentId(email: string, source: string) {
+  const day = new Date().toISOString().slice(0, 10);
+  return `intent:${day}:${hashString(`${email}|${source}|${day}`)}`;
+}
 
 function getClientIp(request: Request) {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
@@ -35,6 +57,12 @@ function normalizeString(value: unknown, maxLen = 300) {
   if (typeof value !== 'string') return '';
   const normalized = value.trim();
   return normalized.slice(0, maxLen);
+}
+
+function getIdempotencyKey(request: Request) {
+  const key = request.headers.get('x-idempotency-key')?.trim() ?? '';
+  if (!key) return undefined;
+  return key.slice(0, 120);
 }
 
 function jsonResponse(body: Record<string, unknown>, status: number, requestId: string, extraHeaders: Record<string, string> = {}) {
@@ -68,10 +96,60 @@ export const POST: APIRoute = async ({ request }) => {
   const startedAt = Date.now();
   const requestId = crypto.randomUUID();
   const contentType = request.headers.get('content-type') ?? '';
+  const route = '/api/founder-intent';
+  const idempotencyKey = getIdempotencyKey(request);
   let email = '';
   let source = '';
   let intentId = '';
   let honeypot = '';
+
+  const respond = (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
+    if (idempotencyKey) {
+      try {
+        writeApiRequestReceipt({
+          route,
+          idempotencyKey,
+          responseStatus: status,
+          responseBody: JSON.stringify({ ...body, requestId }),
+        });
+      } catch (error) {
+        appendOpsLog({
+          route,
+          level: 'warn',
+          event: 'founder_intent_idempotency_write_failed',
+          requestId,
+          error: error instanceof Error ? error.message : 'unknown',
+        });
+      }
+    }
+
+    return jsonResponse(body, status, requestId, extraHeaders);
+  };
+
+  if (idempotencyKey) {
+    try {
+      const cached = readApiRequestReceipt(route, idempotencyKey);
+      if (cached) {
+        appendOpsLog({ route, level: 'info', event: 'founder_intent_idempotency_replay', requestId, durationMs: Date.now() - startedAt });
+        return new Response(cached.responseBody, {
+          status: cached.responseStatus,
+          headers: {
+            'content-type': 'application/json',
+            'x-request-id': requestId,
+            'x-idempotent-replay': '1',
+          },
+        });
+      }
+    } catch (error) {
+      appendOpsLog({
+        route,
+        level: 'warn',
+        event: 'founder_intent_idempotency_read_failed',
+        requestId,
+        error: error instanceof Error ? error.message : 'unknown',
+      });
+    }
+  }
 
   try {
     if (contentType.includes('application/json')) {
@@ -138,7 +216,7 @@ export const POST: APIRoute = async ({ request }) => {
       ipAddress: getClientIp(request),
       metaJson: JSON.stringify({ contentType }),
     });
-    return jsonResponse({ ok: false, error: 'Invalid request payload.' }, 400, requestId);
+    return respond({ ok: false, error: 'Invalid request payload.' }, 400);
   }
 
   const ipAddress = getClientIp(request);
@@ -169,7 +247,7 @@ export const POST: APIRoute = async ({ request }) => {
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
-    return jsonResponse({ ok: false, error: 'Too many attempts. Try again in a few minutes.' }, 429, requestId, {
+    return respond({ ok: false, error: 'Too many attempts. Try again in a few minutes.' }, 429, {
       'retry-after': String(Math.ceil(rateLimit.resetMs / 1000)),
     });
   }
@@ -184,7 +262,7 @@ export const POST: APIRoute = async ({ request }) => {
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
-    return jsonResponse({ ok: false, error: 'Submission blocked.' }, 400, requestId);
+    return respond({ ok: false, error: 'Submission blocked.' }, 400);
   }
 
   if (!EMAIL_RE.test(email)) {
@@ -196,13 +274,13 @@ export const POST: APIRoute = async ({ request }) => {
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
-    return jsonResponse({ ok: false, error: 'Valid email is required.' }, 400, requestId);
+    return respond({ ok: false, error: 'Valid email is required.' }, 400);
   }
 
   const payload = {
     email: normalizedEmail,
     source: eventSource,
-    intentId: intentId || undefined,
+    intentId: intentId || deriveIntentId(normalizedEmail, eventSource),
     userAgent: request.headers.get('user-agent') ?? undefined,
     ipAddress,
   };
@@ -210,6 +288,14 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     insertFounderIntent(payload);
     appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'founder_intent_saved', requestId, source: payload.source, emailHash: payload.email.slice(0, 3), durationMs: Date.now() - startedAt });
+    try {
+      const drained = drainFallbackQueues(10);
+      if ((drained.waitlist.inserted + drained.founder.inserted + drained.events.inserted) > 0) {
+        appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'fallback_drain_after_founder_intent', requestId, drained });
+      }
+    } catch {
+      // best-effort background healing only
+    }
     safeTrackConversion('/api/founder-intent', requestId, {
       eventName: 'founder_intent_submitted',
       source: payload.source,
@@ -218,7 +304,7 @@ export const POST: APIRoute = async ({ request }) => {
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
-    return jsonResponse({ ok: true }, 200, requestId);
+    return respond({ ok: true }, 200);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'unknown-error';
     appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_db_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
@@ -234,7 +320,7 @@ export const POST: APIRoute = async ({ request }) => {
         ipAddress,
       });
       appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
-      return jsonResponse({ ok: true, queued: true }, 202, requestId);
+      return respond({ ok: true, queued: true }, 202);
     } catch (fallbackError) {
       appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
       safeTrackConversion('/api/founder-intent', requestId, {
@@ -245,7 +331,7 @@ export const POST: APIRoute = async ({ request }) => {
         userAgent: request.headers.get('user-agent') ?? undefined,
         ipAddress,
       });
-      return jsonResponse({ ok: false, error: 'Temporary storage issue. Please retry.' }, 503, requestId);
+      return respond({ ok: false, error: 'Temporary storage issue. Please retry.' }, 503);
     }
   }
 };

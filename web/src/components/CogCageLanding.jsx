@@ -840,8 +840,16 @@ const postJson = async (url, payload) => {
   }
 };
 
+const createIdempotencyKey = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
 const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } = {}) => {
   let lastError = null;
+  const idempotencyKey = createIdempotencyKey();
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
@@ -849,7 +857,10 @@ const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } =
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'x-idempotency-key': idempotencyKey,
+        },
         body: JSON.stringify(payload),
         signal: controller.signal,
       });

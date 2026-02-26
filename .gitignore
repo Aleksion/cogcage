@@ -1,0 +1,2 @@
+# runtime SQLite db + NDJSON logs (managed at runtime, not committed)
+ops/runtime/
