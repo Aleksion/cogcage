@@ -790,16 +790,16 @@ const STRIPE_FOUNDER_URL = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COPY_VARIANT_KEY = 'cogcage_copy_variant';
 const FOUNDER_CTA_VARIANT_KEY = 'cogcage_founder_cta_variant';
-const FOUNDER_PRICE_TEXT = '$29/mo founder price';
-const FOUNDER_PRICE_FUTURE_TEXT = '$49/mo after beta';
+const FOUNDER_PRICE_TEXT = 'Founder Pack $29 one-time';
+const FOUNDER_PRICE_FUTURE_TEXT = '$49 once beta opens';
 const HERO_COPY = {
   value: {
-    headline: ['EARN.', 'CLIMB.', 'OWN.'],
-    body: 'Lock founder pricing, build your LLM fighter, and turn every climb up the ladder into upside before prices jump.',
+    headline: ['BUILD.', 'BATTLE.', 'WIN.'],
+    body: 'Build your LLM fighter, place your bets, win your battles, and climb to the top of the Cage.',
   },
   competition: {
-    headline: ['RULE.', 'THE.', 'ARENA.'],
-    body: 'Build a killer bot, crush rivals in public matchups, and prove you run the Cage when it is time to battle.',
+    headline: ['BUILD.', 'BATTLE.', 'WIN.'],
+    body: 'Build your LLM fighter, place your bets, win your battles, and climb to the top of the Cage.',
   },
 };
 
