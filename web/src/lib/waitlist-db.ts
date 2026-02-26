@@ -211,7 +211,20 @@ export function insertConversionEvent(event: ConversionEvent) {
     ON CONFLICT(event_id) DO NOTHING
   `);
 
-  runWithBusyRetry('insert_conversion_event', () => insert.run(event));
+  const row = {
+    eventName: event.eventName,
+    eventId: event.eventId ?? null,
+    page: event.page ?? null,
+    href: event.href ?? null,
+    tier: event.tier ?? null,
+    source: event.source ?? null,
+    email: event.email ?? null,
+    metaJson: event.metaJson ?? null,
+    userAgent: event.userAgent ?? null,
+    ipAddress: event.ipAddress ?? null,
+  };
+
+  runWithBusyRetry('insert_conversion_event', () => insert.run(row));
 }
 
 export function consumeRateLimit(
