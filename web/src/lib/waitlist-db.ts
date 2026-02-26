@@ -17,6 +17,19 @@ export type FounderIntent = {
   ipAddress?: string;
 };
 
+export type ConversionEvent = {
+  eventName: string;
+  eventId?: string;
+  page?: string;
+  href?: string;
+  tier?: string;
+  source?: string;
+  email?: string;
+  metaJson?: string;
+  userAgent?: string;
+  ipAddress?: string;
+};
+
 let db: Database.Database | null = null;
 
 function getDbPath() {
@@ -52,6 +65,27 @@ function getDb() {
       ip_address TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS conversion_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_name TEXT NOT NULL,
+      event_id TEXT,
+      page TEXT,
+      href TEXT,
+      tier TEXT,
+      source TEXT,
+      email TEXT,
+      meta_json TEXT,
+      user_agent TEXT,
+      ip_address TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_conversion_events_event_name_created_at
+    ON conversion_events (event_name, created_at);
+
+    CREATE INDEX IF NOT EXISTS idx_conversion_events_email_created_at
+    ON conversion_events (email, created_at);
   `);
 
   return db;
@@ -81,4 +115,36 @@ export function insertFounderIntent(intent: FounderIntent) {
   `);
 
   insert.run(intent);
+}
+
+export function insertConversionEvent(event: ConversionEvent) {
+  const conn = getDb();
+  const insert = conn.prepare(`
+    INSERT INTO conversion_events (
+      event_name,
+      event_id,
+      page,
+      href,
+      tier,
+      source,
+      email,
+      meta_json,
+      user_agent,
+      ip_address
+    )
+    VALUES (
+      @eventName,
+      @eventId,
+      @page,
+      @href,
+      @tier,
+      @source,
+      @email,
+      @metaJson,
+      @userAgent,
+      @ipAddress
+    )
+  `);
+
+  insert.run(event);
 }

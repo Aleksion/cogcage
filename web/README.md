@@ -30,3 +30,14 @@ The landing form posts to `POST /api/waitlist` (Astro server route) and writes l
 - Override with: `COGCAGE_DB_PATH=/absolute/path/to/cogcage.db`
 
 Stored fields: email, primary game, source, user-agent, IP (from `x-forwarded-for`), created timestamp.
+
+## Funnel Event Tracking
+
+Client tracking now sends events to `POST /api/events` and also mirrors the latest 100 events in `localStorage` as a fallback buffer.
+
+Server-side event data is written to SQLite `conversion_events` with:
+- event name + optional event id
+- page/source/href/tier context
+- optional known email
+- JSON metadata payload
+- user-agent, IP, timestamp

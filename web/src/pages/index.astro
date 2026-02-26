@@ -123,24 +123,47 @@ const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? 
 <script is:inline>
   const key = 'cogcage_events';
 
-  function track(eventName, meta = {}) {
+  function saveLocalEvent(payload) {
     const previous = JSON.parse(localStorage.getItem(key) || '[]');
-    previous.push({ event: eventName, meta, at: new Date().toISOString() });
+    previous.push(payload);
     localStorage.setItem(key, JSON.stringify(previous.slice(-100)));
+  }
+
+  async function track(eventName, meta = {}) {
+    const payload = {
+      event: eventName,
+      page: window.location.pathname,
+      source: 'cogcage-landing',
+      email: localStorage.getItem('cogcage_email') || undefined,
+      meta,
+      at: new Date().toISOString(),
+    };
+
+    saveLocalEvent(payload);
+
+    try {
+      await fetch('/api/events', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      });
+    } catch {
+      // Never block UX on analytics writes.
+    }
   }
 
   document.querySelectorAll('[data-track]').forEach((el) => {
     el.addEventListener('click', () => {
       const payload = {
-        id: el.getAttribute('data-track'),
+        eventId: el.getAttribute('data-track') ?? undefined,
         href: el.getAttribute('href') ?? undefined,
         tier: el.getAttribute('data-checkout-tier') ?? undefined,
       };
       track('click', payload);
-
-      if (payload.tier && el instanceof HTMLAnchorElement) {
-        track('checkout_intent', payload);
-      }
     });
   });
 
@@ -181,7 +204,7 @@ const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? 
       }
 
       localStorage.setItem('cogcage_email', email);
-      track('checkout_intent', { tier: 'founder', emailCaptured: true });
+      track('checkout_intent', { tier: 'founder', emailCaptured: true, eventId: 'founder_checkout_click' });
 
       const checkout = new URL(checkoutUrl, window.location.origin);
       checkout.searchParams.set('prefilled_email', email);
@@ -227,7 +250,7 @@ const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? 
           localStorage.setItem('cogcage_email', emailField.value.trim().toLowerCase());
         }
 
-        track('waitlist_submit', { location: 'landing' });
+        track('waitlist_submit', { location: 'landing', eventId: 'waitlist_submit_click' });
         if (waitlistStatus) {
           waitlistStatus.textContent = 'You\'re in. Watch your inbox for alpha invite updates.';
         }
