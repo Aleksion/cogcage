@@ -418,6 +418,7 @@ type BotPreset = {
   aggression: number;
   defense: number;
   risk: number;
+  archetype: 'melee' | 'ranged' | 'balanced';
 };
 
 type PlayerBotConfig = {
@@ -582,6 +583,7 @@ const OPPONENTS: BotPreset[] = [
     aggression: 45,
     defense: 85,
     risk: 20,
+    archetype: 'melee',
   },
   {
     id: 'neon-wraith',
@@ -590,14 +592,16 @@ const OPPONENTS: BotPreset[] = [
     aggression: 65,
     defense: 35,
     risk: 80,
+    archetype: 'balanced',
   },
   {
     id: 'cinder-hawk',
     name: 'Cinder Hawk',
-    tagline: 'Fast strikes, pressure every turn.',
+    tagline: 'Fast strikes, kites at range, never stops.',
     aggression: 85,
     defense: 25,
     risk: 45,
+    archetype: 'ranged',
   },
 ];
 
@@ -894,29 +898,42 @@ const Play = () => {
     setEnemyPos(map.enemyPos);
     setActiveSeed(seed);
 
+    // Derive player armor from bot config sliders: high DEF → heavy, high AGGR → light
+    const playerArmor: 'light' | 'medium' | 'heavy' =
+      playerBotConfig.defense >= 65 ? 'heavy'
+      : playerBotConfig.aggression >= 65 ? 'light'
+      : 'medium';
+
+    // Derive enemy armor from opponent archetype
+    const enemyArmor: 'light' | 'medium' | 'heavy' =
+      opponent.archetype === 'melee' ? 'heavy'
+      : opponent.archetype === 'ranged' ? 'light'
+      : 'medium';
+
     const actors = {
       player: createActorState({
         id: 'player',
         position: { x: map.playerPos.x * UNIT_SCALE, y: map.playerPos.y * UNIT_SCALE },
         facing: 'N',
-        armor: 'medium',
+        armor: playerArmor,
       }),
       enemy: createActorState({
         id: 'enemy',
         position: { x: map.enemyPos.x * UNIT_SCALE, y: map.enemyPos.y * UNIT_SCALE },
         facing: 'S',
-        armor: 'medium',
+        armor: enemyArmor,
       }),
     };
     engineRef.current = createInitialState({ seed, actors });
-    botRef.current = createBot('balanced', new Rng(seed));
+    botRef.current = createBot(opponent.archetype, new Rng(seed));
 
     setFeed([
       `Match initialized. Seed ${seed}.`,
-      `Arena size ${GRID_SIZE}x${GRID_SIZE}. Opponent: ${opponent.name}.`,
+      `Arena size ${GRID_SIZE}x${GRID_SIZE}. Opponent: ${opponent.name} [${opponent.archetype}/${enemyArmor}].`,
+      `Your loadout: ${playerBotConfig.name.trim() || 'My Bot'} — armor:${playerArmor} AGGR:${playerBotConfig.aggression} DEF:${playerBotConfig.defense} RISK:${playerBotConfig.risk}`,
     ]);
     setRunning(true);
-    void postEvent('play_match_started', { seed, opponent: opponent.id, gridSize: GRID_SIZE });
+    void postEvent('play_match_started', { seed, opponent: opponent.id, opponentArchetype: opponent.archetype, gridSize: GRID_SIZE, playerArmor, playerAggr: playerBotConfig.aggression, playerDef: playerBotConfig.defense, playerRisk: playerBotConfig.risk });
   };
 
   const logFeed = (lines: string[]) => {
@@ -1230,7 +1247,8 @@ const Play = () => {
                   />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 900 }}>{bot.name}</div>
-                    <div className="hint" style={{ marginBottom: '0.4rem' }}>{bot.tagline}</div>
+                    <div className="hint" style={{ marginBottom: '0.3rem' }}>{bot.tagline}</div>
+                    <span style={{ fontSize: '0.58rem', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '1px 5px', borderRadius: '3px', background: bot.archetype === 'melee' ? '#3a1f1f' : bot.archetype === 'ranged' ? '#1f2f3a' : '#1f2d1f', color: bot.archetype === 'melee' ? '#ff7a7a' : bot.archetype === 'ranged' ? '#7ad4ff' : '#7aff9a', marginBottom: '0.4rem', display: 'inline-block' }}>{bot.archetype}</span>
                     {[
                       { label: 'AGGR', value: bot.aggression, color: 'var(--c-red, #ff4444)' },
                       { label: 'DEF', value: bot.defense, color: 'var(--c-cyan, #00e5ff)' },
