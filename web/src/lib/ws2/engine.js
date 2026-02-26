@@ -13,6 +13,7 @@ import {
   GUARD_DURATION_TICKS,
   GUARD_MULTIPLIER,
   HP_MAX,
+  HP_TIE_EPS,
   MATCH_DURATION_SEC,
   MAX_TICKS,
   MELEE_RANGE,
@@ -337,7 +338,9 @@ const determineWinner = (state) => {
 
   const aHpPct = a.hp / HP_MAX;
   const bHpPct = b.hp / HP_MAX;
-  if (aHpPct !== bHpPct) return { winnerId: aHpPct > bHpPct ? aId : bId, reason: 'TIME_HP' };
+  if (Math.abs(aHpPct - bHpPct) > HP_TIE_EPS) {
+    return { winnerId: aHpPct > bHpPct ? aId : bId, reason: 'TIME_HP' };
+  }
 
   if (a.stats.damageDealt !== b.stats.damageDealt) {
     return { winnerId: a.stats.damageDealt > b.stats.damageDealt ? aId : bId, reason: 'TIME_DAMAGE' };
@@ -422,7 +425,9 @@ export const resolveTick = (state, actionsByActor) => {
     }
   }
 
-  for (const actorId of actorIds) {
+  const seedParity = state.seed % 2;
+  const resolveOrder = (state.tick + seedParity) % 2 === 0 ? actorIds : [...actorIds].reverse();
+  for (const actorId of resolveOrder) {
     const action = acceptedActions.get(actorId);
     if (action) {
       resolveAction(state, state.actors[actorId], action);

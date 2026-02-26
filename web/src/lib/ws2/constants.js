@@ -15,6 +15,7 @@ export const OBJECTIVE_CENTER = { x: 10 * UNIT_SCALE, y: 10 * UNIT_SCALE };
 export const OBJECTIVE_RADIUS = 2.5 * UNIT_SCALE;
 
 export const HP_MAX = 100;
+export const HP_TIE_EPS = 0.05;
 export const ENERGY_MAX = 100 * UNIT_SCALE;
 export const ENERGY_REGEN_PER_TICK = 6; // 0.6 energy per tick
 
@@ -24,7 +25,7 @@ export const DASH_DISTANCE = 3 * UNIT_SCALE;
 
 export const MELEE_RANGE = 1.5 * UNIT_SCALE;
 export const RANGED_MIN = 2.0 * UNIT_SCALE;
-export const RANGED_MAX = 14 * UNIT_SCALE;
+export const RANGED_MAX = 10 * UNIT_SCALE;
 
 export const ACTION_TYPES = [
   'MOVE',
@@ -57,8 +58,8 @@ export const DASH_BUFF_DURATION_TICKS = Math.round(1.2 * TICK_RATE);
 export const UTILITY_DURATION_TICKS = Math.round(1.2 * TICK_RATE);
 
 export const BASE_DAMAGE = {
-  MELEE_STRIKE: 16,
-  RANGED_SHOT: 24,
+  MELEE_STRIKE: 21,
+  RANGED_SHOT: 16,
 };
 
 export const ARMOR_MULTIPLIER = {
@@ -81,4 +82,4 @@ export const RANGED_DISTANCE_MULTIPLIER = (distanceTenths) => {
 export const MIN_DAMAGE = 1;
 
 export const OBJECTIVE_SCORE_PER_TICK = 1; // tenths-of-point per tick
-export const OBJECTIVE_SCORE_TO_WIN = 30; // tenths-of-point lead required
+export const OBJECTIVE_SCORE_TO_WIN = 40; // tenths-of-point lead required
