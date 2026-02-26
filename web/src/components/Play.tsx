@@ -944,7 +944,7 @@ const Play = () => {
     setEnemyPos(nextEnemyPos);
     setEnemyBlock(nextEnemyBlock);
     setEnemyScan(nextEnemyScan);
-    setPlayerBlock(0);
+    setPlayerBlock(nextPlayerBlock);
     setPlayerScan((prev) => Math.max(0, prev - 1));
     setPlayerHp(nextPlayerHp);
     setPlayerAp(MAX_AP);

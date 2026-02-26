@@ -1568,6 +1568,7 @@ const FooterSection = () => {
   const [submittedEmail, setSubmittedEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [botField, setBotField] = useState('');
   const [variant, setVariant] = useState('value');
   const [founderCtaVariant, setFounderCtaVariant] = useState('reserve');
@@ -1612,9 +1613,11 @@ const FooterSection = () => {
   };
 
   const handleCreate = async () => {
+    if (isSubmitting) return;
     const trimmed = validateEmail();
     if (!trimmed) return;
 
+    setIsSubmitting(true);
     try {
       const payload = await submitWithRetry('/api/waitlist', {
         email: trimmed,
@@ -1651,6 +1654,8 @@ const FooterSection = () => {
       setError(shouldQueueForReplay(err)
         ? 'Could not reach storage. Saved locally and will auto-retry when online.'
         : (err?.message || 'Could not submit. Please check your input and retry.'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1756,14 +1761,29 @@ const FooterSection = () => {
               width: '300px',
               textAlign: 'center'
             }}
-            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void handleCreate();
+              }
+            }}
           />
           {error && <p style={{ color: 'var(--c-red)', fontWeight: 800 }}>{error}</p>}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button className="btn-arcade red" style={{ fontSize: '1rem', padding: '0.8rem 2rem' }} onClick={handleCreate}>
-              Join Waitlist
+            <button
+              className="btn-arcade red"
+              style={{ fontSize: '1rem', padding: '0.8rem 2rem' }}
+              onClick={() => { void handleCreate(); }}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Joining...' : 'Join Waitlist'}
             </button>
-            <button className="btn-arcade" style={{ fontSize: '1rem', padding: '0.8rem 2rem' }} onClick={handleFooterFounderCheckout}>
+            <button
+              className="btn-arcade"
+              style={{ fontSize: '1rem', padding: '0.8rem 2rem' }}
+              onClick={() => { void handleFooterFounderCheckout(); }}
+              disabled={isSubmitting}
+            >
               {founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
             </button>
           </div>
