@@ -218,6 +218,17 @@ const globalStyles = `
 
   .nav-link:hover::after { width: 100%; }
 
+  .nav-cta {
+    font-size: 1rem;
+    padding: 0.8rem 2rem;
+  }
+
+  .nav-mobile .btn-arcade {
+    font-size: 1rem;
+    padding: 0.8rem 2rem;
+    width: 100%;
+  }
+
   .hero-section {
     display: grid;
     grid-template-columns: 1.2fr 1fr;
@@ -319,6 +330,11 @@ const globalStyles = `
   .waitlist-message {
     margin-top: 0.75rem;
     font-weight: 800;
+  }
+
+  .waitlist-submit {
+    font-size: 1rem;
+    padding: 0.85rem 1.6rem;
   }
 
   .waitlist-hint {
@@ -916,7 +932,6 @@ const NavBar = ({ onNavClick }) => {
       <div className="nav-controls">
         <button
           className={`btn-arcade nav-cta${playPressed ? ' pressed' : ''}`}
-          style={{ fontSize: '1rem', padding: '0.8rem 2rem' }}
           onClick={handlePlay}
         >
           Play Now
@@ -937,7 +952,6 @@ const NavBar = ({ onNavClick }) => {
         ))}
         <button
           className="btn-arcade"
-          style={{ fontSize: '1rem', padding: '0.8rem 2rem', width: '100%' }}
           onClick={handlePlay}
         >
           Play Now
