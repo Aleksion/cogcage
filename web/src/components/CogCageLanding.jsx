@@ -1083,6 +1083,10 @@ const HeroSection = ({ sectionRef }) => {
     });
 
     if (STRIPE_FOUNDER_URL) {
+      const checkoutSource = `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`;
+      const checkoutIntentSource = `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`;
+      localStorage.setItem('cogcage_last_founder_checkout_source', checkoutSource);
+      localStorage.setItem('cogcage_last_founder_intent_source', checkoutIntentSource);
       const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
       target.searchParams.set('prefilled_email', trimmed.toLowerCase());
       window.location.href = target.toString();
@@ -1384,6 +1388,10 @@ const FooterSection = () => {
     });
 
     if (STRIPE_FOUNDER_URL) {
+      const checkoutSource = `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`;
+      const checkoutIntentSource = `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`;
+      localStorage.setItem('cogcage_last_founder_checkout_source', checkoutSource);
+      localStorage.setItem('cogcage_last_founder_intent_source', checkoutIntentSource);
       const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
       target.searchParams.set('prefilled_email', trimmed);
       window.location.href = target.toString();

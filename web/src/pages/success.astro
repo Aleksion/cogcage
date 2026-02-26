@@ -57,16 +57,21 @@ import Layout from '../layouts/Layout.astro';
 
     if (hasPaidConversion(conversionId)) return;
 
+    const checkoutSource = localStorage.getItem('cogcage_last_founder_checkout_source') || 'stripe-success';
+    const checkoutIntentSource = localStorage.getItem('cogcage_last_founder_intent_source') || undefined;
+
     const payload = {
       event: 'paid_conversion_confirmed',
       eventId: conversionId,
       page: window.location.pathname,
-      source: 'stripe-success',
+      source: checkoutSource,
       tier: 'founder',
       email,
       meta: {
         sessionId,
         url: window.location.href,
+        checkoutSource,
+        checkoutIntentSource,
       },
     };
 

@@ -485,6 +485,42 @@ const postWaitlistFounderIntentsBySource = {
   ),
 };
 
+const paidConversionsBySource = {
+  landing: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'paid_conversion_confirmed'
+       AND source LIKE '%-founder-cta-%'
+       AND source NOT LIKE 'play-page-founder-cta-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  play: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'paid_conversion_confirmed'
+       AND source LIKE 'play-page-founder-cta-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  postWaitlist: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'paid_conversion_confirmed'
+       AND source LIKE '%-post-waitlist-founder-cta-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  unattributed: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'paid_conversion_confirmed'
+       AND source = 'stripe-success'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
 const uniqueInWindow = {
   founderClickEmails: count(
     `SELECT COUNT(DISTINCT lower(email)) AS value
@@ -538,6 +574,7 @@ const rollup = {
   landingFounderIntentsByCtaVariant,
   postWaitlistFounderClicksBySource,
   postWaitlistFounderIntentsBySource,
+  paidConversionsBySource,
   playFounderDailySplit,
   alerts: {
     playGuardrailMinSample,
@@ -557,6 +594,12 @@ const rollup = {
     founderIntentToPaidPct: pct(inWindow.paidConversions, inWindow.founderIntents),
     founderClickToPaidPct: pct(inWindow.paidConversions, inWindow.founderClicks),
     waitlistToPaidPct: pct(inWindow.paidConversions, inWindow.waitlistLeads),
+    landingFounderClickToPaidPct: pct(paidConversionsBySource.landing, inWindow.landingFounderClicks),
+    playFounderClickToPaidPct: pct(paidConversionsBySource.play, inWindow.playFounderClicks),
+    postWaitlistFounderClickToPaidPct: pct(
+      paidConversionsBySource.postWaitlist,
+      postWaitlistFounderClicksBySource.hero + postWaitlistFounderClicksBySource.footer,
+    ),
 
     reserveCtaSharePct: pct(landingFounderClicksByCtaVariant.reserve, inWindow.landingFounderClicks),
     claimCtaSharePct: pct(landingFounderClicksByCtaVariant.claim, inWindow.landingFounderClicks),
@@ -665,6 +708,16 @@ console.log(`- Founder click -> intent: ${rollup.rates.founderClickToIntentPct.t
 console.log(`- Founder intent -> paid: ${rollup.rates.founderIntentToPaidPct.toFixed(2)}%`);
 console.log(`- Founder click -> paid: ${rollup.rates.founderClickToPaidPct.toFixed(2)}%`);
 console.log(`- Waitlist lead -> paid: ${rollup.rates.waitlistToPaidPct.toFixed(2)}%`);
+console.log('');
+
+console.log('Paid conversions by source:');
+console.log(`- Landing founder CTA sourced paid conversions: ${paidConversionsBySource.landing}`);
+console.log(`- Play founder CTA sourced paid conversions: ${paidConversionsBySource.play}`);
+console.log(`- Post-waitlist founder CTA sourced paid conversions: ${paidConversionsBySource.postWaitlist}`);
+console.log(`- Unattributed paid conversions (legacy stripe-success): ${paidConversionsBySource.unattributed}`);
+console.log(`- Landing founder click -> paid: ${rollup.rates.landingFounderClickToPaidPct.toFixed(2)}%`);
+console.log(`- Play founder click -> paid: ${rollup.rates.playFounderClickToPaidPct.toFixed(2)}%`);
+console.log(`- Post-waitlist founder click -> paid: ${rollup.rates.postWaitlistFounderClickToPaidPct.toFixed(2)}%`);
 console.log('');
 
 console.log('Landing founder CTA copy split:');

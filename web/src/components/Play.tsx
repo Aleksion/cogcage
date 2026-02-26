@@ -869,6 +869,10 @@ const Play = () => {
         postEvent('founder_checkout_clicked', { source: checkoutSource, ctaVariant: founderCtaVariant.key, founderCopyVariant: playFounderCopyVariant }),
       ]);
 
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('cogcage_last_founder_checkout_source', checkoutSource);
+        window.localStorage.setItem('cogcage_last_founder_intent_source', checkoutSource.replace('founder-cta', 'founder-checkout'));
+      }
       const url = new URL(founderCheckoutUrl);
       url.searchParams.set('prefilled_email', normalizedEmail);
       window.location.href = url.toString();
