@@ -1,11 +1,316 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="CogCage — Join the Alpha" description="A skill-first AI arena with ranked ladders, founder access, and competitive tournaments.">
+  <main class="shell">
+    <header class="topbar">
+      <a href="#" class="logo">COGCAGE</a>
+      <a class="ghost" href="#pricing" data-track="view_pricing">Pricing</a>
+    </header>
+
+    <section class="hero">
+      <p class="eyebrow">SKILL-FIRST AI COMPETITION</p>
+      <h1>Climb the ladder. Beat real opponents. Earn your edge.</h1>
+      <p class="subcopy">
+        CogCage is the competitive arena for AI-assisted strategy players. Join the alpha to lock founder pricing,
+        get early ranked access, and first invites to entry-fee tournaments.
+      </p>
+
+      <div class="cta-row">
+        <a class="button button-primary" href="#join" data-track="hero_join_click">Join Alpha</a>
+        <a class="button button-secondary" href="#pricing" data-track="hero_pricing_click">See Plans</a>
+      </div>
+
+      <div class="stats">
+        <article>
+          <strong>Founder price</strong>
+          <span>$9/mo locked for first 200 members</span>
+        </article>
+        <article>
+          <strong>Tournament access</strong>
+          <span>Priority entry invites for alpha cohort</span>
+        </article>
+        <article>
+          <strong>Launch focus</strong>
+          <span>Ranked 1v1 ladders + replay analytics</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel" id="pricing">
+      <h2>Simple pricing ladder</h2>
+      <p>Start with founder access now. Upgrade to Pro for higher caps and analytics once ranked queues open.</p>
+      <div class="cards">
+        <article class="card card-highlight">
+          <h3>Founder</h3>
+          <p class="price">$9<span>/month</span></p>
+          <ul>
+            <li>Alpha queue access</li>
+            <li>Monthly rank seasons</li>
+            <li>Founder badge + locked pricing</li>
+          </ul>
+          <a href="#join" class="button button-primary" data-track="founder_choose_click">Reserve Founder Spot</a>
+        </article>
+        <article class="card">
+          <h3>Pro</h3>
+          <p class="price">$29<span>/month</span></p>
+          <ul>
+            <li>Higher match caps</li>
+            <li>Replay + trend analytics</li>
+            <li>Priority support + events</li>
+          </ul>
+          <a href="#join" class="button button-secondary" data-track="pro_interest_click">Get Notified</a>
+        </article>
+        <article class="card">
+          <h3>Tournaments</h3>
+          <p class="price">$5–$25<span>/entry</span></p>
+          <ul>
+            <li>Prize-pool challenge nights</li>
+            <li>Skill-tier matchmaking</li>
+            <li>Sponsored formats coming soon</li>
+          </ul>
+          <a href="#join" class="button button-secondary" data-track="tournament_interest_click">Request Invite</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel join" id="join">
+      <h2>Join alpha waitlist</h2>
+      <p>Drop your email + primary game. We’ll send your invite and founder checkout link when slots open.</p>
+      <form class="waitlist-form" id="waitlistForm" action="https://formspree.io/f/xwpowpvl" method="POST">
+        <input type="hidden" name="source" value="cogcage-landing" />
+        <label>
+          Email
+          <input type="email" name="email" autocomplete="email" placeholder="you@domain.com" required />
+        </label>
+        <label>
+          Primary game
+          <input type="text" name="game" placeholder="EA FC, NBA 2K, Madden, Chess..." required />
+        </label>
+        <button type="submit" class="button button-primary" data-track="waitlist_submit_click">Reserve My Spot</button>
+      </form>
+      <p class="fine-print">By submitting, you agree to receive alpha updates and launch offers.</p>
+    </section>
+  </main>
 </Layout>
+
+<script is:inline>
+  const key = 'cogcage_events';
+
+  function track(eventName, meta = {}) {
+    const previous = JSON.parse(localStorage.getItem(key) || '[]');
+    previous.push({ event: eventName, meta, at: new Date().toISOString() });
+    localStorage.setItem(key, JSON.stringify(previous.slice(-100)));
+  }
+
+  document.querySelectorAll('[data-track]').forEach((el) => {
+    el.addEventListener('click', () => {
+      track('click', { id: el.getAttribute('data-track') });
+    });
+  });
+
+  const waitlistForm = document.getElementById('waitlistForm');
+  if (waitlistForm) {
+    waitlistForm.addEventListener('submit', () => {
+      track('waitlist_submit', { location: 'landing' });
+    });
+  }
+
+  track('landing_view', { page: 'home' });
+</script>
+
+<style>
+  .shell {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 4rem;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3rem;
+  }
+
+  .logo {
+    text-decoration: none;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+  }
+
+  .ghost {
+    text-decoration: none;
+    opacity: 0.9;
+  }
+
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3.8rem);
+    margin: 0.4rem 0 1rem;
+    line-height: 1.08;
+    max-width: 14ch;
+  }
+
+  .eyebrow {
+    color: #9ca5ff;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+  }
+
+  .subcopy {
+    max-width: 58ch;
+    color: #cfd3ee;
+    line-height: 1.55;
+    font-size: 1.06rem;
+  }
+
+  .cta-row {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin: 1.6rem 0 2rem;
+  }
+
+  .button {
+    border: 0;
+    text-decoration: none;
+    border-radius: 999px;
+    padding: 0.72rem 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.16s ease;
+  }
+
+  .button:hover {
+    transform: translateY(-1px);
+  }
+
+  .button-primary {
+    background: linear-gradient(135deg, #8a8fff 0%, #5d6bff 100%);
+    color: white;
+  }
+
+  .button-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f4f5ff;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 0.8rem;
+    margin-top: 2rem;
+  }
+
+  .stats article {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.8rem;
+    padding: 0.9rem;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .stats strong {
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  .stats span {
+    color: #c9cee9;
+    font-size: 0.95rem;
+  }
+
+  .panel {
+    margin-top: 2.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1rem;
+    padding: 1.4rem;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .panel h2 {
+    margin-top: 0;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .card {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 0.85rem;
+    padding: 1rem;
+  }
+
+  .card-highlight {
+    border-color: rgba(138, 143, 255, 0.7);
+    box-shadow: inset 0 0 0 1px rgba(138, 143, 255, 0.24);
+  }
+
+  .price {
+    font-size: 1.55rem;
+    font-weight: 800;
+    margin: 0.4rem 0 0.8rem;
+  }
+
+  .price span {
+    font-size: 0.9rem;
+    font-weight: 500;
+    opacity: 0.75;
+    margin-left: 0.2rem;
+  }
+
+  ul {
+    margin: 0 0 1rem;
+    padding-left: 1.2rem;
+    color: #d2d5ec;
+    line-height: 1.45;
+  }
+
+  .join .waitlist-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.7rem;
+    align-items: end;
+  }
+
+  .join label {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.88rem;
+    color: #d2d6f1;
+  }
+
+  .join input {
+    border-radius: 0.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.62rem 0.72rem;
+    background: rgba(3, 3, 7, 0.8);
+    color: #fff;
+  }
+
+  .fine-print {
+    margin-top: 0.8rem;
+    color: #acb2d9;
+    font-size: 0.84rem;
+  }
+
+  @media (max-width: 780px) {
+    .join .waitlist-form {
+      grid-template-columns: 1fr;
+    }
+
+    .panel {
+      padding: 1.1rem;
+    }
+  }
+</style>
