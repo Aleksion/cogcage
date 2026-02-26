@@ -11,10 +11,26 @@ import {
   RANGED_MAX,
   RANGED_MIN,
   UNIT_SCALE,
-} from './constants.js';
-import { DIRS, applyDirection, distanceTenths, directionFromVector } from './geometry.js';
+} from './constants.ts';
+import type { ActionType } from './constants.ts';
+import { DIRS, applyDirection, distanceTenths, directionFromVector } from './geometry.ts';
+import type { Direction, Position } from './geometry.ts';
+import type { GameState, ActorState, AgentAction } from './engine.ts';
+import type { Rng } from './rng.ts';
 
-const oppositeDir = {
+export type Archetype = 'melee' | 'ranged' | 'balanced';
+
+export interface Bot {
+  archetype: Archetype;
+  decide: (state: GameState, actorId: string) => AgentAction | null;
+}
+
+interface RangedPreference {
+  preferredDistance: number;
+  buffer: number;
+}
+
+const oppositeDir: Record<Direction, Direction> = {
   N: 'S',
   NE: 'SW',
   E: 'W',
@@ -25,22 +41,22 @@ const oppositeDir = {
   NW: 'SE',
 };
 
-const directionTo = (from, to) => directionFromVector(to.x - from.x, to.y - from.y);
+const directionTo = (from: Position, to: Position): Direction => directionFromVector(to.x - from.x, to.y - from.y);
 
-const canAfford = (actor, type) => actor.energy >= (ACTION_COST[type] ?? 0);
+const canAfford = (actor: ActorState, type: string): boolean => actor.energy >= (ACTION_COST[type as ActionType] ?? 0);
 
-const canUse = (actor, type) => actor.cooldowns[type] === 0 && canAfford(actor, type);
+const canUse = (actor: ActorState, type: string): boolean => actor.cooldowns[type] === 0 && canAfford(actor, type);
 
-const pickMoveDir = (actor, target, preferAway = false) => {
+const pickMoveDir = (actor: ActorState, target: ActorState, preferAway: boolean = false): Direction => {
   const dir = directionTo(actor.position, target.position);
   return preferAway ? oppositeDir[dir] : dir;
 };
 
-const clampActionTick = (state) => ({ tick: state.tick });
+const clampActionTick = (state: GameState): { tick: number } => ({ tick: state.tick });
 
-const shouldGuard = (actor, distance) => distance <= MELEE_RANGE * 2 && canUse(actor, 'GUARD');
+const shouldGuard = (actor: ActorState, distance: number): boolean => distance <= MELEE_RANGE * 2 && canUse(actor, 'GUARD');
 
-const pickRangedAction = (state, actor, target, preference = null) => {
+const pickRangedAction = (state: GameState, actor: ActorState, target: ActorState, preference: RangedPreference | null = null): AgentAction | null => {
   const dist = distanceTenths(actor.position, target.position);
   const preferred = preference?.preferredDistance ?? Math.round((RANGED_MIN + RANGED_MAX) / 2);
   const buffer = preference?.buffer ?? Math.round(0.75 * UNIT_SCALE);
@@ -77,7 +93,7 @@ const pickRangedAction = (state, actor, target, preference = null) => {
   return null;
 };
 
-const pickMeleeAction = (state, actor, target) => {
+const pickMeleeAction = (state: GameState, actor: ActorState, target: ActorState): AgentAction => {
   const dist = distanceTenths(actor.position, target.position);
   if (dist <= MELEE_RANGE && canUse(actor, 'MELEE_STRIKE')) {
     return { tick: state.tick, actorId: actor.id, type: 'MELEE_STRIKE', targetId: target.id };
@@ -92,7 +108,7 @@ const pickMeleeAction = (state, actor, target) => {
   return { tick: state.tick, actorId: actor.id, type: 'MOVE', dir: pickMoveDir(actor, target, false) };
 };
 
-const pickBalancedAction = (state, actor, target) => {
+const pickBalancedAction = (state: GameState, actor: ActorState, target: ActorState): AgentAction => {
   const dist = distanceTenths(actor.position, target.position);
   if (dist <= MELEE_RANGE && canUse(actor, 'MELEE_STRIKE')) {
     return { tick: state.tick, actorId: actor.id, type: 'MELEE_STRIKE', targetId: target.id };
@@ -106,10 +122,10 @@ const pickBalancedAction = (state, actor, target) => {
   return { tick: state.tick, actorId: actor.id, type: 'MOVE', dir: pickMoveDir(actor, target, dist < RANGED_MIN) };
 };
 
-export const BOT_ARCHETYPES = ['melee', 'ranged', 'balanced'];
+export const BOT_ARCHETYPES: readonly Archetype[] = ['melee', 'ranged', 'balanced'];
 
-export const createBot = (archetype, rng) => {
-  const rangedPreference = archetype === 'ranged'
+export const createBot = (archetype: Archetype, rng: Rng): Bot => {
+  const rangedPreference: RangedPreference | null = archetype === 'ranged'
     ? {
       preferredDistance: Math.round(RANGED_MIN + (RANGED_MAX - RANGED_MIN) * (0.35 + rng.next() * 0.3)),
       buffer: Math.round(0.6 * UNIT_SCALE),
@@ -121,10 +137,10 @@ export const createBot = (archetype, rng) => {
 
   return {
     archetype,
-    decide(state, actorId) {
+    decide(state: GameState, actorId: string): AgentAction | null {
       const actor = state.actors[actorId];
       const targetId = Object.keys(state.actors).find((id) => id !== actorId);
-      const target = state.actors[targetId];
+      const target = targetId ? state.actors[targetId] : undefined;
       if (!actor || !target) return null;
       if (state.tick % DECISION_WINDOW_TICKS !== 0) return null;
 
@@ -145,12 +161,12 @@ export const createBot = (archetype, rng) => {
   };
 };
 
-export const createArchetypePair = (rng, archetypeA, archetypeB) => ({
+export const createArchetypePair = (rng: Rng, archetypeA: Archetype, archetypeB: Archetype): { alpha: Bot; beta: Bot } => ({
   alpha: createBot(archetypeA, rng),
   beta: createBot(archetypeB, rng),
 });
 
-export const randomizeSpawn = (actors, rng) => {
+export const randomizeSpawn = (actors: Record<string, ActorState>, rng: Rng): void => {
   const radius = 6 * UNIT_SCALE;
   const offsetX = Math.round((rng.next() - 0.5) * radius);
   const offsetY = Math.round((rng.next() - 0.5) * radius);
@@ -160,4 +176,4 @@ export const randomizeSpawn = (actors, rng) => {
   actors.beta.position.y = clamp(actors.beta.position.y - offsetY, 0, 20 * UNIT_SCALE);
 };
 
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));

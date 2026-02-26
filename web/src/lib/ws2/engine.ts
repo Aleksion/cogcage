@@ -30,7 +30,8 @@ import {
   UNIT_SCALE,
   UTILITY_DURATION_TICKS,
   MOVE_DISTANCE,
-} from './constants.js';
+} from './constants.ts';
+import type { ActionType, ArmorType } from './constants.ts';
 import {
   DIRS,
   applyDirection,
@@ -38,16 +39,84 @@ import {
   directionFromVector,
   distanceTenths,
   inGuardArc,
-} from './geometry.js';
+} from './geometry.ts';
+import type { Direction, Position } from './geometry.ts';
 
-const ACTION_SET = new Set(ACTION_TYPES);
+const ACTION_SET = new Set<string>(ACTION_TYPES);
+
+export interface StatusEffect {
+  endsAt: number;
+  charges?: number;
+  kind?: string;
+}
+
+export interface ActorStats {
+  damageDealt: number;
+  illegalActions: number;
+}
+
+export interface ActorState {
+  id: string;
+  hp: number;
+  energy: number;
+  position: Position;
+  facing: Direction;
+  armor: ArmorType;
+  cooldowns: Record<string, number>;
+  statuses: {
+    guard: StatusEffect | null;
+    dashBuff: StatusEffect | null;
+    utility: StatusEffect | null;
+  };
+  stats: ActorStats;
+}
+
+export interface GameEvent {
+  tick: number;
+  type: string;
+  actorId: string | null;
+  targetId: string | null;
+  data: Record<string, unknown> | null;
+}
+
+export interface GameState {
+  seed: number;
+  tick: number;
+  maxTicks: number;
+  ruleset: string;
+  actors: Record<string, ActorState>;
+  objectiveScore: Record<string, number>;
+  events: GameEvent[];
+  winnerId: string | null;
+  endReason: string | null;
+  ended: boolean;
+  durationSec: number;
+}
+
+export interface AgentAction {
+  tick: number;
+  type: string;
+  dir?: Direction | null;
+  targetId?: string | null;
+  actorId?: string;
+}
+
+interface ValidationResult {
+  valid: boolean;
+  reason?: string;
+}
 
 export const createActorState = ({
   id,
   position,
   facing = 'N',
   armor = 'medium',
-}) => ({
+}: {
+  id: string;
+  position: Position;
+  facing?: Direction;
+  armor?: ArmorType;
+}): ActorState => ({
   id,
   hp: HP_MAX,
   energy: ENERGY_MAX,
@@ -72,7 +141,7 @@ export const createActorState = ({
   },
 });
 
-export const createInitialState = ({ seed, actors }) => ({
+export const createInitialState = ({ seed, actors }: { seed: number; actors: Record<string, ActorState> }): GameState => ({
   seed,
   tick: 0,
   maxTicks: MAX_TICKS,
@@ -86,13 +155,13 @@ export const createInitialState = ({ seed, actors }) => ({
   durationSec: MATCH_DURATION_SEC,
 });
 
-const orderedActorIds = (state) => Object.keys(state.actors).sort();
+const orderedActorIds = (state: GameState): string[] => Object.keys(state.actors).sort();
 
-const emitEvent = (state, event) => {
+const emitEvent = (state: GameState, event: GameEvent): void => {
   state.events.push(event);
 };
 
-const makeEvent = (type, payload) => ({
+const makeEvent = (type: string, payload: { tick: number; actorId?: string | null; targetId?: string | null; data?: Record<string, unknown> | null }): GameEvent => ({
   tick: payload.tick,
   type,
   actorId: payload.actorId ?? null,
@@ -100,11 +169,11 @@ const makeEvent = (type, payload) => ({
   data: payload.data ?? null,
 });
 
-const isDecisionTick = (tick) => tick % DECISION_WINDOW_TICKS === 0;
+const isDecisionTick = (tick: number): boolean => tick % DECISION_WINDOW_TICKS === 0;
 
-const isStatusActive = (status, tick) => !!status && tick < status.endsAt;
+const isStatusActive = (status: StatusEffect | null, tick: number): boolean => !!status && tick < status.endsAt;
 
-const expireStatuses = (actor, tick) => {
+const expireStatuses = (actor: ActorState, tick: number): void => {
   if (actor.statuses.guard && !isStatusActive(actor.statuses.guard, tick)) {
     actor.statuses.guard = null;
   }
@@ -116,28 +185,28 @@ const expireStatuses = (actor, tick) => {
   }
 };
 
-const regenEnergy = (actor) => {
+const regenEnergy = (actor: ActorState): void => {
   actor.energy = clamp(actor.energy + ENERGY_REGEN_PER_TICK, 0, ENERGY_MAX);
 };
 
-const tickCooldowns = (actor) => {
+const tickCooldowns = (actor: ActorState): void => {
   for (const key of Object.keys(actor.cooldowns)) {
     if (actor.cooldowns[key] > 0) actor.cooldowns[key] -= 1;
   }
 };
 
-const clampPosition = (pos) => ({
+const clampPosition = (pos: Position): Position => ({
   x: clamp(pos.x, 0, ARENA_SIZE),
   y: clamp(pos.y, 0, ARENA_SIZE),
 });
 
-const getTargetId = (state, actorId, action) => {
+const getTargetId = (state: GameState, actorId: string, action: AgentAction | null): string | null => {
   if (action?.targetId && state.actors[action.targetId]) return action.targetId;
   const others = orderedActorIds(state).filter((id) => id !== actorId);
   return others[0] ?? null;
 };
 
-const validateAction = (state, actor, action) => {
+const validateAction = (state: GameState, actor: ActorState, action: AgentAction | null): ValidationResult => {
   if (!action || !ACTION_SET.has(action.type)) {
     return { valid: false, reason: 'UNKNOWN_ACTION' };
   }
@@ -167,7 +236,7 @@ const validateAction = (state, actor, action) => {
   if (action.type === 'UTILITY' && isStatusActive(actor.statuses.utility, state.tick)) {
     return { valid: false, reason: 'UTILITY_ACTIVE' };
   }
-  const cost = ACTION_COST[action.type];
+  const cost = ACTION_COST[action.type as ActionType];
   if (typeof cost === 'number' && actor.energy < cost) {
     return { valid: false, reason: 'INSUFFICIENT_ENERGY' };
   }
@@ -177,23 +246,23 @@ const validateAction = (state, actor, action) => {
   return { valid: true };
 };
 
-const spendEnergy = (actor, action) => {
-  const cost = ACTION_COST[action.type] ?? 0;
+const spendEnergy = (actor: ActorState, action: AgentAction): void => {
+  const cost = ACTION_COST[action.type as ActionType] ?? 0;
   actor.energy = clamp(actor.energy - cost, 0, ENERGY_MAX);
 };
 
-const applyCooldown = (actor, action) => {
-  const cd = COOLDOWN_TICKS[action.type];
+const applyCooldown = (actor: ActorState, action: AgentAction): void => {
+  const cd = COOLDOWN_TICKS[action.type as ActionType];
   if (cd) actor.cooldowns[action.type] = cd;
 };
 
-const applyMove = (actor, dir, distance) => {
+const applyMove = (actor: ActorState, dir: Direction, distance: number): void => {
   const next = clampPosition(applyDirection(actor.position, dir, distance));
   actor.position = next;
   actor.facing = dir;
 };
 
-const applyGuard = (state, actor) => {
+const applyGuard = (state: GameState, actor: ActorState): void => {
   actor.statuses.guard = { endsAt: state.tick + GUARD_DURATION_TICKS };
   emitEvent(state, makeEvent('STATUS_APPLIED', {
     tick: state.tick,
@@ -202,7 +271,7 @@ const applyGuard = (state, actor) => {
   }));
 };
 
-const applyDash = (state, actor, dir) => {
+const applyDash = (state: GameState, actor: ActorState, dir: Direction): void => {
   applyMove(actor, dir, DASH_DISTANCE);
   actor.statuses.dashBuff = { endsAt: state.tick + DASH_BUFF_DURATION_TICKS, charges: 1 };
   emitEvent(state, makeEvent('STATUS_APPLIED', {
@@ -212,7 +281,7 @@ const applyDash = (state, actor, dir) => {
   }));
 };
 
-const applyUtility = (state, actor) => {
+const applyUtility = (state: GameState, actor: ActorState): void => {
   actor.statuses.utility = { endsAt: state.tick + UTILITY_DURATION_TICKS, kind: 'GENERIC' };
   emitEvent(state, makeEvent('STATUS_APPLIED', {
     tick: state.tick,
@@ -221,7 +290,7 @@ const applyUtility = (state, actor) => {
   }));
 };
 
-const applyDamage = (state, attacker, defender, base, distanceTenthsValue) => {
+const applyDamage = (state: GameState, attacker: ActorState, defender: ActorState, base: number, distanceTenthsValue: number): void => {
   const postureMult = attacker.statuses.dashBuff?.charges ? POSTURE_DASH_MULTIPLIER : 1.0;
   const distanceMult = base === BASE_DAMAGE.RANGED_SHOT ? RANGED_DISTANCE_MULTIPLIER(distanceTenthsValue) : 1.0;
   const guardActive = isStatusActive(defender.statuses.guard, state.tick) && inGuardArc(defender.facing, defender.position, attacker.position);
@@ -254,17 +323,17 @@ const applyDamage = (state, attacker, defender, base, distanceTenthsValue) => {
   }));
 };
 
-const resolveAction = (state, actor, action) => {
+const resolveAction = (state: GameState, actor: ActorState, action: AgentAction | null): void => {
   if (!action || action.type === 'NO_OP') return;
   spendEnergy(actor, action);
   applyCooldown(actor, action);
 
   if (action.type === 'MOVE') {
-    applyMove(actor, action.dir, MOVE_DISTANCE);
+    applyMove(actor, action.dir as Direction, MOVE_DISTANCE);
     return;
   }
   if (action.type === 'DASH') {
-    applyDash(state, actor, action.dir);
+    applyDash(state, actor, action.dir as Direction);
     return;
   }
   if (action.type === 'GUARD') {
@@ -292,7 +361,7 @@ const resolveAction = (state, actor, action) => {
   }
 };
 
-const scoreObjective = (state) => {
+const scoreObjective = (state: GameState): void => {
   const ids = orderedActorIds(state);
   if (ids.length < 2) return;
   const [aId, bId] = ids;
@@ -319,7 +388,7 @@ const scoreObjective = (state) => {
   }
 };
 
-const determineWinner = (state) => {
+const determineWinner = (state: GameState): { winnerId: string | null; reason: string } => {
   const ids = orderedActorIds(state);
   if (ids.length < 2) return { winnerId: ids[0] ?? null, reason: 'BYE' };
   const [aId, bId] = ids;
@@ -353,7 +422,7 @@ const determineWinner = (state) => {
   return { winnerId: null, reason: 'DRAW' };
 };
 
-const endMatch = (state, reasonOverride = null) => {
+const endMatch = (state: GameState, reasonOverride: string | null = null): void => {
   if (state.ended) return;
   const { winnerId, reason } = determineWinner(state);
   state.winnerId = winnerId;
@@ -372,14 +441,14 @@ const endMatch = (state, reasonOverride = null) => {
   }));
 };
 
-const sanitizeAction = (action) => ({
+const sanitizeAction = (action: AgentAction): { tick: number; type: string; dir: Direction | null; targetId: string | null } => ({
   tick: action.tick,
   type: action.type,
-  dir: action.dir ?? null,
+  dir: (action.dir as Direction) ?? null,
   targetId: action.targetId ?? null,
 });
 
-const markIllegal = (state, actor, action, reason) => {
+const markIllegal = (state: GameState, actor: ActorState, action: AgentAction, reason: string): void => {
   actor.stats.illegalActions += 1;
   emitEvent(state, makeEvent('ILLEGAL_ACTION', {
     tick: state.tick,
@@ -393,7 +462,7 @@ const markIllegal = (state, actor, action, reason) => {
   }));
 };
 
-export const resolveTick = (state, actionsByActor) => {
+export const resolveTick = (state: GameState, actionsByActor: Map<string, AgentAction>): void => {
   const actorIds = orderedActorIds(state);
   for (const actorId of actorIds) {
     const actor = state.actors[actorId];
@@ -402,7 +471,7 @@ export const resolveTick = (state, actionsByActor) => {
     expireStatuses(actor, state.tick);
   }
 
-  const acceptedActions = new Map();
+  const acceptedActions = new Map<string, AgentAction>();
 
   if (isDecisionTick(state.tick)) {
     for (const actorId of actorIds) {
@@ -411,14 +480,14 @@ export const resolveTick = (state, actionsByActor) => {
       const validation = validateAction(state, actor, action);
       if (!validation.valid) {
         if (action.type !== 'NO_OP') {
-          markIllegal(state, actor, action, validation.reason);
+          markIllegal(state, actor, action, validation.reason!);
         }
         acceptedActions.set(actorId, { tick: state.tick, type: 'NO_OP' });
       } else {
         emitEvent(state, makeEvent('ACTION_ACCEPTED', {
           tick: state.tick,
           actorId: actor.id,
-          data: sanitizeAction(action),
+          data: sanitizeAction(action) as unknown as Record<string, unknown>,
         }));
         acceptedActions.set(actorId, action);
       }
@@ -460,25 +529,25 @@ export const resolveTick = (state, actionsByActor) => {
   state.tick += 1;
 };
 
-const buildActionIndex = (actionLog) => {
-  const byTick = new Map();
+const buildActionIndex = (actionLog: AgentAction[]): Map<number, Map<string, AgentAction[]>> => {
+  const byTick = new Map<number, Map<string, AgentAction[]>>();
   for (const action of actionLog) {
     const tick = action.tick;
     if (!byTick.has(tick)) byTick.set(tick, new Map());
-    const byActor = byTick.get(tick);
-    if (!byActor.has(action.actorId)) byActor.set(action.actorId, []);
-    byActor.get(action.actorId).push(action);
+    const byActor = byTick.get(tick)!;
+    if (!byActor.has(action.actorId!)) byActor.set(action.actorId!, []);
+    byActor.get(action.actorId!)!.push(action);
   }
   return byTick;
 };
 
-export const runMatchFromLog = ({ seed, actors, actionLog }) => {
+export const runMatchFromLog = ({ seed, actors, actionLog }: { seed: number; actors: Record<string, ActorState>; actionLog?: AgentAction[] }): GameState => {
   const state = createInitialState({ seed, actors });
   const indexed = buildActionIndex(actionLog ?? []);
 
   while (!state.ended && state.tick < state.maxTicks) {
-    const actionsAtTick = indexed.get(state.tick) ?? new Map();
-    const actionsByActor = new Map();
+    const actionsAtTick = indexed.get(state.tick) ?? new Map<string, AgentAction[]>();
+    const actionsByActor = new Map<string, AgentAction>();
     for (const [actorId, actions] of actionsAtTick.entries()) {
       if (actions.length > 1) {
         for (let i = 1; i < actions.length; i += 1) {
@@ -497,15 +566,17 @@ export const runMatchFromLog = ({ seed, actors, actionLog }) => {
   return state;
 };
 
-const cloneActors = (actors) => JSON.parse(JSON.stringify(actors));
+const cloneActors = (actors: Record<string, ActorState>): Record<string, ActorState> => JSON.parse(JSON.stringify(actors));
 
-export const runMatchWithProvider = ({ seed, actors, actionProvider }) => {
+export type ActionProvider = (state: GameState, actorId: string) => AgentAction | null;
+
+export const runMatchWithProvider = ({ seed, actors, actionProvider }: { seed: number; actors: Record<string, ActorState>; actionProvider?: ActionProvider }): { state: GameState; actionLog: AgentAction[]; initialActors: Record<string, ActorState> } => {
   const initialActors = cloneActors(actors);
   const state = createInitialState({ seed, actors });
-  const actionLog = [];
+  const actionLog: AgentAction[] = [];
 
   while (!state.ended && state.tick < state.maxTicks) {
-    const actionsByActor = new Map();
+    const actionsByActor = new Map<string, AgentAction>();
     if (isDecisionTick(state.tick) && actionProvider) {
       for (const actorId of orderedActorIds(state)) {
         const action = actionProvider(state, actorId);
@@ -521,7 +592,7 @@ export const runMatchWithProvider = ({ seed, actors, actionProvider }) => {
   return { state, actionLog, initialActors };
 };
 
-export const createStandardActors = () => ({
+export const createStandardActors = (): Record<string, ActorState> => ({
   alpha: createActorState({ id: 'alpha', position: { x: 3 * UNIT_SCALE, y: 10 * UNIT_SCALE }, facing: 'E', armor: 'medium' }),
   beta: createActorState({ id: 'beta', position: { x: 17 * UNIT_SCALE, y: 10 * UNIT_SCALE }, facing: 'W', armor: 'medium' }),
 });

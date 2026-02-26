@@ -1,10 +1,14 @@
-import { UNIT_SCALE } from './constants.js';
+import { UNIT_SCALE } from './constants.ts';
 
-export const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+export type Position = { x: number; y: number };
+
+export type Direction = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+
+export const DIRS: readonly Direction[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
 const SQRT1_2 = Math.SQRT1_2;
 
-export const DIR_VECTORS = {
+export const DIR_VECTORS: Record<Direction, Position> = {
   N: { x: 0, y: -1 },
   NE: { x: SQRT1_2, y: -SQRT1_2 },
   E: { x: 1, y: 0 },
@@ -15,16 +19,16 @@ export const DIR_VECTORS = {
   NW: { x: -SQRT1_2, y: -SQRT1_2 },
 };
 
-export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+export const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
-export const distanceTenths = (a, b) => {
+export const distanceTenths = (a: Position, b: Position): number => {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
   const dist = Math.hypot(dx, dy);
   return Math.round(dist);
 };
 
-export const applyDirection = (pos, dir, distance) => {
+export const applyDirection = (pos: Position, dir: Direction, distance: number): Position => {
   const vec = DIR_VECTORS[dir];
   if (!vec) return { ...pos };
   return {
@@ -33,26 +37,26 @@ export const applyDirection = (pos, dir, distance) => {
   };
 };
 
-export const directionFromVector = (dx, dy) => {
+export const directionFromVector = (dx: number, dy: number): Direction => {
   if (dx === 0 && dy === 0) return 'N';
   const angle = Math.atan2(dy, dx);
   const octant = Math.round((8 * angle) / (2 * Math.PI)) & 7;
-  const mapping = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+  const mapping: Direction[] = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
   return mapping[octant];
 };
 
-export const facingDot = (facing, dx, dy) => {
+export const facingDot = (facing: Direction, dx: number, dy: number): number => {
   const vec = DIR_VECTORS[facing] ?? DIR_VECTORS.N;
   const length = Math.hypot(dx, dy);
   if (length === 0) return 1;
   return (vec.x * (dx / length)) + (vec.y * (dy / length));
 };
 
-export const inGuardArc = (facing, defender, attacker) => {
+export const inGuardArc = (facing: Direction, defender: Position, attacker: Position): boolean => {
   const dx = attacker.x - defender.x;
   const dy = attacker.y - defender.y;
   const dot = facingDot(facing, dx, dy);
   return dot >= 0.5; // cos(60deg)
 };
 
-export const toUnits = (valueTenths) => valueTenths / UNIT_SCALE;
+export const toUnits = (valueTenths: number): number => valueTenths / UNIT_SCALE;

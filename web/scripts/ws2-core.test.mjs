@@ -7,11 +7,11 @@ import {
   runMatchFromLog,
   runMatchWithProvider,
   createStandardActors,
-} from '../src/lib/ws2/engine.js';
-import { hashEvents, replayMatch } from '../src/lib/ws2/replay.js';
-import { Rng } from '../src/lib/ws2/rng.js';
-import { createBot } from '../src/lib/ws2/bots.js';
-import { UNIT_SCALE } from '../src/lib/ws2/constants.js';
+} from '../src/lib/ws2/engine.ts';
+import { hashEvents, replayMatch } from '../src/lib/ws2/replay.ts';
+import { Rng } from '../src/lib/ws2/rng.ts';
+import { createBot } from '../src/lib/ws2/bots.ts';
+import { UNIT_SCALE } from '../src/lib/ws2/constants.ts';
 
 const findEvent = (events, type) => events.find((event) => event.type === type);
 

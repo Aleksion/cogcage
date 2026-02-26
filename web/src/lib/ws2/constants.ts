@@ -11,7 +11,7 @@ export const UNIT_SCALE = 10; // 0.1 units per integer step
 export const ARENA_SIZE_UNITS = 20;
 export const ARENA_SIZE = ARENA_SIZE_UNITS * UNIT_SCALE;
 
-export const OBJECTIVE_CENTER = { x: 10 * UNIT_SCALE, y: 10 * UNIT_SCALE };
+export const OBJECTIVE_CENTER = { x: 10 * UNIT_SCALE, y: 10 * UNIT_SCALE } as const;
 export const OBJECTIVE_RADIUS = 2.5 * UNIT_SCALE;
 
 export const HP_MAX = 100;
@@ -34,9 +34,11 @@ export const ACTION_TYPES = [
   'GUARD',
   'DASH',
   'UTILITY',
-];
+] as const;
 
-export const ACTION_COST = {
+export type ActionType = (typeof ACTION_TYPES)[number];
+
+export const ACTION_COST: Record<ActionType, number> = {
   MOVE: 4 * UNIT_SCALE,
   MELEE_STRIKE: 18 * UNIT_SCALE,
   RANGED_SHOT: 14 * UNIT_SCALE,
@@ -45,7 +47,7 @@ export const ACTION_COST = {
   UTILITY: 20 * UNIT_SCALE,
 };
 
-export const COOLDOWN_TICKS = {
+export const COOLDOWN_TICKS: Partial<Record<ActionType, number>> = {
   MELEE_STRIKE: Math.round(1.2 * TICK_RATE),
   RANGED_SHOT: Math.round(0.9 * TICK_RATE),
   GUARD: Math.round(1.5 * TICK_RATE),
@@ -57,12 +59,14 @@ export const GUARD_DURATION_TICKS = Math.round(0.8 * TICK_RATE);
 export const DASH_BUFF_DURATION_TICKS = Math.round(1.2 * TICK_RATE);
 export const UTILITY_DURATION_TICKS = Math.round(1.2 * TICK_RATE);
 
-export const BASE_DAMAGE = {
+export const BASE_DAMAGE: Record<string, number> = {
   MELEE_STRIKE: 21,
   RANGED_SHOT: 16,
 };
 
-export const ARMOR_MULTIPLIER = {
+export type ArmorType = 'light' | 'medium' | 'heavy';
+
+export const ARMOR_MULTIPLIER: Record<ArmorType, number> = {
   light: 1.0,
   medium: 0.9,
   heavy: 0.82,
@@ -72,7 +76,7 @@ export const GUARD_MULTIPLIER = 0.65;
 
 export const POSTURE_DASH_MULTIPLIER = 1.15;
 
-export const RANGED_DISTANCE_MULTIPLIER = (distanceTenths) => {
+export const RANGED_DISTANCE_MULTIPLIER = (distanceTenths: number): number => {
   if (distanceTenths >= 40 && distanceTenths <= 70) return 1.1;
   if (distanceTenths >= 25 && distanceTenths < 40) return 0.85;
   if (distanceTenths > 70 && distanceTenths <= 100) return 0.8;
