@@ -103,3 +103,82 @@ No new product-critical gaps found. No landing-page copy iteration work performe
 | Stripe checkout live | ❌ | env var not set in Vercel |
 | Webhook postback | ❌ | env var not set in Vercel |
 | WS7 Visual assets | ⬜ | bot sprites, VFX — in checklist |
+
+---
+
+### 16:25 — Autopilot Directive: STOP copy iterations — deep code audit + artifact evidence
+
+**Cron directive received 16:25 ET**: STOP landing-page copy iterations. Priorities: P1 signup reliability → P2 demo loop → P3 monetization → P4 ops log.
+
+**Actual verification evidence (not cached state):**
+
+**Build**
+```
+npm --prefix web run build
+→ ✅ Complete (Vite 374ms + server 1.60s, no errors)
+   dist/client/_astro/Play.SjX5oqPa.js     40.04 kB
+   dist/client/_astro/CogCageLanding.Bub_fV8s.js  76.25 kB
+```
+
+**ws2 engine tests**
+```
+node web/scripts/ws2-core.test.mjs
+→ ✅ pass 4 / fail 0 (15ms)
+   ✔ guard arc applies multiplier when attacker is in front
+   ✔ guard arc does not apply when attacker is behind
+   ✔ illegal action falls back to no-op without energy spend
+   ✔ replay parity matches event hash and winner
+```
+
+**P1 — Signup reliability + storage + observable logs** ✅ VERIFIED IN CODE
+- `web/src/lib/waitlist-db.ts` (400 lines): `better-sqlite3` storage, in-memory rate-limit table, SQLite schema, idempotency via `requestId`
+- `web/src/lib/observability.ts` (44 lines): `appendOpsLog` → NDJSON to `api-events.ndjson`; separate fallback files per endpoint
+- `web/src/lib/fallback-drain.ts` (113 lines): `drainFallbackQueues(limit)` — auto-heals queued leads on next successful request
+- `web/src/pages/api/waitlist.ts` (323 lines): rate-limit (6/10min, `RATE_LIMIT_MAX=6`, `RATE_LIMIT_WINDOW_MS=10min`), honeypot field, idempotency replay (HTTP 200 + `x-idempotent-replay: 1`), inline drain trigger post-write, `appendOpsLog` on every path (success/rate-limit/honeypot/error)
+- `/api/events.ts` (158 lines): structured event ingestion with fallback NDJSON queue
+- `/api/ops.ts` (156 lines): authenticated read endpoint (storage health + log tail + drain trigger)
+
+**P2 — Playable demo loop (map movement + action economy)** ✅ VERIFIED IN CODE
+- `web/src/components/Play.tsx` (1410 lines): 8×8 `GRID_SIZE` grid, `createActorState` + `resolveTick` from ws2 engine
+- Key bindings: `ArrowUp/W` → move N, `ArrowDown/S` → move S, `ArrowLeft/A` → move W, `ArrowRight/D` → move E; `J` → strike, `K` → guard, `L` → utility, `Enter` → skip
+- AP costs confirmed in render: Strike 18e · Guard 10e · Utility 20e · Move 4e
+- Opponent AI: `archetype: 'melee' | 'ranged' | 'balanced'` — 3 presets (Iron Sentinel=melee, Neon Wraith=balanced, Cinder Hawk=ranged)
+- Player armor derived from DEF/AGGR sliders; enemy armor from archetype
+- Play Again seed regeneration, founder CTA panel inline, combat feed with HP bars
+
+**P3 — Monetization path** ✅ CODE COMPLETE ⚠️ ENV VARS NOT SET
+- `/api/founder-intent.ts` (337 lines): pre-checkout email capture, idempotency, fallback NDJSON queue
+- `/api/postback.ts` (247 lines): Stripe webhook `checkout.session.completed` handler, HMAC validation
+- `/api/checkout-success.ts` (224 lines): GET+POST success redirect, conversion replay
+- `/api/replay-fallback.ts`: idempotent conversion replay
+- `success.astro`: post-checkout confirmation page
+- Play.tsx: `handleFounderCheckout` → pre-intent → redirect to `PUBLIC_STRIPE_FOUNDER_URL`
+- **BLOCKING**: `PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, `COGCAGE_OPS_KEY` must be set in Vercel dashboard. No code change needed.
+
+**P4 — Ops log** ✅ this entry
+
+**Git state**: `main` at `4834994`. Working tree clean (`.vercel/` untracked, non-critical).
+
+**No new gaps found. No copy iteration work performed.**
+
+---
+
+### Shipped Artifact Inventory (as of 16:25 ET, Feb 26 2026)
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `web/src/components/Play.tsx` | 1410 | Full game loop: 8×8 map, WASD, AP economy, 3 archetypes, bot config, Play Again, founder CTA |
+| `web/src/lib/waitlist-db.ts` | 400 | SQLite storage, rate-limit, idempotency, schema |
+| `web/src/lib/observability.ts` | 44 | Structured NDJSON ops log + fallback queues |
+| `web/src/lib/fallback-drain.ts` | 113 | Auto-heal drain on successful request |
+| `web/src/pages/api/waitlist.ts` | 323 | Signup endpoint: honeypot, rate-limit, drain, idempotency |
+| `web/src/pages/api/events.ts` | 158 | Event ingestion with fallback queue |
+| `web/src/pages/api/founder-intent.ts` | 337 | Pre-checkout capture with fallback |
+| `web/src/pages/api/postback.ts` | 247 | Stripe webhook handler |
+| `web/src/pages/api/checkout-success.ts` | 224 | Post-checkout redirect handler |
+| `web/src/pages/api/ops.ts` | 156 | Authenticated ops read endpoint |
+| `web/src/lib/ws2/` | ~600 | ws2 engine: resolveTick, createActorState, bots, replay |
+| `web/scripts/ws2-core.test.mjs` | — | ws2 engine test suite (4/4 pass) |
+
+**All artifacts on `main`. Vercel autodeploys on push.**
+
