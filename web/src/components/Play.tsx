@@ -1003,7 +1003,7 @@ const Play = () => {
     setPlayerEnergy(pActor.energy);
 
     const newEvents = state.events.slice(startEventIdx);
-    const logEntries = newEvents.map(formatEvent).filter((e): e is string => e !== null);
+    const logEntries = newEvents.map(formatEvent).filter((e: string | null): e is string => e !== null);
     if (logEntries.length) logFeed(logEntries);
 
     if (state.ended) {
