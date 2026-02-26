@@ -69,27 +69,47 @@ export const POST: APIRoute = async ({ request }) => {
   let intentId = '';
   let honeypot = '';
 
-  if (contentType.includes('application/json')) {
-    const json = await request.json().catch(() => ({}));
-    email = normalizeString(json.email ?? null, 180);
-    source = normalizeString(json.source ?? null, 120);
-    intentId = normalizeString(json.intentId ?? json.intent_id ?? null, 180);
-    honeypot = normalizeString(
-      HONEYPOT_FIELDS.map((field) => json[field]).find((value) => value !== undefined) ?? '',
-      120
-    );
-  } else {
-    const formData = await request.formData();
-    email = normalize(formData.get('email'));
-    source = normalize(formData.get('source'));
-    intentId = normalize(formData.get('intentId')) || normalize(formData.get('intent_id'));
-    for (const field of HONEYPOT_FIELDS) {
-      const value = normalize(formData.get(field));
-      if (value) {
-        honeypot = value;
-        break;
+  try {
+    if (contentType.includes('application/json')) {
+      const json = await request.json().catch(() => ({}));
+      email = normalizeString(json.email ?? null, 180);
+      source = normalizeString(json.source ?? null, 120);
+      intentId = normalizeString(json.intentId ?? json.intent_id ?? null, 180);
+      honeypot = normalizeString(
+        HONEYPOT_FIELDS.map((field) => json[field]).find((value) => value !== undefined) ?? '',
+        120
+      );
+    } else {
+      const formData = await request.formData();
+      email = normalize(formData.get('email'));
+      source = normalize(formData.get('source'));
+      intentId = normalize(formData.get('intentId')) || normalize(formData.get('intent_id'));
+      for (const field of HONEYPOT_FIELDS) {
+        const value = normalize(formData.get(field));
+        if (value) {
+          honeypot = value;
+          break;
+        }
       }
     }
+  } catch (error) {
+    appendOpsLog({
+      route: '/api/founder-intent',
+      level: 'warn',
+      event: 'founder_intent_payload_parse_failed',
+      requestId,
+      contentType,
+      error: error instanceof Error ? error.message : 'unknown',
+      durationMs: Date.now() - startedAt,
+    });
+    safeTrackConversion('/api/founder-intent', requestId, {
+      eventName: 'founder_intent_payload_parse_failed',
+      source: 'founder-checkout',
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      ipAddress: getClientIp(request),
+      metaJson: JSON.stringify({ contentType }),
+    });
+    return jsonResponse({ ok: false, error: 'Invalid request payload.' }, 400, requestId);
   }
 
   const ipAddress = getClientIp(request);

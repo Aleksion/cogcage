@@ -70,27 +70,47 @@ export const POST: APIRoute = async ({ request }) => {
   let source = '';
   let honeypot = '';
 
-  if (contentType.includes('application/json')) {
-    const json = await request.json().catch(() => ({}));
-    email = normalizeString(json.email ?? null, 180);
-    game = normalizeString(json.game ?? null, 120);
-    source = normalizeString(json.source ?? null, 120);
-    honeypot = normalizeString(
-      HONEYPOT_FIELDS.map((field) => json[field]).find((value) => value !== undefined) ?? '',
-      120
-    );
-  } else {
-    const formData = await request.formData();
-    email = normalize(formData.get('email'));
-    game = normalize(formData.get('game'));
-    source = normalize(formData.get('source'));
-    for (const field of HONEYPOT_FIELDS) {
-      const value = normalize(formData.get(field));
-      if (value) {
-        honeypot = value;
-        break;
+  try {
+    if (contentType.includes('application/json')) {
+      const json = await request.json().catch(() => ({}));
+      email = normalizeString(json.email ?? null, 180);
+      game = normalizeString(json.game ?? null, 120);
+      source = normalizeString(json.source ?? null, 120);
+      honeypot = normalizeString(
+        HONEYPOT_FIELDS.map((field) => json[field]).find((value) => value !== undefined) ?? '',
+        120
+      );
+    } else {
+      const formData = await request.formData();
+      email = normalize(formData.get('email'));
+      game = normalize(formData.get('game'));
+      source = normalize(formData.get('source'));
+      for (const field of HONEYPOT_FIELDS) {
+        const value = normalize(formData.get(field));
+        if (value) {
+          honeypot = value;
+          break;
+        }
       }
     }
+  } catch (error) {
+    appendOpsLog({
+      route: '/api/waitlist',
+      level: 'warn',
+      event: 'waitlist_payload_parse_failed',
+      requestId,
+      contentType,
+      error: error instanceof Error ? error.message : 'unknown',
+      durationMs: Date.now() - startedAt,
+    });
+    safeTrackConversion('/api/waitlist', requestId, {
+      eventName: 'waitlist_payload_parse_failed',
+      source: 'cogcage-landing',
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      ipAddress: getClientIp(request),
+      metaJson: JSON.stringify({ contentType }),
+    });
+    return jsonResponse({ ok: false, error: 'Invalid request payload.' }, 400, requestId);
   }
 
   const ipAddress = getClientIp(request);
