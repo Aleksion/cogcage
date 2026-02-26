@@ -4,6 +4,8 @@ import path from 'node:path';
 const LOG_DIR = process.env.COGCAGE_LOG_DIR ?? path.join(process.cwd(), '..', 'ops', 'runtime');
 const LOG_FILE = path.join(LOG_DIR, 'api-events.ndjson');
 const FALLBACK_WAITLIST_FILE = path.join(LOG_DIR, 'waitlist-fallback.ndjson');
+const FALLBACK_FOUNDER_INTENT_FILE = path.join(LOG_DIR, 'founder-intent-fallback.ndjson');
+const FALLBACK_EVENTS_FILE = path.join(LOG_DIR, 'events-fallback.ndjson');
 
 function appendLine(filePath: string, payload: Record<string, unknown>) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -24,4 +26,12 @@ export function appendOpsLog(event: Record<string, unknown>) {
 
 export function appendWaitlistFallback(payload: Record<string, unknown>) {
   appendLine(FALLBACK_WAITLIST_FILE, payload);
+}
+
+export function appendFounderIntentFallback(payload: Record<string, unknown>) {
+  appendLine(FALLBACK_FOUNDER_INTENT_FILE, payload);
+}
+
+export function appendEventsFallback(payload: Record<string, unknown>) {
+  appendLine(FALLBACK_EVENTS_FILE, payload);
 }

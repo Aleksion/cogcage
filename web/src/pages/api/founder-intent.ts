@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { insertFounderIntent } from '../../lib/waitlist-db';
-import { appendOpsLog } from '../../lib/observability';
+import { appendFounderIntentFallback, appendOpsLog } from '../../lib/observability';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -15,6 +15,7 @@ function normalize(value: FormDataEntryValue | null) {
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
+  const startedAt = Date.now();
   const contentType = request.headers.get('content-type') ?? '';
   let email = '';
   let source = '';
@@ -46,17 +47,28 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     insertFounderIntent(payload);
-    appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'founder_intent_saved', requestId, source: payload.source, emailHash: payload.email.slice(0, 3) });
-  } catch (error) {
-    appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_db_write_failed', requestId, error: error instanceof Error ? error.message : 'unknown-error' });
-    return new Response(JSON.stringify({ ok: false, error: 'Temporary storage issue. Please retry.', requestId }), {
-      status: 503,
+    appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'founder_intent_saved', requestId, source: payload.source, emailHash: payload.email.slice(0, 3), durationMs: Date.now() - startedAt });
+    return new Response(JSON.stringify({ ok: true, requestId }), {
+      status: 200,
       headers: { 'content-type': 'application/json' },
     });
-  }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'unknown-error';
+    appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_db_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
 
-  return new Response(JSON.stringify({ ok: true, requestId }), {
-    status: 200,
-    headers: { 'content-type': 'application/json' },
-  });
+    try {
+      appendFounderIntentFallback({ route: '/api/founder-intent', requestId, ...payload, reason: errorMessage });
+      appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
+      return new Response(JSON.stringify({ ok: true, queued: true, requestId }), {
+        status: 202,
+        headers: { 'content-type': 'application/json' },
+      });
+    } catch (fallbackError) {
+      appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
+      return new Response(JSON.stringify({ ok: false, error: 'Temporary storage issue. Please retry.', requestId }), {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+  }
 };

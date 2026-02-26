@@ -836,6 +836,49 @@ const Play = () => {
     enemyTurn();
   };
 
+  useEffect(() => {
+    if (!running || winner) return;
+    if (playerAp > 0) return;
+    const timer = window.setTimeout(() => {
+      enemyTurn();
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [playerAp, running, winner]);
+
+  useEffect(() => {
+    if (!running || winner) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
+        event.preventDefault();
+        attemptMove(0, -1);
+      } else if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        attemptMove(1, 0);
+      } else if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') {
+        event.preventDefault();
+        attemptMove(-1, 0);
+      } else if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        attemptMove(0, 1);
+      } else if (event.key.toLowerCase() === 'j') {
+        event.preventDefault();
+        handleAttack();
+      } else if (event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        handleBlock();
+      } else if (event.key.toLowerCase() === 'l') {
+        event.preventDefault();
+        handleScan();
+      } else if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        endTurn();
+      }
+    };
+
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [running, winner, playerPos, playerAp, enemyPos, playerScan, enemyScan, enemyHp, playerHp]);
+
   const handleFounderCheckout = async () => {
     const normalizedEmail = email.trim().toLowerCase();
     const checkoutSource = `play-page-founder-cta-${founderCtaVariant.key}-${playFounderCopyVariant}`;
@@ -946,7 +989,7 @@ const Play = () => {
               <button className="action-btn secondary" onClick={endTurn} disabled={!running || !!winner}>End Turn</button>
             </div>
             <div className="hint" style={{ marginBottom: '0.8rem' }}>
-              Attack range {range} · Block absorbs next hit · Scan adds +1 range to your next strike.
+              Attack range {range} · Block absorbs next hit · Scan adds +1 range to your next strike · Move with WASD/Arrows, J attack, K block, L scan, Enter end turn.
             </div>
 
             <div className="leaderboard" style={{ marginTop: '1.2rem' }}>

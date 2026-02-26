@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { insertConversionEvent } from '../../lib/waitlist-db';
-import { appendOpsLog } from '../../lib/observability';
+import { appendEventsFallback, appendOpsLog } from '../../lib/observability';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EVENT_RE = /^[a-z0-9_:-]{2,64}$/i;
@@ -21,6 +21,7 @@ function optionalString(value: unknown) {
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
+  const startedAt = Date.now();
   const contentType = request.headers.get('content-type') ?? '';
 
   if (!contentType.includes('application/json')) {
@@ -81,17 +82,28 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     insertConversionEvent(payload);
-    appendOpsLog({ route: '/api/events', level: 'info', event: 'conversion_event_saved', requestId, eventName, source: payload.source });
-  } catch (error) {
-    appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_db_write_failed', requestId, eventName, source: payload.source, error: error instanceof Error ? error.message : 'unknown-error' });
-    return new Response(JSON.stringify({ ok: false, error: 'Event storage unavailable.', requestId }), {
-      status: 503,
+    appendOpsLog({ route: '/api/events', level: 'info', event: 'conversion_event_saved', requestId, eventName, source: payload.source, durationMs: Date.now() - startedAt });
+    return new Response(JSON.stringify({ ok: true, requestId }), {
+      status: 200,
       headers: { 'content-type': 'application/json' },
     });
-  }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'unknown-error';
+    appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_db_write_failed', requestId, eventName, source: payload.source, error: errorMessage, durationMs: Date.now() - startedAt });
 
-  return new Response(JSON.stringify({ ok: true, requestId }), {
-    status: 200,
-    headers: { 'content-type': 'application/json' },
-  });
+    try {
+      appendEventsFallback({ route: '/api/events', requestId, ...payload, reason: errorMessage });
+      appendOpsLog({ route: '/api/events', level: 'warn', event: 'conversion_event_saved_to_fallback', requestId, eventName, source: payload.source, durationMs: Date.now() - startedAt });
+      return new Response(JSON.stringify({ ok: true, queued: true, requestId }), {
+        status: 202,
+        headers: { 'content-type': 'application/json' },
+      });
+    } catch (fallbackError) {
+      appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_fallback_write_failed', requestId, eventName, source: payload.source, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
+      return new Response(JSON.stringify({ ok: false, error: 'Event storage unavailable.', requestId }), {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+  }
 };
