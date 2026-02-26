@@ -28,8 +28,10 @@ function normalize(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function normalizeString(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
+function normalizeString(value: unknown, maxLen = 300) {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim();
+  return normalized.slice(0, maxLen);
 }
 
 function jsonResponse(body: Record<string, unknown>, status: number, requestId: string, extraHeaders: Record<string, string> = {}) {
@@ -70,11 +72,12 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (contentType.includes('application/json')) {
     const json = await request.json().catch(() => ({}));
-    email = normalizeString(json.email ?? null);
-    game = normalizeString(json.game ?? null);
-    source = normalizeString(json.source ?? null);
+    email = normalizeString(json.email ?? null, 180);
+    game = normalizeString(json.game ?? null, 120);
+    source = normalizeString(json.source ?? null, 120);
     honeypot = normalizeString(
-      HONEYPOT_FIELDS.map((field) => json[field]).find((value) => value !== undefined) ?? ''
+      HONEYPOT_FIELDS.map((field) => json[field]).find((value) => value !== undefined) ?? '',
+      120
     );
   } else {
     const formData = await request.formData();

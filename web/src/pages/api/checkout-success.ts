@@ -12,18 +12,32 @@ function getClientIp(request: Request) {
   return forwarded || realIp || cfIp || flyIp || undefined;
 }
 
-function normalizeString(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
+function normalizeString(value: unknown, maxLen = 300) {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim();
+  return normalized.slice(0, maxLen);
 }
 
-function optionalString(value: unknown) {
-  const normalized = normalizeString(value);
+function optionalString(value: unknown, maxLen = 300) {
+  const normalized = normalizeString(value, maxLen);
   return normalized.length > 0 ? normalized : undefined;
 }
 
 export const prerender = false;
 
-const recordSuccess = ({
+function safeMetaJson(meta: Record<string, unknown> | undefined) {
+  if (!meta) return undefined;
+  try {
+    const serialized = JSON.stringify(meta);
+    return serialized.length > 4000
+      ? JSON.stringify({ truncated: true, preview: serialized.slice(0, 3800) })
+      : serialized;
+  } catch {
+    return JSON.stringify({ invalidMeta: true });
+  }
+}
+
+const recordSuccess = ({ 
   eventId,
   page,
   href,
@@ -54,7 +68,7 @@ const recordSuccess = ({
     tier: tier || 'founder',
     source: source || 'stripe-success',
     email,
-    metaJson: meta ? JSON.stringify(meta) : undefined,
+    metaJson: safeMetaJson(meta),
     userAgent,
     ipAddress,
   };
@@ -100,13 +114,13 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const eventId =
-    optionalString(payload.eventId)
-    ?? optionalString(payload.session_id)
-    ?? optionalString(payload.checkout_session_id);
-  const page = optionalString(payload.page);
-  const href = optionalString(payload.href);
-  const source = optionalString(payload.source);
-  const tier = optionalString(payload.tier);
+    optionalString(payload.eventId, 180)
+    ?? optionalString(payload.session_id, 180)
+    ?? optionalString(payload.checkout_session_id, 180);
+  const page = optionalString(payload.page, 120);
+  const href = optionalString(payload.href, 600);
+  const source = optionalString(payload.source, 120);
+  const tier = optionalString(payload.tier, 60);
   const meta = payload.meta && typeof payload.meta === 'object' ? (payload.meta as Record<string, unknown>) : undefined;
 
   try {
@@ -144,13 +158,13 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   const eventId =
-    optionalString(url.searchParams.get('event_id'))
-    ?? optionalString(url.searchParams.get('session_id'))
-    ?? optionalString(url.searchParams.get('checkout_session_id'));
-  const page = optionalString(url.searchParams.get('page')) ?? url.pathname;
-  const href = optionalString(url.searchParams.get('href')) ?? request.url;
-  const source = optionalString(url.searchParams.get('source'));
-  const tier = optionalString(url.searchParams.get('tier'));
+    optionalString(url.searchParams.get('event_id'), 180)
+    ?? optionalString(url.searchParams.get('session_id'), 180)
+    ?? optionalString(url.searchParams.get('checkout_session_id'), 180);
+  const page = optionalString(url.searchParams.get('page'), 120) ?? url.pathname;
+  const href = optionalString(url.searchParams.get('href'), 600) ?? request.url;
+  const source = optionalString(url.searchParams.get('source'), 120);
+  const tier = optionalString(url.searchParams.get('tier'), 60);
 
   try {
     const result = recordSuccess({

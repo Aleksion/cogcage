@@ -13,12 +13,14 @@ function getClientIp(request: Request) {
   return forwarded || realIp || cfIp || flyIp || undefined;
 }
 
-function normalizeString(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
+function normalizeString(value: unknown, maxLen = 300) {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim();
+  return normalized.slice(0, maxLen);
 }
 
-function optionalString(value: unknown) {
-  const normalized = normalizeString(value);
+function optionalString(value: unknown, maxLen = 300) {
+  const normalized = normalizeString(value, maxLen);
   return normalized.length > 0 ? normalized : undefined;
 }
 
@@ -43,7 +45,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const eventName = normalizeString((json as Record<string, unknown>).event);
+  const eventName = normalizeString((json as Record<string, unknown>).event, 64);
   if (!EVENT_RE.test(eventName)) {
     return new Response(JSON.stringify({ ok: false, error: 'Valid event name is required.' }), {
       status: 400,
@@ -64,7 +66,10 @@ export const POST: APIRoute = async ({ request }) => {
   let metaJson: string | undefined;
   if (rawMeta !== undefined) {
     try {
-      metaJson = JSON.stringify(rawMeta);
+      const serialized = JSON.stringify(rawMeta);
+      metaJson = serialized.length > 4000
+        ? JSON.stringify({ truncated: true, preview: serialized.slice(0, 3800) })
+        : serialized;
     } catch {
       metaJson = JSON.stringify({ invalidMeta: true });
     }
@@ -73,11 +78,11 @@ export const POST: APIRoute = async ({ request }) => {
   const requestId = crypto.randomUUID();
   const payload = {
     eventName,
-    eventId: optionalString((json as Record<string, unknown>).eventId) ?? optionalString(metaRecord?.eventId),
-    page: optionalString((json as Record<string, unknown>).page),
-    href: optionalString((json as Record<string, unknown>).href),
-    tier: optionalString((json as Record<string, unknown>).tier),
-    source: optionalString((json as Record<string, unknown>).source) ?? 'landing',
+    eventId: optionalString((json as Record<string, unknown>).eventId, 160) ?? optionalString(metaRecord?.eventId, 160),
+    page: optionalString((json as Record<string, unknown>).page, 120),
+    href: optionalString((json as Record<string, unknown>).href, 600),
+    tier: optionalString((json as Record<string, unknown>).tier, 60),
+    source: optionalString((json as Record<string, unknown>).source, 120) ?? 'landing',
     email: emailRaw,
     metaJson,
     userAgent: request.headers.get('user-agent') ?? undefined,
