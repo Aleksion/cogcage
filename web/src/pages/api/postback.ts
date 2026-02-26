@@ -175,6 +175,7 @@ export const POST: APIRoute = async ({ request }) => {
         source: `${source}-postback`,
         intentId: `paid:${eventId}`,
         userAgent: request.headers.get('user-agent') ?? undefined,
+        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,
       });
     }
 
