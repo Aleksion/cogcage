@@ -10,6 +10,13 @@ export type WaitlistLead = {
   ipAddress?: string;
 };
 
+export type FounderIntent = {
+  email: string;
+  source: string;
+  userAgent?: string;
+  ipAddress?: string;
+};
+
 let db: Database.Database | null = null;
 
 function getDbPath() {
@@ -36,6 +43,15 @@ function getDb() {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(email)
     );
+
+    CREATE TABLE IF NOT EXISTS founder_intents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      source TEXT NOT NULL,
+      user_agent TEXT,
+      ip_address TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   return db;
@@ -55,4 +71,14 @@ export function insertWaitlistLead(lead: WaitlistLead) {
   `);
 
   insert.run(lead);
+}
+
+export function insertFounderIntent(intent: FounderIntent) {
+  const conn = getDb();
+  const insert = conn.prepare(`
+    INSERT INTO founder_intents (email, source, user_agent, ip_address)
+    VALUES (@email, @source, @userAgent, @ipAddress)
+  `);
+
+  insert.run(intent);
 }

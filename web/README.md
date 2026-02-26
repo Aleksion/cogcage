@@ -20,7 +20,7 @@ PUBLIC_PRO_WAITLIST_URL="#join"
 PUBLIC_TOURNAMENT_WAITLIST_URL="#join"
 ```
 
-If `PUBLIC_STRIPE_FOUNDER_URL` is set, Founder CTAs route directly to checkout and emit `founder_checkout_click` + `checkout_intent` tracking events to local event storage.
+If `PUBLIC_STRIPE_FOUNDER_URL` is set, Founder checkout now captures email first, logs a server-side founder intent (`POST /api/founder-intent`), and opens Stripe with `prefilled_email` to reduce checkout friction.
 
 ## Waitlist Data Ownership
 

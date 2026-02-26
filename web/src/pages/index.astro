@@ -55,16 +55,26 @@ const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? 
             <li>Monthly rank seasons</li>
             <li>Founder badge + locked pricing</li>
           </ul>
-          <a
-            href={founderCheckoutUrl}
-            class="button button-primary"
-            data-track="founder_checkout_click"
-            data-checkout-tier="founder"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Reserve Founder Spot — Checkout
-          </a>
+          <form class="founder-checkout-form" id="founderCheckoutForm" data-checkout-url={founderCheckoutUrl}>
+            <label>
+              Email for instant checkout
+              <input
+                type="email"
+                name="email"
+                autocomplete="email"
+                placeholder="you@domain.com"
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              class="button button-primary"
+              data-track="founder_checkout_click"
+              data-checkout-tier="founder"
+            >
+              Reserve Founder Spot — Checkout
+            </button>
+          </form>
         </article>
         <article class="card">
           <h3>Pro</h3>
@@ -128,16 +138,69 @@ const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? 
       };
       track('click', payload);
 
-      if (payload.tier) {
+      if (payload.tier && el instanceof HTMLAnchorElement) {
         track('checkout_intent', payload);
       }
     });
   });
 
+  const founderCheckoutForm = document.getElementById('founderCheckoutForm');
+
+  if (founderCheckoutForm instanceof HTMLFormElement) {
+    const founderEmailInput = founderCheckoutForm.querySelector('input[name="email"]');
+    const savedEmail = localStorage.getItem('cogcage_email');
+    if (founderEmailInput instanceof HTMLInputElement && savedEmail) {
+      founderEmailInput.value = savedEmail;
+    }
+
+    founderCheckoutForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const submitButton = founderCheckoutForm.querySelector('button[type="submit"]');
+      const emailField = founderCheckoutForm.querySelector('input[name="email"]');
+      const checkoutUrl = founderCheckoutForm.dataset.checkoutUrl;
+
+      if (!(emailField instanceof HTMLInputElement) || !checkoutUrl) return;
+
+      const email = emailField.value.trim().toLowerCase();
+      if (!email) return;
+
+      submitButton?.setAttribute('disabled', 'true');
+
+      try {
+        await fetch('/api/founder-intent', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ email, source: 'founder-checkout' }),
+        });
+      } catch {
+        // Intent logging should not block checkout.
+      }
+
+      localStorage.setItem('cogcage_email', email);
+      track('checkout_intent', { tier: 'founder', emailCaptured: true });
+
+      const checkout = new URL(checkoutUrl, window.location.origin);
+      checkout.searchParams.set('prefilled_email', email);
+      window.open(checkout.toString(), '_blank', 'noopener,noreferrer');
+
+      submitButton?.removeAttribute('disabled');
+    });
+  }
+
   const waitlistForm = document.getElementById('waitlistForm');
   const waitlistStatus = document.getElementById('waitlistStatus');
 
   if (waitlistForm instanceof HTMLFormElement) {
+    const waitlistEmailInput = waitlistForm.querySelector('input[name="email"]');
+    const savedEmail = localStorage.getItem('cogcage_email');
+    if (waitlistEmailInput instanceof HTMLInputElement && savedEmail) {
+      waitlistEmailInput.value = savedEmail;
+    }
+
     waitlistForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       const submitButton = waitlistForm.querySelector('button[type="submit"]');
@@ -157,6 +220,11 @@ const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? 
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
           throw new Error(payload.error || 'Could not submit right now. Please try again.');
+        }
+
+        const emailField = waitlistForm.querySelector('input[name="email"]');
+        if (emailField instanceof HTMLInputElement) {
+          localStorage.setItem('cogcage_email', emailField.value.trim().toLowerCase());
         }
 
         track('waitlist_submit', { location: 'landing' });
@@ -331,6 +399,26 @@ const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? 
     padding-left: 1.2rem;
     color: #d2d5ec;
     line-height: 1.45;
+  }
+
+  .founder-checkout-form {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .founder-checkout-form label {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    color: #d2d6f1;
+  }
+
+  .founder-checkout-form input {
+    border-radius: 0.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.62rem 0.72rem;
+    background: rgba(3, 3, 7, 0.8);
+    color: #fff;
   }
 
   .join .waitlist-form {
