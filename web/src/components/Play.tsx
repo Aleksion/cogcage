@@ -380,7 +380,7 @@ const PLAY_FOUNDER_COPY_VARIANT_KEY = 'cogcage_play_founder_copy_variant';
 const FOUNDER_INTENT_REPLAY_QUEUE_KEY = 'cogcage_founder_intent_replay_queue';
 
 const GRID_SIZE = 8;
-const MAX_AP = 2;
+const MAX_AP = 3;
 const ATTACK_RANGE = 2;
 
 const pickPlayFounderCopyVariant = () => {
@@ -424,6 +424,8 @@ const submitWithRetry = async (url: string, payload: Record<string, unknown>, re
       window.clearTimeout(timeout);
       lastError = error;
       if (attempt >= retries) throw error;
+      const status = Number((error as { status?: number })?.status);
+      if (Number.isFinite(status) && status < 500) throw error;
       await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
     }
   }

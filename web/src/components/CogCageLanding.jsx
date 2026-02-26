@@ -872,6 +872,8 @@ const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } =
       clearTimeout(timeout);
       lastError = error;
       if (attempt >= retries) throw error;
+      const status = Number(error?.status);
+      if (Number.isFinite(status) && status < 500) throw error;
       await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
     }
   }
