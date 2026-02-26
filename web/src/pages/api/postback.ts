@@ -26,6 +26,11 @@ type CheckoutPostback = {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function normalizeString(value: unknown, maxLen = 500) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, maxLen);
+}
+
 function normalizeEmail(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const email = value.trim().toLowerCase();
@@ -52,9 +57,44 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const payload = (await request.json().catch(() => null)) as CheckoutPostback | null;
+  const contentType = request.headers.get('content-type') ?? '';
+  let payload: CheckoutPostback | null = null;
+
+  try {
+    if (contentType.includes('application/json')) {
+      payload = (await request.json().catch(() => null)) as CheckoutPostback | null;
+    } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      const eventType = normalizeString(formData.get('type'), 120);
+      const eventId = normalizeString(formData.get('eventId') ?? formData.get('id'), 180);
+      const source = normalizeString(formData.get('source'), 160);
+      const email = normalizeString(formData.get('email'), 180);
+      payload = {
+        type: eventType || undefined,
+        eventId: eventId || undefined,
+        source: source || undefined,
+        email: email || undefined,
+      };
+    } else {
+      const rawBody = await request.text();
+      if (rawBody.trim().startsWith('{')) {
+        payload = JSON.parse(rawBody) as CheckoutPostback;
+      } else {
+        const params = new URLSearchParams(rawBody);
+        payload = {
+          type: normalizeString(params.get('type'), 120) || undefined,
+          eventId: normalizeString(params.get('eventId') ?? params.get('id'), 180) || undefined,
+          source: normalizeString(params.get('source'), 160) || undefined,
+          email: normalizeString(params.get('email'), 180) || undefined,
+        };
+      }
+    }
+  } catch {
+    payload = null;
+  }
+
   if (!payload) {
-    return new Response(JSON.stringify({ ok: false, error: 'Invalid JSON body', requestId }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Invalid request payload', requestId }), {
       status: 400,
       headers: { 'content-type': 'application/json' },
     });

@@ -540,30 +540,63 @@ const neighbors = (pos: Vec, size: number) => [
   { x: pos.x - 1, y: pos.y },
 ].filter((next) => next.x >= 0 && next.y >= 0 && next.x < size && next.y < size);
 
-const generateMap = (rng: () => number): GameState => {
-  const grid: Cell[][] = Array.from({ length: GRID_SIZE }, () =>
-    Array.from({ length: GRID_SIZE }, () => 'empty')
-  );
+const hasPath = (grid: Cell[][], start: Vec, goal: Vec) => {
+  const visited = new Set<string>();
+  const queue: Vec[] = [start];
+  const key = (pos: Vec) => `${pos.x}:${pos.y}`;
+  visited.add(key(start));
 
-  const playerPos = { x: 0, y: GRID_SIZE - 1 };
-  const enemyPos = { x: GRID_SIZE - 1, y: 0 };
-  const maxObstacles = Math.floor(GRID_SIZE * GRID_SIZE * 0.18);
-  let obstacles = 0;
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (isSame(current, goal)) return true;
 
-  for (let y = 0; y < GRID_SIZE; y += 1) {
-    for (let x = 0; x < GRID_SIZE; x += 1) {
-      if (obstacles >= maxObstacles) continue;
-      if ((x === playerPos.x && y === playerPos.y) || (x === enemyPos.x && y === enemyPos.y)) continue;
-      if (Math.abs(x - playerPos.x) + Math.abs(y - playerPos.y) <= 1) continue;
-      if (Math.abs(x - enemyPos.x) + Math.abs(y - enemyPos.y) <= 1) continue;
-      if (rng() < 0.12) {
-        grid[y][x] = 'obstacle';
-        obstacles += 1;
-      }
+    for (const next of neighbors(current, GRID_SIZE)) {
+      if (grid[next.y]?.[next.x] === 'obstacle') continue;
+      const nextKey = key(next);
+      if (visited.has(nextKey)) continue;
+      visited.add(nextKey);
+      queue.push(next);
     }
   }
 
-  return { grid, playerPos, enemyPos };
+  return false;
+};
+
+const generateMap = (rng: () => number): GameState => {
+  const playerPos = { x: 0, y: GRID_SIZE - 1 };
+  const enemyPos = { x: GRID_SIZE - 1, y: 0 };
+  const maxObstacles = Math.floor(GRID_SIZE * GRID_SIZE * 0.18);
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const grid: Cell[][] = Array.from({ length: GRID_SIZE }, () =>
+      Array.from({ length: GRID_SIZE }, () => 'empty')
+    );
+
+    let obstacles = 0;
+
+    for (let y = 0; y < GRID_SIZE; y += 1) {
+      for (let x = 0; x < GRID_SIZE; x += 1) {
+        if (obstacles >= maxObstacles) continue;
+        if ((x === playerPos.x && y === playerPos.y) || (x === enemyPos.x && y === enemyPos.y)) continue;
+        if (Math.abs(x - playerPos.x) + Math.abs(y - playerPos.y) <= 1) continue;
+        if (Math.abs(x - enemyPos.x) + Math.abs(y - enemyPos.y) <= 1) continue;
+        if (rng() < 0.12) {
+          grid[y][x] = 'obstacle';
+          obstacles += 1;
+        }
+      }
+    }
+
+    if (hasPath(grid, playerPos, enemyPos)) {
+      return { grid, playerPos, enemyPos };
+    }
+  }
+
+  const fallbackGrid: Cell[][] = Array.from({ length: GRID_SIZE }, () =>
+    Array.from({ length: GRID_SIZE }, () => 'empty')
+  );
+
+  return { grid: fallbackGrid, playerPos, enemyPos };
 };
 
 const Play = () => {
