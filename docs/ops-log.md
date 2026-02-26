@@ -182,3 +182,85 @@ node web/scripts/ws2-core.test.mjs
 
 **All artifacts on `main`. Vercel autodeploys on push.**
 
+---
+
+### 18:17 — LLM Driver Shipped — Full Spectator Mode (cron directive: 18:17 ET)
+
+**Cron directive received 18:17 ET**: STOP copy iterations. Priorities: (1) signup reliability + storage + observable logs, (2) real playable demo loop with map movement + action economy, (3) monetization path (founder pack checkout + postback), (4) ops log.
+
+#### Actual verification evidence
+
+**Build**
+```
+bun run build (web/)
+→ ✅ Complete in 1.26s, zero errors, zero TS errors
+   dist/client/_astro/Play.0r-QjzQ2.js          42.64 kB
+   dist/client/_astro/CogCageLanding.Bub_fV8s.js 76.25 kB
+```
+
+**Site status**: `curl -I https://www.cogcage.com` → `HTTP/2 200` ✅ (Vercel rate limit resolved)
+
+**ws2 engine tests**: 4/4 pass (unchanged — engine untouched)
+
+---
+
+**P1 — Signup reliability + storage + observable logs** ✅ COMPLETE (no regression)
+- `waitlist-db.ts` (400 lines): `better-sqlite3` SQLite, rate-limit table, idempotency via `requestId`, busy-retry loop
+- `observability.ts` (44 lines): `appendOpsLog` → NDJSON to `api-events.ndjson`; per-endpoint fallback files
+- `fallback-drain.ts` (113 lines): auto-heals queued leads on next successful request
+- `waitlist.ts` (323 lines): honeypot, rate-limit (6/10min), idempotency replay, drain trigger, `appendOpsLog` on every path
+- `events.ts` (158 lines): structured event ingestion + fallback queue
+- `ops.ts` (156 lines): authenticated read endpoint (storage health + log tail + drain trigger)
+- **Vercel note**: SQLite in `/tmp` resets per cold start. NDJSON fallback files also in `/tmp`. For persistent leads, set `COGCAGE_DB_PATH` + `COGCAGE_RUNTIME_DIR` to external volume. Not blocking for Friday demo.
+
+**P2 — Real playable demo loop (LLM spectator mode + map movement + action economy)** ✅ SHIPPED
+- **Architecture change** (vs 16:25 snapshot): demo is now full LLM spectator mode — NO keyboard input during match.
+- `web/src/pages/api/agent/decide.ts` (268 lines): POST endpoint, formats game state → GPT-4o-mini system prompt → AgentAction, 3s server timeout, NO_OP fallback on timeout/error
+- `web/src/lib/ws2/match-runner.ts` (160 lines): async tick loop, 100ms ticks, 300ms decision windows (3 ticks/window), parallel `Promise.all` LLM calls per window
+- `web/src/components/Play.tsx` (961 lines, rewritten): spectator UI — lobby with bot config panels (name, directive textarea → LLM system prompt, loadout checkboxes, armor radio), arena 8×8 grid with bot positions + VFX, event log, KO overlay
+- Lobby → match flow: `startMatch()` seeds RNG → creates bot configs → `runMatchAsync(seed, configA, configB, handleSnapshot, '/api/agent/decide', signal)`
+- Spectator hint: "Spectator mode — agents decide autonomously via LLM" rendered during match
+- `OPENAI_API_KEY` **not set in Vercel yet** — bots will NO_OP until set. Set this in Vercel env vars for live LLM battles.
+- Engine constants: `ENERGY_MAX=1000`, `HP_MAX=100`, `DECISION_WINDOW_TICKS=3`, `TICK_MS=100`, grid 8×8, positions in tenths
+
+**P3 — Monetization path** ✅ CODE COMPLETE ⚠️ ENV VARS STILL NOT SET IN VERCEL
+- `/api/founder-intent.ts` (337 lines): pre-checkout email capture, idempotency, fallback queue
+- `/api/postback.ts` (247 lines): Stripe webhook `checkout.session.completed` handler, key-based auth
+- `/api/checkout-success.ts` (224 lines): GET+POST success redirect handler
+- `success.astro`: post-checkout confirmation page
+- Play.tsx: `handleFounderCheckout` → pre-intent capture → redirect to `PUBLIC_STRIPE_FOUNDER_URL`
+- **BLOCKING** (no code change needed): `PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, `COGCAGE_OPS_KEY` must be set in Vercel dashboard
+
+**P4 — Ops log** ✅ this entry
+
+**Commit**: `feat(ws2): LLM spectator mode — decide API + match-runner + Play rewrite`
+
+**Active agent PRs**:
+- PR#2 `feat/ws2-phaser-byo-openclaw`: Phaser 3 visual engine + TypeScript migration + BYO OpenClaw `external.ts`. Richer graphics, deferred — conflicts with LLM driver Play.tsx. Review after Friday demo.
+
+---
+
+### Updated Artifact Inventory (18:17 ET, Feb 26 2026)
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `web/src/components/Play.tsx` | 961 | LLM spectator mode: 8×8 map, bot config, directive→system prompt, loadout, `runMatchAsync` |
+| `web/src/lib/ws2/match-runner.ts` | 160 | Async tick loop, parallel LLM calls, 300ms decision windows |
+| `web/src/pages/api/agent/decide.ts` | 268 | GPT-4o-mini agent decision endpoint, 3s timeout, NO_OP fallback |
+| `web/src/lib/waitlist-db.ts` | 400 | SQLite storage, rate-limit, idempotency |
+| `web/src/lib/observability.ts` | 44 | NDJSON ops log + fallback queues |
+| `web/src/lib/fallback-drain.ts` | 113 | Auto-heal drain |
+| `web/src/pages/api/waitlist.ts` | 323 | Signup: honeypot, rate-limit, drain |
+| `web/src/pages/api/events.ts` | 158 | Event ingestion + fallback |
+| `web/src/pages/api/founder-intent.ts` | 337 | Pre-checkout capture |
+| `web/src/pages/api/postback.ts` | 247 | Stripe webhook handler |
+| `web/src/pages/api/checkout-success.ts` | 224 | Post-checkout handler |
+| `web/src/pages/api/ops.ts` | 156 | Authenticated ops endpoint |
+| `web/src/lib/ws2/engine.js` | — | Deterministic engine (4/4 tests pass, untouched) |
+
+**Open gaps (no code blocker):**
+1. `OPENAI_API_KEY` → Vercel env vars (bots NO_OP until set)
+2. `PUBLIC_STRIPE_FOUNDER_URL` → Vercel env vars (checkout button dead until set)
+3. `COGCAGE_POSTBACK_KEY` + `COGCAGE_OPS_KEY` → Vercel env vars
+4. Vercel SQLite persistence → needs external volume OR Vercel KV for production leads
+
