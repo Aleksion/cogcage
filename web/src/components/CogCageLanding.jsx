@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
 const founderCheckoutUrl = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
+const COPY_VARIANT_KEY = 'cogcage_copy_variant';
 
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:wght@400;700;900&display=swap');
@@ -205,6 +206,19 @@ const globalStyles = `
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const copyVariants = {
+  value: {
+    headline: 'Code Your Bot. Watch It Fight. Win the Arena.',
+    subhead:
+      'CogCage lets you build an AI fighter, drop it into live matches, and climb competitive ladders. Tune strategy, ship upgrades, and see your bot battle real opponents.',
+  },
+  competition: {
+    headline: 'Build a Bot. Enter the Arena. Compete for the Top.',
+    subhead:
+      'CogCage is the AI skill arena where your code battles other bots in ranked matches and seasonal events.',
+  },
+};
+
 function track(event, payload = {}) {
   return fetch('/api/events', {
     method: 'POST',
@@ -216,6 +230,7 @@ function track(event, payload = {}) {
 
 export default function CogCageLanding() {
   const [email, setEmail] = useState('');
+  const [variant, setVariant] = useState('value');
   const [state, setState] = useState({ saving: false, msg: '' });
 
   useEffect(() => {
@@ -224,10 +239,26 @@ export default function CogCageLanding() {
       setEmail(cachedEmail);
     }
 
-    track('landing_view', { page: '/', source: 'hero' });
+    const cachedVariant = localStorage.getItem(COPY_VARIANT_KEY);
+    const assignedVariant = cachedVariant === 'value' || cachedVariant === 'competition'
+      ? cachedVariant
+      : (Math.random() < 0.5 ? 'value' : 'competition');
+
+    if (!cachedVariant) {
+      localStorage.setItem(COPY_VARIANT_KEY, assignedVariant);
+    }
+
+    setVariant(assignedVariant);
+    track('landing_view', {
+      page: '/',
+      source: 'hero',
+      variant: assignedVariant,
+      meta: { variant: assignedVariant },
+    });
   }, []);
 
   const canSubmit = useMemo(() => EMAIL_RE.test(email.trim()), [email]);
+  const selectedCopy = copyVariants[variant] ?? copyVariants.value;
 
   async function submitWaitlist(e) {
     e.preventDefault();
@@ -240,14 +271,20 @@ export default function CogCageLanding() {
       const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'content-type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email: normalized, game: 'Unspecified', source: 'hero-waitlist' }),
+        body: JSON.stringify({ email: normalized, game: 'Unspecified', source: `hero-waitlist-${variant}` }),
       });
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to join waitlist');
 
       localStorage.setItem('cogcage_email', normalized);
-      await track('waitlist_joined', { email: normalized, source: 'hero-waitlist', page: '/' });
+      await track('waitlist_joined', {
+        email: normalized,
+        source: `hero-waitlist-${variant}`,
+        page: '/',
+        variant,
+        meta: { variant },
+      });
 
       setState({ saving: false, msg: 'You are on the alpha waitlist.' });
     } catch (err) {
@@ -267,16 +304,18 @@ export default function CogCageLanding() {
     await fetch('/api/founder-intent', {
       method: 'POST',
       headers: { 'content-type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ email: normalized, source: 'hero-founder-cta' }),
+      body: JSON.stringify({ email: normalized, source: `hero-founder-cta-${variant}` }),
       keepalive: true,
     }).catch(() => undefined);
 
     await track('founder_checkout_clicked', {
       email: normalized,
       tier: 'founder',
-      source: 'hero-founder-cta',
+      source: `hero-founder-cta-${variant}`,
       href: founderCheckoutUrl || undefined,
       page: '/',
+      variant,
+      meta: { variant },
     });
 
     if (!founderCheckoutUrl) {
@@ -300,11 +339,8 @@ export default function CogCageLanding() {
         <section className="hero" id="join">
           <div className="hero-copy">
             <div className="eyebrow">AI Bot Arena</div>
-            <h1>Code Your Bot. Watch It Fight. Win the Arena.</h1>
-            <p className="sub">
-              CogCage lets you build an AI fighter, drop it into live matches, and climb competitive ladders. Tune
-              strategy, ship upgrades, and see your bot battle real opponents.
-            </p>
+            <h1>{selectedCopy.headline}</h1>
+            <p className="sub">{selectedCopy.subhead}</p>
 
             <ul className="steps">
               <li><span>1</span>Build with a lightweight SDK.</li>
