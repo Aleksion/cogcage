@@ -69,7 +69,10 @@ export const POST: APIRoute = async ({ request }) => {
     appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_unauthorized', requestId });
     return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', requestId }), {
       status: 401,
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        'x-request-id': requestId,
+      },
     });
   }
 
@@ -112,7 +115,7 @@ export const POST: APIRoute = async ({ request }) => {
   if (!payload) {
     return new Response(JSON.stringify({ ok: false, error: 'Invalid request payload', requestId }), {
       status: 400,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   }
 
@@ -122,7 +125,7 @@ export const POST: APIRoute = async ({ request }) => {
   if (!acceptedTypes.has(eventType)) {
     return new Response(JSON.stringify({ ok: false, error: 'Unsupported postback type', requestId }), {
       status: 422,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   }
 
@@ -181,7 +184,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     return new Response(JSON.stringify({ ok: true, requestId, eventId }), {
       status: 200,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'unknown-error';
@@ -211,7 +214,7 @@ export const POST: APIRoute = async ({ request }) => {
       });
       return new Response(JSON.stringify({ ok: true, queued: true, requestId, eventId }), {
         status: 202,
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'x-request-id': requestId },
       });
     } catch (fallbackError) {
       appendOpsLog({
@@ -228,7 +231,7 @@ export const POST: APIRoute = async ({ request }) => {
 
       return new Response(JSON.stringify({ ok: false, error: 'Postback processing failed', requestId }), {
         status: 500,
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'x-request-id': requestId },
       });
     }
   }

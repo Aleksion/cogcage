@@ -40,13 +40,14 @@ function readTail(filePath: string, tailLines = 20): RuntimeFile {
 }
 
 export const GET: APIRoute = async ({ request }) => {
+  const requestId = crypto.randomUUID();
   const key = process.env.COGCAGE_OPS_KEY;
   const provided = request.headers.get('x-ops-key') ?? new URL(request.url).searchParams.get('key');
 
   if (key && provided !== key) {
-    return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', requestId }), {
       status: 401,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   }
 
@@ -67,10 +68,11 @@ export const GET: APIRoute = async ({ request }) => {
       ok: false,
       error: 'Could not read ops metrics',
       detail: error instanceof Error ? error.message : 'unknown-error',
+      requestId,
       files,
     }), {
       status: 500,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   }
 
@@ -82,6 +84,7 @@ export const GET: APIRoute = async ({ request }) => {
 
   return new Response(JSON.stringify({
     ok: true,
+    requestId,
     ts: new Date().toISOString(),
     counts,
     reliability,
@@ -89,6 +92,6 @@ export const GET: APIRoute = async ({ request }) => {
     files,
   }), {
     status: 200,
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'x-request-id': requestId },
   });
 };

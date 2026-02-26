@@ -65,7 +65,7 @@ export const POST: APIRoute = async ({ request }) => {
   if (!authorize(request)) {
     return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', requestId }), {
       status: 401,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   }
 
@@ -152,7 +152,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     return new Response(JSON.stringify(body), {
       status: 200,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   } catch (error) {
     appendOpsLog({
@@ -166,7 +166,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     return new Response(JSON.stringify({ ok: false, error: 'Replay failed', requestId }), {
       status: 500,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   }
 };
