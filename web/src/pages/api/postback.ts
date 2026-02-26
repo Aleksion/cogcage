@@ -61,6 +61,17 @@ function deriveFallbackEventId({ eventType, source, email, created, metadata }: 
   return `postback:${day}:${hashString(fingerprint)}`;
 }
 
+function safeMetaJson(meta: Record<string, unknown>) {
+  try {
+    const serialized = JSON.stringify(meta);
+    return serialized.length > 4000
+      ? JSON.stringify({ truncated: true, preview: serialized.slice(0, 3800) })
+      : serialized;
+  } catch {
+    return JSON.stringify({ invalidMeta: true });
+  }
+}
+
 export const POST: APIRoute = async ({ request }) => {
   const startedAt = Date.now();
   const requestId = crypto.randomUUID();
@@ -151,7 +162,7 @@ export const POST: APIRoute = async ({ request }) => {
     source,
     tier: 'founder',
     email,
-    metaJson: JSON.stringify(meta),
+    metaJson: safeMetaJson(meta),
     userAgent: request.headers.get('user-agent') ?? undefined,
   };
 
