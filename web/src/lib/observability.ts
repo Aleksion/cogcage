@@ -9,12 +9,25 @@ const FALLBACK_FOUNDER_INTENT_FILE = path.join(LOG_DIR, 'founder-intent-fallback
 const FALLBACK_EVENTS_FILE = path.join(LOG_DIR, 'events-fallback.ndjson');
 
 function appendLine(filePath: string, payload: Record<string, unknown>) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
-  fs.appendFileSync(
-    filePath,
-    `${JSON.stringify({ ts: new Date().toISOString(), ...payload })}\n`,
-    'utf8'
-  );
+  const line = `${JSON.stringify({ ts: new Date().toISOString(), ...payload })}\n`;
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+  const maxAttempts = 3;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      fs.appendFileSync(filePath, line, 'utf8');
+      return;
+    } catch (error) {
+      lastError = error;
+      const code = (error as NodeJS.ErrnoException | undefined)?.code;
+      const retriable = code === 'EBUSY' || code === 'EMFILE' || code === 'ENFILE';
+      if (!retriable || attempt === maxAttempts - 1) break;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('log_append_failed');
 }
 
 export function appendOpsLog(event: Record<string, unknown>) {
