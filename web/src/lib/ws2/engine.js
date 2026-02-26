@@ -427,9 +427,19 @@ export const resolveTick = (state, actionsByActor) => {
 
   const seedParity = state.seed % 2;
   const resolveOrder = (state.tick + seedParity) % 2 === 0 ? actorIds : [...actorIds].reverse();
+
+  // Defensive actions (GUARD, UTILITY) resolve before offensive ones within the same tick
+  // so that a guard declared in the same decision window can absorb a simultaneous attack.
+  const DEFENSIVE_ACTIONS = new Set(['GUARD', 'UTILITY']);
   for (const actorId of resolveOrder) {
     const action = acceptedActions.get(actorId);
-    if (action) {
+    if (action && DEFENSIVE_ACTIONS.has(action.type)) {
+      resolveAction(state, state.actors[actorId], action);
+    }
+  }
+  for (const actorId of resolveOrder) {
+    const action = acceptedActions.get(actorId);
+    if (action && !DEFENSIVE_ACTIONS.has(action.type)) {
       resolveAction(state, state.actors[actorId], action);
     }
   }
