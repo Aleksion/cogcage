@@ -47,6 +47,37 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+---
+
+### 16:10 — Cron directive re-applied (4:10 PM ET)
+**Directive**: STOP landing-page copy iterations. Priorities in order: P1 signup reliability → P2 demo loop → P3 monetization → P4 ops log.
+
+**Full validation pass — all lanes confirmed stable:**
+
+**P1 — Signup form reliability + storage + observable logs** ✅ VERIFIED
+- Build: ✅ clean (`npm --prefix web run build`)
+- ws2 tests: ✅ 4/4 pass (`node web/scripts/ws2-core.test.mjs`)
+- SQLite (24h window): `waitlist_submitted=6`, `founder_intent_submitted=4`, `paid_conversion_confirmed=2`, `play_match_started=2`, `founder_intent_queued_fallback=1`
+- Fallback backlog: ✅ clean (only `api-events.ndjson` active; no waitlist/founder/events queues pending)
+- Idempotency, rate-limit (6/10min), honeypot, multi-content-type parse, in-band drain, ops-log on every path — all on `main` at `4ed9a93`.
+
+**P2 — Playable demo loop (map movement + action economy)** ✅ VERIFIED
+- `Play.tsx` (1392 lines): 8×8 grid, WASD+Arrow+action keys, AP economy (MOVE=1, ATTACK=2, GUARD=1, UTILITY=1), enemy AI with archetype-specific behavior (melee/ranged/balanced), bot config panel (name/directive/AGGR/DEF/RISK sliders).
+- Real ws2 engine (`resolveTick`, `createActorState`) integrated; guard-before-offense phase ordering; deterministic RNG replay.
+- Archetype-derived armor: DEF/AGGR sliders → player armor; opponent archetype → enemy armor. All 3 opponent presets have distinct personalities.
+- Play Again loop, founder CTA panel inline, opponent loadout cards.
+
+**P3 — Monetization path (founder pack checkout + postback)** ✅ CODE ⚠️ ENV PENDING (unchanged)
+- `/api/founder-intent`, `/api/postback`, `/api/checkout-success`, `success.astro` — all on `main`.
+- `PUBLIC_STRIPE_FOUNDER_URL` must be set in Vercel dashboard to activate live checkout. No code change needed.
+
+**P4 — Ops log updated** ✅ — this entry.
+
+**Git state**: `main` at `4ed9a93` — working tree clean (`.vercel/` untracked, non-critical).
+No new product-critical gaps found. No landing-page copy iteration work performed.
+
+---
+
 ### Env Vars Needed (Vercel — Blocking P3 Activation)
 
 | Var | Purpose | Status |
