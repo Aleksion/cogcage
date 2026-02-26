@@ -47,3 +47,20 @@ Server-side event data is written to SQLite `conversion_events` with:
 - optional known email
 - JSON metadata payload
 - user-agent, IP, timestamp
+
+## CSV Export for Outbound Follow-up
+
+Export monetization funnel tables to CSV:
+
+```bash
+npm run export:funnel
+```
+
+By default this writes timestamped files under `./data/exports`:
+- `waitlist_leads-<timestamp>.csv`
+- `founder_intents-<timestamp>.csv`
+- `conversion_events-<timestamp>.csv`
+
+Optional env vars:
+- `COGCAGE_DB_PATH` (SQLite source path)
+- `COGCAGE_EXPORT_DIR` (output directory override)
