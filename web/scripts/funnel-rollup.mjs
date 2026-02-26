@@ -26,9 +26,56 @@ function pct(numerator, denominator) {
   return (numerator / denominator) * 100;
 }
 
+function getPlayFounderDailySplit(windowStart) {
+  const rows = db
+    .prepare(
+      `SELECT date(created_at) AS day,
+              SUM(CASE WHEN source = 'play-page-founder-cta-winner' THEN 1 ELSE 0 END) AS winner,
+              SUM(CASE WHEN source = 'play-page-founder-cta-loser' THEN 1 ELSE 0 END) AS loser,
+              SUM(CASE WHEN source = 'play-page-founder-cta-neutral' THEN 1 ELSE 0 END) AS neutral
+       FROM conversion_events
+       WHERE event_name = 'founder_checkout_clicked'
+         AND source LIKE 'play-page-founder-cta-%'
+         AND created_at >= @windowStart
+       GROUP BY date(created_at)
+       ORDER BY day DESC`,
+      )
+    .all({ windowStart });
+
+  return rows.map((row) => {
+    const winner = Number(row.winner ?? 0);
+    const loser = Number(row.loser ?? 0);
+    const neutral = Number(row.neutral ?? 0);
+    const total = winner + loser + neutral;
+
+    return {
+      day: row.day,
+      winner,
+      loser,
+      neutral,
+      total,
+      loserSharePct: pct(loser, total),
+      winnerSharePct: pct(winner, total),
+      loserBeatsWinner: loser > winner,
+    };
+  });
+}
+
+function consecutiveLoserBeatsWinnerStreak(days) {
+  let streak = 0;
+  for (const day of days) {
+    if (!day.loserBeatsWinner) break;
+    streak += 1;
+  }
+  return streak;
+}
+
 const windowStart = db
   .prepare("SELECT datetime('now', @window) AS value")
   .get({ window: `-${days} days` })?.value;
+
+const playFounderDailySplit = getPlayFounderDailySplit(windowStart);
+const loserBeatsWinnerStreakDays = consecutiveLoserBeatsWinnerStreak(playFounderDailySplit);
 
 const totals = {
   waitlistLeads: count('SELECT COUNT(*) AS value FROM waitlist_leads'),
@@ -263,6 +310,11 @@ const rollup = {
   landingFounderIntentsByCtaVariant,
   postWaitlistFounderClicksBySource,
   postWaitlistFounderIntentsBySource,
+  playFounderDailySplit,
+  alerts: {
+    loserCtaOutperformingWinnerStreakDays: loserBeatsWinnerStreakDays,
+    loserCtaOutperformingWinnerGuardrailTriggered: loserBeatsWinnerStreakDays >= 3,
+  },
   uniqueInWindow,
   rates: {
     founderClickToIntentPct: pct(inWindow.founderIntents, inWindow.founderClicks),
@@ -383,6 +435,24 @@ console.log('Play founder clicks by source:');
 console.log(`- Neutral CTA (play-page-founder-cta-neutral): ${playFounderClicksBySource.neutral}`);
 console.log(`- Winner CTA (play-page-founder-cta-winner): ${playFounderClicksBySource.winner}`);
 console.log(`- Loser CTA (play-page-founder-cta-loser): ${playFounderClicksBySource.loser}`);
+console.log('');
+
+console.log('Play winner vs loser daily guardrail:');
+if (!playFounderDailySplit.length) {
+  console.log('- No play founder click data in this window yet.');
+} else {
+  for (const day of playFounderDailySplit) {
+    console.log(
+      `- ${day.day}: winner=${day.winner}, loser=${day.loser}, neutral=${day.neutral}, loser>winner=${day.loserBeatsWinner ? 'yes' : 'no'}`,
+    );
+  }
+}
+console.log(
+  `- Consecutive days loser>winner: ${rollup.alerts.loserCtaOutperformingWinnerStreakDays}`,
+);
+console.log(
+  `- Guardrail (>=3 consecutive days) triggered: ${rollup.alerts.loserCtaOutperformingWinnerGuardrailTriggered ? 'YES' : 'no'}`,
+);
 console.log('');
 
 console.log('Play funnel conversion rates:');
