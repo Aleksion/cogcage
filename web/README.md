@@ -32,10 +32,13 @@ https://your-domain.com/success?session_id={CHECKOUT_SESSION_ID}
 
 The landing form posts to `POST /api/waitlist` (Astro server route) and writes leads to SQLite via `better-sqlite3`.
 
-- Default DB path: `./data/cogcage.db`
+- Default DB path: `../ops/runtime/cogcage.db` (relative to `web/`)
 - Override with: `COGCAGE_DB_PATH=/absolute/path/to/cogcage.db`
+- Optional runtime root override (logs + DB default): `COGCAGE_RUNTIME_DIR=/absolute/path/to/runtime`
 
 Stored fields: email, primary game, source, user-agent, IP (from `x-forwarded-for`), created timestamp.
+
+API observability logs and fallback queues default to `../ops/runtime/*.ndjson` and can be overridden with `COGCAGE_LOG_DIR`.
 
 ## Funnel Event Tracking
 

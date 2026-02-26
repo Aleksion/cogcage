@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { ensureRuntimeDir } from './runtime-paths';
 
-const LOG_DIR = process.env.COGCAGE_LOG_DIR ?? path.join(process.cwd(), '..', 'ops', 'runtime');
+const LOG_DIR = process.env.COGCAGE_LOG_DIR ?? ensureRuntimeDir();
 const LOG_FILE = path.join(LOG_DIR, 'api-events.ndjson');
 const FALLBACK_WAITLIST_FILE = path.join(LOG_DIR, 'waitlist-fallback.ndjson');
 const FALLBACK_FOUNDER_INTENT_FILE = path.join(LOG_DIR, 'founder-intent-fallback.ndjson');

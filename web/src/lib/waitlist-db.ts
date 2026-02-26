@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
+import { resolveRuntimePath } from './runtime-paths';
 
 export type WaitlistLead = {
   email: string;
@@ -46,7 +47,24 @@ export type FunnelCounts = {
 let db: Database.Database | null = null;
 
 function getDbPath() {
-  return process.env.COGCAGE_DB_PATH ?? path.join(process.cwd(), 'data', 'cogcage.db');
+  return process.env.COGCAGE_DB_PATH ?? resolveRuntimePath('cogcage.db');
+}
+
+function runWithBusyRetry<T>(label: string, fn: () => T): T {
+  const maxAttempts = 4;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      return fn();
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes('SQLITE_BUSY') || attempt === maxAttempts - 1) break;
+    }
+  }
+
+  throw new Error(`db_${label}_failed: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
 function getDb() {
@@ -57,6 +75,7 @@ function getDb() {
 
   db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
+  db.pragma('busy_timeout = 3000');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS waitlist_leads (
@@ -134,7 +153,7 @@ export function insertWaitlistLead(lead: WaitlistLead) {
       created_at=CURRENT_TIMESTAMP
   `);
 
-  insert.run(lead);
+  runWithBusyRetry('insert_waitlist', () => insert.run(lead));
 }
 
 export function insertFounderIntent(intent: FounderIntent) {
@@ -149,7 +168,7 @@ export function insertFounderIntent(intent: FounderIntent) {
       created_at=CURRENT_TIMESTAMP
   `);
 
-  insert.run(intent);
+  runWithBusyRetry('insert_founder_intent', () => insert.run(intent));
 }
 
 export function insertConversionEvent(event: ConversionEvent) {
@@ -182,7 +201,7 @@ export function insertConversionEvent(event: ConversionEvent) {
     ON CONFLICT(event_id) DO NOTHING
   `);
 
-  insert.run(event);
+  runWithBusyRetry('insert_conversion_event', () => insert.run(event));
 }
 
 export function consumeRateLimit(
@@ -196,10 +215,10 @@ export function consumeRateLimit(
   const windowStart = Math.floor(Date.now() / windowMs);
 
   // Keep the rate-limit table bounded in long-running environments.
-  conn.prepare(`
+  runWithBusyRetry('rate_limit_gc', () => conn.prepare(`
     DELETE FROM rate_limits
     WHERE route = ? AND window_start < ?
-  `).run(route, windowStart - 3);
+  `).run(route, windowStart - 3));
 
   const existing = conn.prepare(`
     SELECT count
@@ -216,16 +235,16 @@ export function consumeRateLimit(
   }
 
   if (existing) {
-    conn.prepare(`
+    runWithBusyRetry('rate_limit_update', () => conn.prepare(`
       UPDATE rate_limits
       SET count = count + 1
       WHERE ip_address = ? AND route = ? AND window_start = ?
-    `).run(ip, route, windowStart);
+    `).run(ip, route, windowStart));
   } else {
-    conn.prepare(`
+    runWithBusyRetry('rate_limit_insert', () => conn.prepare(`
       INSERT INTO rate_limits (ip_address, route, window_start, count)
       VALUES (?, ?, ?, 1)
-    `).run(ip, route, windowStart);
+    `).run(ip, route, windowStart));
   }
 
   return {
