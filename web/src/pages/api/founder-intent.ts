@@ -15,6 +15,20 @@ const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
 const RATE_LIMIT_MAX = 8;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
+function hashString(input: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function deriveIntentId(email: string, source: string) {
+  const day = new Date().toISOString().slice(0, 10);
+  return `intent:${day}:${hashString(`${email}|${source}|${day}`)}`;
+}
+
 function getClientIp(request: Request) {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const realIp = request.headers.get('x-real-ip')?.trim();
@@ -266,7 +280,7 @@ export const POST: APIRoute = async ({ request }) => {
   const payload = {
     email: normalizedEmail,
     source: eventSource,
-    intentId: intentId || undefined,
+    intentId: intentId || deriveIntentId(normalizedEmail, eventSource),
     userAgent: request.headers.get('user-agent') ?? undefined,
     ipAddress,
   };
