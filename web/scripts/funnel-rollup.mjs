@@ -78,6 +78,35 @@ const inWindow = {
        AND created_at >= @windowStart`,
     { windowStart },
   ),
+  playPageViews: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'play_page_viewed'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  playMatchStarts: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'play_match_started'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  playMatchCompletions: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'play_match_completed'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  playFounderClicks: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source LIKE 'play-page-founder-cta-%'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
 };
 
 const uniqueInWindow = {
@@ -128,6 +157,10 @@ const rollup = {
     founderIntentToPaidPct: pct(inWindow.paidConversions, inWindow.founderIntents),
     founderClickToPaidPct: pct(inWindow.paidConversions, inWindow.founderClicks),
     waitlistToPaidPct: pct(inWindow.paidConversions, inWindow.waitlistLeads),
+    playViewToMatchStartPct: pct(inWindow.playMatchStarts, inWindow.playPageViews),
+    playStartToCompletionPct: pct(inWindow.playMatchCompletions, inWindow.playMatchStarts),
+    playCompletionToFounderClickPct: pct(inWindow.playFounderClicks, inWindow.playMatchCompletions),
+    playViewToFounderClickPct: pct(inWindow.playFounderClicks, inWindow.playPageViews),
   },
 };
 
@@ -169,5 +202,19 @@ console.log(`- Founder click -> intent: ${rollup.rates.founderClickToIntentPct.t
 console.log(`- Founder intent -> paid: ${rollup.rates.founderIntentToPaidPct.toFixed(2)}%`);
 console.log(`- Founder click -> paid: ${rollup.rates.founderClickToPaidPct.toFixed(2)}%`);
 console.log(`- Waitlist lead -> paid: ${rollup.rates.waitlistToPaidPct.toFixed(2)}%`);
+console.log('');
+
+console.log(`Play funnel (${days} day(s)):`);
+console.log(`- Play page views: ${inWindow.playPageViews}`);
+console.log(`- Play match starts: ${inWindow.playMatchStarts}`);
+console.log(`- Play match completions: ${inWindow.playMatchCompletions}`);
+console.log(`- Play-page founder checkout clicks: ${inWindow.playFounderClicks}`);
+console.log('');
+
+console.log('Play funnel conversion rates:');
+console.log(`- Play page view -> match start: ${rollup.rates.playViewToMatchStartPct.toFixed(2)}%`);
+console.log(`- Play match start -> completion: ${rollup.rates.playStartToCompletionPct.toFixed(2)}%`);
+console.log(`- Play completion -> founder click: ${rollup.rates.playCompletionToFounderClickPct.toFixed(2)}%`);
+console.log(`- Play page view -> founder click: ${rollup.rates.playViewToFounderClickPct.toFixed(2)}%`);
 
 db.close();
