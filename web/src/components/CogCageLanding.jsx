@@ -795,11 +795,11 @@ const FOUNDER_PRICE_FUTURE_TEXT = '$49/mo after beta';
 const HERO_COPY = {
   value: {
     headline: ['BUILD YOUR BOT.', 'BATTLE REAL OPPONENTS.', 'WIN THE ARENA.'],
-    body: 'No coding required. Tune strategy, enter matches, and watch your bot fight live.',
+    body: 'Build your LLM fighter, place your bets, win your battles, and climb to the top of the Cage.',
   },
   competition: {
     headline: ['BUILD YOUR BOT.', 'BATTLE REAL OPPONENTS.', 'WIN THE ARENA.'],
-    body: 'No coding required. Tune strategy, enter matches, and watch your bot fight live.',
+    body: 'Build your LLM fighter, place your bets, win your battles, and climb to the top of the Cage.',
   },
 };
 
