@@ -795,11 +795,11 @@ const FOUNDER_PRICE_FUTURE_TEXT = '$49/mo after beta';
 const HERO_COPY = {
   value: {
     headline: ['CODE YOUR BOT.', 'WATCH IT FIGHT.', 'WIN THE ARENA.'],
-    body: 'Build an AI fighter, drop it into live matches, and climb competitive ladders. Tune strategy and ship upgrades against real opponents.',
+    body: 'Build. Battle. Climb.',
   },
   competition: {
     headline: ['BUILD A BOT.', 'ENTER THE ARENA.', 'COMPETE FOR THE TOP.'],
-    body: 'CogCage is the AI skill arena where your code battles other bots in ranked matches and seasonal events.',
+    body: 'Build. Battle. Climb.',
   },
 };
 
