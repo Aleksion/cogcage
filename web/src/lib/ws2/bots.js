@@ -6,6 +6,8 @@ import {
   ENERGY_MAX,
   MELEE_RANGE,
   MOVE_DISTANCE,
+  OBJECTIVE_CENTER,
+  OBJECTIVE_RADIUS,
   RANGED_MAX,
   RANGED_MIN,
   UNIT_SCALE,
@@ -38,11 +40,14 @@ const clampActionTick = (state) => ({ tick: state.tick });
 
 const shouldGuard = (actor, distance) => distance <= MELEE_RANGE * 2 && canUse(actor, 'GUARD');
 
-const pickRangedAction = (state, actor, target) => {
+const pickRangedAction = (state, actor, target, preference = null) => {
   const dist = distanceTenths(actor.position, target.position);
-  if (dist >= RANGED_MIN && dist <= RANGED_MAX && canUse(actor, 'RANGED_SHOT')) {
-    return { tick: state.tick, actorId: actor.id, type: 'RANGED_SHOT', targetId: target.id };
-  }
+  const preferred = preference?.preferredDistance ?? Math.round((RANGED_MIN + RANGED_MAX) / 2);
+  const buffer = preference?.buffer ?? Math.round(0.75 * UNIT_SCALE);
+  const actorObjDist = distanceTenths(actor.position, OBJECTIVE_CENTER);
+  const targetObjDist = distanceTenths(target.position, OBJECTIVE_CENTER);
+  const actorInObjective = actorObjDist <= OBJECTIVE_RADIUS;
+  const targetInObjective = targetObjDist <= OBJECTIVE_RADIUS;
   if (dist < RANGED_MIN) {
     if (canUse(actor, 'DASH')) {
       const dir = pickMoveDir(actor, target, true);
@@ -50,13 +55,26 @@ const pickRangedAction = (state, actor, target) => {
     }
     return { tick: state.tick, actorId: actor.id, type: 'MOVE', dir: pickMoveDir(actor, target, true) };
   }
+  if (targetInObjective && !actorInObjective) {
+    const dir = directionTo(actor.position, OBJECTIVE_CENTER);
+    return { tick: state.tick, actorId: actor.id, type: 'MOVE', dir };
+  }
+  if (dist >= RANGED_MIN && dist <= RANGED_MAX && canUse(actor, 'RANGED_SHOT')) {
+    return { tick: state.tick, actorId: actor.id, type: 'RANGED_SHOT', targetId: target.id };
+  }
   if (dist > RANGED_MAX) {
+    return { tick: state.tick, actorId: actor.id, type: 'MOVE', dir: pickMoveDir(actor, target, false) };
+  }
+  if (dist < preferred - buffer) {
+    return { tick: state.tick, actorId: actor.id, type: 'MOVE', dir: pickMoveDir(actor, target, true) };
+  }
+  if (dist > preferred + buffer) {
     return { tick: state.tick, actorId: actor.id, type: 'MOVE', dir: pickMoveDir(actor, target, false) };
   }
   if (shouldGuard(actor, dist)) {
     return { tick: state.tick, actorId: actor.id, type: 'GUARD' };
   }
-  return { tick: state.tick, actorId: actor.id, type: 'MOVE', dir: pickMoveDir(actor, target, false) };
+  return null;
 };
 
 const pickMeleeAction = (state, actor, target) => {
@@ -90,24 +108,42 @@ const pickBalancedAction = (state, actor, target) => {
 
 export const BOT_ARCHETYPES = ['melee', 'ranged', 'balanced'];
 
-export const createBot = (archetype, rng) => ({
-  archetype,
-  decide(state, actorId) {
-    const actor = state.actors[actorId];
-    const targetId = Object.keys(state.actors).find((id) => id !== actorId);
-    const target = state.actors[targetId];
-    if (!actor || !target) return null;
-    if (state.tick % DECISION_WINDOW_TICKS !== 0) return null;
-
-    if (archetype === 'ranged') return pickRangedAction(state, actor, target);
-    if (archetype === 'melee') return pickMeleeAction(state, actor, target);
-    const roll = rng.next();
-    if (roll < 0.15 && canUse(actor, 'GUARD')) {
-      return { tick: state.tick, actorId: actor.id, type: 'GUARD' };
+export const createBot = (archetype, rng) => {
+  const rangedPreference = archetype === 'ranged'
+    ? {
+      preferredDistance: Math.round(RANGED_MIN + (RANGED_MAX - RANGED_MIN) * (0.35 + rng.next() * 0.3)),
+      buffer: Math.round(0.6 * UNIT_SCALE),
     }
-    return pickBalancedAction(state, actor, target);
-  },
-});
+    : null;
+  const meleeGuardBias = archetype === 'melee'
+    ? 0.2 + (rng.next() * 0.15)
+    : 0;
+
+  return {
+    archetype,
+    decide(state, actorId) {
+      const actor = state.actors[actorId];
+      const targetId = Object.keys(state.actors).find((id) => id !== actorId);
+      const target = state.actors[targetId];
+      if (!actor || !target) return null;
+      if (state.tick % DECISION_WINDOW_TICKS !== 0) return null;
+
+      if (archetype === 'ranged') return pickRangedAction(state, actor, target, rangedPreference);
+      if (archetype === 'melee') {
+        const dist = distanceTenths(actor.position, target.position);
+        if (dist <= MELEE_RANGE * 2 && canUse(actor, 'GUARD') && rng.next() < meleeGuardBias) {
+          return { tick: state.tick, actorId: actor.id, type: 'GUARD' };
+        }
+        return pickMeleeAction(state, actor, target);
+      }
+      const roll = rng.next();
+      if (roll < 0.15 && canUse(actor, 'GUARD')) {
+        return { tick: state.tick, actorId: actor.id, type: 'GUARD' };
+      }
+      return pickBalancedAction(state, actor, target);
+    },
+  };
+};
 
 export const createArchetypePair = (rng, archetypeA, archetypeB) => ({
   alpha: createBot(archetypeA, rng),

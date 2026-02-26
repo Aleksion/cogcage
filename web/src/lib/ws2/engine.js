@@ -20,6 +20,7 @@ import {
   OBJECTIVE_CENTER,
   OBJECTIVE_RADIUS,
   OBJECTIVE_SCORE_PER_TICK,
+  OBJECTIVE_SCORE_TO_WIN,
   POSTURE_DASH_MULTIPLIER,
   RANGED_DISTANCE_MULTIPLIER,
   RANGED_MAX,
@@ -329,7 +330,10 @@ const determineWinner = (state) => {
 
   const aObj = state.objectiveScore[aId];
   const bObj = state.objectiveScore[bId];
-  if (aObj !== bObj) return { winnerId: aObj > bObj ? aId : bId, reason: 'TIME_OBJECTIVE' };
+  const objDiff = aObj - bObj;
+  if (Math.abs(objDiff) >= OBJECTIVE_SCORE_TO_WIN) {
+    return { winnerId: objDiff > 0 ? aId : bId, reason: 'TIME_OBJECTIVE' };
+  }
 
   const aHpPct = a.hp / HP_MAX;
   const bHpPct = b.hp / HP_MAX;
@@ -476,7 +480,10 @@ export const runMatchFromLog = ({ seed, actors, actionLog }) => {
   return state;
 };
 
+const cloneActors = (actors) => JSON.parse(JSON.stringify(actors));
+
 export const runMatchWithProvider = ({ seed, actors, actionProvider }) => {
+  const initialActors = cloneActors(actors);
   const state = createInitialState({ seed, actors });
   const actionLog = [];
 
@@ -494,7 +501,7 @@ export const runMatchWithProvider = ({ seed, actors, actionProvider }) => {
     resolveTick(state, actionsByActor);
   }
 
-  return { state, actionLog };
+  return { state, actionLog, initialActors };
 };
 
 export const createStandardActors = () => ({

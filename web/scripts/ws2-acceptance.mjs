@@ -45,7 +45,7 @@ const determinismGate = async ({ seeds = 10000 }) => {
       if (mismatches > 0) break;
     }
 
-    const replay = replayMatch({ seed, actors: createStandardActors(), actionLog: first.actionLog });
+    const replay = replayMatch({ seed, actors: first.initialActors, actionLog: first.actionLog });
     if (replay.eventHash !== hash1 || replay.state.winnerId !== first.state.winnerId) {
       replayMismatches += 1;
       if (replayMismatches > 0) break;
