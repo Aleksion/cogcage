@@ -5,7 +5,11 @@ import { appendEventsFallback, appendOpsLog } from '../../lib/observability';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function getClientIp(request: Request) {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? undefined;
+  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  const realIp = request.headers.get('x-real-ip')?.trim();
+  const cfIp = request.headers.get('cf-connecting-ip')?.trim();
+  const flyIp = request.headers.get('fly-client-ip')?.trim();
+  return forwarded || realIp || cfIp || flyIp || undefined;
 }
 
 function normalizeString(value: unknown) {
