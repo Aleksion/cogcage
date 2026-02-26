@@ -1,200 +1,405 @@
 # WS2 Game Core — Implementation Plan
 
 **Owner:** Daedalus  
-**Friday deadline:** Playable demo — both bots driven by LLMs, spectator mode, combat explainability  
+**Friday deadline:** Both bots driven by LLMs via BYO OpenClaw, proper game engine, TypeScript throughout  
 **Thread:** https://discord.com/channels/1476009707037655280/1476620956737863772  
 **Spec locked in:** `docs/ws1-mechanics-spec-v1.md`
 
 ---
 
+## Architectural Directives (from Aleks — non-negotiable)
+
+1. **TypeScript only.** No `.js` files. Every file in `web/src/lib/ws2/` must be `.ts` with real types.
+2. **Proper game engine.** The match cannot be a React component with `setInterval`. Use Phaser 3.
+3. **BYO OpenClaw is the product.** Users bring their own OpenClaw instance (or any compliant agent endpoint). Built-in GPT-4o-mini is the fallback for users without their own runtime, not the main path.
+4. **Users choose their agent.** The lobby lets you configure a webhook URL (your OpenClaw endpoint) OR pick the built-in hosted runner.
+
+---
+
 ## TL;DR — What Friday Looks Like
 
-Player opens `/play`, configures their bot (name + directive + sliders), picks an opponent, hits **Enter Arena** and **watches** two LLMs fight. The combat log explains every decision. They can replay it. That's the demo.
+Player opens `/play`. Lobby lets them configure **two bots**: name, system prompt, loadout (which actions available), armor, and — crucially — **their OpenClaw webhook URL** or the hosted runner. They hit **Start Battle** and **watch** Phaser render two LLM agents fighting on the grid. Combat log explains every decision. KO screen at the end.
+
+No keyboard input during match. No heuristic bots as the primary path. Two language models reasoning about tactics in real time.
+
+---
+
+## Tech Stack Decision: Phaser 3
+
+**Chosen framework: [Phaser 3](https://phaser.io/)** — `npm install phaser`
+
+**Why:**
+- Full-fledged 2D game engine: scene management, tweens, particles, input, asset loader, WebGL/Canvas renderer
+- Runs at 60fps with its own `requestAnimationFrame` game loop — sim ticks at 10Hz, visual interpolation at 60fps
+- TypeScript types: `npm install --save-dev @types/phaser` (or use Phaser 3.8+ which includes types)
+- Battle-tested for exactly this kind of arena game
+- Handles the 300ms decision window cleanly: Phaser `update()` fires at 60fps, sim only advances state on decision window ticks
+
+**Integration pattern (Astro + Phaser):**
+- Lobby/result: React components (fast to build, works with existing code)
+- Match: Phaser canvas, launched from React via `useEffect` when `phase === 'match'`
+- Phaser creates its own `<canvas>` inside a container `div`
+- Match end → Phaser scene emits event → React transitions to result screen
+
+**Bundle note:** Phaser adds ~3MB to the bundle. Acceptable for a game. Use dynamic import (`const Phaser = await import('phaser')`) to keep it out of the lobby/landing page.
 
 ---
 
 ## Current State Audit
 
-### ✅ DONE — Do Not Touch
+### ✅ DONE — Do Not Touch (but needs TS migration)
 
 | Component | File | Status |
 |---|---|---|
-| Deterministic engine | `web/src/lib/ws2/engine.js` | Complete. All 6 actions, damage formula, objective, events, replay. Tests pass. |
-| Scripted bots | `web/src/lib/ws2/bots.js` | Complete. melee/ranged/balanced archetypes. Used as fallback if LLM fails. |
-| Replay system | `web/src/lib/ws2/replay.js` | Complete. Hash-stable event stream. |
-| LLM decision endpoint | `web/src/pages/api/agent/decide.ts` | Complete. GPT-4o-mini, formats game state, validates response. 3s timeout → NO_OP fallback. |
-| Play.tsx — lobby UI | `web/src/components/Play.tsx` | Complete. Bot config panel (name/directive/AGGR/DEF/RISK), opponent picker, seed input. |
-| Play.tsx — result/KO screen | `web/src/components/Play.tsx` | Complete. KO overlay, Play Again, New Match. |
-| Bot config sliders → armor/bonuses | `web/src/components/Play.tsx` | Complete. AGGR/DEF/RISK map to actor stats. |
+| Deterministic sim engine | `ws2/engine.js` → **must become `engine.ts`** | Logic correct. Tests pass. Port to TS, don't change logic. |
+| Bot archetypes (fallback) | `ws2/bots.js` → **`bots.ts`** | Scripted heuristics for non-LLM fallback. Port to TS. |
+| Async match runner | `ws2/match-runner.ts` | Already TypeScript ✅. Wire to Phaser game loop. |
+| Replay system | `ws2/replay.js` → **`replay.ts`** | Port to TS. |
+| Geometry helpers | `ws2/geometry.js` → **`geometry.ts`** | Port to TS. |
+| Constants | `ws2/constants.js` → **`constants.ts`** | Port to TS with `as const`. |
+| RNG | `ws2/rng.js` → **`rng.ts`** | Port to TS. |
+| Barrel export | `ws2/index.js` → **`index.ts`** | Port to TS. |
+| LLM decision endpoint | `pages/api/agent/decide.ts` | TypeScript ✅. Needs BYO relay support (Task B2). |
+| Play.tsx lobby | `components/Play.tsx` | Needs lobby redesign for BYO OpenClaw config (Task B3). |
+| Play.tsx result/KO | `components/Play.tsx` | Keep. Wire to Phaser match end event (Task B4). |
 
 ### ❌ NOT BUILT — Friday Blockers
 
-| # | What | Why It Blocks Friday |
+| # | Task | What | Scope |
+|---|---|---|---|
+| **A** | JS → TS migration | Port 6 `.js` files to `.ts` with real types | ~2–3 hours |
+| **B1** | Phaser 3 match scene | `MatchScene.ts` — renders the arena, bots, VFX, HP bars at 60fps | ~150–200 lines |
+| **B2** | BYO OpenClaw relay | `/api/agent/external` endpoint that proxies to user's OpenClaw webhook | ~50 lines |
+| **B3** | Lobby: BYO config | Add webhook URL field, model selector, loadout checkboxes to lobby | ~80 lines in Play.tsx |
+| **B4** | Wire match-runner ↔ Phaser | `match-runner.ts` drives sim, Phaser `MatchScene` visualizes it | ~100 lines |
+| **B5** | Decision explainability | LLM returns `reasoning` field; Phaser combat log displays it | ~30 lines total |
+
+---
+
+## BYO OpenClaw Protocol (the product)
+
+### What "BYO OpenClaw" means
+
+The user configures their **own OpenClaw instance** as the agent for their bot. Their OpenClaw receives game state on each decision window and returns an action.
+
+### Adapter Contract v1
+
+**Inbound (game → agent):**
+```json
+POST <user_webhook_url>
+{
+  "schema": "cogcage.turn.v1",
+  "matchId": "uuid",
+  "tick": 42,
+  "actorId": "alpha",
+  "opponentId": "beta",
+  "gameState": {
+    "tick": 42,
+    "actors": { ... },
+    "objectiveScore": { ... }
+  },
+  "loadout": ["MOVE", "MELEE_STRIKE", "RANGED_SHOT", "GUARD"],
+  "meta": {
+    "arenaSize": 20,
+    "tickRateHz": 10,
+    "decisionWindowMs": 300
+  }
+}
+```
+
+**Outbound (agent → game):**
+```json
+{
+  "schema": "cogcage.action.v1",
+  "type": "RANGED_SHOT",
+  "dir": null,
+  "targetId": "beta",
+  "reasoning": "enemy is in optimal range band (6.2u), I have full energy"
+}
+```
+
+**Rules:**
+- Game waits max 4s for response. Timeout → `NO_OP`.
+- `type` must be in the actor's `loadout`. Invalid action → `ILLEGAL_ACTION` + `NO_OP`.
+- `reasoning` field optional but encouraged (shown in combat log if present).
+- Requests are unauthenticated in Phase A. Phase B adds HMAC signing.
+
+### Server-side relay (CORS + security)
+
+Because user-configured external URLs can't be called directly from the browser (CORS), the game routes all external agent calls through:
+
+```
+browser → POST /api/agent/external → user's OpenClaw webhook
+```
+
+`/api/agent/external` body:
+```json
+{
+  "webhookUrl": "https://user.openclaw.ai/match/decide",
+  "payload": { ...cogcage.turn.v1 payload... }
+}
+```
+
+This endpoint:
+1. Validates `webhookUrl` is a valid HTTPS URL
+2. Forwards the payload to the webhook
+3. Returns the response or `{ action: { type: "NO_OP" } }` on timeout/error
+
+### Hosted runner (built-in fallback)
+
+For users without their own OpenClaw, the hosted runner uses GPT-4o-mini via `/api/agent/decide`. Same interface, just different URL. Users can still configure the system prompt and loadout.
+
+---
+
+## Task Breakdown (Friday execution order)
+
+### Task A: TypeScript Migration
+**Priority: First** — nothing else can be built on top of `.js` files.
+
+Files to migrate (all in `web/src/lib/ws2/`):
+
+| From | To | Notes |
 |---|---|---|
-| **F1** | **Spectator match runner** | Match is still human-controlled. Friday needs both bots LLM-driven, player watches. |
-| **F2** | **Directive → system prompt wire** | Directive textarea is rendered but never sent to `/api/agent/decide`. LLMs fight blind. |
-| **F3** | **Async tick loop with LLM calls** | No loop that calls `decide` for both bots each decision window and advances engine. |
-| **F4** | **Decision explainability in combat log** | Log shows actions but not WHY (no LLM reasoning passed back). |
-| **F5** | **Arena position sync** | Arena grid is cosmetic. Bot positions should reflect actual engine `position.x/y` in tenths. |
+| `constants.js` | `constants.ts` | Add `as const` to all enums/arrays, export types |
+| `geometry.js` | `geometry.ts` | Type `Position`, `Direction`, all function signatures |
+| `rng.js` | `rng.ts` | Type the `Rng` class |
+| `engine.js` | `engine.ts` | Type `GameState`, `ActorState`, `AgentAction`, `ResolutionResult` |
+| `bots.js` | `bots.ts` | Type `Bot`, `Archetype`, `BotDecision` |
+| `replay.js` | `replay.ts` | Type `ReplayHash`, `EventStream` |
+| `index.js` | `index.ts` | Re-export everything |
 
-### 🔧 NICE TO HAVE — Post-Friday
+**Critical constraint:** Do not change logic during the port. Logic is tested. Change types, not behavior.  
+**Verification:** `node --test web/scripts/ws2-core.test.mjs` must still pass 4/4 after migration.
 
-| # | What |
-|---|---|
-| P1 | Replay viewer (step through action log) |
-| P2 | Speed controls (slow / normal / fast) |
-| P3 | Win/loss history panel |
-| P4 | BYO OpenClaw adapter (Phase B) |
-| P5 | Match history persisted to DB |
+Note: `match-runner.ts` imports from `./engine.js` with `.js` extension — update all imports after rename.
 
 ---
 
-## Friday Execution Plan
+### Task B1: Phaser 3 Match Scene
 
-### Task F1 + F3: Async Match Runner + Spectator Mode
+**File:** `web/src/lib/ws2/MatchScene.ts`
 
-**Goal:** `startMatch()` in Play.tsx kicks off an async loop. Both bots call `/api/agent/decide` every decision window. Player watches. No buttons during match.
-
-**Approach:** Client-side `setInterval` at 300ms (one decision window). Each tick:
-1. Check if `state.tick % DECISION_WINDOW_TICKS === 0`
-2. Fire two parallel `fetch('/api/agent/decide', ...)` calls — one per bot
-3. Await both (with 3s timeout already baked into the endpoint)
-4. Call `resolveTick(state, actionsMap)` with results
-5. Update React state for HP bars, positions, energy, log
-6. Check `state.ended` → transition to result phase
-
-**Key constraints:**
-- LLM calls are async; engine tick must wait for both before resolving
-- If LLM takes >3s, endpoint returns `NO_OP` — engine keeps running
-- Engine state is a mutable ref (`useRef`), not useState — avoids stale closure issues
-- Decision window = 300ms = 3 engine ticks. Render can run at 100ms, actions collected every 300ms.
-
-**Files to change:**
-- `web/src/components/Play.tsx` — replace human action handlers with `startAutoLoop()` / `stopLoop()`
-- Keep action buttons hidden/disabled in spectator mode (or remove entirely for v1)
-
-**Acceptance:** Hit "Enter Arena" → both bots move and fight autonomously → KO screen appears.
-
----
-
-### Task F2: Wire Directive → System Prompt
-
-**Goal:** The directive the player types becomes the LLM system prompt for their bot.
-
-**Current:** `playerBotConfig.directive` is stored in state but never sent to `decide`.  
-**Fix:** When building the `fetch` payload for the player's bot, include `systemPrompt: playerBotConfig.directive` (+ name/sliders context).
-
-**Files to change:**
-- `web/src/components/Play.tsx` — pass `systemPrompt` in the `decide` fetch body for player bot
-- `web/src/pages/api/agent/decide.ts` — already reads `systemPrompt` from body ✅
-
-**Acceptance:** Player sets directive "be aggressive early". LLM bot fires more early strikes. Combat log confirms.
-
----
-
-### Task F4: Decision Explainability in Combat Log
-
-**Goal:** Combat log shows what each bot chose and a one-line reason.
-
-**Current:** Log shows action type only (e.g. `RANGED_SHOT`).  
-**Fix:** 
-1. The `decide` endpoint already has full game state context. Add a `reasoning` field to the response JSON — ask the LLM to include it alongside the action.
-2. In the match runner loop, capture `action.reasoning` and push it to the feed.
-
-**LLM prompt change in decide.ts:**
-```
-Respond with JSON:
-{"type":"RANGED_SHOT","reasoning":"enemy is in optimal range band, I have energy"}
+```typescript
+// Phaser Scene that renders the match
+// Driven externally by match-runner.ts via applySnapshot(snap: MatchSnapshot)
+export class MatchScene extends Phaser.Scene {
+  // Grid: 20×20, each cell = 32px → 640×640 canvas
+  // Bot sprites: colored rectangles or loaded SVG
+  // HP bars: Graphics objects, updated each snapshot
+  // VFX: Phaser particles for hits, Phaser tweens for movement
+  // Combat log: BitmapText or Text objects, scrolling
+}
 ```
 
-**Files to change:**
-- `web/src/pages/api/agent/decide.ts` — add `reasoning` to response format prompt; return it in response body
-- `web/src/components/Play.tsx` — display `reasoning` in feed alongside action
+**Key design:** The scene does NOT drive the game loop. It only renders what `match-runner.ts` feeds it. This preserves the deterministic simulation contract.
 
-**Acceptance:** Combat log reads: `[alpha] RANGED_SHOT — "optimal distance, full energy"`.
+**Scene interface:**
+```typescript
+interface SceneEvents {
+  'snapshot': (snap: MatchSnapshot) => void  // from match-runner → scene
+  'match-ended': (winnerId: string | null) => void  // from scene → React
+}
+```
+
+**Integration:**
+```typescript
+// In Play.tsx, when phase transitions to 'match':
+const game = new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: 'game-container',
+  width: 640,
+  height: 640,
+  scene: [MatchScene],
+});
+```
 
 ---
 
-### Task F5: Arena Position Sync
+### Task B2: BYO OpenClaw Relay Endpoint
 
-**Goal:** Bot sprites on the arena grid reflect actual engine positions.
+**File:** `web/src/pages/api/agent/external.ts`
 
-**Current:** Player and enemy positions are tracked manually in Play.tsx state (`playerPos`, `enemyPos`) as grid cells. These may drift from the engine's actual `position.x/y` (in tenths, 0–200).
+Simple proxy with timeout and validation. ~50 lines.
 
-**Fix:** After each `resolveTick`, read `state.actors.alpha.position` and `state.actors.beta.position`, convert from tenths to grid coords (`Math.round(x / UNIT_SCALE)`), and sync to display state.
-
-**Conversion:** `gridX = Math.round(pos.x / UNIT_SCALE)`, `gridY = Math.round(pos.y / UNIT_SCALE)`. Arena is 20x20.
-
-**Files to change:**
-- `web/src/components/Play.tsx` — derive display positions from engine state post-tick, not from manual tracking
-
-**Acceptance:** Bots visually approach each other and land on correct cells matching engine state.
+```typescript
+export const POST: APIRoute = async ({ request }) => {
+  const { webhookUrl, payload } = await request.json();
+  // validate webhookUrl is HTTPS
+  // forward payload with 4s timeout
+  // return response or { action: { type: 'NO_OP' } }
+}
+```
 
 ---
 
-## Build Order (Friday sequence)
+### Task B3: Lobby — BYO OpenClaw Config
 
+**File:** `web/src/components/Play.tsx` (lobby section)
+
+Add per-bot configuration:
+1. **Agent mode**: radio — `hosted` (GPT-4o-mini) | `byo-openclaw` (custom webhook)
+2. **Webhook URL** (shown when `byo-openclaw`): text input for OpenClaw endpoint
+3. **System prompt**: large textarea (wired to `systemPrompt` in API call — currently unhooked)
+4. **Loadout**: checkboxes — MOVE locked, 5 others optional. More = harder reasoning.
+5. **Armor**: radio — light / medium / heavy
+
+The `directive` field currently exists but is never sent. Wire it to `systemPrompt` in the decide call.
+
+---
+
+### Task B4: Wire match-runner ↔ Phaser
+
+**File:** `web/src/components/Play.tsx` (match section)
+
+```typescript
+// Replace the current manual action loop with:
+const runnerRef = useRef<AbortController | null>(null);
+
+async function startMatch() {
+  setPhase('match');
+  const abort = new AbortController();
+  runnerRef.current = abort;
+  
+  const apiBase = botAConfig.mode === 'byo' 
+    ? '/api/agent/external' 
+    : '/api/agent/decide';
+
+  const final = await runMatchAsync(seed, botA, botB, (snap) => {
+    // Push snapshot to Phaser scene via event emitter
+    phaserGame.events.emit('snapshot', snap);
+    // Update React state for HP bars in sidebar (optional)
+    setPlayerHp(snap.state.actors[botA.id].hp);
+    setEnemyHp(snap.state.actors[botB.id].hp);
+  }, apiBase, abort.signal);
+
+  // Match ended
+  setWinner(final.winnerId);
+  setPhase('result');
+}
 ```
-F5 (position sync) → F2 (directive wire) → F1+F3 (match runner) → F4 (explainability)
+
+---
+
+### Task B5: Decision Explainability
+
+**In `/api/agent/decide.ts`:** Add `reasoning` to the JSON response format prompt:
 ```
+{"type":"RANGED_SHOT","reasoning":"enemy at 6.2u, optimal band, full energy"}
+```
+Return `reasoning` in the API response alongside `action`.
 
-Rationale: position sync is isolated + unblocks visual correctness. Directive wire is one-line. Match runner is the big chunk. Explainability is a polish pass.
+**In `/api/agent/external.ts`:** Pass through any `reasoning` field from the external agent.
 
-**Estimated scope:** F1+F3 is ~100–150 lines in Play.tsx. F2 is ~5 lines. F4 is ~20 lines in each file. F5 is ~10 lines.
+**In `match-runner.ts`:** Capture `action.reasoning` per decision, include in `MatchSnapshot.events` or a separate `decisions` log.
+
+**In `MatchScene.ts`:** Render last N decisions in a scrolling combat log panel.
 
 ---
 
 ## Definition of Done (Friday)
 
-- [ ] F1: Enter Arena → both bots fight autonomously, no player input required
-- [ ] F2: Directive text drives player bot's LLM behavior
-- [ ] F3: Tick loop runs correctly; match ends with KO/timeout → result screen
-- [ ] F4: Combat log shows action + one-line LLM reasoning per decision
-- [ ] F5: Bot sprites track true engine positions on the 20x20 grid
-- [ ] Deploy: Vercel deployment live at cogcage.com, `OPENAI_API_KEY` set in env
-- [ ] Smoke test: Full match runs start to finish without console errors
+**TypeScript:**
+- [ ] All 7 `.js` files in `ws2/` migrated to `.ts` with real types
+- [ ] No TypeScript errors (`tsc --noEmit` clean)
+- [ ] Engine tests still pass 4/4 after migration
+
+**Game engine:**
+- [ ] Phaser 3 installed and working in the Astro project
+- [ ] `MatchScene.ts` renders 20×20 grid, two bots, HP bars, VFX on hits
+- [ ] Match-runner drives the scene via snapshot events (no direct `resolveTick` calls in React)
+- [ ] Bot movement animated with Phaser tweens (smooth, not teleport)
+
+**BYO OpenClaw:**
+- [ ] `/api/agent/external` relay endpoint live
+- [ ] Lobby has agent mode toggle (hosted / BYO webhook URL)
+- [ ] BYO webhook call works end-to-end (can test with a simple echo server)
+- [ ] System prompt directive is wired to the LLM call (not dead UI)
+- [ ] Loadout checkboxes gate which actions the LLM can use
+
+**Match loop:**
+- [ ] Both bots fight autonomously — zero keyboard input during match
+- [ ] Combat log shows each decision + `reasoning` field when available
+- [ ] Match ends correctly → result/KO screen
+
+**Deploy:**
+- [ ] `npm run build` clean, no TypeScript errors
+- [ ] `OPENAI_API_KEY` set in Vercel dashboard
+- [ ] cogcage.com serves the updated `/play` page
 
 ---
 
-## Post-Friday Backlog (parking lot)
+## Scope Reality Check
 
-- Speed controls (0.5x / 1x / 2x) for the match loop
-- Step-through replay viewer using `runMatchFromLog` + event timeline
-- Win/loss record stored in KV or DB
-- Bot archetype counter balance validation (2,000-game test suite against spec §11 AC#3)
-- BYO OpenClaw adapter spec (Phase B — separate WS3 track)
-- Map obstacles/LOS (deferred per spec §12)
-- Team modes 2v2 (deferred per spec §12)
+The TS migration + Phaser integration is 2–4 hours of solid work on top of the original plan. Friday is still achievable if we execute in order:
+
+```
+A (TS migration, ~2h) 
+→ B1 (Phaser match scene, ~3h) 
+→ B2 (relay endpoint, ~1h) 
+→ B3 (lobby BYO config, ~1h) 
+→ B4 (wire runner ↔ Phaser, ~1h) 
+→ B5 (reasoning log, ~0.5h)
+```
+
+If time runs short, ship in this priority:
+1. TS migration + Phaser rendering + match-runner wired = **you can watch bots fight**
+2. BYO relay + lobby config = **you can plug in your own OpenClaw**
+3. Reasoning log = **polish**
 
 ---
 
-## Key Invariants (from spec — never regress)
+## Post-Friday Backlog
 
-1. Engine is deterministic: same `(seed, actionLog)` → same winner always
-2. Invalid actions → `NO_OP` + `ILLEGAL_ACTION` event (never throws)
-3. Match always ends: either KO or tick timeout
-4. No `Math.random()` inside engine — seeded RNG only
-5. LLM timeout → graceful `NO_OP` fallback, match continues
+- Speed controls (0.5x / 1x / 2x)
+- Replay step-through viewer using `runMatchFromLog`
+- HMAC auth for BYO webhook calls (Phase B)
+- Win/loss history in DB
+- Bot counter-balance validation (2,000-game suite per spec §11 AC#3)
+- Map obstacles and LOS (deferred per spec §12)
+- 2v2 mode (deferred per spec §12)
+- MCP adapter spec + public certification tests (Phase C)
+
+---
+
+## Key Invariants — Never Regress
+
+1. Engine is deterministic: `(seed, actionLog)` → identical winner always
+2. Invalid action → `NO_OP` + `ILLEGAL_ACTION` event, never throws
+3. Match always terminates: KO or tick timeout
+4. No `Math.random()` inside engine — `Rng` class only
+5. LLM/agent timeout → `NO_OP` fallback, match continues
 
 ---
 
 ## Handoff Contract (for implementing agent)
 
-When you get this task:
+Before writing code:
 1. Read this doc fully
 2. Read `docs/ws1-mechanics-spec-v1.md` — locked spec
-3. Check `web/src/lib/ws2/README.md` — engine interface
-4. Run existing tests first: `node --test web/scripts/ws2-core.test.mjs`
-5. Build in order: F5 → F2 → F1+F3 → F4
-6. After each task, smoke test in browser before moving to next
-7. Don't refactor engine.js — it's tested and locked
-8. Branch: `feat/ws2-llm-spectator-mode` off main
+3. Run existing tests: `node --test web/scripts/ws2-core.test.mjs`
 
-When reporting back:
-- Link to PR
-- Confirm which Definition of Done items are checked
-- Note any scores <9 with gaps
+Work in order:
+1. Task A: migrate JS → TS (do not change logic, verify tests still pass)
+2. Tasks B1–B5 in order
+
+Hard rules:
+- Do not change engine logic during TS migration — types only
+- Phaser game loop drives visual rendering; `match-runner.ts` drives simulation
+- Never call `resolveTick` directly from React components
+- Branch: `feat/ws2-phaser-byo-openclaw` off main
+- Push early, PR when done
+
+Report back format:
+```
+## Task Complete: [title]
+- Done: [what]
+- Evidence: [commands + outputs]
+- Artifacts: [PR/branch, files changed]
+- DoD checklist: [items checked]
+- Scores (correctness/completeness/coverage/regression/prod): [X/X/X/X/X]
+- Follow-up: [any gaps]
+```
 
 ---
 
-*Last updated: 2026-02-26 by Daedalus*
+*Last updated: 2026-02-26 by Daedalus — revised per Aleks architecture directives (TS-only, Phaser 3, BYO OpenClaw primary)*
