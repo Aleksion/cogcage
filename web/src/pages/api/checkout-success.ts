@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { insertConversionEvent } from '../../lib/waitlist-db';
-import { appendOpsLog } from '../../lib/observability';
+import { appendEventsFallback, appendOpsLog } from '../../lib/observability';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -38,6 +38,7 @@ const recordSuccess = ({
   meta?: Record<string, unknown>;
   request: Request;
 }) => {
+  const startedAt = Date.now();
   const ipAddress = getClientIp(request);
   const userAgent = request.headers.get('user-agent') ?? undefined;
   const requestId = crypto.randomUUID();
@@ -54,9 +55,23 @@ const recordSuccess = ({
     ipAddress,
   };
 
-  insertConversionEvent(payload);
-  appendOpsLog({ route: '/api/checkout-success', level: 'info', event: 'paid_conversion_confirmed', requestId, source: payload.source, eventId: payload.eventId });
-  return requestId;
+  try {
+    insertConversionEvent(payload);
+    appendOpsLog({ route: '/api/checkout-success', level: 'info', event: 'paid_conversion_confirmed', requestId, source: payload.source, eventId: payload.eventId, durationMs: Date.now() - startedAt });
+    return { requestId, queued: false };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'unknown-error';
+    appendOpsLog({ route: '/api/checkout-success', level: 'error', event: 'paid_conversion_db_write_failed', requestId, source: payload.source, eventId: payload.eventId, error: errorMessage, durationMs: Date.now() - startedAt });
+
+    try {
+      appendEventsFallback({ route: '/api/checkout-success', requestId, ...payload, reason: errorMessage });
+      appendOpsLog({ route: '/api/checkout-success', level: 'warn', event: 'paid_conversion_saved_to_fallback', requestId, source: payload.source, eventId: payload.eventId, durationMs: Date.now() - startedAt });
+      return { requestId, queued: true };
+    } catch (fallbackError) {
+      appendOpsLog({ route: '/api/checkout-success', level: 'error', event: 'paid_conversion_fallback_write_failed', requestId, source: payload.source, eventId: payload.eventId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
+      throw error;
+    }
+  }
 };
 
 export const POST: APIRoute = async ({ request }) => {
@@ -90,21 +105,28 @@ export const POST: APIRoute = async ({ request }) => {
   const tier = optionalString(payload.tier);
   const meta = payload.meta && typeof payload.meta === 'object' ? (payload.meta as Record<string, unknown>) : undefined;
 
-  const requestId = recordSuccess({
-    eventId,
-    page,
-    href,
-    tier,
-    source,
-    email,
-    meta,
-    request,
-  });
+  try {
+    const result = recordSuccess({
+      eventId,
+      page,
+      href,
+      tier,
+      source,
+      email,
+      meta,
+      request,
+    });
 
-  return new Response(JSON.stringify({ ok: true, requestId }), {
-    status: 200,
-    headers: { 'content-type': 'application/json' },
-  });
+    return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined }), {
+      status: result.queued ? 202 : 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  } catch {
+    return new Response(JSON.stringify({ ok: false, error: 'Conversion storage unavailable.' }), {
+      status: 503,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
 };
 
 export const GET: APIRoute = async ({ request }) => {
@@ -126,22 +148,29 @@ export const GET: APIRoute = async ({ request }) => {
   const source = optionalString(url.searchParams.get('source'));
   const tier = optionalString(url.searchParams.get('tier'));
 
-  const requestId = recordSuccess({
-    eventId,
-    page,
-    href,
-    tier,
-    source,
-    email,
-    meta: {
-      sessionId: eventId,
-      query: Object.fromEntries(url.searchParams.entries()),
-    },
-    request,
-  });
+  try {
+    const result = recordSuccess({
+      eventId,
+      page,
+      href,
+      tier,
+      source,
+      email,
+      meta: {
+        sessionId: eventId,
+        query: Object.fromEntries(url.searchParams.entries()),
+      },
+      request,
+    });
 
-  return new Response(JSON.stringify({ ok: true, requestId }), {
-    status: 200,
-    headers: { 'content-type': 'application/json' },
-  });
+    return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined }), {
+      status: result.queued ? 202 : 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  } catch {
+    return new Response(JSON.stringify({ ok: false, error: 'Conversion storage unavailable.' }), {
+      status: 503,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
 };
