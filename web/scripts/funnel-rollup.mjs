@@ -1,8 +1,26 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 
-const dbPath = process.env.COGCAGE_DB_PATH ?? path.join(process.cwd(), 'data', 'cogcage.db');
+function resolveDefaultDbPath() {
+  const runtimeDir = process.env.COGCAGE_RUNTIME_DIR;
+  if (runtimeDir) return path.join(runtimeDir, 'cogcage.db');
+
+  const cwd = process.cwd();
+  const candidates = [
+    path.join(cwd, 'ops', 'runtime', 'cogcage.db'),
+    path.join(cwd, '..', 'ops', 'runtime', 'cogcage.db'),
+    path.join(cwd, 'web', 'ops', 'runtime', 'cogcage.db'),
+    path.join(cwd, 'data', 'cogcage.db'),
+    path.join(cwd, 'web', 'data', 'cogcage.db'),
+  ];
+
+  const existing = candidates.find((candidate) => fs.existsSync(candidate));
+  return existing ?? candidates[0];
+}
+
+const dbPath = process.env.COGCAGE_DB_PATH ?? resolveDefaultDbPath();
 
 const args = process.argv.slice(2);
 const daysArg = args.find((arg) => arg.startsWith('--days='));
