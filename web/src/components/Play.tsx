@@ -428,6 +428,9 @@ type MatchSimulation = {
 type LeaderboardEntry = MatchResult & { rankScore: number };
 
 const LEADERBOARD_KEY = 'cogcage_demo_leaderboard_v1';
+const EMAIL_KEY = 'cogcage_email';
+const founderCheckoutUrl =
+  ((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? '').trim();
 
 const OPPONENTS: BotPreset[] = [
   {
@@ -638,7 +641,27 @@ const Play = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [matchCount, setMatchCount] = useState(0);
   const [activeSeed, setActiveSeed] = useState<number | null>(null);
+  const [email, setEmail] = useState('');
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
+
+  const postEvent = async (event: string, meta: Record<string, unknown> = {}) => {
+    try {
+      await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event,
+          source: 'play-page',
+          email: email.trim() || undefined,
+          meta,
+        }),
+      });
+    } catch {
+      // Best-effort analytics only.
+    }
+  };
 
   const opponent = useMemo(
     () => OPPONENTS.find((bot) => bot.id === opponentId) || OPPONENTS[0],
@@ -654,6 +677,12 @@ const Play = () => {
 
   useEffect(() => {
     setLeaderboard(loadLeaderboard());
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = window.localStorage.getItem(EMAIL_KEY) || '';
+    if (saved) setEmail(saved);
   }, []);
 
   const stopTimer = () => {
@@ -674,6 +703,7 @@ const Play = () => {
     );
     const seed = seedBase || 1;
     setActiveSeed(seed);
+    void postEvent('play_match_started', { seed, opponent: opponent.id });
 
     const simulation = simulateMatch(
       { aggression, defense, risk, prompt },
@@ -727,6 +757,42 @@ const Play = () => {
       }
     }, 450);
   };
+
+  const handleFounderCheckout = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      setCheckoutMessage('Enter a valid email to reserve founder pricing.');
+      return;
+    }
+    if (!founderCheckoutUrl) {
+      setCheckoutMessage('Checkout is temporarily unavailable. Please join the waitlist from home.');
+      void postEvent('founder_checkout_unavailable', { source: 'play-page' });
+      return;
+    }
+
+    if (typeof window !== 'undefined') window.localStorage.setItem(EMAIL_KEY, normalizedEmail);
+    setCheckoutBusy(true);
+    setCheckoutMessage(null);
+
+    try {
+      await Promise.allSettled([
+        fetch('/api/founder-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: normalizedEmail, source: 'play-page-founder-cta' }),
+        }),
+        postEvent('founder_checkout_clicked', { source: 'play-page-founder-cta' }),
+      ]);
+
+      const url = new URL(founderCheckoutUrl);
+      url.searchParams.set('prefilled_email', normalizedEmail);
+      window.location.href = url.toString();
+    } catch {
+      setCheckoutBusy(false);
+      setCheckoutMessage('Could not start checkout. Try again in a moment.');
+    }
+  };
+
 
   return (
     <div className="play-root">
@@ -895,6 +961,27 @@ const Play = () => {
                   <div style={{ fontWeight: 900 }}>{entry.playerScore}</div>
                 </div>
               ))}
+            </div>
+
+            <div className="leaderboard" style={{ marginTop: '1.2rem' }}>
+              <div className="section-label">Unlock Founder Pricing</div>
+              <div className="hint" style={{ marginBottom: '0.7rem' }}>
+                Keep your edge: lock <strong>$29/mo</strong> before launch pricing moves to <strong>$49/mo</strong>.
+              </div>
+              <input
+                className="prompt-box"
+                type="email"
+                placeholder="you@team.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                style={{ minHeight: 'unset', height: '48px', marginBottom: '0.8rem' }}
+              />
+              <button className="cta-btn" onClick={handleFounderCheckout} disabled={checkoutBusy}>
+                {checkoutBusy ? 'Opening Checkout…' : 'Reserve Founder Spot'}
+              </button>
+              {checkoutMessage && (
+                <div className="hint" style={{ marginTop: '0.7rem' }}>{checkoutMessage}</div>
+              )}
             </div>
           </section>
         </div>
