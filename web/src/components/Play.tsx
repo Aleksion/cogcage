@@ -1006,6 +1006,17 @@ const Play = () => {
   useEffect(() => {
     if (!running || winner) return;
     const handleKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        const isEditable =
+          target.isContentEditable ||
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          tag === 'SELECT';
+        if (isEditable) return;
+      }
+
       if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
         event.preventDefault();
         attemptMove(0, -1);
