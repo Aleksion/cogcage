@@ -853,6 +853,12 @@ const HeroSection = ({ sectionRef }) => {
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
 
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('cogcage_email');
+    if (savedEmail) setEmail(savedEmail);
+    postJson('/api/events', { event: 'landing_view', source: 'hero', page: '/' });
+  }, []);
+
   const submitWaitlist = async (event) => {
     event?.preventDefault();
     if (status === 'loading') return;
@@ -863,7 +869,7 @@ const HeroSection = ({ sectionRef }) => {
       setMessage('Enter your email to join the beta.');
       return;
     }
-    if (!/\S+@\S+\.\S+/.test(trimmed)) {
+    if (!EMAIL_RE.test(trimmed)) {
       setStatus('error');
       setMessage('Please use a valid email address.');
       return;
@@ -886,6 +892,13 @@ const HeroSection = ({ sectionRef }) => {
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.error || 'Something went wrong. Try again.');
       }
+      localStorage.setItem('cogcage_email', trimmed.toLowerCase());
+      await postJson('/api/events', {
+        event: 'waitlist_joined',
+        source: 'hero',
+        email: trimmed.toLowerCase(),
+        page: '/',
+      });
       setStatus('success');
       setMessage('You are on the list. Watch for your invite.');
       setEmail('');
@@ -893,6 +906,38 @@ const HeroSection = ({ sectionRef }) => {
       setStatus('error');
       setMessage(err instanceof Error ? err.message : 'Something went wrong. Try again.');
     }
+  };
+
+  const handleFounderCheckout = async () => {
+    const trimmed = email.trim() || localStorage.getItem('cogcage_email') || '';
+    if (!EMAIL_RE.test(trimmed)) {
+      setStatus('error');
+      setMessage('Add your email first so we can reserve your founder slot.');
+      return;
+    }
+
+    localStorage.setItem('cogcage_email', trimmed.toLowerCase());
+    await postJson('/api/events', {
+      event: 'founder_checkout_clicked',
+      source: 'hero',
+      email: trimmed.toLowerCase(),
+      tier: 'founder',
+      page: '/',
+    });
+    await postJson('/api/founder-intent', {
+      email: trimmed.toLowerCase(),
+      source: 'hero-founder-checkout',
+    });
+
+    if (STRIPE_FOUNDER_URL) {
+      const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
+      target.searchParams.set('prefilled_email', trimmed.toLowerCase());
+      window.location.href = target.toString();
+      return;
+    }
+
+    setStatus('error');
+    setMessage('Founder checkout link not configured yet.');
   };
 
   return (
@@ -943,7 +988,7 @@ const HeroSection = ({ sectionRef }) => {
           </div>
         </div>
         <div className="hero-actions">
-          <button className="btn-arcade red" type="button">Enter Cage</button>
+          <button className="btn-arcade red" type="button" onClick={handleFounderCheckout}>Reserve Founder Spot</button>
           <button className="btn-arcade" style={{ background: 'var(--c-white)' }} type="button">Watch Live</button>
         </div>
       </div>
@@ -1066,17 +1111,34 @@ const FooterSection = () => {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
-  const handleCreate = () => {
-    if (!email.trim()) {
+  const handleCreate = async () => {
+    const trimmed = email.trim();
+    if (!trimmed) {
       setError('Please enter your email!');
       return;
     }
-    if (!/\S+@\S+\.\S+/.test(email)) {
+    if (!EMAIL_RE.test(trimmed)) {
       setError('Invalid email address.');
       return;
     }
+
     setError('');
-    setSubmitted(true);
+    try {
+      const response = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: trimmed, game: 'Unspecified', source: 'cogcage-footer' }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.ok !== true) {
+        throw new Error(payload.error || 'Could not create account.');
+      }
+      localStorage.setItem('cogcage_email', trimmed.toLowerCase());
+      await postJson('/api/events', { event: 'waitlist_joined', source: 'footer', page: '/', email: trimmed.toLowerCase() });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create account.');
+    }
   };
 
   return (
