@@ -44,11 +44,31 @@ const globalStyles = `
     border: 4px solid var(--c-dark);
     border-radius: 24px;
     background: white;
-    padding: clamp(1.2rem, 2vw, 2rem);
+    padding: clamp(1.2rem, 2.6vw, 2.3rem);
     box-shadow: 12px 12px 0 rgba(0,0,0,0.15);
     display: grid;
-    grid-template-columns: 1.1fr .9fr;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "card"
+      "copy";
     gap: 1.5rem;
+  }
+
+  .hero-copy { grid-area: copy; }
+  .hero-card { grid-area: card; }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: .78rem;
+    padding: .35rem .7rem;
+    border: 2px solid var(--c-dark);
+    border-radius: 999px;
+    background: #fff7cc;
   }
 
   h1 {
@@ -61,7 +81,35 @@ const globalStyles = `
     -webkit-text-stroke: 2px var(--c-dark);
   }
 
-  .sub { font-size: 1.1rem; line-height: 1.5; max-width: 560px; }
+  .sub { font-size: 1.05rem; line-height: 1.5; max-width: 560px; }
+
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+    display: grid;
+    gap: .5rem;
+  }
+
+  .steps li {
+    display: flex;
+    gap: .6rem;
+    align-items: flex-start;
+    font-weight: 700;
+  }
+
+  .steps li span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    border: 2px solid var(--c-dark);
+    background: var(--c-cyan);
+    font-size: .85rem;
+    flex-shrink: 0;
+  }
 
   .kpis {
     margin-top: 1rem;
@@ -94,6 +142,10 @@ const globalStyles = `
     letter-spacing: 1px;
     font-size: 2rem;
     color: var(--c-red);
+  }
+
+  .card p {
+    margin: 0 0 .8rem;
   }
 
   .field {
@@ -142,8 +194,12 @@ const globalStyles = `
     font-size: .8rem;
   }
 
-  @media (max-width: 900px) {
-    .hero { grid-template-columns: 1fr; }
+  @media (min-width: 900px) {
+    .hero {
+      grid-template-columns: 1.1fr .9fr;
+      grid-template-areas: "copy card";
+      align-items: start;
+    }
   }
 `;
 
@@ -160,10 +216,9 @@ function track(event, payload = {}) {
 
 export default function CogCageLanding() {
   const [email, setEmail] = useState('');
-  const [game, setGame] = useState('');
   const [state, setState] = useState({ saving: false, msg: '' });
 
-  const canSubmit = useMemo(() => EMAIL_RE.test(email.trim()) && game.trim().length > 1, [email, game]);
+  const canSubmit = useMemo(() => EMAIL_RE.test(email.trim()), [email]);
 
   async function submitWaitlist(e) {
     e.preventDefault();
@@ -176,7 +231,7 @@ export default function CogCageLanding() {
       const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'content-type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email: normalized, game: game.trim(), source: 'hero-waitlist' }),
+        body: JSON.stringify({ email: normalized, game: 'Unspecified', source: 'hero-waitlist' }),
       });
 
       const json = await res.json().catch(() => ({}));
@@ -185,16 +240,16 @@ export default function CogCageLanding() {
       localStorage.setItem('cogcage_email', normalized);
       await track('waitlist_joined', { email: normalized, source: 'hero-waitlist', page: '/' });
 
-      setState({ saving: false, msg: '✅ You are on the alpha waitlist.' });
+      setState({ saving: false, msg: 'You are on the alpha waitlist.' });
     } catch (err) {
-      setState({ saving: false, msg: `⚠️ ${err instanceof Error ? err.message : 'Try again in a minute.'}` });
+      setState({ saving: false, msg: `Error: ${err instanceof Error ? err.message : 'Try again in a minute.'}` });
     }
   }
 
   async function startFounderCheckout() {
     const normalized = email.trim().toLowerCase();
     if (!EMAIL_RE.test(normalized)) {
-      setState((s) => ({ ...s, msg: '⚠️ Enter a valid email before founder checkout.' }));
+      setState((s) => ({ ...s, msg: 'Enter a valid email before founder checkout.' }));
       return;
     }
 
@@ -216,7 +271,7 @@ export default function CogCageLanding() {
     });
 
     if (!founderCheckoutUrl) {
-      setState((s) => ({ ...s, msg: '⚠️ Founder checkout link not configured yet.' }));
+      setState((s) => ({ ...s, msg: 'Founder checkout link not configured yet.' }));
       return;
     }
 
@@ -234,61 +289,63 @@ export default function CogCageLanding() {
         </header>
 
         <section className="hero" id="join">
-          <div>
-            <h1>Code. Compete. Cash Out.</h1>
+          <div className="hero-copy">
+            <div className="eyebrow">AI Bot Arena</div>
+            <h1>Code Your Bot. Watch It Fight. Win the Arena.</h1>
             <p className="sub">
-              CogCage is building paid AI skill ladders where players tune model strategy and compete for cash prizes.
-              Join alpha now and secure a founder slot before public launch.
+              CogCage lets you build an AI fighter, drop it into live matches, and climb competitive ladders. Tune
+              strategy, ship upgrades, and see your bot battle real opponents.
             </p>
 
+            <ul className="steps">
+              <li><span>1</span>Build with a lightweight SDK.</li>
+              <li><span>2</span>Queue into arena fights.</li>
+              <li><span>3</span>Climb rankings and compete for prizes.</li>
+            </ul>
+
             <div className="kpis">
-              <div className="kpi"><strong>Target</strong><span>$10/day by Day 30</span></div>
-              <div className="kpi"><strong>Offer</strong><span>Founder Access</span></div>
-              <div className="kpi"><strong>Loop</strong><span>Weekly Revenue Tests</span></div>
+              <div className="kpi"><strong>Mode</strong><span>Live Matches</span></div>
+              <div className="kpi"><strong>Progress</strong><span>Ranked Ladders</span></div>
+              <div className="kpi"><strong>Rewards</strong><span>Prize Events</span></div>
             </div>
 
             <div className="proof">
-              monetization_hypothesis: Email-first founder checkout increases paid conversion by reducing checkout friction.
+              arena_preview: bot_id=ALPHA-9 | matchup=mech-brawler | status=queued
             </div>
           </div>
 
-          <aside className="card">
-            <h2>Get Early Access</h2>
+          <aside className="card hero-card">
+            <h2>Get Alpha Access</h2>
+            <p>Be first to launch a bot, test your build, and enter early seasons.</p>
             <form onSubmit={submitWaitlist}>
               <label className="field">
                 <span>Email</span>
                 <input
                   type="email"
-                  placeholder="you@company.com"
+                  name="email"
+                  placeholder="you@domain.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  inputMode="email"
                   required
                 />
               </label>
-              <label className="field">
-                <span>Main game you play</span>
-                <select value={game} onChange={(e) => setGame(e.target.value)} required>
-                  <option value="">Choose one…</option>
-                  <option value="League of Legends">League of Legends</option>
-                  <option value="Valorant">Valorant</option>
-                  <option value="CS2">CS2</option>
-                  <option value="Dota 2">Dota 2</option>
-                  <option value="Rocket League">Rocket League</option>
-                  <option value="Other">Other</option>
-                </select>
-              </label>
 
               <button className="btn" type="submit" disabled={!canSubmit || state.saving}>
-                {state.saving ? 'Saving…' : 'Join Alpha Waitlist'}
+                {state.saving ? 'Saving…' : 'Join the Alpha'}
               </button>
             </form>
 
             <button className="btn alt" type="button" onClick={startFounderCheckout}>
-              Reserve Founder Spot
+              Reserve Founder Slot
             </button>
 
             {state.msg && <div className="msg">{state.msg}</div>}
-            <p className="fine">Founder checkout pre-fills your email and logs intent for follow-up if checkout is abandoned.</p>
+            <p className="fine">
+              Prize events are optional and subject to rules, eligibility, and regional availability. No guaranteed
+              earnings. Founder checkout pre-fills your email for faster completion.
+            </p>
           </aside>
         </section>
       </main>

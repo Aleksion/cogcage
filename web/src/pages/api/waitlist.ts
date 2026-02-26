@@ -37,10 +37,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   if (game.length < 2) {
-    return new Response(JSON.stringify({ ok: false, error: 'Primary game is required.' }), {
-      status: 400,
-      headers: { 'content-type': 'application/json' },
-    });
+    game = 'Unspecified';
   }
 
   insertWaitlistLead({

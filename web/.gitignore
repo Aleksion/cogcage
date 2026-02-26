@@ -23,5 +23,8 @@ pnpm-debug.log*
 # local sqlite + exports
 data/
 
+# local vercel metadata
+.vercel/
+
 # jetbrains setting folder
 .idea/
