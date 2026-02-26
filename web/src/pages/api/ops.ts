@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { APIRoute } from 'astro';
-import { getFunnelCounts, getReliabilitySnapshot } from '../../lib/waitlist-db';
+import { getFunnelCounts, getReliabilitySnapshot, getStorageHealth } from '../../lib/waitlist-db';
 import { getRuntimeDir } from '../../lib/runtime-paths';
 
 export const prerender = false;
@@ -12,6 +12,7 @@ type RuntimeFile = {
   file: string;
   exists: boolean;
   lines: number;
+  lineCountApprox: boolean;
   bytes: number;
   tail: string[];
 };
@@ -22,19 +23,35 @@ function readTail(filePath: string, tailLines = 20): RuntimeFile {
       file: path.basename(filePath),
       exists: false,
       lines: 0,
+      lineCountApprox: false,
       bytes: 0,
       tail: [],
     };
   }
 
-  const content = fs.readFileSync(filePath, 'utf8');
+  const stats = fs.statSync(filePath);
+  const bytes = stats.size;
+  const readStart = Math.max(0, bytes - 256 * 1024);
+  const fd = fs.openSync(filePath, 'r');
+  let content = '';
+
+  try {
+    const length = bytes - readStart;
+    const buffer = Buffer.alloc(length);
+    fs.readSync(fd, buffer, 0, length, readStart);
+    content = buffer.toString('utf8');
+  } finally {
+    fs.closeSync(fd);
+  }
+
   const lines = content.split('\n').filter(Boolean);
 
   return {
     file: path.basename(filePath),
     exists: true,
     lines: lines.length,
-    bytes: Buffer.byteLength(content),
+    lineCountApprox: readStart > 0,
+    bytes,
     tail: lines.slice(-tailLines),
   };
 }
@@ -59,14 +76,17 @@ export const GET: APIRoute = async ({ request }) => {
 
   let counts;
   let reliability;
+  let storage;
   try {
     counts = getFunnelCounts();
     reliability = getReliabilitySnapshot(24);
+    storage = getStorageHealth();
   } catch (error) {
     return new Response(JSON.stringify({
       ok: false,
       error: 'Could not read ops metrics',
       detail: error instanceof Error ? error.message : 'unknown-error',
+      runtimeDir: LOG_DIR,
       files,
     }), {
       status: 500,
@@ -85,6 +105,8 @@ export const GET: APIRoute = async ({ request }) => {
     ts: new Date().toISOString(),
     counts,
     reliability,
+    storage,
+    runtimeDir: LOG_DIR,
     queueBacklog,
     files,
   }), {

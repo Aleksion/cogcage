@@ -56,7 +56,7 @@ export type ReliabilitySnapshot = {
 
 let db: Database.Database | null = null;
 
-function getDbPath() {
+export function getDbPath() {
   return process.env.COGCAGE_DB_PATH ?? resolveRuntimePath('cogcage.db');
 }
 
@@ -299,6 +299,22 @@ export function getFunnelCounts(): FunnelCounts {
     waitlistLeads: waitlist.count,
     founderIntents: founders.count,
     conversionEvents: events.count,
+  };
+}
+
+export function getStorageHealth() {
+  const dbPath = getDbPath();
+  const conn = getDb();
+  const probe = conn.prepare('SELECT 1 AS ok').get() as { ok: number };
+  const dbExists = fs.existsSync(dbPath);
+  const dbBytes = dbExists ? fs.statSync(dbPath).size : 0;
+
+  return {
+    dbPath,
+    dbExists,
+    dbBytes,
+    writableDir: fs.existsSync(path.dirname(dbPath)),
+    dbProbeOk: probe.ok === 1,
   };
 }
 
