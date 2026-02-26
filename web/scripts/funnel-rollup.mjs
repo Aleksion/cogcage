@@ -8,10 +8,12 @@ const args = process.argv.slice(2);
 const daysArg = args.find((arg) => arg.startsWith('--days='));
 const playGuardrailMinSampleArg = args.find((arg) => arg.startsWith('--play-guardrail-min-sample='));
 const landingVariantMinSampleArg = args.find((arg) => arg.startsWith('--landing-variant-min-sample='));
+const playCopyVariantMinSampleArg = args.find((arg) => arg.startsWith('--play-copy-variant-min-sample='));
 const jsonMode = args.includes('--json');
 const days = Number(daysArg?.split('=')[1] ?? '7');
 const playGuardrailMinSample = Number(playGuardrailMinSampleArg?.split('=')[1] ?? '5');
 const landingVariantMinSample = Number(landingVariantMinSampleArg?.split('=')[1] ?? '25');
+const playCopyVariantMinSample = Number(playCopyVariantMinSampleArg?.split('=')[1] ?? '25');
 
 if (!Number.isFinite(days) || days <= 0) {
   console.error('Invalid --days value. Example: --days=7');
@@ -25,6 +27,11 @@ if (!Number.isFinite(playGuardrailMinSample) || playGuardrailMinSample < 1) {
 
 if (!Number.isFinite(landingVariantMinSample) || landingVariantMinSample < 1) {
   console.error('Invalid --landing-variant-min-sample value. Example: --landing-variant-min-sample=25');
+  process.exit(1);
+}
+
+if (!Number.isFinite(playCopyVariantMinSample) || playCopyVariantMinSample < 1) {
+  console.error('Invalid --play-copy-variant-min-sample value. Example: --play-copy-variant-min-sample=25');
   process.exit(1);
 }
 
@@ -225,6 +232,66 @@ const playFounderClicksByCopyVariant = {
     { windowStart },
   ),
 };
+
+const playFounderIntentsByCopyVariant = {
+  momentum: count(
+    `SELECT COUNT(*) AS value
+     FROM founder_intents
+     WHERE source LIKE 'play-page-founder-checkout-%-momentum'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  utility: count(
+    `SELECT COUNT(*) AS value
+     FROM founder_intents
+     WHERE source LIKE 'play-page-founder-checkout-%-utility'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
+const playCopyVariantQualified = {
+  momentum: playFounderClicksByCopyVariant.momentum >= playCopyVariantMinSample,
+  utility: playFounderClicksByCopyVariant.utility >= playCopyVariantMinSample,
+};
+
+function playCopyVariantRecommendation() {
+  if (!playCopyVariantQualified.momentum || !playCopyVariantQualified.utility) {
+    return {
+      ready: false,
+      winner: null,
+      reason: 'insufficient_sample',
+    };
+  }
+
+  const momentumClickToIntent = pct(
+    playFounderIntentsByCopyVariant.momentum,
+    playFounderClicksByCopyVariant.momentum,
+  );
+  const utilityClickToIntent = pct(
+    playFounderIntentsByCopyVariant.utility,
+    playFounderClicksByCopyVariant.utility,
+  );
+
+  if (momentumClickToIntent === utilityClickToIntent) {
+    return {
+      ready: true,
+      winner:
+        playFounderClicksByCopyVariant.momentum >= playFounderClicksByCopyVariant.utility
+          ? 'momentum'
+          : 'utility',
+      reason: 'tie_broken_by_click_volume',
+    };
+  }
+
+  return {
+    ready: true,
+    winner: momentumClickToIntent > utilityClickToIntent ? 'momentum' : 'utility',
+    reason: 'higher_click_to_intent',
+  };
+}
+
+const playFounderCopyVariantRecommendation = playCopyVariantRecommendation();
 
 const landingFounderClicksByCtaVariant = {
   reserve: count(
@@ -462,6 +529,7 @@ const rollup = {
   inWindow,
   playFounderClicksBySource,
   playFounderClicksByCopyVariant,
+  playFounderIntentsByCopyVariant,
   landingViewsByHeroVariant,
   landingFounderClicksByHeroVariant,
   landingFounderIntentsByHeroVariant,
@@ -479,6 +547,9 @@ const rollup = {
     landingVariantMinSample,
     landingVariantQualified,
     landingHeroVariantRecommendation,
+    playCopyVariantMinSample,
+    playCopyVariantQualified,
+    playFounderCopyVariantRecommendation,
   },
   uniqueInWindow,
   rates: {
@@ -544,6 +615,14 @@ const rollup = {
     playFounderClickNeutralSharePct: pct(playFounderClicksBySource.neutral, inWindow.playFounderClicks),
     playFounderClickMomentumSharePct: pct(playFounderClicksByCopyVariant.momentum, inWindow.playFounderClicks),
     playFounderClickUtilitySharePct: pct(playFounderClicksByCopyVariant.utility, inWindow.playFounderClicks),
+    playMomentumClickToIntentPct: pct(
+      playFounderIntentsByCopyVariant.momentum,
+      playFounderClicksByCopyVariant.momentum,
+    ),
+    playUtilityClickToIntentPct: pct(
+      playFounderIntentsByCopyVariant.utility,
+      playFounderClicksByCopyVariant.utility,
+    ),
   },
 };
 
@@ -646,6 +725,14 @@ console.log(`- Winner CTA (play-page-founder-cta-winner*): ${playFounderClicksBy
 console.log(`- Loser CTA (play-page-founder-cta-loser*): ${playFounderClicksBySource.loser}`);
 console.log(`- Momentum copy clicks (*-momentum): ${playFounderClicksByCopyVariant.momentum}`);
 console.log(`- Utility copy clicks (*-utility): ${playFounderClicksByCopyVariant.utility}`);
+console.log(`- Momentum copy intent logs (*-momentum): ${playFounderIntentsByCopyVariant.momentum}`);
+console.log(`- Utility copy intent logs (*-utility): ${playFounderIntentsByCopyVariant.utility}`);
+console.log(`- Play copy decision sample floor: ${playCopyVariantMinSample} clicks each (momentum qualified=${playCopyVariantQualified.momentum ? 'yes' : 'no'}, utility qualified=${playCopyVariantQualified.utility ? 'yes' : 'no'})`);
+if (playFounderCopyVariantRecommendation.ready) {
+  console.log(`- Recommended play founder copy winner: ${playFounderCopyVariantRecommendation.winner} (${playFounderCopyVariantRecommendation.reason})`);
+} else {
+  console.log('- Recommended play founder copy winner: pending (insufficient qualified sample)');
+}
 console.log('');
 
 console.log('Play winner vs loser daily guardrail:');
@@ -679,5 +766,7 @@ console.log(`- Play completion -> winner CTA click: ${rollup.rates.playCompletio
 console.log(`- Play completion -> loser CTA click: ${rollup.rates.playCompletionToFounderClickLoserPct.toFixed(2)}%`);
 console.log(`- Play founder click mix (neutral/winner/loser): ${rollup.rates.playFounderClickNeutralSharePct.toFixed(2)}% / ${rollup.rates.playFounderClickWinnerSharePct.toFixed(2)}% / ${rollup.rates.playFounderClickLoserSharePct.toFixed(2)}%`);
 console.log(`- Play founder copy mix (momentum/utility): ${rollup.rates.playFounderClickMomentumSharePct.toFixed(2)}% / ${rollup.rates.playFounderClickUtilitySharePct.toFixed(2)}%`);
+console.log(`- Momentum click -> intent: ${rollup.rates.playMomentumClickToIntentPct.toFixed(2)}%`);
+console.log(`- Utility click -> intent: ${rollup.rates.playUtilityClickToIntentPct.toFixed(2)}%`);
 
 db.close();
