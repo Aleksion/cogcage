@@ -212,7 +212,8 @@ export function consumeRateLimit(
 ): RateLimitResult {
   const conn = getDb();
   const ip = ipAddress || 'unknown';
-  const windowStart = Math.floor(Date.now() / windowMs);
+  const now = Date.now();
+  const windowStart = Math.floor(now / windowMs);
 
   // Keep the rate-limit table bounded in long-running environments.
   runWithBusyRetry('rate_limit_gc', () => conn.prepare(`
@@ -220,37 +221,48 @@ export function consumeRateLimit(
     WHERE route = ? AND window_start < ?
   `).run(route, windowStart - 3));
 
-  const existing = conn.prepare(`
-    SELECT count
-    FROM rate_limits
-    WHERE ip_address = ? AND route = ? AND window_start = ?
-  `).get(ip, route, windowStart) as { count: number } | undefined;
-
-  if (existing && existing.count >= limit) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetMs: (windowStart + 1) * windowMs - Date.now(),
-    };
-  }
-
-  if (existing) {
-    runWithBusyRetry('rate_limit_update', () => conn.prepare(`
-      UPDATE rate_limits
-      SET count = count + 1
+  const tx = conn.transaction(() => {
+    const existing = conn.prepare(`
+      SELECT count
+      FROM rate_limits
       WHERE ip_address = ? AND route = ? AND window_start = ?
-    `).run(ip, route, windowStart));
-  } else {
-    runWithBusyRetry('rate_limit_insert', () => conn.prepare(`
+    `).get(ip, route, windowStart) as { count: number } | undefined;
+
+    if (existing && existing.count >= limit) {
+      return {
+        allowed: false,
+        remaining: 0,
+      };
+    }
+
+    if (existing) {
+      conn.prepare(`
+        UPDATE rate_limits
+        SET count = count + 1
+        WHERE ip_address = ? AND route = ? AND window_start = ?
+      `).run(ip, route, windowStart);
+      const used = existing.count + 1;
+      return {
+        allowed: true,
+        remaining: Math.max(0, limit - used),
+      };
+    }
+
+    conn.prepare(`
       INSERT INTO rate_limits (ip_address, route, window_start, count)
       VALUES (?, ?, ?, 1)
-    `).run(ip, route, windowStart));
-  }
+    `).run(ip, route, windowStart);
 
+    return {
+      allowed: true,
+      remaining: Math.max(0, limit - 1),
+    };
+  });
+
+  const result = runWithBusyRetry('rate_limit_consume', () => tx());
   return {
-    allowed: true,
-    remaining: Math.max(0, limit - ((existing?.count ?? 0) + 1)),
-    resetMs: (windowStart + 1) * windowMs - Date.now(),
+    ...result,
+    resetMs: (windowStart + 1) * windowMs - now,
   };
 }
 
