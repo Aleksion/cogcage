@@ -3,8 +3,8 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 
 const cwd = process.cwd();
-const dbPath = process.env.COGCAGE_DB_PATH ?? path.join(cwd, 'data', 'cogcage.db');
-const runtimeDir = process.env.COGCAGE_LOG_DIR ?? path.join(cwd, '..', 'ops', 'runtime');
+const runtimeDir = process.env.COGCAGE_LOG_DIR ?? process.env.COGCAGE_RUNTIME_DIR ?? path.join(cwd, '..', 'ops', 'runtime');
+const dbPath = process.env.COGCAGE_DB_PATH ?? path.join(runtimeDir, 'cogcage.db');
 
 const files = {
   waitlist: path.join(runtimeDir, 'waitlist-fallback.ndjson'),
@@ -12,8 +12,55 @@ const files = {
   events: path.join(runtimeDir, 'events-fallback.ndjson'),
 };
 
+fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS waitlist_leads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    game TEXT NOT NULL,
+    source TEXT NOT NULL,
+    user_agent TEXT,
+    ip_address TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(email)
+  );
+
+  CREATE TABLE IF NOT EXISTS founder_intents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    source TEXT NOT NULL,
+    intent_id TEXT,
+    user_agent TEXT,
+    ip_address TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_founder_intents_intent_id
+  ON founder_intents (intent_id)
+  WHERE intent_id IS NOT NULL;
+
+  CREATE TABLE IF NOT EXISTS conversion_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_name TEXT NOT NULL,
+    event_id TEXT,
+    page TEXT,
+    href TEXT,
+    tier TEXT,
+    source TEXT,
+    email TEXT,
+    meta_json TEXT,
+    user_agent TEXT,
+    ip_address TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_conversion_events_event_id
+  ON conversion_events (event_id)
+  WHERE event_id IS NOT NULL;
+`);
 
 const upsertWaitlist = db.prepare(`
   INSERT INTO waitlist_leads (email, game, source, user_agent, ip_address)
@@ -140,6 +187,7 @@ const moved = [backupFile(files.waitlist), backupFile(files.founderIntent), back
 
 console.log(JSON.stringify({
   ok: true,
+  runtimeDir,
   dbPath,
   replayed: {
     waitlist: waitlistCount,
