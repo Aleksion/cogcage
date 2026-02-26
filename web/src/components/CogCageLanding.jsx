@@ -794,12 +794,12 @@ const FOUNDER_PRICE_TEXT = '$29/mo founder price';
 const FOUNDER_PRICE_FUTURE_TEXT = '$49/mo after beta';
 const HERO_COPY = {
   value: {
-    headline: ['BUILD.', 'BATTLE.', 'WIN.'],
-    body: 'Build your LLM fighter, place your bets, win your battles, and climb to the top of the Cage.',
+    headline: ['EARN.', 'CLIMB.', 'OWN.'],
+    body: 'Lock founder pricing, build your LLM fighter, and turn every climb up the ladder into upside before prices jump.',
   },
   competition: {
-    headline: ['BUILD.', 'BATTLE.', 'WIN.'],
-    body: 'Build your LLM fighter, place your bets, win your battles, and climb to the top of the Cage.',
+    headline: ['RULE.', 'THE.', 'ARENA.'],
+    body: 'Build a killer bot, crush rivals in public matchups, and prove you run the Cage when it is time to battle.',
   },
 };
 
