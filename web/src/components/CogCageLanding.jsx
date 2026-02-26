@@ -230,14 +230,11 @@ const globalStyles = `
   }
 
   .hero-section {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    min-height: 85vh;
-    padding: 0 var(--page-padding);
-    align-items: center;
+    display: block;
+    min-height: auto;
+    padding: 2.5rem var(--page-padding) 3rem;
     position: relative;
     overflow: hidden;
-    column-gap: 3.5rem;
     max-width: var(--content-max);
     width: 100%;
     margin: 0 auto;
@@ -247,14 +244,15 @@ const globalStyles = `
     z-index: 2;
     display: flex;
     flex-direction: column;
-    gap: 2.25rem;
+    gap: 1.5rem;
+    max-width: 820px;
   }
 
   .hero-h1 {
-    font-size: clamp(3.4rem, 8vw, 7rem);
-    line-height: 0.85;
+    font-size: clamp(2.6rem, 7vw, 6rem);
+    line-height: 0.9;
     margin-bottom: 0;
-    transform: rotate(-2deg);
+    transform: rotate(-1.2deg);
   }
 
   .hero-tagline {
@@ -271,10 +269,10 @@ const globalStyles = `
 
   .hero-visual {
     position: relative;
-    height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
+    margin-top: 2rem;
   }
 
   .hero-body {
@@ -344,8 +342,8 @@ const globalStyles = `
   }
 
   .bot-card {
-    width: min(480px, 90vw);
-    height: 550px;
+    width: min(540px, 94vw);
+    height: 500px;
     background: var(--c-white);
     border: 5px solid var(--c-dark);
     border-radius: 30px;
@@ -653,14 +651,7 @@ const globalStyles = `
     .nav-cta { display: none; }
 
     .hero-section {
-      grid-template-columns: 1fr;
-      min-height: auto;
-      padding: 3rem var(--page-padding) 3.5rem;
-      gap: 2.5rem;
-    }
-
-    .hero-visual {
-      order: 2;
+      padding: 2rem var(--page-padding) 2.5rem;
     }
 
     .hero-body {
@@ -1082,15 +1073,7 @@ const HeroSection = ({ sectionRef }) => {
 
   return (
     <section className="hero-section" ref={sectionRef} id="hero">
-      <div className="decor circle-decor" />
-      <div className="decor plus-decor">+</div>
-
       <div className="hero-content">
-        <div className="panel-skew" style={{ display: 'inline-block', marginBottom: '0', background: 'var(--c-yellow)' }}>
-          <div className="panel-content-unskew">
-            <span style={{ fontWeight: 900, textTransform: 'uppercase', fontSize: '1.2rem' }}>Season 4 is Live!</span>
-          </div>
-        </div>
         <h1 className="hero-h1 text-stroke">
           {heroCopy.headline[0]}<br />
           <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>{heroCopy.headline[1]}</span><br />
@@ -1113,8 +1096,7 @@ const HeroSection = ({ sectionRef }) => {
                 aria-label="Email address"
               />
               <button
-                className="btn-arcade red"
-                style={{ fontSize: '1rem', padding: '0.85rem 1.6rem' }}
+                className="btn-arcade red waitlist-submit"
                 type="submit"
                 disabled={status === 'loading'}
               >
