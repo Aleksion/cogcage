@@ -1089,9 +1089,9 @@ const HeroSection = ({ sectionRef }) => {
     <section className="hero-section" ref={sectionRef} id="hero">
       <div className="hero-content">
         <h1 className="hero-h1 text-stroke">
-          {heroCopy.headline[0]}<br />
-          <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>{heroCopy.headline[1]}</span><br />
-          {heroCopy.headline[2]}
+          PROGRAM.<br />
+          <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>FIGHT.</span><br />
+          CASH IN.
         </h1>
         <p className="hero-body">
           {heroCopy.body}
