@@ -956,7 +956,8 @@ const Play = () => {
         return false;
       }
       nextEnemyPos = chosen;
-      entries.push(`${opponent.name} moves to (${chosen.x + 1}, ${GRID_SIZE - chosen.y}).`);
+      const moveDist = manhattan(chosen, playerPos);
+      entries.push(`${opponent.name} moves → (${chosen.x + 1},${GRID_SIZE - chosen.y}) [chase: dist=${moveDist}]`);
       return true;
     };
 
@@ -972,21 +973,21 @@ const Play = () => {
         nextPlayerHp = clamp(nextPlayerHp - mitigated, 0, 100);
         nextPlayerBlock = 0;
         nextEnemyScan = 0;
-        entries.push(`${opponent.name} strikes for ${mitigated}. Your HP ${nextPlayerHp}.`);
+        entries.push(`${opponent.name} strikes for ${mitigated} [aggr:${opponent.aggression}→attack] · your HP ${nextPlayerHp}`);
         ap -= 2;
         break;
       }
 
       if (ap >= 1 && rng() < blockThreshold) {
         nextEnemyBlock = 5 + rngInt(rng, 0, 2);
-        entries.push(`${opponent.name} raises guard (${nextEnemyBlock}).`);
+        entries.push(`${opponent.name} raises guard (${nextEnemyBlock}) [def:${opponent.defense}→guard]`);
         ap -= 1;
         continue;
       }
 
       if (ap >= 1 && rng() < scanThreshold) {
         nextEnemyScan = 2;
-        entries.push(`${opponent.name} scans the arena.`);
+        entries.push(`${opponent.name} scans the arena [risk:${opponent.risk}→overclock]`);
         ap -= 1;
         continue;
       }
@@ -1174,19 +1175,33 @@ const Play = () => {
               <span className="seed-pill">Seed {activeSeed ?? '—'}</span>
             </div>
 
-            <div className="section-label" style={{ marginTop: '1.4rem' }}>Opponent Presets</div>
-            <div style={{ display: 'grid', gap: '0.6rem' }}>
+            <div className="section-label" style={{ marginTop: '1.4rem' }}>Opponent Loadout</div>
+            <div style={{ display: 'grid', gap: '0.8rem' }}>
               {OPPONENTS.map((bot) => (
-                <label key={bot.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                <label key={bot.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', cursor: 'pointer' }}>
                   <input
                     type="radio"
                     name="opponent"
                     checked={bot.id === opponentId}
                     onChange={() => setOpponentId(bot.id)}
+                    style={{ marginTop: '0.25rem' }}
                   />
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 900 }}>{bot.name}</div>
-                    <div className="hint">{bot.tagline}</div>
+                    <div className="hint" style={{ marginBottom: '0.4rem' }}>{bot.tagline}</div>
+                    {[
+                      { label: 'AGGR', value: bot.aggression, color: 'var(--c-red, #ff4444)' },
+                      { label: 'DEF', value: bot.defense, color: 'var(--c-cyan, #00e5ff)' },
+                      { label: 'RISK', value: bot.risk, color: 'var(--c-yellow, #ffd700)' },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
+                        <span style={{ fontSize: '0.6rem', fontFamily: 'monospace', color: 'var(--c-muted, #888)', width: '2.2rem', flexShrink: 0 }}>{label}</span>
+                        <div style={{ flex: 1, height: '4px', background: '#2a2a2a', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ width: `${value}%`, height: '100%', background: color, borderRadius: '2px', transition: 'width 0.3s ease' }} />
+                        </div>
+                        <span style={{ fontSize: '0.6rem', fontFamily: 'monospace', color: 'var(--c-muted, #888)', width: '2rem', textAlign: 'right' }}>{value}</span>
+                      </div>
+                    ))}
                   </div>
                 </label>
               ))}
