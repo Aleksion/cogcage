@@ -127,30 +127,6 @@ const globalStyles = `
     letter-spacing: 1px;
   }
 
-  .slider-row {
-    display: grid;
-    grid-template-columns: 120px 1fr 64px;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .slider-label {
-    font-weight: 800;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 1px;
-  }
-
-  .slider-row input[type=range] {
-    width: 100%;
-  }
-
-  .slider-value {
-    font-weight: 800;
-    text-align: right;
-  }
-
   .prompt-box {
     width: 100%;
     min-height: 72px;
@@ -160,49 +136,6 @@ const globalStyles = `
     padding: 0.75rem 1rem;
     font-family: var(--f-body);
     font-size: 1rem;
-  }
-
-  .prompt-meta {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.85rem;
-    opacity: 0.7;
-    margin-top: 0.4rem;
-  }
-
-  .opponent-grid {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .opponent-card {
-    border: 3px solid var(--c-dark);
-    border-radius: 12px;
-    padding: 0.8rem 1rem;
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .opponent-card.active {
-    background: var(--c-yellow);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-hard);
-  }
-
-  .opponent-card input { margin-top: 0.2rem; }
-
-  .opponent-info h3 {
-    font-family: var(--f-display);
-    font-size: 1.4rem;
-    text-transform: uppercase;
-  }
-
-  .opponent-info p {
-    font-size: 0.95rem;
-    opacity: 0.8;
   }
 
   .cta-btn {
@@ -224,6 +157,45 @@ const globalStyles = `
 
   .cta-btn:active { transform: translateY(4px); box-shadow: none; }
   .cta-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: 0 6px 0 var(--c-dark); }
+
+  .action-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(64px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .action-btn {
+    border: 3px solid var(--c-dark);
+    border-radius: 12px;
+    background: var(--c-yellow);
+    font-weight: 900;
+    padding: 0.65rem 0.5rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+  }
+
+  .action-btn.secondary {
+    background: var(--c-white);
+  }
+
+  .action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 900;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    border: 2px solid var(--c-dark);
+    background: var(--c-white);
+    font-size: 0.85rem;
+  }
 
   .arena-header {
     display: flex;
@@ -270,15 +242,54 @@ const globalStyles = `
     background: linear-gradient(90deg, #ff6b6b 0%, #d63031 100%);
   }
 
-  .score-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
+  .arena-map {
+    margin: 1rem 0 1.2rem;
+    display: grid;
+    grid-template-columns: repeat(var(--grid-size), minmax(28px, 1fr));
+    gap: 6px;
+    padding: 0.75rem;
+    background: #101010;
+    border-radius: 16px;
+    border: 3px solid var(--c-dark);
+  }
+
+  .arena-cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    background: #f6f7f8;
+    border: 2px solid rgba(0,0,0,0.2);
+    display: grid;
+    place-items: center;
     font-weight: 900;
-    padding: 0.3rem 0.8rem;
-    border-radius: 999px;
-    border: 2px solid var(--c-dark);
-    background: var(--c-white);
+    color: #111;
+  }
+
+  .arena-cell.obstacle {
+    background: #2f2f2f;
+    border-color: #000;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.05);
+  }
+
+  .arena-cell.in-range {
+    box-shadow: inset 0 0 0 3px rgba(255, 214, 0, 0.85);
+  }
+
+  .arena-cell.player {
+    background: #2ecc71;
+    color: #0f2b18;
+  }
+
+  .arena-cell.enemy {
+    background: #eb4d4b;
+    color: #fff;
+  }
+
+  .arena-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1rem;
+    font-size: 0.85rem;
   }
 
   .feed {
@@ -287,7 +298,7 @@ const globalStyles = `
     border-radius: 12px;
     border: 3px solid var(--c-dark);
     padding: 1rem;
-    max-height: 360px;
+    max-height: 320px;
     overflow-y: auto;
     font-size: 0.95rem;
     line-height: 1.5;
@@ -313,28 +324,6 @@ const globalStyles = `
     padding-top: 1.2rem;
   }
 
-  .leaderboard-row {
-    display: grid;
-    grid-template-columns: 36px 1fr auto;
-    gap: 0.75rem;
-    align-items: center;
-    padding: 0.6rem 0;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
-  }
-
-  .leaderboard-row:last-child { border-bottom: none; }
-
-  .leaderboard-rank {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: var(--c-dark);
-    color: var(--c-white);
-    display: grid;
-    place-items: center;
-    font-weight: 900;
-  }
-
   .hint {
     font-size: 0.9rem;
     opacity: 0.7;
@@ -351,44 +340,6 @@ const globalStyles = `
     align-items: center;
   }
 
-  .map-board {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(32px, 1fr));
-    gap: 6px;
-    margin: 1rem 0;
-  }
-
-  .map-tile {
-    aspect-ratio: 1;
-    border: 2px solid var(--c-dark);
-    border-radius: 10px;
-    background: #f4f4f4;
-    display: grid;
-    place-items: center;
-    font-weight: 900;
-  }
-
-  .map-tile.player { background: #00e5ff66; }
-  .map-tile.enemy { background: #eb4d4b66; }
-
-  .action-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin: 0.75rem 0;
-  }
-
-  .mini-btn {
-    border: 2px solid var(--c-dark);
-    border-radius: 999px;
-    padding: 0.45rem 0.8rem;
-    font-weight: 800;
-    background: #fff;
-    cursor: pointer;
-  }
-
-  .mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
   @media (max-width: 960px) {
     .play-header { flex-direction: column; align-items: flex-start; }
     .play-shell { padding: 2rem 1.5rem 3rem; }
@@ -400,16 +351,9 @@ const globalStyles = `
     .logo { font-size: 1.8rem; }
     .panel { padding: 1.5rem; }
     .cta-btn { width: 100%; }
-    .leaderboard-row { grid-template-columns: 28px 1fr auto; }
+    .arena-map { gap: 4px; padding: 0.6rem; }
   }
 `;
-
-type Strategy = {
-  aggression: number;
-  defense: number;
-  risk: number;
-  prompt: string;
-};
 
 type BotPreset = {
   id: string;
@@ -420,67 +364,23 @@ type BotPreset = {
   risk: number;
 };
 
-type ActionType = 'Strike' | 'Guard' | 'Gamble';
+type Vec = { x: number; y: number };
 
-type ResolvedAction = {
-  action: ActionType;
-  attack: number;
-  block: number;
-  selfDamage: number;
-  note?: 'Crit' | 'Backfire';
+type Cell = 'empty' | 'obstacle';
+
+type GameState = {
+  grid: Cell[][];
+  playerPos: Vec;
+  enemyPos: Vec;
 };
 
-type TurnLog = {
-  turn: number;
-  playerAction: string;
-  opponentAction: string;
-  damageToOpponent: number;
-  damageToPlayer: number;
-  playerSelfDamage: number;
-  opponentSelfDamage: number;
-  playerHealth: number;
-  opponentHealth: number;
-  playerScore: number;
-  opponentScore: number;
-  summary: string;
-};
-
-type MatchResult = {
-  id: string;
-  seed: number;
-  date: string;
-  winner: string;
-  playerScore: number;
-  opponentScore: number;
-  playerHealth: number;
-  opponentHealth: number;
-  opponentName: string;
-  prompt: string;
-};
-
-type MatchSimulation = {
-  turns: TurnLog[];
-  result: MatchResult;
-};
-
-type LeaderboardEntry = MatchResult & { rankScore: number };
-
-type GridPos = { x: number; y: number };
-
-const GRID_SIZE = 7;
-const TURN_AP = 3;
-const MOVE_COST = 1;
-const ATTACK_COST = 2;
-const PLAYER_ATTACK_DAMAGE = 18;
-const ENEMY_ATTACK_DAMAGE = 14;
-
-const clampGrid = (n: number) => Math.max(0, Math.min(GRID_SIZE - 1, n));
-const manhattan = (a: GridPos, b: GridPos) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-
-const LEADERBOARD_KEY = 'cogcage_demo_leaderboard_v1';
 const EMAIL_KEY = 'cogcage_email';
 const PLAY_VIEWED_KEY = 'cogcage_play_viewed';
 const PLAY_FOUNDER_COPY_VARIANT_KEY = 'cogcage_play_founder_copy_variant';
+
+const GRID_SIZE = 8;
+const MAX_AP = 2;
+const ATTACK_RANGE = 2;
 
 const pickPlayFounderCopyVariant = () => {
   if (typeof window === 'undefined') return 'momentum';
@@ -507,7 +407,7 @@ const OPPONENTS: BotPreset[] = [
     id: 'neon-wraith',
     name: 'Neon Wraith',
     tagline: 'Unpredictable, loves risky overclocks.',
-    aggression: 60,
+    aggression: 65,
     defense: 35,
     risk: 80,
   },
@@ -515,9 +415,9 @@ const OPPONENTS: BotPreset[] = [
     id: 'cinder-hawk',
     name: 'Cinder Hawk',
     tagline: 'Fast strikes, pressure every turn.',
-    aggression: 80,
-    defense: 30,
-    risk: 40,
+    aggression: 85,
+    defense: 25,
+    risk: 45,
   },
 ];
 
@@ -545,176 +445,67 @@ const mulberry32 = (seed: number) => {
 const rngInt = (rng: () => number, min: number, max: number) =>
   Math.floor(rng() * (max - min + 1)) + min;
 
-const chooseAction = (strategy: Strategy, rng: () => number): ActionType => {
-  const attackWeight = 1 + strategy.aggression / 30;
-  const defendWeight = 1 + strategy.defense / 30;
-  const riskWeight = 1 + strategy.risk / 30;
-  const total = attackWeight + defendWeight + riskWeight;
-  const roll = rng() * total;
-  if (roll < attackWeight) return 'Strike';
-  if (roll < attackWeight + defendWeight) return 'Guard';
-  return 'Gamble';
-};
+const manhattan = (a: Vec, b: Vec) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
-const resolveAction = (action: ActionType, strategy: Strategy, rng: () => number): ResolvedAction => {
-  const aggression = strategy.aggression / 100;
-  const defense = strategy.defense / 100;
-  const risk = strategy.risk / 100;
+const isSame = (a: Vec, b: Vec) => a.x === b.x && a.y === b.y;
 
-  if (action === 'Strike') {
-    const attack = 8 + rngInt(rng, 0, 6) + Math.round(aggression * 6);
-    return { action, attack, block: 0, selfDamage: 0 };
+const neighbors = (pos: Vec, size: number) => [
+  { x: pos.x, y: pos.y - 1 },
+  { x: pos.x + 1, y: pos.y },
+  { x: pos.x, y: pos.y + 1 },
+  { x: pos.x - 1, y: pos.y },
+].filter((next) => next.x >= 0 && next.y >= 0 && next.x < size && next.y < size);
+
+const generateMap = (rng: () => number): GameState => {
+  const grid: Cell[][] = Array.from({ length: GRID_SIZE }, () =>
+    Array.from({ length: GRID_SIZE }, () => 'empty')
+  );
+
+  const playerPos = { x: 0, y: GRID_SIZE - 1 };
+  const enemyPos = { x: GRID_SIZE - 1, y: 0 };
+  const maxObstacles = Math.floor(GRID_SIZE * GRID_SIZE * 0.18);
+  let obstacles = 0;
+
+  for (let y = 0; y < GRID_SIZE; y += 1) {
+    for (let x = 0; x < GRID_SIZE; x += 1) {
+      if (obstacles >= maxObstacles) continue;
+      if ((x === playerPos.x && y === playerPos.y) || (x === enemyPos.x && y === enemyPos.y)) continue;
+      if (Math.abs(x - playerPos.x) + Math.abs(y - playerPos.y) <= 1) continue;
+      if (Math.abs(x - enemyPos.x) + Math.abs(y - enemyPos.y) <= 1) continue;
+      if (rng() < 0.12) {
+        grid[y][x] = 'obstacle';
+        obstacles += 1;
+      }
+    }
   }
 
-  if (action === 'Guard') {
-    const block = 6 + rngInt(rng, 0, 6) + Math.round(defense * 5);
-    return { action, attack: 0, block, selfDamage: 0 };
-  }
-
-  const successChance = 0.35 + risk * 0.45;
-  if (rng() < successChance) {
-    const attack = 14 + rngInt(rng, 0, 8) + Math.round(risk * 8);
-    return { action, attack, block: 0, selfDamage: 0, note: 'Crit' };
-  }
-  const attack = 2 + rngInt(rng, 0, 4);
-  const selfDamage = 6 + rngInt(rng, 0, 8) + Math.round((1 - risk) * 3);
-  return { action, attack, block: 0, selfDamage, note: 'Backfire' };
-};
-
-const formatAction = (resolved: ResolvedAction) => {
-  if (resolved.action === 'Strike') return `Strike ${resolved.attack}`;
-  if (resolved.action === 'Guard') return `Guard ${resolved.block}`;
-  const note = resolved.note ? ` (${resolved.note})` : '';
-  return `Gamble ${resolved.attack}${note}`;
-};
-
-const simulateMatch = (
-  player: Strategy,
-  opponent: Strategy,
-  opponentName: string,
-  seed: number,
-  turns = 20
-): MatchSimulation => {
-  const rng = mulberry32(seed);
-  let playerHealth = 100;
-  let opponentHealth = 100;
-  let playerScore = 0;
-  let opponentScore = 0;
-  const logs: TurnLog[] = [];
-
-  for (let turn = 1; turn <= turns; turn += 1) {
-    const playerAction = chooseAction(player, rng);
-    const opponentAction = chooseAction(opponent, rng);
-    const playerResolved = resolveAction(playerAction, player, rng);
-    const opponentResolved = resolveAction(opponentAction, opponent, rng);
-
-    const damageToOpponent = Math.max(0, playerResolved.attack - opponentResolved.block);
-    const damageToPlayer = Math.max(0, opponentResolved.attack - playerResolved.block);
-
-    const totalOpponentDamage = damageToOpponent + opponentResolved.selfDamage;
-    const totalPlayerDamage = damageToPlayer + playerResolved.selfDamage;
-
-    opponentHealth = clamp(opponentHealth - totalOpponentDamage, 0, 100);
-    playerHealth = clamp(playerHealth - totalPlayerDamage, 0, 100);
-
-    playerScore += damageToOpponent + (playerResolved.note === 'Crit' ? 4 : 0);
-    opponentScore += damageToPlayer + (opponentResolved.note === 'Crit' ? 4 : 0);
-
-    const summary = `Turn ${turn}: You ${formatAction(playerResolved)} vs ${opponentName} ${formatAction(opponentResolved)}. `
-      + `You deal ${damageToOpponent}${opponentResolved.selfDamage ? ` +${opponentResolved.selfDamage} self` : ''}, `
-      + `take ${damageToPlayer}${playerResolved.selfDamage ? ` +${playerResolved.selfDamage} self` : ''}.`;
-
-    logs.push({
-      turn,
-      playerAction: formatAction(playerResolved),
-      opponentAction: formatAction(opponentResolved),
-      damageToOpponent,
-      damageToPlayer,
-      playerSelfDamage: playerResolved.selfDamage,
-      opponentSelfDamage: opponentResolved.selfDamage,
-      playerHealth,
-      opponentHealth,
-      playerScore,
-      opponentScore,
-      summary,
-    });
-  }
-
-  let winner = 'Draw';
-  if (playerHealth !== opponentHealth) {
-    winner = playerHealth > opponentHealth ? 'You' : opponentName;
-  } else if (playerScore !== opponentScore) {
-    winner = playerScore > opponentScore ? 'You' : opponentName;
-  }
-
-  return {
-    turns: logs,
-    result: {
-      id: `${seed}-${Date.now()}`,
-      seed,
-      date: new Date().toISOString(),
-      winner,
-      playerScore,
-      opponentScore,
-      playerHealth,
-      opponentHealth,
-      opponentName,
-      prompt: player.prompt.trim() || 'No prompt',
-    },
-  };
-};
-
-const loadLeaderboard = (): LeaderboardEntry[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(LEADERBOARD_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as LeaderboardEntry[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveLeaderboard = (entry: LeaderboardEntry) => {
-  if (typeof window === 'undefined') return [] as LeaderboardEntry[];
-  const current = loadLeaderboard();
-  const updated = [entry, ...current]
-    .sort((a, b) => b.rankScore - a.rankScore)
-    .slice(0, 6);
-  window.localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(updated));
-  return updated;
+  return { grid, playerPos, enemyPos };
 };
 
 const Play = () => {
-  const [aggression, setAggression] = useState(60);
-  const [defense, setDefense] = useState(40);
-  const [risk, setRisk] = useState(35);
-  const [prompt, setPrompt] = useState('');
-  const [opponentId, setOpponentId] = useState(OPPONENTS[0].id);
-  const [running, setRunning] = useState(false);
-  const [feed, setFeed] = useState<TurnLog[]>([]);
-  const [currentTurn, setCurrentTurn] = useState(0);
-  const [playerHealth, setPlayerHealth] = useState(100);
-  const [opponentHealth, setOpponentHealth] = useState(100);
-  const [playerScore, setPlayerScore] = useState(0);
-  const [opponentScore, setOpponentScore] = useState(0);
-  const [result, setResult] = useState<MatchResult | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [matchCount, setMatchCount] = useState(0);
+  const [seedInput, setSeedInput] = useState('');
   const [activeSeed, setActiveSeed] = useState<number | null>(null);
-  const [demoPlayerPos, setDemoPlayerPos] = useState<GridPos>({ x: 1, y: 3 });
-  const [demoEnemyPos, setDemoEnemyPos] = useState<GridPos>({ x: 5, y: 3 });
-  const [demoAp, setDemoAp] = useState(TURN_AP);
-  const [demoPlayerHp, setDemoPlayerHp] = useState(100);
-  const [demoEnemyHp, setDemoEnemyHp] = useState(100);
-  const [demoLog, setDemoLog] = useState<string[]>(['Live demo ready. Move, attack, then end turn.']);
-  const [demoOutcome, setDemoOutcome] = useState<'idle' | 'win' | 'lose'>('idle');
+  const [grid, setGrid] = useState<Cell[][]>([]);
+  const [playerPos, setPlayerPos] = useState<Vec>({ x: 0, y: 0 });
+  const [enemyPos, setEnemyPos] = useState<Vec>({ x: 0, y: 0 });
+  const [playerHp, setPlayerHp] = useState(100);
+  const [enemyHp, setEnemyHp] = useState(100);
+  const [playerAp, setPlayerAp] = useState(MAX_AP);
+  const [turn, setTurn] = useState(1);
+  const [feed, setFeed] = useState<string[]>([]);
+  const [running, setRunning] = useState(false);
+  const [winner, setWinner] = useState<string | null>(null);
+  const [playerBlock, setPlayerBlock] = useState(0);
+  const [enemyBlock, setEnemyBlock] = useState(0);
+  const [playerScan, setPlayerScan] = useState(0);
+  const [enemyScan, setEnemyScan] = useState(0);
+  const [opponentId, setOpponentId] = useState(OPPONENTS[0].id);
   const [email, setEmail] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [playFounderCopyVariant, setPlayFounderCopyVariant] = useState<'momentum' | 'utility'>('momentum');
-  const timerRef = useRef<number | null>(null);
+
+  const rngRef = useRef<() => number>(() => Math.random);
 
   const postEvent = async (event: string, meta: Record<string, unknown> = {}) => {
     try {
@@ -739,7 +530,7 @@ const Play = () => {
   );
 
   const founderCtaVariant = useMemo(() => {
-    if (!result) {
+    if (!winner) {
       if (playFounderCopyVariant === 'utility') {
         return {
           key: 'neutral',
@@ -756,7 +547,7 @@ const Play = () => {
       };
     }
 
-    if (result.winner === 'You') {
+    if (winner === 'You') {
       if (playFounderCopyVariant === 'utility') {
         return {
           key: 'winner',
@@ -788,17 +579,13 @@ const Play = () => {
       message: 'Get more reps, analytics, and priority ladder access at $29/mo before launch pricing moves to $49/mo.',
       button: 'Unlock Founder Rematch Pass',
     };
-  }, [playFounderCopyVariant, result]);
+  }, [playFounderCopyVariant, winner]);
 
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = globalStyles;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
-  }, []);
-
-  useEffect(() => {
-    setLeaderboard(loadLeaderboard());
   }, []);
 
   useEffect(() => {
@@ -814,89 +601,239 @@ const Play = () => {
     }
   }, []);
 
-  const stopTimer = () => {
-    if (timerRef.current !== null) {
-      window.clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-
-  useEffect(() => () => stopTimer(), []);
-
   useEffect(() => {
-    if (!result) return;
+    if (!winner) return;
     void postEvent('play_match_completed', {
-      winner: result.winner,
-      opponent: result.opponentName,
-      playerScore: result.playerScore,
-      opponentScore: result.opponentScore,
+      winner,
+      turn,
+      seed: activeSeed,
+      opponent: opponent.name,
+      playerHp,
+      enemyHp,
       ctaVariant: founderCtaVariant.key,
       founderCopyVariant: playFounderCopyVariant,
     });
-  }, [founderCtaVariant.key, playFounderCopyVariant, result]);
+  }, [activeSeed, enemyHp, founderCtaVariant.key, opponent.name, playFounderCopyVariant, playerHp, turn, winner]);
+
+  const resetMatch = () => {
+    setRunning(false);
+    setWinner(null);
+    setFeed([]);
+    setPlayerHp(100);
+    setEnemyHp(100);
+    setPlayerAp(MAX_AP);
+    setTurn(1);
+    setPlayerBlock(0);
+    setEnemyBlock(0);
+    setPlayerScan(0);
+    setEnemyScan(0);
+  };
 
   const startMatch = () => {
     if (running) return;
-    stopTimer();
+    resetMatch();
+    const seedLabel = seedInput.trim() || `${Date.now()}`;
+    const seed = hashString(`${seedLabel}|${opponentId}`) || 1;
+    const rng = mulberry32(seed);
+    rngRef.current = rng;
 
-    const seedBase = hashString(
-      `${prompt}|${aggression}|${defense}|${risk}|${opponentId}|${matchCount}`
-    );
-    const seed = seedBase || 1;
+    const map = generateMap(rng);
+    setGrid(map.grid);
+    setPlayerPos(map.playerPos);
+    setEnemyPos(map.enemyPos);
     setActiveSeed(seed);
-    void postEvent('play_match_started', { seed, opponent: opponent.id });
-
-    const simulation = simulateMatch(
-      { aggression, defense, risk, prompt },
-      {
-        aggression: opponent.aggression,
-        defense: opponent.defense,
-        risk: opponent.risk,
-        prompt: opponent.tagline,
-      },
-      opponent.name,
-      seed
-    );
-
-    setFeed([]);
-    setCurrentTurn(0);
-    setPlayerHealth(100);
-    setOpponentHealth(100);
-    setPlayerScore(0);
-    setOpponentScore(0);
-    setResult(null);
+    setFeed([
+      `Match initialized. Seed ${seed}.`,
+      `Arena size ${GRID_SIZE}x${GRID_SIZE}. Opponent: ${opponent.name}.`,
+    ]);
     setRunning(true);
-    setMatchCount((count) => count + 1);
+    void postEvent('play_match_started', { seed, opponent: opponent.id, gridSize: GRID_SIZE });
+  };
 
-    let index = 0;
-    timerRef.current = window.setInterval(() => {
-      const nextTurn = simulation.turns[index];
-      if (!nextTurn) {
-        stopTimer();
-        setRunning(false);
-        return;
+  const endMatchIfNeeded = (nextPlayerHp: number, nextEnemyHp: number) => {
+    if (nextPlayerHp <= 0 && nextEnemyHp <= 0) {
+      setWinner('Draw');
+      setRunning(false);
+      return true;
+    }
+    if (nextEnemyHp <= 0) {
+      setWinner('You');
+      setRunning(false);
+      return true;
+    }
+    if (nextPlayerHp <= 0) {
+      setWinner(opponent.name);
+      setRunning(false);
+      return true;
+    }
+    return false;
+  };
+
+  const canMoveTo = (pos: Vec) => {
+    if (pos.x < 0 || pos.y < 0 || pos.x >= GRID_SIZE || pos.y >= GRID_SIZE) return false;
+    if (grid[pos.y]?.[pos.x] === 'obstacle') return false;
+    if (isSame(pos, enemyPos)) return false;
+    return true;
+  };
+
+  const logFeed = (lines: string[]) => {
+    setFeed((prev) => [...lines, ...prev].slice(0, 50));
+  };
+
+  const attemptMove = (dx: number, dy: number) => {
+    if (!running || winner) return;
+    if (playerAp <= 0) {
+      logFeed(['No action points left. End turn.']);
+      return;
+    }
+    const next = { x: playerPos.x + dx, y: playerPos.y + dy };
+    if (!canMoveTo(next)) {
+      logFeed(['Move blocked by terrain or boundary.']);
+      return;
+    }
+    setPlayerPos(next);
+    setPlayerAp((prev) => prev - 1);
+    logFeed([`You move to (${next.x + 1}, ${GRID_SIZE - next.y}).`]);
+  };
+
+  const handleAttack = () => {
+    if (!running || winner) return;
+    if (playerAp < 2) {
+      logFeed(['Attack needs 2 AP.']);
+      return;
+    }
+    const rng = rngRef.current;
+    const range = ATTACK_RANGE + (playerScan > 0 ? 1 : 0);
+    const dist = manhattan(playerPos, enemyPos);
+    if (dist > range) {
+      logFeed([`Target out of range (${dist}).`]);
+      return;
+    }
+    const baseDamage = 8 + rngInt(rng, 0, 4) + (playerScan > 0 ? 2 : 0);
+    const mitigated = Math.max(0, baseDamage - enemyBlock);
+    const nextEnemyHp = clamp(enemyHp - mitigated, 0, 100);
+    setEnemyHp(nextEnemyHp);
+    setEnemyBlock(0);
+    setPlayerAp((prev) => prev - 2);
+    setPlayerScan(0);
+    logFeed([
+      `You strike for ${mitigated}. Enemy HP ${nextEnemyHp}.`,
+    ]);
+    endMatchIfNeeded(playerHp, nextEnemyHp);
+  };
+
+  const handleBlock = () => {
+    if (!running || winner) return;
+    if (playerAp < 1) {
+      logFeed(['Block needs 1 AP.']);
+      return;
+    }
+    const rng = rngRef.current;
+    const blockValue = 5 + rngInt(rng, 0, 2);
+    setPlayerBlock(blockValue);
+    setPlayerAp((prev) => prev - 1);
+    logFeed([`You brace. Block ${blockValue} on next hit.`]);
+  };
+
+  const handleScan = () => {
+    if (!running || winner) return;
+    if (playerAp < 1) {
+      logFeed(['Scan needs 1 AP.']);
+      return;
+    }
+    setPlayerScan(2);
+    setPlayerAp((prev) => prev - 1);
+    logFeed(['You scan the grid. Next strike gains +1 range.']);
+  };
+
+  const enemyTurn = () => {
+    if (!running || winner) return;
+    const rng = rngRef.current;
+    let ap = MAX_AP;
+    let nextEnemyPos = { ...enemyPos };
+    let nextEnemyBlock = enemyBlock;
+    let nextEnemyScan = Math.max(0, enemyScan - 1);
+    let nextPlayerHp = playerHp;
+    let nextPlayerBlock = playerBlock;
+    const entries: string[] = [];
+
+    const enemyRange = () => ATTACK_RANGE + (nextEnemyScan > 0 ? 1 : 0);
+
+    const moveEnemy = () => {
+      const options = neighbors(nextEnemyPos, GRID_SIZE)
+        .filter((candidate) => grid[candidate.y]?.[candidate.x] !== 'obstacle')
+        .filter((candidate) => !isSame(candidate, playerPos));
+      if (options.length === 0) return false;
+      const currentDistance = manhattan(nextEnemyPos, playerPos);
+      const bestDistance = Math.min(...options.map((option) => manhattan(option, playerPos)));
+      const bestMoves = options.filter((option) => manhattan(option, playerPos) === bestDistance);
+      const chosen = bestMoves[rngInt(rng, 0, bestMoves.length - 1)] || options[0];
+      if (manhattan(chosen, playerPos) >= currentDistance && rng() < 0.4) {
+        return false;
+      }
+      nextEnemyPos = chosen;
+      entries.push(`${opponent.name} moves to (${chosen.x + 1}, ${GRID_SIZE - chosen.y}).`);
+      return true;
+    };
+
+    while (ap > 0 && nextPlayerHp > 0 && enemyHp > 0) {
+      const distance = manhattan(nextEnemyPos, playerPos);
+      const attackThreshold = 0.35 + opponent.aggression / 150;
+      const blockThreshold = 0.2 + opponent.defense / 200;
+      const scanThreshold = 0.15 + opponent.risk / 200;
+
+      if (distance <= enemyRange() && ap >= 2 && rng() < attackThreshold) {
+        const baseDamage = 7 + rngInt(rng, 0, 4) + (nextEnemyScan > 0 ? 2 : 0);
+        const mitigated = Math.max(0, baseDamage - nextPlayerBlock);
+        nextPlayerHp = clamp(nextPlayerHp - mitigated, 0, 100);
+        nextPlayerBlock = 0;
+        nextEnemyScan = 0;
+        entries.push(`${opponent.name} strikes for ${mitigated}. Your HP ${nextPlayerHp}.`);
+        ap -= 2;
+        break;
       }
 
-      index += 1;
-      setFeed((prev) => [...prev, nextTurn]);
-      setCurrentTurn(nextTurn.turn);
-      setPlayerHealth(nextTurn.playerHealth);
-      setOpponentHealth(nextTurn.opponentHealth);
-      setPlayerScore(nextTurn.playerScore);
-      setOpponentScore(nextTurn.opponentScore);
-
-      if (index >= simulation.turns.length) {
-        stopTimer();
-        setRunning(false);
-        const entry: LeaderboardEntry = {
-          ...simulation.result,
-          rankScore: simulation.result.playerScore + (simulation.result.winner === 'You' ? 50 : 0),
-        };
-        const updated = saveLeaderboard(entry);
-        setLeaderboard(updated);
-        setResult(simulation.result);
+      if (ap >= 1 && rng() < blockThreshold) {
+        nextEnemyBlock = 5 + rngInt(rng, 0, 2);
+        entries.push(`${opponent.name} raises guard (${nextEnemyBlock}).`);
+        ap -= 1;
+        continue;
       }
-    }, 450);
+
+      if (ap >= 1 && rng() < scanThreshold) {
+        nextEnemyScan = 2;
+        entries.push(`${opponent.name} scans the arena.`);
+        ap -= 1;
+        continue;
+      }
+
+      if (ap >= 1) {
+        const moved = moveEnemy();
+        if (moved) {
+          ap -= 1;
+          continue;
+        }
+      }
+
+      ap = 0;
+    }
+
+    setEnemyPos(nextEnemyPos);
+    setEnemyBlock(nextEnemyBlock);
+    setEnemyScan(nextEnemyScan);
+    setPlayerBlock(0);
+    setPlayerScan((prev) => Math.max(0, prev - 1));
+    setPlayerHp(nextPlayerHp);
+    setPlayerAp(MAX_AP);
+    setTurn((prev) => prev + 1);
+    if (entries.length === 0) entries.push(`${opponent.name} holds position.`);
+    logFeed(entries);
+    endMatchIfNeeded(nextPlayerHp, enemyHp);
+  };
+
+  const endTurn = () => {
+    if (!running || winner) return;
+    enemyTurn();
   };
 
   const handleFounderCheckout = async () => {
@@ -939,71 +876,7 @@ const Play = () => {
     }
   };
 
-  const resetDemo = () => {
-    setDemoPlayerPos({ x: 1, y: 3 });
-    setDemoEnemyPos({ x: 5, y: 3 });
-    setDemoAp(TURN_AP);
-    setDemoPlayerHp(100);
-    setDemoEnemyHp(100);
-    setDemoOutcome('idle');
-    setDemoLog(['Live demo reset.']);
-  };
-
-  const movePlayer = (dx: number, dy: number) => {
-    if (demoOutcome !== 'idle' || demoAp < MOVE_COST) return;
-    const next = { x: clampGrid(demoPlayerPos.x + dx), y: clampGrid(demoPlayerPos.y + dy) };
-    if (next.x === demoEnemyPos.x && next.y === demoEnemyPos.y) return;
-    setDemoPlayerPos(next);
-    setDemoAp((ap) => ap - MOVE_COST);
-    setDemoLog((prev) => [`You moved to (${next.x + 1}, ${next.y + 1}).`, ...prev].slice(0, 6));
-  };
-
-  const attackEnemy = () => {
-    if (demoOutcome !== 'idle' || demoAp < ATTACK_COST) return;
-    if (manhattan(demoPlayerPos, demoEnemyPos) !== 1) {
-      setDemoLog((prev) => ['Enemy is out of range (must be adjacent).', ...prev].slice(0, 6));
-      return;
-    }
-    setDemoAp((ap) => ap - ATTACK_COST);
-    setDemoEnemyHp((hp) => {
-      const next = Math.max(0, hp - PLAYER_ATTACK_DAMAGE);
-      if (next === 0) {
-        setDemoOutcome('win');
-        void postEvent('play_live_demo_completed', { outcome: 'win' });
-      }
-      return next;
-    });
-    setDemoLog((prev) => [`You hit for ${PLAYER_ATTACK_DAMAGE}.`, ...prev].slice(0, 6));
-  };
-
-  const enemyTurn = () => {
-    if (demoOutcome !== 'idle') return;
-    if (manhattan(demoPlayerPos, demoEnemyPos) === 1) {
-      setDemoPlayerHp((hp) => {
-        const next = Math.max(0, hp - ENEMY_ATTACK_DAMAGE);
-        if (next === 0) {
-          setDemoOutcome('lose');
-          void postEvent('play_live_demo_completed', { outcome: 'lose' });
-        }
-        return next;
-      });
-      setDemoLog((prev) => [`Enemy strikes for ${ENEMY_ATTACK_DAMAGE}.`, ...prev].slice(0, 6));
-    } else {
-      const dx = demoPlayerPos.x === demoEnemyPos.x ? 0 : demoPlayerPos.x > demoEnemyPos.x ? 1 : -1;
-      const dy = dx === 0 ? (demoPlayerPos.y > demoEnemyPos.y ? 1 : -1) : 0;
-      const next = { x: clampGrid(demoEnemyPos.x + dx), y: clampGrid(demoEnemyPos.y + dy) };
-      if (!(next.x === demoPlayerPos.x && next.y === demoPlayerPos.y)) {
-        setDemoEnemyPos(next);
-      }
-      setDemoLog((prev) => [`Enemy repositions to (${next.x + 1}, ${next.y + 1}).`, ...prev].slice(0, 6));
-    }
-    setDemoAp(TURN_AP);
-  };
-
-  const endTurn = () => {
-    if (demoOutcome !== 'idle') return;
-    enemyTurn();
-  };
+  const range = ATTACK_RANGE + (playerScan > 0 ? 1 : 0);
 
   return (
     <div className="play-root">
@@ -1019,193 +892,61 @@ const Play = () => {
       <main className="play-shell">
         <div className="play-grid">
           <section className="panel">
-            <h2>Build Your Bot</h2>
+            <h2>Command Console</h2>
 
-            <div className="section-label">Strategy Sliders</div>
-            <div className="slider-row">
-              <label className="slider-label" htmlFor="aggression">Aggression</label>
-              <input
-                id="aggression"
-                type="range"
-                min={0}
-                max={100}
-                value={aggression}
-                onChange={(event) => setAggression(Number(event.target.value))}
-              />
-              <span className="slider-value">{aggression}</span>
-            </div>
-            <div className="slider-row">
-              <label className="slider-label" htmlFor="defense">Defense</label>
-              <input
-                id="defense"
-                type="range"
-                min={0}
-                max={100}
-                value={defense}
-                onChange={(event) => setDefense(Number(event.target.value))}
-              />
-              <span className="slider-value">{defense}</span>
-            </div>
-            <div className="slider-row">
-              <label className="slider-label" htmlFor="risk">Risk</label>
-              <input
-                id="risk"
-                type="range"
-                min={0}
-                max={100}
-                value={risk}
-                onChange={(event) => setRisk(Number(event.target.value))}
-              />
-              <span className="slider-value">{risk}</span>
-            </div>
-            <div className="hint" style={{ marginBottom: '1.1rem' }}>
-              Aggression fuels strikes, Defense powers guards, Risk controls gamble swings.
-            </div>
-
-            <div className="section-label">Pilot Prompt</div>
-            <textarea
+            <div className="section-label">Seeded Match</div>
+            <input
               className="prompt-box"
-              placeholder="Short prompt for your bot (e.g., 'control the center, punish early')."
-              maxLength={120}
-              value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
+              style={{ minHeight: 'unset', height: '48px', marginBottom: '0.6rem' }}
+              placeholder="Seed (optional, deterministic)"
+              value={seedInput}
+              onChange={(event) => setSeedInput(event.target.value)}
             />
-            <div className="prompt-meta">
-              <span>Keep it punchy.</span>
-              <span>{prompt.length}/120</span>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button className="cta-btn" onClick={startMatch} disabled={running}>
+                {running ? 'Match Live' : 'Start Match'}
+              </button>
+              <button className="action-btn secondary" onClick={resetMatch} disabled={!running && feed.length === 0}>
+                Reset
+              </button>
+            </div>
+            <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <span className="status-pill">Turn {turn}</span>
+              <span className="status-pill">AP {playerAp}/{MAX_AP}</span>
+              <span className="seed-pill">Seed {activeSeed ?? '—'}</span>
             </div>
 
             <div className="section-label" style={{ marginTop: '1.4rem' }}>Opponent Presets</div>
-            <div className="opponent-grid">
+            <div style={{ display: 'grid', gap: '0.6rem' }}>
               {OPPONENTS.map((bot) => (
-                <label
-                  key={bot.id}
-                  className={`opponent-card ${bot.id === opponentId ? 'active' : ''}`}
-                >
+                <label key={bot.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
                   <input
                     type="radio"
                     name="opponent"
                     checked={bot.id === opponentId}
                     onChange={() => setOpponentId(bot.id)}
                   />
-                  <div className="opponent-info">
-                    <h3>{bot.name}</h3>
-                    <p>{bot.tagline}</p>
+                  <div>
+                    <div style={{ fontWeight: 900 }}>{bot.name}</div>
+                    <div className="hint">{bot.tagline}</div>
                   </div>
                 </label>
               ))}
             </div>
 
-            <div style={{ marginTop: '1.6rem' }}>
-              <button className="cta-btn" onClick={startMatch} disabled={running}>
-                {running ? 'Match Running…' : 'Start Match'}
-              </button>
+            <div className="section-label" style={{ marginTop: '1.4rem' }}>Actions</div>
+            <div className="action-grid">
+              <button className="action-btn secondary" onClick={() => attemptMove(0, -1)} disabled={!running || !!winner}>Up</button>
+              <button className="action-btn secondary" onClick={() => attemptMove(1, 0)} disabled={!running || !!winner}>Right</button>
+              <button className="action-btn secondary" onClick={() => attemptMove(-1, 0)} disabled={!running || !!winner}>Left</button>
+              <button className="action-btn secondary" onClick={() => attemptMove(0, 1)} disabled={!running || !!winner}>Down</button>
+              <button className="action-btn" onClick={handleAttack} disabled={!running || !!winner}>Attack</button>
+              <button className="action-btn" onClick={handleBlock} disabled={!running || !!winner}>Block</button>
+              <button className="action-btn" onClick={handleScan} disabled={!running || !!winner}>Scan</button>
+              <button className="action-btn secondary" onClick={endTurn} disabled={!running || !!winner}>End Turn</button>
             </div>
-            <div className="hint" style={{ marginTop: '0.8rem' }}>
-              20-turn deterministic sim with seeded RNG. Every match is replayable by seed.
-            </div>
-
-            <div className="leaderboard" style={{ marginTop: '1.5rem' }}>
-              <div className="section-label">Live Playable Demo (Map + AP)</div>
-              <div className="hint">3 AP per turn · Move costs 1 AP · Attack costs 2 AP.</div>
-              <div className="map-board">
-                {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, idx) => {
-                  const x = idx % GRID_SIZE;
-                  const y = Math.floor(idx / GRID_SIZE);
-                  const isPlayer = demoPlayerPos.x === x && demoPlayerPos.y === y;
-                  const isEnemy = demoEnemyPos.x === x && demoEnemyPos.y === y;
-                  return (
-                    <div key={`${x}-${y}`} className={`map-tile ${isPlayer ? 'player' : ''} ${isEnemy ? 'enemy' : ''}`}>
-                      {isPlayer ? 'P' : isEnemy ? 'E' : ''}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="hint">Player HP {demoPlayerHp} · Enemy HP {demoEnemyHp} · AP {demoAp}</div>
-              <div className="action-row">
-                <button className="mini-btn" onClick={() => movePlayer(0, -1)} disabled={demoAp < MOVE_COST || demoOutcome !== 'idle'}>↑ Move</button>
-                <button className="mini-btn" onClick={() => movePlayer(-1, 0)} disabled={demoAp < MOVE_COST || demoOutcome !== 'idle'}>← Move</button>
-                <button className="mini-btn" onClick={() => movePlayer(1, 0)} disabled={demoAp < MOVE_COST || demoOutcome !== 'idle'}>→ Move</button>
-                <button className="mini-btn" onClick={() => movePlayer(0, 1)} disabled={demoAp < MOVE_COST || demoOutcome !== 'idle'}>↓ Move</button>
-                <button className="mini-btn" onClick={attackEnemy} disabled={demoAp < ATTACK_COST || demoOutcome !== 'idle'}>⚔ Attack</button>
-                <button className="mini-btn" onClick={endTurn} disabled={demoOutcome !== 'idle'}>End Turn</button>
-                <button className="mini-btn" onClick={resetDemo}>Reset</button>
-              </div>
-              {demoOutcome !== 'idle' && (
-                <div className="winner-banner">{demoOutcome === 'win' ? 'Victory — demo loop complete' : 'Defeat — tune and retry'}</div>
-              )}
-              <div className="feed" style={{ maxHeight: '160px', marginTop: '0.8rem' }}>
-                {demoLog.map((line, idx) => <div key={`${line}-${idx}`} className="feed-item">{line}</div>)}
-              </div>
-            </div>
-          </section>
-
-          <section className="panel">
-            <div className="arena-header">
-              <div>
-                <h2>Arena Feed</h2>
-                <div className="hint">Current opponent: <strong>{opponent.name}</strong></div>
-              </div>
-              <span className="arena-badge">Turn {currentTurn}/20</span>
-            </div>
-
-            <div className="stat-block">
-              <div className="stat-title">
-                <span>You</span>
-                <span className="score-pill">Score {playerScore}</span>
-              </div>
-              <div className="bar-shell">
-                <div className="bar-fill" style={{ width: `${playerHealth}%` }} />
-              </div>
-            </div>
-
-            <div className="stat-block">
-              <div className="stat-title">
-                <span>{opponent.name}</span>
-                <span className="score-pill">Score {opponentScore}</span>
-              </div>
-              <div className="bar-shell">
-                <div className="bar-fill opponent" style={{ width: `${opponentHealth}%` }} />
-              </div>
-            </div>
-
-            <div className="seed-pill">
-              Seed: {activeSeed ?? '—'}
-            </div>
-
-            <div style={{ marginTop: '1rem' }} className="feed">
-              {feed.length === 0 && (
-                <div className="feed-item">No turns yet. Configure your bot and start the match.</div>
-              )}
-              {feed.map((entry) => (
-                <div key={entry.turn} className="feed-item">
-                  {entry.summary}
-                </div>
-              ))}
-            </div>
-
-            {result && (
-              <div className="winner-banner">
-                Winner: {result.winner}
-                <div className="hint">Final HP {result.playerHealth} vs {result.opponentHealth} · Score {result.playerScore}-{result.opponentScore}</div>
-              </div>
-            )}
-
-            <div className="leaderboard">
-              <div className="section-label">Mini Leaderboard</div>
-              {leaderboard.length === 0 && (
-                <div className="hint">Play a match to populate your local leaderboard.</div>
-              )}
-              {leaderboard.map((entry, index) => (
-                <div key={entry.id} className="leaderboard-row">
-                  <div className="leaderboard-rank">{index + 1}</div>
-                  <div>
-                    <div style={{ fontWeight: 800 }}>{entry.winner === 'You' ? 'Victory' : 'Battle'}</div>
-                    <div className="hint">vs {entry.opponentName} · Seed {entry.seed}</div>
-                  </div>
-                  <div style={{ fontWeight: 900 }}>{entry.playerScore}</div>
-                </div>
-              ))}
+            <div className="hint" style={{ marginBottom: '0.8rem' }}>
+              Attack range {range} · Block absorbs next hit · Scan adds +1 range to your next strike.
             </div>
 
             <div className="leaderboard" style={{ marginTop: '1.2rem' }}>
@@ -1227,6 +968,87 @@ const Play = () => {
               {checkoutMessage && (
                 <div className="hint" style={{ marginTop: '0.7rem' }}>{checkoutMessage}</div>
               )}
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="arena-header">
+              <div>
+                <h2>Arena Ops</h2>
+                <div className="hint">Opponent: <strong>{opponent.name}</strong></div>
+              </div>
+              <span className="arena-badge">Round {turn}</span>
+            </div>
+
+            <div className="stat-block">
+              <div className="stat-title">
+                <span>You</span>
+                <span className="status-pill">HP {playerHp}</span>
+              </div>
+              <div className="bar-shell">
+                <div className="bar-fill" style={{ width: `${playerHp}%` }} />
+              </div>
+            </div>
+
+            <div className="stat-block">
+              <div className="stat-title">
+                <span>{opponent.name}</span>
+                <span className="status-pill">HP {enemyHp}</span>
+              </div>
+              <div className="bar-shell">
+                <div className="bar-fill opponent" style={{ width: `${enemyHp}%` }} />
+              </div>
+            </div>
+
+            <div className="arena-map" style={{ ['--grid-size' as string]: GRID_SIZE }}>
+              {grid.map((row, y) =>
+                row.map((cell, x) => {
+                  const pos = { x, y };
+                  const inRange = manhattan(playerPos, pos) <= range;
+                  const isPlayer = isSame(pos, playerPos);
+                  const isEnemy = isSame(pos, enemyPos);
+                  const className = [
+                    'arena-cell',
+                    cell === 'obstacle' ? 'obstacle' : '',
+                    inRange ? 'in-range' : '',
+                    isPlayer ? 'player' : '',
+                    isEnemy ? 'enemy' : '',
+                  ].filter(Boolean).join(' ');
+                  let label = '';
+                  if (isPlayer) label = 'YOU';
+                  if (isEnemy) label = 'BOT';
+                  return (
+                    <div key={`${x}-${y}`} className={className}>
+                      {label}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="arena-legend">
+              <span className="status-pill">YOU</span>
+              <span className="status-pill" style={{ background: 'var(--c-red)', color: '#fff' }}>BOT</span>
+              <span className="status-pill" style={{ background: '#2f2f2f', color: '#fff' }}>OBSTACLE</span>
+              <span className="status-pill" style={{ background: 'var(--c-yellow)' }}>IN RANGE</span>
+            </div>
+
+            {winner && (
+              <div className="winner-banner" style={{ marginTop: '1.2rem' }}>
+                Winner: {winner}
+                <div className="hint">Final HP {playerHp} vs {enemyHp}</div>
+              </div>
+            )}
+
+            <div style={{ marginTop: '1rem' }} className="feed">
+              {feed.length === 0 && (
+                <div className="feed-item">No turns yet. Start a match to generate the arena log.</div>
+              )}
+              {feed.map((entry, index) => (
+                <div key={`${entry}-${index}`} className="feed-item">
+                  {entry}
+                </div>
+              ))}
             </div>
           </section>
         </div>

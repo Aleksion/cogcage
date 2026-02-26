@@ -67,7 +67,18 @@ export const POST: APIRoute = async ({ request }) => {
   const normalizedEmail = email.toLowerCase();
   const eventSource = source || 'cogcage-landing';
 
-  const rateLimit = consumeRateLimit(ipAddress, 'waitlist', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+  let rateLimit = { allowed: true, remaining: RATE_LIMIT_MAX, resetMs: 0 };
+  try {
+    rateLimit = consumeRateLimit(ipAddress, 'waitlist', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+  } catch (error) {
+    appendOpsLog({
+      route: '/api/waitlist',
+      level: 'warn',
+      event: 'waitlist_rate_limit_failed',
+      requestId,
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+  }
   if (!rateLimit.allowed) {
     appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_rate_limited', requestId, ipAddress, durationMs: Date.now() - startedAt });
     insertConversionEvent({
