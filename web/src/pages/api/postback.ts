@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { appendOpsLog } from '../../lib/observability';
+import { appendEventsFallback, appendOpsLog } from '../../lib/observability';
 import { insertConversionEvent, insertFounderIntent } from '../../lib/waitlist-db';
 
 export const prerender = false;
@@ -89,16 +89,18 @@ export const POST: APIRoute = async ({ request }) => {
     metadata: payload.metadata ?? object?.metadata ?? {},
   };
 
+  const conversionPayload = {
+    eventName: 'paid_conversion_confirmed',
+    eventId,
+    source,
+    tier: 'founder',
+    email,
+    metaJson: JSON.stringify(meta),
+    userAgent: request.headers.get('user-agent') ?? undefined,
+  };
+
   try {
-    insertConversionEvent({
-      eventName: 'paid_conversion_confirmed',
-      eventId,
-      source,
-      tier: 'founder',
-      email,
-      metaJson: JSON.stringify(meta),
-      userAgent: request.headers.get('user-agent') ?? undefined,
-    });
+    insertConversionEvent(conversionPayload);
 
     if (email) {
       insertFounderIntent({
@@ -126,6 +128,7 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { 'content-type': 'application/json' },
     });
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'unknown-error';
     appendOpsLog({
       route: '/api/postback',
       level: 'error',
@@ -134,13 +137,43 @@ export const POST: APIRoute = async ({ request }) => {
       eventType,
       source,
       eventId,
-      error: error instanceof Error ? error.message : 'unknown-error',
+      error: errorMessage,
       durationMs: Date.now() - startedAt,
     });
 
-    return new Response(JSON.stringify({ ok: false, error: 'Postback processing failed', requestId }), {
-      status: 500,
-      headers: { 'content-type': 'application/json' },
-    });
+    try {
+      appendEventsFallback({ route: '/api/postback', requestId, ...conversionPayload, reason: errorMessage });
+      appendOpsLog({
+        route: '/api/postback',
+        level: 'warn',
+        event: 'postback_saved_to_fallback',
+        requestId,
+        eventType,
+        source,
+        eventId,
+        durationMs: Date.now() - startedAt,
+      });
+      return new Response(JSON.stringify({ ok: true, queued: true, requestId, eventId }), {
+        status: 202,
+        headers: { 'content-type': 'application/json' },
+      });
+    } catch (fallbackError) {
+      appendOpsLog({
+        route: '/api/postback',
+        level: 'error',
+        event: 'postback_fallback_write_failed',
+        requestId,
+        eventType,
+        source,
+        eventId,
+        error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error',
+        durationMs: Date.now() - startedAt,
+      });
+
+      return new Response(JSON.stringify({ ok: false, error: 'Postback processing failed', requestId }), {
+        status: 500,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
   }
 };
