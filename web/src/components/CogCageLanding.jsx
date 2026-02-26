@@ -1108,12 +1108,12 @@ const HeroSection = ({ sectionRef }) => {
     <section className="hero-section" ref={sectionRef} id="hero">
       <div className="hero-content">
         <h1 className="hero-h1 text-stroke">
-          PROGRAM.<br />
-          <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>FIGHT.</span><br />
-          CASH IN.
+          {heroCopy.headline[0]}<br />
+          <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>{heroCopy.headline[1]}</span><br />
+          {heroCopy.headline[2]}
         </h1>
         <p className="hero-body">
-          Build your bot. Watch it fight. Climb the leaderboard.
+          {heroCopy.body}
         </p>
         <div className="panel-skew hero-waitlist" style={{ background: 'var(--c-white)' }}>
           <div className="panel-content-unskew">
