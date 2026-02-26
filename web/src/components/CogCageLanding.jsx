@@ -1060,7 +1060,7 @@ const HeroSection = ({ sectionRef }) => {
         event: 'waitlist_validation_failed',
         source: `hero-waitlist-${variant}`,
         page: '/',
-        reason: 'empty_email',
+        meta: { reason: 'empty_email' },
       });
       return;
     }
@@ -1071,7 +1071,7 @@ const HeroSection = ({ sectionRef }) => {
         event: 'waitlist_validation_failed',
         source: `hero-waitlist-${variant}`,
         page: '/',
-        reason: 'invalid_email',
+        meta: { reason: 'invalid_email' },
       });
       return;
     }
@@ -1104,7 +1104,7 @@ const HeroSection = ({ sectionRef }) => {
         event: 'waitlist_submit_failed',
         source: `hero-waitlist-${variant}`,
         page: '/',
-        error: err instanceof Error ? err.message : 'unknown',
+        meta: { error: err instanceof Error ? err.message : 'unknown' },
       });
       setStatus('error');
       setMessage(err instanceof Error ? err.message : 'Something went wrong. Try again.');
@@ -1401,7 +1401,7 @@ const FooterSection = () => {
         event: 'waitlist_validation_failed',
         source: `footer-waitlist-${variant}`,
         page: '/',
-        reason: 'empty_email',
+        meta: { reason: 'empty_email' },
       });
       return null;
     }
@@ -1411,7 +1411,7 @@ const FooterSection = () => {
         event: 'waitlist_validation_failed',
         source: `footer-waitlist-${variant}`,
         page: '/',
-        reason: 'invalid_email',
+        meta: { reason: 'invalid_email' },
       });
       return null;
     }
@@ -1446,7 +1446,7 @@ const FooterSection = () => {
         event: 'waitlist_submit_failed',
         source: `footer-waitlist-${variant}`,
         page: '/',
-        error: err instanceof Error ? err.message : 'unknown',
+        meta: { error: err instanceof Error ? err.message : 'unknown' },
       });
       setError(err instanceof Error ? err.message : 'Could not create account.');
     }
