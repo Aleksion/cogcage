@@ -377,6 +377,7 @@ type GameState = {
 const EMAIL_KEY = 'cogcage_email';
 const PLAY_VIEWED_KEY = 'cogcage_play_viewed';
 const PLAY_FOUNDER_COPY_VARIANT_KEY = 'cogcage_play_founder_copy_variant';
+const FOUNDER_INTENT_REPLAY_QUEUE_KEY = 'cogcage_founder_intent_replay_queue';
 
 const GRID_SIZE = 8;
 const MAX_AP = 2;
@@ -393,6 +394,71 @@ const pickPlayFounderCopyVariant = () => {
 
 const founderCheckoutUrl =
   ((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? '').trim();
+
+const submitWithRetry = async (url: string, payload: Record<string, unknown>, retries = 1, timeoutMs = 6000) => {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      window.clearTimeout(timeout);
+      const body = await response.json().catch(() => ({}));
+      if (response.ok && body.ok === true) return body;
+      const err = new Error(body?.error || `Request failed (${response.status})`);
+      if (response.status >= 500 && attempt < retries) {
+        lastError = err;
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    } catch (error) {
+      window.clearTimeout(timeout);
+      lastError = error;
+      if (attempt >= retries) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+
+  throw lastError || new Error('Request failed');
+};
+
+const readFounderIntentReplayQueue = () => {
+  try {
+    const raw = window.localStorage.getItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeFounderIntentReplayQueue = (queue: Array<Record<string, unknown>>) => {
+  try {
+    if (!queue.length) {
+      window.localStorage.removeItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY);
+      return;
+    }
+    window.localStorage.setItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY, JSON.stringify(queue.slice(-20)));
+  } catch {
+    // best-effort cache only
+  }
+};
+
+const enqueueFounderIntentReplay = (payload: Record<string, unknown>) => {
+  const queue = readFounderIntentReplayQueue();
+  const normalizedEmail = String(payload.email || '').trim().toLowerCase();
+  const intentId = String(payload.intentId || '');
+  const deduped = queue.filter((item) => String(item.intentId || '') !== intentId);
+  deduped.push({ ...payload, email: normalizedEmail, queuedAt: new Date().toISOString() });
+  writeFounderIntentReplayQueue(deduped);
+};
 
 const makeFounderIntentId = (email: string, source: string) => {
   const day = new Date().toISOString().slice(0, 10);
@@ -604,6 +670,45 @@ const Play = () => {
       void postEvent('play_page_viewed', { founderCopyVariant: pickPlayFounderCopyVariant() });
       window.localStorage.setItem(PLAY_VIEWED_KEY, '1');
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const flushFounderIntentQueue = async () => {
+      if (!navigator.onLine) return;
+      const queue = readFounderIntentReplayQueue();
+      if (!queue.length) return;
+      const remaining: Array<Record<string, unknown>> = [];
+
+      for (const item of queue) {
+        try {
+          await submitWithRetry('/api/founder-intent', item, 0, 7000);
+          await postEvent('founder_intent_replay_sent', {
+            source: item.source,
+            intentId: item.intentId,
+            queuedAt: item.queuedAt,
+            founderCopyVariant: item.founderCopyVariant,
+          });
+        } catch (error) {
+          remaining.push(item);
+          await postEvent('founder_intent_replay_failed', {
+            source: item.source,
+            intentId: item.intentId,
+            queuedAt: item.queuedAt,
+            founderCopyVariant: item.founderCopyVariant,
+            error: error instanceof Error ? error.message : 'unknown',
+          });
+        }
+      }
+
+      writeFounderIntentReplayQueue(remaining);
+    };
+
+    void flushFounderIntentQueue();
+    const onOnline = () => { void flushFounderIntentQueue(); };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
   }, []);
 
   useEffect(() => {
@@ -903,24 +1008,31 @@ const Play = () => {
 
     try {
       const intentId = makeFounderIntentId(normalizedEmail, checkoutSource);
-      await Promise.allSettled([
-        fetch('/api/founder-intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: normalizedEmail,
-            source: checkoutSource,
-            intentId,
-            founderCopyVariant: playFounderCopyVariant,
-          }),
-        }),
-        postEvent('founder_checkout_clicked', {
+      const founderIntentPayload = {
+        email: normalizedEmail,
+        source: checkoutSource,
+        intentId,
+        founderCopyVariant: playFounderCopyVariant,
+      };
+
+      await postEvent('founder_checkout_clicked', {
+        source: checkoutSource,
+        ctaVariant: founderCtaVariant.key,
+        founderCopyVariant: playFounderCopyVariant,
+        intentId,
+      });
+
+      try {
+        await submitWithRetry('/api/founder-intent', founderIntentPayload, 1, 6000);
+      } catch (error) {
+        enqueueFounderIntentReplay(founderIntentPayload);
+        await postEvent('founder_intent_buffered', {
           source: checkoutSource,
-          ctaVariant: founderCtaVariant.key,
-          founderCopyVariant: playFounderCopyVariant,
           intentId,
-        }),
-      ]);
+          founderCopyVariant: playFounderCopyVariant,
+          error: error instanceof Error ? error.message : 'unknown',
+        });
+      }
 
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('cogcage_last_founder_checkout_source', checkoutSource);

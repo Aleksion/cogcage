@@ -878,6 +878,7 @@ const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } =
 };
 
 const WAITLIST_REPLAY_QUEUE_KEY = 'cogcage_waitlist_replay_queue';
+const FOUNDER_INTENT_REPLAY_QUEUE_KEY = 'cogcage_founder_intent_replay_queue';
 
 const readWaitlistReplayQueue = () => {
   try {
@@ -951,6 +952,76 @@ const replayWaitlistQueue = async () => {
   }
 
   writeWaitlistReplayQueue(remaining);
+};
+
+const readFounderIntentReplayQueue = () => {
+  try {
+    const raw = localStorage.getItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeFounderIntentReplayQueue = (queue) => {
+  try {
+    if (!queue.length) {
+      localStorage.removeItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY);
+      return;
+    }
+    localStorage.setItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY, JSON.stringify(queue.slice(-20)));
+  } catch {
+    // best-effort cache only
+  }
+};
+
+const enqueueFounderIntentReplay = (payload) => {
+  const queue = readFounderIntentReplayQueue();
+  const intentId = String(payload.intentId || '');
+  const normalized = {
+    ...payload,
+    email: String(payload.email || '').trim().toLowerCase(),
+    queuedAt: new Date().toISOString(),
+  };
+  const deduped = queue.filter((item) => String(item.intentId || '') !== intentId);
+  deduped.push(normalized);
+  writeFounderIntentReplayQueue(deduped);
+};
+
+const replayFounderIntentQueue = async () => {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  const queue = readFounderIntentReplayQueue();
+  if (!queue.length) return;
+
+  const remaining = [];
+  for (const item of queue) {
+    try {
+      await submitWithRetry('/api/founder-intent', item, { retries: 0, timeoutMs: 7000 });
+      await postJson('/api/events', {
+        event: 'founder_intent_replay_sent',
+        source: item.source || 'cogcage-founder-replay',
+        email: item.email,
+        page: '/',
+        meta: { queuedAt: item.queuedAt || null, intentId: item.intentId || null },
+      });
+    } catch (error) {
+      remaining.push(item);
+      await postJson('/api/events', {
+        event: 'founder_intent_replay_failed',
+        source: item.source || 'cogcage-founder-replay',
+        email: item.email,
+        page: '/',
+        meta: {
+          queuedAt: item.queuedAt || null,
+          intentId: item.intentId || null,
+          error: error instanceof Error ? error.message : 'unknown',
+        },
+      });
+    }
+  }
+
+  writeFounderIntentReplayQueue(remaining);
 };
 
 // ─── Reusable Components ───────────────────────────────────────────────────────
@@ -1217,12 +1288,29 @@ const HeroSection = ({ sectionRef }) => {
       variant,
       meta: { variant, founderCtaVariant },
     });
-    await postJson('/api/founder-intent', {
+    const founderIntentPayload = {
       email: trimmed.toLowerCase(),
       source: `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`,
+      intentId: `intent:${new Date().toISOString().slice(0, 10)}:${trimmed.toLowerCase()}:${variant}:${founderCtaVariant}`,
       variant,
       founderCtaVariant,
-    });
+    };
+
+    try {
+      await submitWithRetry('/api/founder-intent', founderIntentPayload, { retries: 1, timeoutMs: 6000 });
+    } catch (error) {
+      enqueueFounderIntentReplay(founderIntentPayload);
+      await postJson('/api/events', {
+        event: 'founder_intent_buffered',
+        source: founderIntentPayload.source,
+        email: founderIntentPayload.email,
+        page: '/',
+        meta: {
+          intentId: founderIntentPayload.intentId,
+          error: error instanceof Error ? error.message : 'unknown',
+        },
+      });
+    }
 
     if (STRIPE_FOUNDER_URL) {
       const checkoutSource = `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`;
@@ -1563,12 +1651,29 @@ const FooterSection = () => {
       variant,
       meta: { variant, founderCtaVariant },
     });
-    await postJson('/api/founder-intent', {
+    const founderIntentPayload = {
       email: trimmed,
       source: `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`,
+      intentId: `intent:${new Date().toISOString().slice(0, 10)}:${trimmed}:${variant}:${founderCtaVariant}`,
       variant,
       founderCtaVariant,
-    });
+    };
+
+    try {
+      await submitWithRetry('/api/founder-intent', founderIntentPayload, { retries: 1, timeoutMs: 6000 });
+    } catch (error) {
+      enqueueFounderIntentReplay(founderIntentPayload);
+      await postJson('/api/events', {
+        event: 'founder_intent_buffered',
+        source: founderIntentPayload.source,
+        email: founderIntentPayload.email,
+        page: '/',
+        meta: {
+          intentId: founderIntentPayload.intentId,
+          error: error instanceof Error ? error.message : 'unknown',
+        },
+      });
+    }
 
     if (STRIPE_FOUNDER_URL) {
       const checkoutSource = `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`;
@@ -1707,7 +1812,11 @@ const App = () => {
 
   useEffect(() => {
     void replayWaitlistQueue();
-    const onOnline = () => { void replayWaitlistQueue(); };
+    void replayFounderIntentQueue();
+    const onOnline = () => {
+      void replayWaitlistQueue();
+      void replayFounderIntentQueue();
+    };
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
   }, []);
