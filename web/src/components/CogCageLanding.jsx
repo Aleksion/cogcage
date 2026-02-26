@@ -1283,24 +1283,25 @@ const HeroSection = ({ sectionRef }) => {
         : `You are on the list. Ref ${payload.requestId}.`);
       setEmail('');
     } catch (err) {
-      if (shouldQueueForReplay(err)) {
+      const buffered = shouldQueueForReplay(err);
+      if (buffered) {
         enqueueWaitlistReplay({
           email: trimmed.toLowerCase(),
           game: 'Unspecified',
           source: `cogcage-hero-${variant}`,
         });
+        void postJson('/api/events', {
+          event: 'waitlist_submit_buffered',
+          source: `hero-waitlist-${variant}`,
+          page: '/',
+          email: trimmed.toLowerCase(),
+          meta: { error: err instanceof Error ? err.message : 'unknown' },
+        });
       }
-      void postJson('/api/events', {
-        event: 'waitlist_submit_buffered',
-        source: `hero-waitlist-${variant}`,
-        page: '/',
-        email: trimmed.toLowerCase(),
-        meta: { error: err instanceof Error ? err.message : 'unknown' },
-      });
       setStatus('error');
       const requestRef = err?.requestId ? ` Ref ${err.requestId}.` : '';
       const retryAfter = err?.retryAfter ? ` Retry in ~${err.retryAfter}s.` : '';
-      setMessage(shouldQueueForReplay(err)
+      setMessage(buffered
         ? `Temporary network/storage issue. Saved locally and will auto-retry when online.${requestRef}`
         : `${err?.message || 'Could not submit. Please check your input and retry.'}${retryAfter}${requestRef}`);
     }
@@ -1339,17 +1340,19 @@ const HeroSection = ({ sectionRef }) => {
     try {
       await submitWithRetry('/api/founder-intent', founderIntentPayload, { retries: 1, timeoutMs: 6000 });
     } catch (error) {
-      enqueueFounderIntentReplay(founderIntentPayload);
-      await postJson('/api/events', {
-        event: 'founder_intent_buffered',
-        source: founderIntentPayload.source,
-        email: founderIntentPayload.email,
-        page: '/',
-        meta: {
-          intentId: founderIntentPayload.intentId,
-          error: error instanceof Error ? error.message : 'unknown',
-        },
-      });
+      if (shouldQueueForReplay(error)) {
+        enqueueFounderIntentReplay(founderIntentPayload);
+        await postJson('/api/events', {
+          event: 'founder_intent_buffered',
+          source: founderIntentPayload.source,
+          email: founderIntentPayload.email,
+          page: '/',
+          meta: {
+            intentId: founderIntentPayload.intentId,
+            error: error instanceof Error ? error.message : 'unknown',
+          },
+        });
+      }
     }
 
     if (STRIPE_FOUNDER_URL) {
@@ -1657,23 +1660,24 @@ const FooterSection = () => {
       });
       setSubmitted(true);
     } catch (err) {
-      if (shouldQueueForReplay(err)) {
+      const buffered = shouldQueueForReplay(err);
+      if (buffered) {
         enqueueWaitlistReplay({
           email: trimmed,
           game: 'Unspecified',
           source: `cogcage-footer-${variant}`,
         });
+        void postJson('/api/events', {
+          event: 'waitlist_submit_buffered',
+          source: `footer-waitlist-${variant}`,
+          page: '/',
+          email: trimmed,
+          meta: { error: err instanceof Error ? err.message : 'unknown' },
+        });
       }
-      void postJson('/api/events', {
-        event: 'waitlist_submit_buffered',
-        source: `footer-waitlist-${variant}`,
-        page: '/',
-        email: trimmed,
-        meta: { error: err instanceof Error ? err.message : 'unknown' },
-      });
       const requestRef = err?.requestId ? ` Ref ${err.requestId}.` : '';
       const retryAfter = err?.retryAfter ? ` Retry in ~${err.retryAfter}s.` : '';
-      setError(shouldQueueForReplay(err)
+      setError(buffered
         ? `Could not reach storage. Saved locally and will auto-retry when online.${requestRef}`
         : `${err?.message || 'Could not submit. Please check your input and retry.'}${retryAfter}${requestRef}`);
     } finally {
@@ -1713,17 +1717,19 @@ const FooterSection = () => {
     try {
       await submitWithRetry('/api/founder-intent', founderIntentPayload, { retries: 1, timeoutMs: 6000 });
     } catch (error) {
-      enqueueFounderIntentReplay(founderIntentPayload);
-      await postJson('/api/events', {
-        event: 'founder_intent_buffered',
-        source: founderIntentPayload.source,
-        email: founderIntentPayload.email,
-        page: '/',
-        meta: {
-          intentId: founderIntentPayload.intentId,
-          error: error instanceof Error ? error.message : 'unknown',
-        },
-      });
+      if (shouldQueueForReplay(error)) {
+        enqueueFounderIntentReplay(founderIntentPayload);
+        await postJson('/api/events', {
+          event: 'founder_intent_buffered',
+          source: founderIntentPayload.source,
+          email: founderIntentPayload.email,
+          page: '/',
+          meta: {
+            intentId: founderIntentPayload.intentId,
+            error: error instanceof Error ? error.message : 'unknown',
+          },
+        });
+      }
     }
 
     if (STRIPE_FOUNDER_URL) {
