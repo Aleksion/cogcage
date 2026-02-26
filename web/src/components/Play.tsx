@@ -1,4 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createInitialState,
+  createActorState,
+  resolveTick,
+  UNIT_SCALE,
+  DECISION_WINDOW_TICKS,
+  ENERGY_MAX,
+  HP_MAX,
+  ACTION_COST,
+  MELEE_RANGE,
+  createBot,
+  Rng,
+} from '../lib/ws2/index.js';
 
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:ital,wght@0,400;0,800;1,900&display=swap');
@@ -136,6 +149,49 @@ const globalStyles = `
     padding: 0.75rem 1rem;
     font-family: var(--f-body);
     font-size: 1rem;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+  }
+  .slider-row label {
+    font-size: 0.65rem;
+    font-family: monospace;
+    color: #888;
+    width: 2.4rem;
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .slider-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--c-yellow);
+    cursor: pointer;
+  }
+  .slider-row .slider-val {
+    font-size: 0.65rem;
+    font-family: monospace;
+    color: #888;
+    width: 2rem;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .your-bot-card {
+    background: rgba(255,214,0,0.07);
+    border: 2px dashed var(--c-yellow);
+    border-radius: 10px;
+    padding: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .your-bot-card h3 {
+    font-family: var(--f-display);
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.6rem;
   }
 
   .cta-btn {
@@ -362,6 +418,22 @@ type BotPreset = {
   aggression: number;
   defense: number;
   risk: number;
+};
+
+type PlayerBotConfig = {
+  name: string;
+  directive: string;
+  aggression: number;
+  defense: number;
+  risk: number;
+};
+
+const DEFAULT_PLAYER_BOT: PlayerBotConfig = {
+  name: 'My Bot',
+  directive: '',
+  aggression: 60,
+  defense: 50,
+  risk: 40,
 };
 
 type Vec = { x: number; y: number };
@@ -643,6 +715,7 @@ const Play = () => {
   const [playerScan, setPlayerScan] = useState(0);
   const [enemyScan, setEnemyScan] = useState(0);
   const [opponentId, setOpponentId] = useState(OPPONENTS[0].id);
+  const [playerBotConfig, setPlayerBotConfig] = useState<PlayerBotConfig>(DEFAULT_PLAYER_BOT);
   const [email, setEmail] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
@@ -671,6 +744,21 @@ const Play = () => {
     () => OPPONENTS.find((bot) => bot.id === opponentId) || OPPONENTS[0],
     [opponentId]
   );
+
+  // Player combat bonuses derived from bot config (clamped to sane ranges)
+  const playerBonuses = useMemo(() => {
+    const agg = clamp(playerBotConfig.aggression, 0, 100);
+    const def = clamp(playerBotConfig.defense, 0, 100);
+    const risk = clamp(playerBotConfig.risk, 0, 100);
+    return {
+      // aggression: +0..+6 damage bonus (scales linearly)
+      attackBonus: Math.floor(agg / 100 * 6),
+      // defense: +0..+3 block bonus (absorbs extra damage)
+      blockBonus: Math.floor(def / 100 * 3),
+      // risk: 40%+ risk stat gives +1 range extension on scan (overclocked mode)
+      scanExtended: risk >= 40,
+    };
+  }, [playerBotConfig.aggression, playerBotConfig.defense, playerBotConfig.risk]);
 
   const founderCtaVariant = useMemo(() => {
     if (!winner) {
@@ -841,7 +929,7 @@ const Play = () => {
       return true;
     }
     if (nextEnemyHp <= 0) {
-      setWinner('You');
+      setWinner(playerBotConfig.name.trim() || 'My Bot');
       setRunning(false);
       return true;
     }
@@ -877,7 +965,8 @@ const Play = () => {
     }
     setPlayerPos(next);
     setPlayerAp((prev) => prev - 1);
-    logFeed([`You move to (${next.x + 1}, ${GRID_SIZE - next.y}).`]);
+    const botLabel = playerBotConfig.name.trim() || 'My Bot';
+    logFeed([`${botLabel} moves → (${next.x + 1}, ${GRID_SIZE - next.y}) [1 AP].`]);
   };
 
   const handleAttack = () => {
@@ -893,7 +982,11 @@ const Play = () => {
       logFeed([`Target out of range (${dist}).`]);
       return;
     }
-    const baseDamage = 8 + rngInt(rng, 0, 4) + (playerScan > 0 ? 2 : 0);
+    const botLabel = playerBotConfig.name.trim() || 'My Bot';
+    const directiveNote = playerBotConfig.directive.trim()
+      ? ` [directive:${playerBotConfig.directive.slice(0, 28).trim()}]`
+      : '';
+    const baseDamage = 8 + rngInt(rng, 0, 4) + (playerScan > 0 ? 2 : 0) + playerBonuses.attackBonus;
     const mitigated = Math.max(0, baseDamage - enemyBlock);
     const nextEnemyHp = clamp(enemyHp - mitigated, 0, 100);
     setEnemyHp(nextEnemyHp);
@@ -901,7 +994,7 @@ const Play = () => {
     setPlayerAp((prev) => prev - 2);
     setPlayerScan(0);
     logFeed([
-      `You strike for ${mitigated}. Enemy HP ${nextEnemyHp}.`,
+      `${botLabel} strikes for ${mitigated} [aggr:${playerBotConfig.aggression}→attack${directiveNote}] · ${opponent.name} HP ${nextEnemyHp}.`,
     ]);
     endMatchIfNeeded(playerHp, nextEnemyHp);
   };
@@ -913,10 +1006,11 @@ const Play = () => {
       return;
     }
     const rng = rngRef.current;
-    const blockValue = 5 + rngInt(rng, 0, 2);
+    const botLabel = playerBotConfig.name.trim() || 'My Bot';
+    const blockValue = 5 + rngInt(rng, 0, 2) + playerBonuses.blockBonus;
     setPlayerBlock(blockValue);
     setPlayerAp((prev) => prev - 1);
-    logFeed([`You brace. Block ${blockValue} on next hit.`]);
+    logFeed([`${botLabel} raises guard (${blockValue}) [def:${playerBotConfig.defense}→guard].`]);
   };
 
   const handleScan = () => {
@@ -925,9 +1019,11 @@ const Play = () => {
       logFeed(['Scan needs 1 AP.']);
       return;
     }
-    setPlayerScan(2);
+    const botLabel = playerBotConfig.name.trim() || 'My Bot';
+    const extendedNote = playerBonuses.scanExtended ? '+2 range (risk overclock)' : '+1 range';
+    setPlayerScan(playerBonuses.scanExtended ? 3 : 2);
     setPlayerAp((prev) => prev - 1);
-    logFeed(['You scan the grid. Next strike gains +1 range.']);
+    logFeed([`${botLabel} scans the arena. Next strike gains ${extendedNote} [risk:${playerBotConfig.risk}].`]);
   };
 
   const enemyTurn = () => {
@@ -1175,6 +1271,48 @@ const Play = () => {
               <span className="seed-pill">Seed {activeSeed ?? '—'}</span>
             </div>
 
+            <div className="section-label" style={{ marginTop: '1.4rem' }}>Your Bot</div>
+            <div className="your-bot-card">
+              <input
+                className="prompt-box"
+                style={{ minHeight: 'unset', height: '40px', marginBottom: '0.5rem' }}
+                placeholder="Bot name (e.g. Iron Vanguard)"
+                value={playerBotConfig.name}
+                onChange={(e) => setPlayerBotConfig((prev) => ({ ...prev, name: e.target.value }))}
+              />
+              <textarea
+                className="prompt-box"
+                style={{ minHeight: '56px', marginBottom: '0.6rem', fontSize: '0.85rem' }}
+                placeholder="Directive (e.g. 'press hard early, brace when low HP')"
+                value={playerBotConfig.directive}
+                onChange={(e) => setPlayerBotConfig((prev) => ({ ...prev, directive: e.target.value }))}
+              />
+              {[
+                { key: 'aggression' as const, label: 'AGGR', color: 'var(--c-red, #ff4444)' },
+                { key: 'defense' as const, label: 'DEF', color: 'var(--c-cyan, #00e5ff)' },
+                { key: 'risk' as const, label: 'RISK', color: 'var(--c-yellow, #ffd700)' },
+              ].map(({ key, label, color }) => (
+                <div key={key} className="slider-row">
+                  <label>{label}</label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={playerBotConfig[key]}
+                    style={{ accentColor: color }}
+                    onChange={(e) =>
+                      setPlayerBotConfig((prev) => ({ ...prev, [key]: Number(e.target.value) }))
+                    }
+                  />
+                  <span className="slider-val">{playerBotConfig[key]}</span>
+                </div>
+              ))}
+              <div className="hint" style={{ marginTop: '0.3rem' }}>
+                AGGR → attack damage · DEF → guard strength · RISK ≥ 40 → scan overclock
+              </div>
+            </div>
+
             <div className="section-label" style={{ marginTop: '1.4rem' }}>Opponent Loadout</div>
             <div style={{ display: 'grid', gap: '0.8rem' }}>
               {OPPONENTS.map((bot) => (
@@ -1255,11 +1393,25 @@ const Play = () => {
 
             <div className="stat-block">
               <div className="stat-title">
-                <span>You</span>
+                <span style={{ fontWeight: 900 }}>{playerBotConfig.name.trim() || 'My Bot'}</span>
                 <span className="status-pill">HP {playerHp}</span>
               </div>
               <div className="bar-shell">
                 <div className="bar-fill" style={{ width: `${playerHp}%` }} />
+              </div>
+              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.3rem' }}>
+                {[
+                  { label: 'AGGR', value: playerBotConfig.aggression, color: 'var(--c-red, #ff4444)' },
+                  { label: 'DEF', value: playerBotConfig.defense, color: 'var(--c-cyan, #00e5ff)' },
+                  { label: 'RISK', value: playerBotConfig.risk, color: 'var(--c-yellow, #ffd700)' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flex: 1 }}>
+                    <span style={{ fontSize: '0.55rem', fontFamily: 'monospace', color: '#888', width: '2rem', flexShrink: 0 }}>{label}</span>
+                    <div style={{ flex: 1, height: '3px', background: '#2a2a2a', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ width: `${value}%`, height: '100%', background: color, borderRadius: '2px' }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1288,7 +1440,7 @@ const Play = () => {
                     isEnemy ? 'enemy' : '',
                   ].filter(Boolean).join(' ');
                   let label = '';
-                  if (isPlayer) label = 'YOU';
+                  if (isPlayer) label = (playerBotConfig.name.trim() || 'MY BOT').slice(0, 4).toUpperCase();
                   if (isEnemy) label = 'BOT';
                   return (
                     <div key={`${x}-${y}`} className={className}>
@@ -1308,8 +1460,15 @@ const Play = () => {
 
             {winner && (
               <div className="winner-banner" style={{ marginTop: '1.2rem' }}>
-                Winner: {winner}
-                <div className="hint">Final HP {playerHp} vs {enemyHp}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.6rem' }}>
+                  <div>
+                    <div style={{ fontWeight: 900 }}>Winner: {winner}</div>
+                    <div className="hint">Final HP {playerHp} vs {enemyHp}</div>
+                  </div>
+                  <button className="action-btn secondary" onClick={startMatch} style={{ flexShrink: 0 }}>
+                    Play Again
+                  </button>
+                </div>
               </div>
             )}
 

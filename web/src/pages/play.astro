@@ -2,4 +2,18 @@
 import Play from '../components/Play.tsx';
 ---
 
-<Play client:only="react" />
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <title>CogCage — Play</title>
+    <meta name="description" content="Battle AI bots in the CogCage arena. Build your strategy, earn your rank." />
+    <style>*, *::before, *::after { box-sizing: border-box; } body { margin: 0; }</style>
+  </head>
+  <body>
+    <Play client:only="react" />
+  </body>
+</html>
