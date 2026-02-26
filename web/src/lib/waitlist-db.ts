@@ -96,6 +96,7 @@ function getDb() {
       user_agent TEXT,
       ip_address TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(email)
     );
 
@@ -147,6 +148,11 @@ function getDb() {
     );
   `);
 
+  const waitlistColumns = db.prepare(`PRAGMA table_info(waitlist_leads)`).all() as Array<{ name: string }>;
+  if (!waitlistColumns.some((column) => column.name === 'updated_at')) {
+    db.exec(`ALTER TABLE waitlist_leads ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`);
+  }
+
   return db;
 }
 
@@ -160,7 +166,7 @@ export function insertWaitlistLead(lead: WaitlistLead) {
       source=excluded.source,
       user_agent=excluded.user_agent,
       ip_address=excluded.ip_address,
-      created_at=CURRENT_TIMESTAMP
+      updated_at=CURRENT_TIMESTAMP
   `);
 
   runWithBusyRetry('insert_waitlist', () => insert.run(lead));

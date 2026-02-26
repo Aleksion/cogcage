@@ -15,6 +15,11 @@ const files = {
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
+const waitlistColumns = db.prepare('PRAGMA table_info(waitlist_leads)').all();
+if (!waitlistColumns.some((column) => column.name === 'updated_at')) {
+  db.exec('ALTER TABLE waitlist_leads ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP');
+}
+
 const upsertWaitlist = db.prepare(`
   INSERT INTO waitlist_leads (email, game, source, user_agent, ip_address)
   VALUES (@email, @game, @source, @userAgent, @ipAddress)
@@ -23,7 +28,7 @@ const upsertWaitlist = db.prepare(`
     source=excluded.source,
     user_agent=excluded.user_agent,
     ip_address=excluded.ip_address,
-    created_at=CURRENT_TIMESTAMP
+    updated_at=CURRENT_TIMESTAMP
 `);
 
 const upsertFounderIntent = db.prepare(`

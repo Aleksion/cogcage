@@ -36,7 +36,7 @@ The landing form posts to `POST /api/waitlist` (Astro server route) and writes l
 - Override with: `COGCAGE_DB_PATH=/absolute/path/to/cogcage.db`
 - Optional runtime root override (logs + DB default): `COGCAGE_RUNTIME_DIR=/absolute/path/to/runtime`
 
-Stored fields: email, primary game, source, user-agent, IP (from `x-forwarded-for`), created timestamp.
+Stored fields: email, primary game, source, user-agent, IP (from `x-forwarded-for`), immutable `created_at`, and `updated_at` for repeat submissions/replays.
 
 API observability logs and fallback queues default to `../ops/runtime/*.ndjson` and can be overridden with `COGCAGE_LOG_DIR`.
 
