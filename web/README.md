@@ -21,3 +21,12 @@ PUBLIC_TOURNAMENT_WAITLIST_URL="#join"
 ```
 
 If `PUBLIC_STRIPE_FOUNDER_URL` is set, Founder CTAs route directly to checkout and emit `founder_checkout_click` + `checkout_intent` tracking events to local event storage.
+
+## Waitlist Data Ownership
+
+The landing form posts to `POST /api/waitlist` (Astro server route) and writes leads to SQLite via `better-sqlite3`.
+
+- Default DB path: `./data/cogcage.db`
+- Override with: `COGCAGE_DB_PATH=/absolute/path/to/cogcage.db`
+
+Stored fields: email, primary game, source, user-agent, IP (from `x-forwarded-for`), created timestamp.

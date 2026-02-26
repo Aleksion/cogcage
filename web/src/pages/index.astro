@@ -92,7 +92,7 @@ const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? 
     <section class="panel join" id="join">
       <h2>Join alpha waitlist</h2>
       <p>Drop your email + primary game for invite priority, or grab a Founder slot instantly via secure checkout above.</p>
-      <form class="waitlist-form" id="waitlistForm" action="https://formspree.io/f/xwpowpvl" method="POST">
+      <form class="waitlist-form" id="waitlistForm" action="/api/waitlist" method="POST">
         <input type="hidden" name="source" value="cogcage-landing" />
         <label>
           Email
@@ -104,6 +104,7 @@ const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? 
         </label>
         <button type="submit" class="button button-primary" data-track="waitlist_submit_click">Reserve My Spot</button>
       </form>
+      <p class="form-status" id="waitlistStatus" aria-live="polite"></p>
       <p class="fine-print">By submitting, you agree to receive alpha updates and launch offers.</p>
     </section>
   </main>
@@ -134,9 +135,42 @@ const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? 
   });
 
   const waitlistForm = document.getElementById('waitlistForm');
-  if (waitlistForm) {
-    waitlistForm.addEventListener('submit', () => {
-      track('waitlist_submit', { location: 'landing' });
+  const waitlistStatus = document.getElementById('waitlistStatus');
+
+  if (waitlistForm instanceof HTMLFormElement) {
+    waitlistForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submitButton = waitlistForm.querySelector('button[type="submit"]');
+
+      submitButton?.setAttribute('disabled', 'true');
+      if (waitlistStatus) waitlistStatus.textContent = 'Submitting...';
+
+      try {
+        const response = await fetch(waitlistForm.action, {
+          method: 'POST',
+          body: new FormData(waitlistForm),
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || 'Could not submit right now. Please try again.');
+        }
+
+        track('waitlist_submit', { location: 'landing' });
+        if (waitlistStatus) {
+          waitlistStatus.textContent = 'You\'re in. Watch your inbox for alpha invite updates.';
+        }
+        waitlistForm.reset();
+      } catch (error) {
+        if (waitlistStatus) {
+          waitlistStatus.textContent = error instanceof Error ? error.message : 'Submission failed. Please try again.';
+        }
+      } finally {
+        submitButton?.removeAttribute('disabled');
+      }
     });
   }
 
@@ -319,6 +353,18 @@ const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? 
     padding: 0.62rem 0.72rem;
     background: rgba(3, 3, 7, 0.8);
     color: #fff;
+  }
+
+  .form-status {
+    min-height: 1.2rem;
+    margin-top: 0.7rem;
+    color: #cfd3ee;
+    font-size: 0.9rem;
+  }
+
+  .button[disabled] {
+    opacity: 0.65;
+    pointer-events: none;
   }
 
   .fine-print {
