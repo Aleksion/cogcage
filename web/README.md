@@ -48,6 +48,27 @@ Server-side event data is written to SQLite `conversion_events` with:
 - JSON metadata payload
 - user-agent, IP, timestamp
 
+## Funnel Rollup Report (Daily KPI Command)
+
+Generate a conversion rollup from SQLite in one command:
+
+```bash
+npm run report:funnel
+```
+
+Optional flags:
+
+```bash
+npm run report:funnel -- --days=1
+npm run report:funnel -- --days=30 --json
+```
+
+The report includes:
+- all-time totals (waitlist leads, founder intents, paid confirmations)
+- windowed funnel counts (landing view → founder click → intent → waitlist → paid)
+- unique-email counts by stage
+- conversion rates for founder and waitlist paths
+
 ## CSV Export for Outbound Follow-up
 
 Export monetization funnel tables to CSV:

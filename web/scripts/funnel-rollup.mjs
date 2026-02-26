@@ -1,0 +1,173 @@
+#!/usr/bin/env node
+import path from 'node:path';
+import Database from 'better-sqlite3';
+
+const dbPath = process.env.COGCAGE_DB_PATH ?? path.join(process.cwd(), 'data', 'cogcage.db');
+
+const args = process.argv.slice(2);
+const daysArg = args.find((arg) => arg.startsWith('--days='));
+const jsonMode = args.includes('--json');
+const days = Number(daysArg?.split('=')[1] ?? '7');
+
+if (!Number.isFinite(days) || days <= 0) {
+  console.error('Invalid --days value. Example: --days=7');
+  process.exit(1);
+}
+
+const db = new Database(dbPath, { readonly: true });
+
+function count(sql, params = {}) {
+  const row = db.prepare(sql).get(params);
+  return Number(row?.value ?? 0);
+}
+
+function pct(numerator, denominator) {
+  if (!denominator) return 0;
+  return (numerator / denominator) * 100;
+}
+
+const windowStart = db
+  .prepare("SELECT datetime('now', @window) AS value")
+  .get({ window: `-${days} days` })?.value;
+
+const totals = {
+  waitlistLeads: count('SELECT COUNT(*) AS value FROM waitlist_leads'),
+  founderIntents: count('SELECT COUNT(*) AS value FROM founder_intents'),
+  conversionEvents: count('SELECT COUNT(*) AS value FROM conversion_events'),
+  paidConversions: count("SELECT COUNT(*) AS value FROM conversion_events WHERE event_name = 'paid_conversion_confirmed'"),
+};
+
+const inWindow = {
+  landingViews: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'landing_view'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  founderClicks: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  founderIntents: count(
+    `SELECT COUNT(*) AS value
+     FROM founder_intents
+     WHERE created_at >= @windowStart`,
+    { windowStart },
+  ),
+  waitlistJoinedEvents: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'waitlist_joined'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  waitlistLeads: count(
+    `SELECT COUNT(*) AS value
+     FROM waitlist_leads
+     WHERE created_at >= @windowStart`,
+    { windowStart },
+  ),
+  paidConversions: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'paid_conversion_confirmed'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
+const uniqueInWindow = {
+  founderClickEmails: count(
+    `SELECT COUNT(DISTINCT lower(email)) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND email IS NOT NULL
+       AND email != ''
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  founderIntentEmails: count(
+    `SELECT COUNT(DISTINCT lower(email)) AS value
+     FROM founder_intents
+     WHERE email IS NOT NULL
+       AND email != ''
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  waitlistEmails: count(
+    `SELECT COUNT(DISTINCT lower(email)) AS value
+     FROM waitlist_leads
+     WHERE email IS NOT NULL
+       AND email != ''
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  paidEmails: count(
+    `SELECT COUNT(DISTINCT lower(email)) AS value
+     FROM conversion_events
+     WHERE event_name = 'paid_conversion_confirmed'
+       AND email IS NOT NULL
+       AND email != ''
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
+const rollup = {
+  days,
+  windowStart,
+  totals,
+  inWindow,
+  uniqueInWindow,
+  rates: {
+    founderClickToIntentPct: pct(inWindow.founderIntents, inWindow.founderClicks),
+    founderIntentToPaidPct: pct(inWindow.paidConversions, inWindow.founderIntents),
+    founderClickToPaidPct: pct(inWindow.paidConversions, inWindow.founderClicks),
+    waitlistToPaidPct: pct(inWindow.paidConversions, inWindow.waitlistLeads),
+  },
+};
+
+if (jsonMode) {
+  console.log(JSON.stringify(rollup, null, 2));
+  db.close();
+  process.exit(0);
+}
+
+console.log('CogCage Funnel Rollup');
+console.log(`Window: last ${days} day(s) since ${windowStart}`);
+console.log('');
+
+console.log('Totals (all-time):');
+console.log(`- Waitlist leads: ${totals.waitlistLeads}`);
+console.log(`- Founder intents: ${totals.founderIntents}`);
+console.log(`- Paid conversions: ${totals.paidConversions}`);
+console.log(`- Conversion events: ${totals.conversionEvents}`);
+console.log('');
+
+console.log(`Windowed funnel (${days} day(s)):`);
+console.log(`- Landing views: ${inWindow.landingViews}`);
+console.log(`- Founder checkout clicks: ${inWindow.founderClicks}`);
+console.log(`- Founder intents logged: ${inWindow.founderIntents}`);
+console.log(`- Waitlist joined events: ${inWindow.waitlistJoinedEvents}`);
+console.log(`- Waitlist leads created: ${inWindow.waitlistLeads}`);
+console.log(`- Paid conversion confirmations: ${inWindow.paidConversions}`);
+console.log('');
+
+console.log('Unique emails in window:');
+console.log(`- Founder click emails: ${uniqueInWindow.founderClickEmails}`);
+console.log(`- Founder intent emails: ${uniqueInWindow.founderIntentEmails}`);
+console.log(`- Waitlist emails: ${uniqueInWindow.waitlistEmails}`);
+console.log(`- Paid emails: ${uniqueInWindow.paidEmails}`);
+console.log('');
+
+console.log('Step conversion rates:');
+console.log(`- Founder click -> intent: ${rollup.rates.founderClickToIntentPct.toFixed(2)}%`);
+console.log(`- Founder intent -> paid: ${rollup.rates.founderIntentToPaidPct.toFixed(2)}%`);
+console.log(`- Founder click -> paid: ${rollup.rates.founderClickToPaidPct.toFixed(2)}%`);
+console.log(`- Waitlist lead -> paid: ${rollup.rates.waitlistToPaidPct.toFixed(2)}%`);
+
+db.close();

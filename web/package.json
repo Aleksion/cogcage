@@ -7,7 +7,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "export:funnel": "node ./scripts/export-funnel-csv.mjs"
+    "export:funnel": "node ./scripts/export-funnel-csv.mjs",
+    "report:funnel": "node ./scripts/funnel-rollup.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^9.5.4",
