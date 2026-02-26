@@ -102,7 +102,7 @@ const makeEvent = (type, payload) => ({
 
 const isDecisionTick = (tick) => tick % DECISION_WINDOW_TICKS === 0;
 
-const isStatusActive = (status, tick) => status && tick < status.endsAt;
+const isStatusActive = (status, tick) => !!status && tick < status.endsAt;
 
 const expireStatuses = (actor, tick) => {
   if (actor.statuses.guard && !isStatusActive(actor.statuses.guard, tick)) {
@@ -427,9 +427,21 @@ export const resolveTick = (state, actionsByActor) => {
 
   const seedParity = state.seed % 2;
   const resolveOrder = (state.tick + seedParity) % 2 === 0 ? actorIds : [...actorIds].reverse();
+
+  // Phase 1: non-attack actions (GUARD, MOVE, DASH, UTILITY) — apply before any attacks
+  // so same-tick GUARD correctly blocks same-tick strikes regardless of resolution order.
+  const ATTACK_TYPES = new Set(['MELEE_STRIKE', 'RANGED_SHOT']);
   for (const actorId of resolveOrder) {
     const action = acceptedActions.get(actorId);
-    if (action) {
+    if (action && !ATTACK_TYPES.has(action.type)) {
+      resolveAction(state, state.actors[actorId], action);
+    }
+  }
+
+  // Phase 2: attack actions
+  for (const actorId of resolveOrder) {
+    const action = acceptedActions.get(actorId);
+    if (action && ATTACK_TYPES.has(action.type)) {
       resolveAction(state, state.actors[actorId], action);
     }
   }
