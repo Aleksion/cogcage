@@ -411,7 +411,9 @@ const submitWithRetry = async (url: string, payload: Record<string, unknown>, re
       window.clearTimeout(timeout);
       const body = await response.json().catch(() => ({}));
       if (response.ok && body.ok === true) return body;
-      const err = new Error(body?.error || `Request failed (${response.status})`);
+      const err = new Error(body?.error || `Request failed (${response.status})`) as Error & { status?: number; requestId?: string };
+      err.status = response.status;
+      err.requestId = body?.requestId;
       if (response.status >= 500 && attempt < retries) {
         lastError = err;
         await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
@@ -427,6 +429,15 @@ const submitWithRetry = async (url: string, payload: Record<string, unknown>, re
   }
 
   throw lastError || new Error('Request failed');
+};
+
+const shouldQueueForReplay = (error: unknown) => {
+  if (!error || typeof error !== 'object') return true;
+  const status = Number((error as { status?: number }).status);
+  if (Number.isFinite(status)) {
+    return status >= 500;
+  }
+  return true;
 };
 
 const readFounderIntentReplayQueue = () => {
@@ -691,7 +702,9 @@ const Play = () => {
             founderCopyVariant: item.founderCopyVariant,
           });
         } catch (error) {
-          remaining.push(item);
+          if (shouldQueueForReplay(error)) {
+            remaining.push(item);
+          }
           await postEvent('founder_intent_replay_failed', {
             source: item.source,
             intentId: item.intentId,
@@ -1025,13 +1038,15 @@ const Play = () => {
       try {
         await submitWithRetry('/api/founder-intent', founderIntentPayload, 1, 6000);
       } catch (error) {
-        enqueueFounderIntentReplay(founderIntentPayload);
-        await postEvent('founder_intent_buffered', {
-          source: checkoutSource,
-          intentId,
-          founderCopyVariant: playFounderCopyVariant,
-          error: error instanceof Error ? error.message : 'unknown',
-        });
+        if (shouldQueueForReplay(error)) {
+          enqueueFounderIntentReplay(founderIntentPayload);
+          await postEvent('founder_intent_buffered', {
+            source: checkoutSource,
+            intentId,
+            founderCopyVariant: playFounderCopyVariant,
+            error: error instanceof Error ? error.message : 'unknown',
+          });
+        }
       }
 
       if (typeof window !== 'undefined') {

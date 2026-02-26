@@ -860,6 +860,8 @@ const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } =
       }
 
       const err = new Error(body?.error || `Request failed (${response.status})`);
+      err.status = response.status;
+      err.requestId = body?.requestId;
       if (response.status >= 500 && attempt < retries) {
         lastError = err;
         await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
@@ -875,6 +877,16 @@ const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } =
   }
 
   throw lastError || new Error('Request failed');
+};
+
+const shouldQueueForReplay = (error) => {
+  if (!error || typeof error !== 'object') return true;
+  const status = Number(error.status);
+  if (Number.isFinite(status)) {
+    // 4xx should not be replayed forever.
+    return status >= 500;
+  }
+  return true;
 };
 
 const WAITLIST_REPLAY_QUEUE_KEY = 'cogcage_waitlist_replay_queue';
@@ -937,7 +949,9 @@ const replayWaitlistQueue = async () => {
         meta: { queuedAt: item.queuedAt || null },
       });
     } catch (error) {
-      remaining.push(item);
+      if (shouldQueueForReplay(error)) {
+        remaining.push(item);
+      }
       await postJson('/api/events', {
         event: 'waitlist_replay_failed',
         source: item.source || 'cogcage-replay',
@@ -1006,7 +1020,9 @@ const replayFounderIntentQueue = async () => {
         meta: { queuedAt: item.queuedAt || null, intentId: item.intentId || null },
       });
     } catch (error) {
-      remaining.push(item);
+      if (shouldQueueForReplay(error)) {
+        remaining.push(item);
+      }
       await postJson('/api/events', {
         event: 'founder_intent_replay_failed',
         source: item.source || 'cogcage-founder-replay',
@@ -1249,11 +1265,13 @@ const HeroSection = ({ sectionRef }) => {
         : `You are on the list. Ref ${payload.requestId}.`);
       setEmail('');
     } catch (err) {
-      enqueueWaitlistReplay({
-        email: trimmed.toLowerCase(),
-        game: 'Unspecified',
-        source: `cogcage-hero-${variant}`,
-      });
+      if (shouldQueueForReplay(err)) {
+        enqueueWaitlistReplay({
+          email: trimmed.toLowerCase(),
+          game: 'Unspecified',
+          source: `cogcage-hero-${variant}`,
+        });
+      }
       void postJson('/api/events', {
         event: 'waitlist_submit_buffered',
         source: `hero-waitlist-${variant}`,
@@ -1262,7 +1280,9 @@ const HeroSection = ({ sectionRef }) => {
         meta: { error: err instanceof Error ? err.message : 'unknown' },
       });
       setStatus('error');
-      setMessage('Temporary network/storage issue. Saved locally and will auto-retry when online.');
+      setMessage(shouldQueueForReplay(err)
+        ? 'Temporary network/storage issue. Saved locally and will auto-retry when online.'
+        : (err?.message || 'Could not submit. Please check your input and retry.'));
     }
   };
 
@@ -1614,11 +1634,13 @@ const FooterSection = () => {
       });
       setSubmitted(true);
     } catch (err) {
-      enqueueWaitlistReplay({
-        email: trimmed,
-        game: 'Unspecified',
-        source: `cogcage-footer-${variant}`,
-      });
+      if (shouldQueueForReplay(err)) {
+        enqueueWaitlistReplay({
+          email: trimmed,
+          game: 'Unspecified',
+          source: `cogcage-footer-${variant}`,
+        });
+      }
       void postJson('/api/events', {
         event: 'waitlist_submit_buffered',
         source: `footer-waitlist-${variant}`,
@@ -1626,7 +1648,9 @@ const FooterSection = () => {
         email: trimmed,
         meta: { error: err instanceof Error ? err.message : 'unknown' },
       });
-      setError('Could not reach storage. Saved locally and will auto-retry when online.');
+      setError(shouldQueueForReplay(err)
+        ? 'Could not reach storage. Saved locally and will auto-retry when online.'
+        : (err?.message || 'Could not submit. Please check your input and retry.'));
     }
   };
 
