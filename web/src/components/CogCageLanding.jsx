@@ -687,6 +687,25 @@ const globalStyles = `
 
 const STRIPE_FOUNDER_URL = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const COPY_VARIANT_KEY = 'cogcage_copy_variant';
+const HERO_COPY = {
+  value: {
+    headline: ['CODE YOUR BOT.', 'WATCH IT FIGHT.', 'WIN THE ARENA.'],
+    body: 'Build an AI fighter, drop it into live matches, and climb competitive ladders. Tune strategy and ship upgrades against real opponents.',
+  },
+  competition: {
+    headline: ['BUILD A BOT.', 'ENTER THE ARENA.', 'COMPETE FOR THE TOP.'],
+    body: 'CogCage is the AI skill arena where your code battles other bots in ranked matches and seasonal events.',
+  },
+};
+
+const getOrCreateVariant = () => {
+  const existing = localStorage.getItem(COPY_VARIANT_KEY);
+  if (existing === 'value' || existing === 'competition') return existing;
+  const assigned = Math.random() < 0.5 ? 'value' : 'competition';
+  localStorage.setItem(COPY_VARIANT_KEY, assigned);
+  return assigned;
+};
 
 const postJson = async (url, payload) => {
   try {
@@ -852,11 +871,20 @@ const HeroSection = ({ sectionRef }) => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
+  const [variant, setVariant] = useState('value');
 
   useEffect(() => {
     const savedEmail = localStorage.getItem('cogcage_email');
     if (savedEmail) setEmail(savedEmail);
-    postJson('/api/events', { event: 'landing_view', source: 'hero', page: '/' });
+    const assignedVariant = getOrCreateVariant();
+    setVariant(assignedVariant);
+    postJson('/api/events', {
+      event: 'landing_view',
+      source: `hero-${assignedVariant}`,
+      page: '/',
+      variant: assignedVariant,
+      meta: { variant: assignedVariant },
+    });
   }, []);
 
   const submitWaitlist = async (event) => {
@@ -885,7 +913,7 @@ const HeroSection = ({ sectionRef }) => {
         body: JSON.stringify({
           email: trimmed,
           game: 'Unspecified',
-          source: 'cogcage-hero'
+          source: `cogcage-hero-${variant}`
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -895,9 +923,11 @@ const HeroSection = ({ sectionRef }) => {
       localStorage.setItem('cogcage_email', trimmed.toLowerCase());
       await postJson('/api/events', {
         event: 'waitlist_joined',
-        source: 'hero',
+        source: `hero-waitlist-${variant}`,
         email: trimmed.toLowerCase(),
         page: '/',
+        variant,
+        meta: { variant },
       });
       setStatus('success');
       setMessage('You are on the list. Watch for your invite.');
@@ -919,14 +949,17 @@ const HeroSection = ({ sectionRef }) => {
     localStorage.setItem('cogcage_email', trimmed.toLowerCase());
     await postJson('/api/events', {
       event: 'founder_checkout_clicked',
-      source: 'hero',
+      source: `hero-founder-cta-${variant}`,
       email: trimmed.toLowerCase(),
       tier: 'founder',
       page: '/',
+      variant,
+      meta: { variant },
     });
     await postJson('/api/founder-intent', {
       email: trimmed.toLowerCase(),
-      source: 'hero-founder-checkout',
+      source: `hero-founder-checkout-${variant}`,
+      variant,
     });
 
     if (STRIPE_FOUNDER_URL) {
@@ -940,6 +973,8 @@ const HeroSection = ({ sectionRef }) => {
     setMessage('Founder checkout link not configured yet.');
   };
 
+  const heroCopy = HERO_COPY[variant] || HERO_COPY.value;
+
   return (
     <section className="hero-section" ref={sectionRef} id="hero">
       <div className="decor circle-decor" />
@@ -952,12 +987,12 @@ const HeroSection = ({ sectionRef }) => {
           </div>
         </div>
         <h1 className="hero-h1 text-stroke">
-          PROGRAM.<br />
-          <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>FIGHT.</span><br />
-          DOMINATE.
+          {heroCopy.headline[0]}<br />
+          <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>{heroCopy.headline[1]}</span><br />
+          {heroCopy.headline[2]}
         </h1>
         <p className="hero-body">
-          Construct the ultimate LLM-powered combatant. Configure weaponry, optimize logic gates, and bet on the outcome in real-time neural battles.
+          {heroCopy.body}
         </p>
         <div className="panel-skew hero-waitlist" style={{ background: 'var(--c-white)' }}>
           <div className="panel-content-unskew">
@@ -1110,6 +1145,12 @@ const FooterSection = () => {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [variant, setVariant] = useState('value');
+
+  useEffect(() => {
+    const assignedVariant = getOrCreateVariant();
+    setVariant(assignedVariant);
+  }, []);
 
   const handleCreate = async () => {
     const trimmed = email.trim();
@@ -1127,14 +1168,21 @@ const FooterSection = () => {
       const response = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: trimmed, game: 'Unspecified', source: 'cogcage-footer' }),
+        body: JSON.stringify({ email: trimmed, game: 'Unspecified', source: `cogcage-footer-${variant}` }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.error || 'Could not create account.');
       }
       localStorage.setItem('cogcage_email', trimmed.toLowerCase());
-      await postJson('/api/events', { event: 'waitlist_joined', source: 'footer', page: '/', email: trimmed.toLowerCase() });
+      await postJson('/api/events', {
+        event: 'waitlist_joined',
+        source: `footer-waitlist-${variant}`,
+        page: '/',
+        email: trimmed.toLowerCase(),
+        variant,
+        meta: { variant },
+      });
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create account.');
