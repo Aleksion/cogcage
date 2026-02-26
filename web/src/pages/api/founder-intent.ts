@@ -79,7 +79,7 @@ export const POST: APIRoute = async ({ request }) => {
         HONEYPOT_FIELDS.map((field) => json[field]).find((value) => value !== undefined) ?? '',
         120
       );
-    } else {
+    } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
       email = normalize(formData.get('email'));
       source = normalize(formData.get('source'));
@@ -89,6 +89,31 @@ export const POST: APIRoute = async ({ request }) => {
         if (value) {
           honeypot = value;
           break;
+        }
+      }
+    } else {
+      // Content-Type can be missing/misconfigured from edge clients; recover by sniffing body.
+      const rawBody = await request.text();
+      if (rawBody.trim().startsWith('{')) {
+        const json = JSON.parse(rawBody) as Record<string, unknown>;
+        email = normalizeString(json.email ?? null, 180);
+        source = normalizeString(json.source ?? null, 120);
+        intentId = normalizeString(json.intentId ?? json.intent_id ?? null, 180);
+        honeypot = normalizeString(
+          HONEYPOT_FIELDS.map((field) => json[field]).find((value) => value !== undefined) ?? '',
+          120
+        );
+      } else {
+        const params = new URLSearchParams(rawBody);
+        email = normalizeString(params.get('email'), 180);
+        source = normalizeString(params.get('source'), 120);
+        intentId = normalizeString(params.get('intentId') || params.get('intent_id'), 180);
+        for (const field of HONEYPOT_FIELDS) {
+          const value = normalizeString(params.get(field), 120);
+          if (value) {
+            honeypot = value;
+            break;
+          }
         }
       }
     }
