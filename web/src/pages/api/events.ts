@@ -30,16 +30,38 @@ export const POST: APIRoute = async ({ request }) => {
   const startedAt = Date.now();
   const contentType = request.headers.get('content-type') ?? '';
 
-  if (!contentType.includes('application/json')) {
-    return new Response(JSON.stringify({ ok: false, error: 'JSON body required.' }), {
-      status: 415,
-      headers: { 'content-type': 'application/json' },
-    });
+  let json: Record<string, unknown> | null = null;
+  try {
+    if (contentType.includes('application/json')) {
+      const parsed = await request.json();
+      json = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+    } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      const payload: Record<string, unknown> = {};
+      formData.forEach((value, key) => {
+        payload[key] = typeof value === 'string' ? value : value.name;
+      });
+      json = payload;
+    } else {
+      const rawBody = await request.text();
+      if (rawBody.trim().startsWith('{')) {
+        const parsed = JSON.parse(rawBody) as Record<string, unknown>;
+        json = parsed && typeof parsed === 'object' ? parsed : null;
+      } else {
+        const params = new URLSearchParams(rawBody);
+        const payload: Record<string, unknown> = {};
+        params.forEach((value, key) => {
+          payload[key] = value;
+        });
+        json = payload;
+      }
+    }
+  } catch {
+    json = null;
   }
 
-  const json = await request.json().catch(() => null);
   if (!json || typeof json !== 'object') {
-    return new Response(JSON.stringify({ ok: false, error: 'Invalid JSON body.' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Invalid request payload.' }), {
       status: 400,
       headers: { 'content-type': 'application/json' },
     });

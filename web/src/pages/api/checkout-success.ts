@@ -96,13 +96,27 @@ export const POST: APIRoute = async ({ request }) => {
   const contentType = request.headers.get('content-type') ?? '';
   let payload: Record<string, unknown> = {};
 
-  if (contentType.includes('application/json')) {
-    payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-  } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
-    const formData = await request.formData();
-    formData.forEach((value, key) => {
-      payload[key] = value;
-    });
+  try {
+    if (contentType.includes('application/json')) {
+      payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      formData.forEach((value, key) => {
+        payload[key] = value;
+      });
+    } else {
+      const rawBody = await request.text();
+      if (rawBody.trim().startsWith('{')) {
+        payload = (JSON.parse(rawBody) as Record<string, unknown>) ?? {};
+      } else {
+        const params = new URLSearchParams(rawBody);
+        params.forEach((value, key) => {
+          payload[key] = value;
+        });
+      }
+    }
+  } catch {
+    payload = {};
   }
 
   const email = optionalString(payload.email);
