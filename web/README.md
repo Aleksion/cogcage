@@ -1,46 +1,23 @@
-# Astro Starter Kit: Basics
+# CogCage Web
 
-```sh
-npm create astro@latest -- --template basics
+Conversion-focused Astro landing site for CogCage.
+
+## Run
+
+```bash
+npm install
+npm run dev
+npm run build
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Revenue Configuration
 
-## 🚀 Project Structure
+Set these optional public env vars in `.env` (or deployment env):
 
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── astro.svg
-│   ├── components
-│   │   └── Welcome.astro
-│   ├── layouts
-│   │   └── Layout.astro
-│   └── pages
-│       └── index.astro
-└── package.json
+```bash
+PUBLIC_STRIPE_FOUNDER_URL="https://buy.stripe.com/..."
+PUBLIC_PRO_WAITLIST_URL="#join"
+PUBLIC_TOURNAMENT_WAITLIST_URL="#join"
 ```
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+If `PUBLIC_STRIPE_FOUNDER_URL` is set, Founder CTAs route directly to checkout and emit `founder_checkout_click` + `checkout_intent` tracking events to local event storage.

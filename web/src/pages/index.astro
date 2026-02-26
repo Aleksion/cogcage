@@ -1,5 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
+
+const founderCheckoutUrl =
+  import.meta.env.PUBLIC_STRIPE_FOUNDER_URL ?? 'https://buy.stripe.com/test_4gw4gA8kQ8PU0j6dQQ';
+const proWaitlistUrl = import.meta.env.PUBLIC_PRO_WAITLIST_URL ?? '#join';
+const tournamentWaitlistUrl = import.meta.env.PUBLIC_TOURNAMENT_WAITLIST_URL ?? '#join';
 ---
 
 <Layout title="CogCage — Join the Alpha" description="A skill-first AI arena with ranked ladders, founder access, and competitive tournaments.">
@@ -50,7 +55,16 @@ import Layout from '../layouts/Layout.astro';
             <li>Monthly rank seasons</li>
             <li>Founder badge + locked pricing</li>
           </ul>
-          <a href="#join" class="button button-primary" data-track="founder_choose_click">Reserve Founder Spot</a>
+          <a
+            href={founderCheckoutUrl}
+            class="button button-primary"
+            data-track="founder_checkout_click"
+            data-checkout-tier="founder"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Reserve Founder Spot — Checkout
+          </a>
         </article>
         <article class="card">
           <h3>Pro</h3>
@@ -60,7 +74,7 @@ import Layout from '../layouts/Layout.astro';
             <li>Replay + trend analytics</li>
             <li>Priority support + events</li>
           </ul>
-          <a href="#join" class="button button-secondary" data-track="pro_interest_click">Get Notified</a>
+          <a href={proWaitlistUrl} class="button button-secondary" data-track="pro_interest_click">Get Notified</a>
         </article>
         <article class="card">
           <h3>Tournaments</h3>
@@ -70,14 +84,14 @@ import Layout from '../layouts/Layout.astro';
             <li>Skill-tier matchmaking</li>
             <li>Sponsored formats coming soon</li>
           </ul>
-          <a href="#join" class="button button-secondary" data-track="tournament_interest_click">Request Invite</a>
+          <a href={tournamentWaitlistUrl} class="button button-secondary" data-track="tournament_interest_click">Request Invite</a>
         </article>
       </div>
     </section>
 
     <section class="panel join" id="join">
       <h2>Join alpha waitlist</h2>
-      <p>Drop your email + primary game. We’ll send your invite and founder checkout link when slots open.</p>
+      <p>Drop your email + primary game for invite priority, or grab a Founder slot instantly via secure checkout above.</p>
       <form class="waitlist-form" id="waitlistForm" action="https://formspree.io/f/xwpowpvl" method="POST">
         <input type="hidden" name="source" value="cogcage-landing" />
         <label>
@@ -106,7 +120,16 @@ import Layout from '../layouts/Layout.astro';
 
   document.querySelectorAll('[data-track]').forEach((el) => {
     el.addEventListener('click', () => {
-      track('click', { id: el.getAttribute('data-track') });
+      const payload = {
+        id: el.getAttribute('data-track'),
+        href: el.getAttribute('href') ?? undefined,
+        tier: el.getAttribute('data-checkout-tier') ?? undefined,
+      };
+      track('click', payload);
+
+      if (payload.tier) {
+        track('checkout_intent', payload);
+      }
     });
   });
 
