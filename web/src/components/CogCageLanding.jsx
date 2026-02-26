@@ -854,14 +854,30 @@ const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } =
         signal: controller.signal,
       });
       clearTimeout(timeout);
-      const body = await response.json().catch(() => ({}));
+
+      let body = {};
+      const responseText = await response.text();
+      if (responseText) {
+        try {
+          body = JSON.parse(responseText);
+        } catch {
+          body = { raw: responseText.slice(0, 400) };
+        }
+      }
+
       if (response.ok && body.ok === true) {
-        return { ...body, status: response.status };
+        return {
+          ...body,
+          status: response.status,
+          requestId: body.requestId || response.headers.get('x-request-id') || undefined,
+        };
       }
 
       const err = new Error(body?.error || `Request failed (${response.status})`);
       err.status = response.status;
-      err.requestId = body?.requestId;
+      err.requestId = body?.requestId || response.headers.get('x-request-id') || undefined;
+      err.retryAfter = response.headers.get('retry-after') || undefined;
+      err.responsePreview = body?.raw || undefined;
       if (response.status >= 500 && attempt < retries) {
         lastError = err;
         await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
@@ -1282,9 +1298,11 @@ const HeroSection = ({ sectionRef }) => {
         meta: { error: err instanceof Error ? err.message : 'unknown' },
       });
       setStatus('error');
+      const requestRef = err?.requestId ? ` Ref ${err.requestId}.` : '';
+      const retryAfter = err?.retryAfter ? ` Retry in ~${err.retryAfter}s.` : '';
       setMessage(shouldQueueForReplay(err)
-        ? 'Temporary network/storage issue. Saved locally and will auto-retry when online.'
-        : (err?.message || 'Could not submit. Please check your input and retry.'));
+        ? `Temporary network/storage issue. Saved locally and will auto-retry when online.${requestRef}`
+        : `${err?.message || 'Could not submit. Please check your input and retry.'}${retryAfter}${requestRef}`);
     }
   };
 
@@ -1653,9 +1671,11 @@ const FooterSection = () => {
         email: trimmed,
         meta: { error: err instanceof Error ? err.message : 'unknown' },
       });
+      const requestRef = err?.requestId ? ` Ref ${err.requestId}.` : '';
+      const retryAfter = err?.retryAfter ? ` Retry in ~${err.retryAfter}s.` : '';
       setError(shouldQueueForReplay(err)
-        ? 'Could not reach storage. Saved locally and will auto-retry when online.'
-        : (err?.message || 'Could not submit. Please check your input and retry.'));
+        ? `Could not reach storage. Saved locally and will auto-retry when online.${requestRef}`
+        : `${err?.message || 'Could not submit. Please check your input and retry.'}${retryAfter}${requestRef}`);
     } finally {
       setIsSubmitting(false);
     }
