@@ -351,6 +351,44 @@ const globalStyles = `
     align-items: center;
   }
 
+  .map-board {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(32px, 1fr));
+    gap: 6px;
+    margin: 1rem 0;
+  }
+
+  .map-tile {
+    aspect-ratio: 1;
+    border: 2px solid var(--c-dark);
+    border-radius: 10px;
+    background: #f4f4f4;
+    display: grid;
+    place-items: center;
+    font-weight: 900;
+  }
+
+  .map-tile.player { background: #00e5ff66; }
+  .map-tile.enemy { background: #eb4d4b66; }
+
+  .action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+  }
+
+  .mini-btn {
+    border: 2px solid var(--c-dark);
+    border-radius: 999px;
+    padding: 0.45rem 0.8rem;
+    font-weight: 800;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  .mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
   @media (max-width: 960px) {
     .play-header { flex-direction: column; align-items: flex-start; }
     .play-shell { padding: 2rem 1.5rem 3rem; }
@@ -426,6 +464,18 @@ type MatchSimulation = {
 };
 
 type LeaderboardEntry = MatchResult & { rankScore: number };
+
+type GridPos = { x: number; y: number };
+
+const GRID_SIZE = 7;
+const TURN_AP = 3;
+const MOVE_COST = 1;
+const ATTACK_COST = 2;
+const PLAYER_ATTACK_DAMAGE = 18;
+const ENEMY_ATTACK_DAMAGE = 14;
+
+const clampGrid = (n: number) => Math.max(0, Math.min(GRID_SIZE - 1, n));
+const manhattan = (a: GridPos, b: GridPos) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
 const LEADERBOARD_KEY = 'cogcage_demo_leaderboard_v1';
 const EMAIL_KEY = 'cogcage_email';
@@ -653,6 +703,13 @@ const Play = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [matchCount, setMatchCount] = useState(0);
   const [activeSeed, setActiveSeed] = useState<number | null>(null);
+  const [demoPlayerPos, setDemoPlayerPos] = useState<GridPos>({ x: 1, y: 3 });
+  const [demoEnemyPos, setDemoEnemyPos] = useState<GridPos>({ x: 5, y: 3 });
+  const [demoAp, setDemoAp] = useState(TURN_AP);
+  const [demoPlayerHp, setDemoPlayerHp] = useState(100);
+  const [demoEnemyHp, setDemoEnemyHp] = useState(100);
+  const [demoLog, setDemoLog] = useState<string[]>(['Live demo ready. Move, attack, then end turn.']);
+  const [demoOutcome, setDemoOutcome] = useState<'idle' | 'win' | 'lose'>('idle');
   const [email, setEmail] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
@@ -882,6 +939,71 @@ const Play = () => {
     }
   };
 
+  const resetDemo = () => {
+    setDemoPlayerPos({ x: 1, y: 3 });
+    setDemoEnemyPos({ x: 5, y: 3 });
+    setDemoAp(TURN_AP);
+    setDemoPlayerHp(100);
+    setDemoEnemyHp(100);
+    setDemoOutcome('idle');
+    setDemoLog(['Live demo reset.']);
+  };
+
+  const movePlayer = (dx: number, dy: number) => {
+    if (demoOutcome !== 'idle' || demoAp < MOVE_COST) return;
+    const next = { x: clampGrid(demoPlayerPos.x + dx), y: clampGrid(demoPlayerPos.y + dy) };
+    if (next.x === demoEnemyPos.x && next.y === demoEnemyPos.y) return;
+    setDemoPlayerPos(next);
+    setDemoAp((ap) => ap - MOVE_COST);
+    setDemoLog((prev) => [`You moved to (${next.x + 1}, ${next.y + 1}).`, ...prev].slice(0, 6));
+  };
+
+  const attackEnemy = () => {
+    if (demoOutcome !== 'idle' || demoAp < ATTACK_COST) return;
+    if (manhattan(demoPlayerPos, demoEnemyPos) !== 1) {
+      setDemoLog((prev) => ['Enemy is out of range (must be adjacent).', ...prev].slice(0, 6));
+      return;
+    }
+    setDemoAp((ap) => ap - ATTACK_COST);
+    setDemoEnemyHp((hp) => {
+      const next = Math.max(0, hp - PLAYER_ATTACK_DAMAGE);
+      if (next === 0) {
+        setDemoOutcome('win');
+        void postEvent('play_live_demo_completed', { outcome: 'win' });
+      }
+      return next;
+    });
+    setDemoLog((prev) => [`You hit for ${PLAYER_ATTACK_DAMAGE}.`, ...prev].slice(0, 6));
+  };
+
+  const enemyTurn = () => {
+    if (demoOutcome !== 'idle') return;
+    if (manhattan(demoPlayerPos, demoEnemyPos) === 1) {
+      setDemoPlayerHp((hp) => {
+        const next = Math.max(0, hp - ENEMY_ATTACK_DAMAGE);
+        if (next === 0) {
+          setDemoOutcome('lose');
+          void postEvent('play_live_demo_completed', { outcome: 'lose' });
+        }
+        return next;
+      });
+      setDemoLog((prev) => [`Enemy strikes for ${ENEMY_ATTACK_DAMAGE}.`, ...prev].slice(0, 6));
+    } else {
+      const dx = demoPlayerPos.x === demoEnemyPos.x ? 0 : demoPlayerPos.x > demoEnemyPos.x ? 1 : -1;
+      const dy = dx === 0 ? (demoPlayerPos.y > demoEnemyPos.y ? 1 : -1) : 0;
+      const next = { x: clampGrid(demoEnemyPos.x + dx), y: clampGrid(demoEnemyPos.y + dy) };
+      if (!(next.x === demoPlayerPos.x && next.y === demoPlayerPos.y)) {
+        setDemoEnemyPos(next);
+      }
+      setDemoLog((prev) => [`Enemy repositions to (${next.x + 1}, ${next.y + 1}).`, ...prev].slice(0, 6));
+    }
+    setDemoAp(TURN_AP);
+  };
+
+  const endTurn = () => {
+    if (demoOutcome !== 'idle') return;
+    enemyTurn();
+  };
 
   return (
     <div className="play-root">
@@ -981,6 +1103,40 @@ const Play = () => {
             </div>
             <div className="hint" style={{ marginTop: '0.8rem' }}>
               20-turn deterministic sim with seeded RNG. Every match is replayable by seed.
+            </div>
+
+            <div className="leaderboard" style={{ marginTop: '1.5rem' }}>
+              <div className="section-label">Live Playable Demo (Map + AP)</div>
+              <div className="hint">3 AP per turn · Move costs 1 AP · Attack costs 2 AP.</div>
+              <div className="map-board">
+                {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, idx) => {
+                  const x = idx % GRID_SIZE;
+                  const y = Math.floor(idx / GRID_SIZE);
+                  const isPlayer = demoPlayerPos.x === x && demoPlayerPos.y === y;
+                  const isEnemy = demoEnemyPos.x === x && demoEnemyPos.y === y;
+                  return (
+                    <div key={`${x}-${y}`} className={`map-tile ${isPlayer ? 'player' : ''} ${isEnemy ? 'enemy' : ''}`}>
+                      {isPlayer ? 'P' : isEnemy ? 'E' : ''}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hint">Player HP {demoPlayerHp} · Enemy HP {demoEnemyHp} · AP {demoAp}</div>
+              <div className="action-row">
+                <button className="mini-btn" onClick={() => movePlayer(0, -1)} disabled={demoAp < MOVE_COST || demoOutcome !== 'idle'}>↑ Move</button>
+                <button className="mini-btn" onClick={() => movePlayer(-1, 0)} disabled={demoAp < MOVE_COST || demoOutcome !== 'idle'}>← Move</button>
+                <button className="mini-btn" onClick={() => movePlayer(1, 0)} disabled={demoAp < MOVE_COST || demoOutcome !== 'idle'}>→ Move</button>
+                <button className="mini-btn" onClick={() => movePlayer(0, 1)} disabled={demoAp < MOVE_COST || demoOutcome !== 'idle'}>↓ Move</button>
+                <button className="mini-btn" onClick={attackEnemy} disabled={demoAp < ATTACK_COST || demoOutcome !== 'idle'}>⚔ Attack</button>
+                <button className="mini-btn" onClick={endTurn} disabled={demoOutcome !== 'idle'}>End Turn</button>
+                <button className="mini-btn" onClick={resetDemo}>Reset</button>
+              </div>
+              {demoOutcome !== 'idle' && (
+                <div className="winner-banner">{demoOutcome === 'win' ? 'Victory — demo loop complete' : 'Defeat — tune and retry'}</div>
+              )}
+              <div className="feed" style={{ maxHeight: '160px', marginTop: '0.8rem' }}>
+                {demoLog.map((line, idx) => <div key={`${line}-${idx}`} className="feed-item">{line}</div>)}
+              </div>
             </div>
           </section>
 

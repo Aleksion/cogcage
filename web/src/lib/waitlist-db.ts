@@ -30,6 +30,12 @@ export type ConversionEvent = {
   ipAddress?: string;
 };
 
+export type RateLimitResult = {
+  allowed: boolean;
+  remaining: number;
+  resetMs: number;
+};
+
 let db: Database.Database | null = null;
 
 function getDbPath() {
@@ -86,6 +92,14 @@ function getDb() {
 
     CREATE INDEX IF NOT EXISTS idx_conversion_events_email_created_at
     ON conversion_events (email, created_at);
+
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      ip_address TEXT NOT NULL,
+      route TEXT NOT NULL,
+      window_start INTEGER NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (ip_address, route, window_start)
+    );
   `);
 
   return db;
@@ -147,4 +161,48 @@ export function insertConversionEvent(event: ConversionEvent) {
   `);
 
   insert.run(event);
+}
+
+export function consumeRateLimit(
+  ipAddress: string | undefined,
+  route: string,
+  limit: number,
+  windowMs: number
+): RateLimitResult {
+  const conn = getDb();
+  const ip = ipAddress || 'unknown';
+  const windowStart = Math.floor(Date.now() / windowMs);
+
+  const existing = conn.prepare(`
+    SELECT count
+    FROM rate_limits
+    WHERE ip_address = ? AND route = ? AND window_start = ?
+  `).get(ip, route, windowStart) as { count: number } | undefined;
+
+  if (existing && existing.count >= limit) {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetMs: (windowStart + 1) * windowMs - Date.now(),
+    };
+  }
+
+  if (existing) {
+    conn.prepare(`
+      UPDATE rate_limits
+      SET count = count + 1
+      WHERE ip_address = ? AND route = ? AND window_start = ?
+    `).run(ip, route, windowStart);
+  } else {
+    conn.prepare(`
+      INSERT INTO rate_limits (ip_address, route, window_start, count)
+      VALUES (?, ?, ?, 1)
+    `).run(ip, route, windowStart);
+  }
+
+  return {
+    allowed: true,
+    remaining: Math.max(0, limit - ((existing?.count ?? 0) + 1)),
+    resetMs: (windowStart + 1) * windowMs - Date.now(),
+  };
 }

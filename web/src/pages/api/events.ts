@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { insertConversionEvent } from '../../lib/waitlist-db';
+import { appendOpsLog } from '../../lib/observability';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EVENT_RE = /^[a-z0-9_:-]{2,64}$/i;
@@ -16,6 +17,8 @@ function optionalString(value: unknown) {
   const normalized = normalizeString(value);
   return normalized.length > 0 ? normalized : undefined;
 }
+
+export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
   const contentType = request.headers.get('content-type') ?? '';
@@ -62,7 +65,8 @@ export const POST: APIRoute = async ({ request }) => {
     }
   }
 
-  insertConversionEvent({
+  const requestId = crypto.randomUUID();
+  const payload = {
     eventName,
     eventId: optionalString((json as Record<string, unknown>).eventId) ?? optionalString(metaRecord?.eventId),
     page: optionalString((json as Record<string, unknown>).page),
@@ -73,9 +77,20 @@ export const POST: APIRoute = async ({ request }) => {
     metaJson,
     userAgent: request.headers.get('user-agent') ?? undefined,
     ipAddress: getClientIp(request),
-  });
+  };
 
-  return new Response(JSON.stringify({ ok: true }), {
+  try {
+    insertConversionEvent(payload);
+    appendOpsLog({ route: '/api/events', level: 'info', event: 'conversion_event_saved', requestId, eventName, source: payload.source });
+  } catch (error) {
+    appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_db_write_failed', requestId, eventName, source: payload.source, error: error instanceof Error ? error.message : 'unknown-error' });
+    return new Response(JSON.stringify({ ok: false, error: 'Event storage unavailable.', requestId }), {
+      status: 503,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  return new Response(JSON.stringify({ ok: true, requestId }), {
     status: 200,
     headers: { 'content-type': 'application/json' },
   });

@@ -61,9 +61,9 @@ import Layout from '../layouts/Layout.astro';
     const checkoutIntentSource = localStorage.getItem('cogcage_last_founder_intent_source') || undefined;
 
     const payload = {
-      event: 'paid_conversion_confirmed',
       eventId: conversionId,
       page: window.location.pathname,
+      href: window.location.href,
       source: checkoutSource,
       tier: 'founder',
       email,
@@ -76,7 +76,7 @@ import Layout from '../layouts/Layout.astro';
     };
 
     try {
-      await fetch('/api/events', {
+      await fetch('/api/checkout-success', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',

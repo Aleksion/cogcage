@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { insertFounderIntent } from '../../lib/waitlist-db';
+import { appendOpsLog } from '../../lib/observability';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -10,6 +11,8 @@ function getClientIp(request: Request) {
 function normalize(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : '';
 }
+
+export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
   const contentType = request.headers.get('content-type') ?? '';
@@ -33,14 +36,26 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  insertFounderIntent({
+  const requestId = crypto.randomUUID();
+  const payload = {
     email: email.toLowerCase(),
     source: source || 'founder-checkout',
     userAgent: request.headers.get('user-agent') ?? undefined,
     ipAddress: getClientIp(request),
-  });
+  };
 
-  return new Response(JSON.stringify({ ok: true }), {
+  try {
+    insertFounderIntent(payload);
+    appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'founder_intent_saved', requestId, source: payload.source, emailHash: payload.email.slice(0, 3) });
+  } catch (error) {
+    appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_db_write_failed', requestId, error: error instanceof Error ? error.message : 'unknown-error' });
+    return new Response(JSON.stringify({ ok: false, error: 'Temporary storage issue. Please retry.', requestId }), {
+      status: 503,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  return new Response(JSON.stringify({ ok: true, requestId }), {
     status: 200,
     headers: { 'content-type': 'application/json' },
   });
