@@ -1,17 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import readline from 'node:readline';
 import type { APIRoute } from 'astro';
 import { appendOpsLog } from '../../lib/observability';
 import { getRuntimeDir } from '../../lib/runtime-paths';
 import { insertConversionEvent, insertFounderIntent, insertWaitlistLead } from '../../lib/waitlist-db';
 
 export const prerender = false;
-
-function readLines(filePath: string): string[] {
-  if (!fs.existsSync(filePath)) return [];
-  const raw = fs.readFileSync(filePath, 'utf8');
-  return raw.split('\n').filter((line) => line.trim().length > 0);
-}
 
 function authorize(request: Request): boolean {
   const key = process.env.COGCAGE_OPS_KEY?.trim();
@@ -26,36 +21,69 @@ type ReplayResult = {
   archivedFile?: string;
 };
 
-function replayFile(filePath: string, replayLine: (line: string) => void): ReplayResult {
-  const lines = readLines(filePath);
-  if (lines.length === 0) return { replayed: 0, failed: 0 };
+async function replayFile(filePath: string, replayLine: (line: string) => void): Promise<ReplayResult> {
+  if (!fs.existsSync(filePath)) return { replayed: 0, failed: 0 };
+
+  const stat = fs.statSync(filePath);
+  if (stat.size === 0) return { replayed: 0, failed: 0 };
+
+  const archiveSuffix = new Date().toISOString().replace(/[:.]/g, '-');
+  const archivedFile = `${filePath}.replayed-${archiveSuffix}`;
+  const failedTmpFile = `${filePath}.failed-${archiveSuffix}.tmp`;
+
+  fs.renameSync(filePath, archivedFile);
 
   let replayed = 0;
-  const failedLines: string[] = [];
+  let failed = 0;
+  let failedStream: fs.WriteStream | null = null;
 
-  for (const line of lines) {
-    try {
-      replayLine(line);
-      replayed += 1;
-    } catch {
-      failedLines.push(line);
+  try {
+    const input = fs.createReadStream(archivedFile, { encoding: 'utf8' });
+    const rl = readline.createInterface({ input, crlfDelay: Infinity });
+
+    for await (const line of rl) {
+      if (!line || line.trim().length === 0) continue;
+      try {
+        replayLine(line);
+        replayed += 1;
+      } catch {
+        failed += 1;
+        if (!failedStream) {
+          failedStream = fs.createWriteStream(failedTmpFile, { encoding: 'utf8', flags: 'a' });
+        }
+        failedStream.write(`${line}\n`);
+      }
     }
-  }
 
-  let archivedFile: string | undefined;
-  if (replayed > 0) {
-    archivedFile = `${filePath}.replayed-${new Date().toISOString().replace(/[:.]/g, '-')}`;
-    fs.renameSync(filePath, archivedFile);
-    if (failedLines.length > 0) {
-      fs.writeFileSync(filePath, `${failedLines.join('\n')}\n`, 'utf8');
+    if (failedStream) {
+      failedStream.end();
+      fs.renameSync(failedTmpFile, filePath);
     }
-  }
 
-  return {
-    replayed,
-    failed: failedLines.length,
-    archivedFile,
-  };
+    return {
+      replayed,
+      failed,
+      archivedFile,
+    };
+  } catch (error) {
+    if (failedStream) {
+      try {
+        failedStream.end();
+      } catch {
+        // no-op
+      }
+    }
+
+    // If replay processing itself failed, restore file path so next retry can continue.
+    if (!fs.existsSync(filePath) && fs.existsSync(archivedFile)) {
+      fs.renameSync(archivedFile, filePath);
+    }
+    if (fs.existsSync(failedTmpFile)) {
+      fs.rmSync(failedTmpFile, { force: true });
+    }
+
+    throw error;
+  }
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -75,7 +103,7 @@ export const POST: APIRoute = async ({ request }) => {
   const eventsFile = path.join(runtimeDir, 'events-fallback.ndjson');
 
   try {
-    const waitlist = replayFile(waitlistFile, (line) => {
+    const waitlist = await replayFile(waitlistFile, (line) => {
       const row = JSON.parse(line) as Record<string, unknown>;
       const email = typeof row.email === 'string' ? row.email.trim().toLowerCase() : '';
       if (!email) throw new Error('missing_email');
@@ -88,7 +116,7 @@ export const POST: APIRoute = async ({ request }) => {
       });
     });
 
-    const founderIntent = replayFile(founderFile, (line) => {
+    const founderIntent = await replayFile(founderFile, (line) => {
       const row = JSON.parse(line) as Record<string, unknown>;
       const email = typeof row.email === 'string' ? row.email.trim().toLowerCase() : '';
       if (!email) throw new Error('missing_email');
@@ -104,7 +132,7 @@ export const POST: APIRoute = async ({ request }) => {
       });
     });
 
-    const events = replayFile(eventsFile, (line) => {
+    const events = await replayFile(eventsFile, (line) => {
       const row = JSON.parse(line) as Record<string, unknown>;
       const eventName = typeof row.eventName === 'string' ? row.eventName.trim() : '';
       if (!eventName) throw new Error('missing_event_name');
