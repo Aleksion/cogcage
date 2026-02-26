@@ -35,6 +35,7 @@ import Layout from '../layouts/Layout.astro';
 
 <script is:inline>
   const key = 'cogcage_paid_conversions';
+  const pendingKey = 'cogcage_pending_paid_conversions';
 
   function rememberPaidConversion(id) {
     const known = JSON.parse(localStorage.getItem(key) || '[]');
@@ -47,6 +48,62 @@ import Layout from '../layouts/Layout.astro';
   function hasPaidConversion(id) {
     const known = JSON.parse(localStorage.getItem(key) || '[]');
     return known.includes(id);
+  }
+
+  function rememberPending(payload) {
+    if (!payload?.eventId) return;
+    const queue = JSON.parse(localStorage.getItem(pendingKey) || '[]');
+    const deduped = queue.filter((entry) => entry?.eventId !== payload.eventId);
+    deduped.push(payload);
+    localStorage.setItem(pendingKey, JSON.stringify(deduped.slice(-50)));
+  }
+
+  function clearPending(eventId) {
+    const queue = JSON.parse(localStorage.getItem(pendingKey) || '[]');
+    const next = queue.filter((entry) => entry?.eventId !== eventId);
+    localStorage.setItem(pendingKey, JSON.stringify(next));
+  }
+
+  async function postConversion(payload) {
+    const body = JSON.stringify(payload);
+
+    try {
+      const response = await fetch('/api/checkout-success', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          Accept: 'application/json',
+        },
+        body,
+        keepalive: true,
+      });
+      if (response.ok) return true;
+    } catch {
+      // Fall through to beacon.
+    }
+
+    try {
+      return navigator.sendBeacon('/api/checkout-success', new Blob([body], { type: 'application/json' }));
+    } catch {
+      return false;
+    }
+  }
+
+  async function flushPendingConversions() {
+    const queue = JSON.parse(localStorage.getItem(pendingKey) || '[]');
+    if (!Array.isArray(queue) || queue.length === 0) return;
+
+    for (const payload of queue) {
+      if (!payload?.eventId || hasPaidConversion(payload.eventId)) {
+        clearPending(payload?.eventId);
+        continue;
+      }
+      const ok = await postConversion(payload);
+      if (ok) {
+        rememberPaidConversion(payload.eventId);
+        clearPending(payload.eventId);
+      }
+    }
   }
 
   async function trackPaidConversion() {
@@ -75,37 +132,19 @@ import Layout from '../layouts/Layout.astro';
       },
     };
 
-    const body = JSON.stringify(payload);
-
-    try {
-      const response = await fetch('/api/checkout-success', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          Accept: 'application/json',
-        },
-        body,
-        keepalive: true,
-      });
-      if (response.ok) {
-        rememberPaidConversion(conversionId);
-        return;
-      }
-    } catch {
-      // Fall back to beacon below.
+    const ok = await postConversion(payload);
+    if (ok) {
+      rememberPaidConversion(conversionId);
+      clearPending(conversionId);
+      return;
     }
 
-    try {
-      const ok = navigator.sendBeacon('/api/checkout-success', new Blob([body], { type: 'application/json' }));
-      if (ok) {
-        rememberPaidConversion(conversionId);
-      }
-    } catch {
-      // Ignore telemetry failures; this is non-blocking.
-    }
+    rememberPending(payload);
   }
 
-  trackPaidConversion();
+  flushPendingConversions().finally(() => {
+    trackPaidConversion();
+  });
 </script>
 
 <style>
