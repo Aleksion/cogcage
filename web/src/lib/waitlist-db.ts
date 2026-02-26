@@ -109,9 +109,9 @@ function getDb() {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    DROP INDEX IF EXISTS idx_founder_intents_intent_id;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_founder_intents_intent_id
-    ON founder_intents (intent_id)
-    WHERE intent_id IS NOT NULL;
+    ON founder_intents (intent_id);
 
     CREATE TABLE IF NOT EXISTS conversion_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -134,9 +134,9 @@ function getDb() {
     CREATE INDEX IF NOT EXISTS idx_conversion_events_email_created_at
     ON conversion_events (email, created_at);
 
+    DROP INDEX IF EXISTS idx_conversion_events_event_id;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_conversion_events_event_id
-    ON conversion_events (event_id)
-    WHERE event_id IS NOT NULL;
+    ON conversion_events (event_id);
 
     CREATE TABLE IF NOT EXISTS rate_limits (
       ip_address TEXT NOT NULL,
