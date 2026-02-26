@@ -28,6 +28,7 @@ export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
   const startedAt = Date.now();
+  const requestId = crypto.randomUUID();
   const contentType = request.headers.get('content-type') ?? '';
 
   let json: Record<string, unknown> | null = null;
@@ -61,25 +62,34 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   if (!json || typeof json !== 'object') {
-    return new Response(JSON.stringify({ ok: false, error: 'Invalid request payload.' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Invalid request payload.', requestId }), {
       status: 400,
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        'x-request-id': requestId,
+      },
     });
   }
 
   const eventName = normalizeString((json as Record<string, unknown>).event, 64);
   if (!EVENT_RE.test(eventName)) {
-    return new Response(JSON.stringify({ ok: false, error: 'Valid event name is required.' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Valid event name is required.', requestId }), {
       status: 400,
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        'x-request-id': requestId,
+      },
     });
   }
 
   const emailRaw = optionalString((json as Record<string, unknown>).email)?.toLowerCase();
   if (emailRaw && !EMAIL_RE.test(emailRaw)) {
-    return new Response(JSON.stringify({ ok: false, error: 'Invalid email format.' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Invalid email format.', requestId }), {
       status: 400,
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        'x-request-id': requestId,
+      },
     });
   }
 
@@ -97,7 +107,6 @@ export const POST: APIRoute = async ({ request }) => {
     }
   }
 
-  const requestId = crypto.randomUUID();
   const payload = {
     eventName,
     eventId: optionalString((json as Record<string, unknown>).eventId, 160) ?? optionalString(metaRecord?.eventId, 160),
@@ -116,7 +125,10 @@ export const POST: APIRoute = async ({ request }) => {
     appendOpsLog({ route: '/api/events', level: 'info', event: 'conversion_event_saved', requestId, eventName, source: payload.source, durationMs: Date.now() - startedAt });
     return new Response(JSON.stringify({ ok: true, requestId }), {
       status: 200,
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        'x-request-id': requestId,
+      },
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'unknown-error';
@@ -127,13 +139,19 @@ export const POST: APIRoute = async ({ request }) => {
       appendOpsLog({ route: '/api/events', level: 'warn', event: 'conversion_event_saved_to_fallback', requestId, eventName, source: payload.source, durationMs: Date.now() - startedAt });
       return new Response(JSON.stringify({ ok: true, queued: true, requestId }), {
         status: 202,
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'x-request-id': requestId,
+        },
       });
     } catch (fallbackError) {
       appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_fallback_write_failed', requestId, eventName, source: payload.source, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
       return new Response(JSON.stringify({ ok: false, error: 'Event storage unavailable.', requestId }), {
         status: 503,
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'x-request-id': requestId,
+        },
       });
     }
   }
