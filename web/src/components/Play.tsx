@@ -81,11 +81,7 @@ const globalStyles = `
     text-shadow: 2px 2px 0px var(--c-dark);
   }
 
-  .header-links {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-  }
+  .header-links { display: flex; gap: 1rem; align-items: center; }
 
   .header-link {
     font-weight: 800;
@@ -100,20 +96,12 @@ const globalStyles = `
     font-size: 0.95rem;
   }
 
-  .header-link.active {
-    background: var(--c-yellow);
-  }
+  .header-link.active { background: var(--c-yellow); }
 
   .play-shell {
     position: relative;
     z-index: 1;
     padding: 2.5rem 3rem 3.5rem;
-  }
-
-  .play-grid {
-    display: grid;
-    grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.2fr);
-    gap: 2rem;
   }
 
   .panel {
@@ -214,13 +202,6 @@ const globalStyles = `
   .cta-btn:active { transform: translateY(4px); box-shadow: none; }
   .cta-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: 0 6px 0 var(--c-dark); }
 
-  .action-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(64px, 1fr));
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-
   .action-btn {
     border: 3px solid var(--c-dark);
     border-radius: 12px;
@@ -231,15 +212,8 @@ const globalStyles = `
     font-size: 0.95rem;
     text-transform: uppercase;
   }
-
-  .action-btn.secondary {
-    background: var(--c-white);
-  }
-
-  .action-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  .action-btn.secondary { background: var(--c-white); }
+  .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .status-pill {
     display: inline-flex;
@@ -251,14 +225,6 @@ const globalStyles = `
     border: 2px solid var(--c-dark);
     background: var(--c-white);
     font-size: 0.85rem;
-  }
-
-  .arena-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
   }
 
   .arena-badge {
@@ -290,12 +256,7 @@ const globalStyles = `
 
   .bar-fill {
     height: 100%;
-    transition: width 0.35s ease;
-    background: linear-gradient(90deg, #2ecc71 0%, #27ae60 100%);
-  }
-
-  .bar-fill.opponent {
-    background: linear-gradient(90deg, #ff6b6b 0%, #d63031 100%);
+    transition: width 0.35s ease, background 0.35s ease;
   }
 
   .arena-map {
@@ -304,9 +265,18 @@ const globalStyles = `
     grid-template-columns: repeat(var(--grid-size), minmax(28px, 1fr));
     gap: 6px;
     padding: 0.75rem;
-    background: #101010;
+    background:
+      radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px),
+      #101010;
+    background-size: 8px 8px, 100% 100%;
     border-radius: 16px;
-    border: 3px solid var(--c-dark);
+    border: 3px solid #111;
+    box-shadow: 0 0 0 2px #111, 0 0 0 5px #FFD233;
+    position: relative;
+  }
+
+  .arena-map.arena-flash {
+    animation: arena-ko-flash 0.3s ease-out 2;
   }
 
   .arena-cell {
@@ -319,10 +289,14 @@ const globalStyles = `
     place-items: center;
     font-weight: 900;
     color: #111;
+    overflow: visible;
   }
 
   .arena-cell.obstacle {
-    background: #2f2f2f;
+    background:
+      repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.08) 3px, rgba(255,255,255,0.08) 4px),
+      repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(255,255,255,0.08) 3px, rgba(255,255,255,0.08) 4px),
+      #2f2f2f;
     border-color: #000;
     box-shadow: inset 0 0 0 2px rgba(255,255,255,0.05);
   }
@@ -332,13 +306,19 @@ const globalStyles = `
   }
 
   .arena-cell.player {
-    background: #2ecc71;
-    color: #0f2b18;
+    background: rgba(46, 204, 113, 0.18);
+    border-color: #2ecc71;
+    padding: 3px;
   }
 
   .arena-cell.enemy {
-    background: #eb4d4b;
-    color: #fff;
+    background: rgba(235, 77, 75, 0.18);
+    border-color: #eb4d4b;
+    padding: 3px;
+  }
+
+  .arena-cell.cell-vfx-flash {
+    animation: cell-flash-anim 200ms ease-out;
   }
 
   .arena-legend {
@@ -363,27 +343,13 @@ const globalStyles = `
   .feed-item { padding: 0.6rem 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
   .feed-item:last-child { border-bottom: none; }
 
-  .winner-banner {
-    margin-top: 1.2rem;
-    padding: 1rem 1.4rem;
-    border-radius: 12px;
-    border: 3px solid var(--c-dark);
-    background: var(--c-yellow);
-    font-family: var(--f-display);
-    text-transform: uppercase;
-    font-size: 1.4rem;
-  }
-
   .leaderboard {
     margin-top: 1.5rem;
     border-top: 3px solid var(--c-dark);
     padding-top: 1.2rem;
   }
 
-  .hint {
-    font-size: 0.9rem;
-    opacity: 0.7;
-  }
+  .hint { font-size: 0.9rem; opacity: 0.7; }
 
   .seed-pill {
     font-size: 0.85rem;
@@ -396,10 +362,342 @@ const globalStyles = `
     align-items: center;
   }
 
+  /* --- VFX Keyframes --- */
+
+  @keyframes vfx-burst-in {
+    0% { transform: scale(0.2) rotate(-12deg); opacity: 0; }
+    20% { transform: scale(1.4) rotate(4deg); opacity: 1; }
+    50% { transform: scale(0.95) rotate(-2deg); opacity: 1; }
+    75% { transform: scale(1.05) rotate(1deg); opacity: 0.7; }
+    100% { transform: scale(1.1) rotate(0deg); opacity: 0; }
+  }
+
+  @keyframes vfx-ring-pulse {
+    0% { transform: scale(0.3); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(1.5); opacity: 0; }
+  }
+
+  @keyframes vfx-bolt-in {
+    0% { transform: scale(0.3) skewX(-10deg); opacity: 0; }
+    25% { transform: scale(1.2) skewX(5deg); opacity: 1; }
+    70% { transform: scale(1) skewX(0deg); opacity: 0.8; }
+    100% { transform: scale(1.1) skewX(-3deg); opacity: 0; }
+  }
+
+  @keyframes cell-flash-anim {
+    0% { box-shadow: inset 0 0 0 50px rgba(255,255,255,0.6); }
+    100% { box-shadow: inset 0 0 0 50px rgba(255,255,255,0); }
+  }
+
+  @keyframes arena-ko-flash {
+    0%, 100% { box-shadow: 0 0 0 2px #111, 0 0 0 5px #FFD233; }
+    50% { box-shadow: 0 0 0 3px #fff, 0 0 0 7px #FF4D4D, 0 0 25px rgba(255,77,77,0.5); }
+  }
+
+  @keyframes ko-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes ko-text-slam {
+    0% { transform: scale(4); opacity: 0; }
+    30% { transform: scale(0.85); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes ko-fade-up {
+    0% { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes energyFlash {
+    0%, 100% { background: linear-gradient(90deg, #00e5ff 0%, #0077b6 100%); }
+    50% { background: linear-gradient(90deg, #eb4d4b 0%, #c0392b 100%); }
+  }
+
+  /* --- VFX Popup --- */
+
+  .vfx-popup {
+    position: absolute;
+    inset: -50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    pointer-events: none;
+    font-family: var(--f-display);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .vfx-popup.burst { font-size: 1.5em; animation: vfx-burst-in 600ms ease-out forwards; }
+  .vfx-popup.ring { font-size: 1.3em; animation: vfx-ring-pulse 600ms ease-out forwards; }
+  .vfx-popup.bolt { font-size: 1.3em; font-style: italic; animation: vfx-bolt-in 500ms ease-out forwards; }
+  .vfx-popup.ko { font-size: 2em; animation: ko-text-slam 800ms ease-out forwards; }
+
+  .vfx-popup span {
+    text-shadow:
+      2px 2px 0px rgba(0,0,0,0.85),
+      -1px -1px 0px rgba(0,0,0,0.4),
+      0 0 8px rgba(0,0,0,0.3);
+  }
+
+  /* --- KO Overlay / Result Phase --- */
+
+  .ko-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.92);
+    overflow: hidden;
+  }
+
+  .ko-radial-bg {
+    position: absolute;
+    width: 250%;
+    height: 250%;
+    top: -75%;
+    left: -75%;
+    background: repeating-conic-gradient(from 0deg, #FFD233 0deg 5deg, #111 5deg 10deg);
+    animation: ko-spin 20s linear infinite;
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  .ko-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .ko-title {
+    font-family: var(--f-display);
+    font-size: 6rem;
+    color: #FFD233;
+    text-shadow: 4px 4px 0px #111, -2px -2px 0px #111, 0 0 40px rgba(255,210,51,0.4);
+    text-transform: uppercase;
+    animation: ko-text-slam 0.6s ease-out;
+  }
+
+  .ko-winner-name {
+    font-family: var(--f-display);
+    font-size: 2.5rem;
+    color: #fff;
+    text-shadow: 2px 2px 0px #111;
+    text-transform: uppercase;
+    animation: ko-fade-up 0.5s ease-out 0.3s both;
+  }
+
+  .ko-reason {
+    font-family: var(--f-body);
+    font-size: 1.1rem;
+    color: #aaa;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    animation: ko-fade-up 0.5s ease-out 0.5s both;
+  }
+
+  .ko-stats {
+    font-family: var(--f-body);
+    font-size: 1rem;
+    color: #888;
+    animation: ko-fade-up 0.5s ease-out 0.6s both;
+  }
+
+  .ko-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 1.5rem;
+    animation: ko-fade-up 0.5s ease-out 0.7s both;
+  }
+
+  .ko-btn {
+    font-family: var(--f-display);
+    font-size: 1.6rem;
+    text-transform: uppercase;
+    padding: 1rem 3rem;
+    background: #FFD233;
+    color: #111;
+    border: 4px solid #111;
+    border-radius: 999px;
+    box-shadow: 0 6px 0 #111;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+  }
+  .ko-btn:active { transform: translateY(4px); box-shadow: none; }
+  .ko-btn.secondary { background: #fff; }
+
+  /* --- Tactic Chip --- */
+
+  .tactic-chip {
+    display: inline-flex;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 2px solid var(--c-dark);
+    background: var(--c-yellow);
+    color: var(--c-dark);
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+
+  .tactic-chip.enemy-chip {
+    background: var(--c-red);
+    color: #fff;
+  }
+
+  .turn-counter {
+    font-family: var(--f-display);
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--c-dark);
+  }
+
+  /* --- Lobby Phase --- */
+
+  .lobby-container { max-width: 900px; margin: 0 auto; }
+
+  .lobby-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .opponent-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .opponent-card {
+    background: var(--c-white);
+    border: 3px solid var(--c-dark);
+    border-radius: var(--radius);
+    padding: 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .opponent-card:hover { box-shadow: var(--shadow-hard); }
+  .opponent-card.selected {
+    border-color: var(--c-yellow);
+    box-shadow: 0 0 0 3px var(--c-yellow), var(--shadow-hard);
+  }
+  .opponent-card h4 {
+    font-family: var(--f-display);
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+
+  .archetype-tag {
+    font-size: 0.58rem;
+    font-family: monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 0.4rem;
+  }
+
+  .seed-toggle {
+    font-size: 0.85rem;
+    font-weight: 800;
+    cursor: pointer;
+    color: #666;
+    background: none;
+    border: none;
+    text-decoration: underline;
+    padding: 0;
+    margin-bottom: 0.5rem;
+  }
+
+  .enter-arena-btn {
+    width: 100%;
+    margin-top: 1.5rem;
+    font-size: 1.5rem;
+    padding: 1.1rem 2.5rem;
+  }
+
+  /* --- Match Phase --- */
+
+  .match-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 2rem;
+  }
+
+  .match-sidebar .feed { max-height: 260px; margin-top: 1rem; }
+
+  .controls-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-top: 0.75rem;
+  }
+
+  .dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 48px);
+    grid-template-rows: repeat(2, 48px);
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .dpad-spacer { visibility: hidden; }
+
+  .combat-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+  }
+  .combat-actions .action-btn { width: 100%; }
+
+  .skip-row { margin-top: 0.5rem; }
+  .skip-row .action-btn { width: 100%; }
+
+  .energy-hint {
+    font-size: 0.8rem;
+    font-family: monospace;
+    color: #888;
+    margin-top: 0.5rem;
+  }
+
+  .kbd-hint {
+    font-size: 0.75rem;
+    color: #999;
+    margin-top: 0.4rem;
+  }
+
+  .bar-fill.energy-flash {
+    animation: energyFlash 0.3s ease 2;
+  }
+
   @media (max-width: 960px) {
     .play-header { flex-direction: column; align-items: flex-start; }
     .play-shell { padding: 2rem 1.5rem 3rem; }
-    .play-grid { grid-template-columns: 1fr; }
+    .lobby-grid { grid-template-columns: 1fr; }
+    .match-grid { grid-template-columns: 1fr; }
+    .ko-title { font-size: 4rem; }
   }
 
   @media (max-width: 640px) {
@@ -408,8 +706,67 @@ const globalStyles = `
     .panel { padding: 1.5rem; }
     .cta-btn { width: 100%; }
     .arena-map { gap: 4px; padding: 0.6rem; }
+    .opponent-grid { grid-template-columns: 1fr; }
+    .dpad { grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(2, 40px); }
+    .ko-title { font-size: 3rem; }
+    .ko-winner-name { font-size: 1.6rem; }
+    .ko-btn { font-size: 1.2rem; padding: 0.8rem 2rem; }
   }
 `;
+
+/* --- Inline SVG Bot Sprites --- */
+
+const PlayerBotSvg = () => (
+  <svg viewBox="0 0 40 40" style={{ width: '88%', height: '88%', display: 'block' }}>
+    <rect x="12" y="2" width="16" height="10" rx="3" fill="#2ecc71" stroke="#111" strokeWidth="2" />
+    <rect x="15" y="5" width="10" height="4" rx="1.5" fill="#111" />
+    <circle cx="18" cy="7" r="1.5" fill="#27D9E8" />
+    <circle cx="22" cy="7" r="1.5" fill="#27D9E8" />
+    <rect x="10" y="12" width="20" height="13" rx="2" fill="#2ecc71" stroke="#111" strokeWidth="2" />
+    <rect x="15" y="15" width="10" height="6" rx="1" fill="#27ae60" stroke="#111" strokeWidth="1" />
+    <circle cx="20" cy="18" r="2" fill="#27D9E8" />
+    <rect x="3" y="13" width="7" height="10" rx="3" fill="#27ae60" stroke="#111" strokeWidth="2" />
+    <rect x="30" y="13" width="7" height="10" rx="3" fill="#27ae60" stroke="#111" strokeWidth="2" />
+    <rect x="4" y="21" width="5" height="4" rx="2" fill="#2ecc71" stroke="#111" strokeWidth="1.5" />
+    <rect x="31" y="21" width="5" height="4" rx="2" fill="#2ecc71" stroke="#111" strokeWidth="1.5" />
+    <rect x="12" y="25" width="7" height="10" rx="2" fill="#27ae60" stroke="#111" strokeWidth="2" />
+    <rect x="21" y="25" width="7" height="10" rx="2" fill="#27ae60" stroke="#111" strokeWidth="2" />
+    <rect x="11" y="33" width="9" height="5" rx="2" fill="#2ecc71" stroke="#111" strokeWidth="1.5" />
+    <rect x="20" y="33" width="9" height="5" rx="2" fill="#2ecc71" stroke="#111" strokeWidth="1.5" />
+  </svg>
+);
+
+const EnemyBotSvg = () => (
+  <svg viewBox="0 0 40 40" style={{ width: '88%', height: '88%', display: 'block' }}>
+    <polygon points="20,1 30,11 10,11" fill="#eb4d4b" stroke="#111" strokeWidth="2" strokeLinejoin="round" />
+    <line x1="13" y1="9" x2="19" y2="5.5" stroke="#FFD233" strokeWidth="2" strokeLinecap="round" />
+    <line x1="27" y1="9" x2="21" y2="5.5" stroke="#FFD233" strokeWidth="2" strokeLinecap="round" />
+    <rect x="7" y="11" width="26" height="14" rx="2" fill="#eb4d4b" stroke="#111" strokeWidth="2" />
+    <rect x="13" y="14" width="14" height="7" rx="1" fill="#c0392b" stroke="#111" strokeWidth="1" />
+    <circle cx="20" cy="17.5" r="2.5" fill="#FF4D4D" />
+    <circle cx="20" cy="17.5" r="1" fill="#FFD233" />
+    <polygon points="7,11 2,7 7,15" fill="#c0392b" stroke="#111" strokeWidth="1.5" strokeLinejoin="round" />
+    <polygon points="33,11 38,7 33,15" fill="#c0392b" stroke="#111" strokeWidth="1.5" strokeLinejoin="round" />
+    <rect x="1" y="13" width="6" height="11" rx="2" fill="#c0392b" stroke="#111" strokeWidth="2" />
+    <rect x="33" y="13" width="6" height="11" rx="2" fill="#c0392b" stroke="#111" strokeWidth="2" />
+    <rect x="1" y="22" width="6" height="4" rx="1" fill="#eb4d4b" stroke="#111" strokeWidth="1.5" />
+    <rect x="33" y="22" width="6" height="4" rx="1" fill="#eb4d4b" stroke="#111" strokeWidth="1.5" />
+    <rect x="10" y="25" width="8" height="11" rx="2" fill="#c0392b" stroke="#111" strokeWidth="2" />
+    <rect x="22" y="25" width="8" height="11" rx="2" fill="#c0392b" stroke="#111" strokeWidth="2" />
+    <rect x="9" y="33" width="10" height="5" rx="2" fill="#eb4d4b" stroke="#111" strokeWidth="1.5" />
+    <rect x="21" y="33" width="10" height="5" rx="2" fill="#eb4d4b" stroke="#111" strokeWidth="1.5" />
+  </svg>
+);
+
+/* --- Types --- */
+
+type VfxEvent = {
+  id: string;
+  cell: Vec;
+  text: string;
+  color: string;
+  type: 'burst' | 'ring' | 'bolt' | 'ko';
+};
 
 type BotPreset = {
   id: string;
@@ -603,6 +960,15 @@ const OPPONENTS: BotPreset[] = [
     risk: 45,
     archetype: 'ranged',
   },
+  {
+    id: 'null-protocol',
+    name: 'Null Protocol',
+    tagline: 'Drains resources, punishes impatience, wins by attrition.',
+    aggression: 30,
+    defense: 50,
+    risk: 90,
+    archetype: 'balanced',
+  },
 ];
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -699,7 +1065,22 @@ const generateMap = (rng: () => number): GameState => {
   return { grid: fallbackGrid, playerPos, enemyPos };
 };
 
+const hpBarGradient = (hp: number): string => {
+  if (hp > 60) return 'linear-gradient(90deg, #2ecc71, #27ae60)';
+  if (hp > 30) return 'linear-gradient(90deg, #f39c12, #e67e22)';
+  return 'linear-gradient(90deg, #FF4D4D, #c0392b)';
+};
+
+const archetypeColors = (archetype: string) => {
+  if (archetype === 'melee') return { bg: '#3a1f1f', fg: '#ff7a7a' };
+  if (archetype === 'ranged') return { bg: '#1f2f3a', fg: '#7ad4ff' };
+  return { bg: '#1f2d1f', fg: '#7aff9a' };
+};
+
+/* ========== Component ========== */
+
 const Play = () => {
+  // --- Core game state ---
   const [seedInput, setSeedInput] = useState('');
   const [activeSeed, setActiveSeed] = useState<number | null>(null);
   const [grid, setGrid] = useState<Cell[][]>([]);
@@ -719,9 +1100,32 @@ const Play = () => {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [playFounderCopyVariant, setPlayFounderCopyVariant] = useState<'momentum' | 'utility'>('momentum');
 
+  // --- Phase state ---
+  const [phase, setPhase] = useState<'lobby' | 'match' | 'result'>('lobby');
+  const [showSeedInput, setShowSeedInput] = useState(false);
+
+  // --- WS7 visual state ---
+  const [vfxEvents, setVfxEvents] = useState<VfxEvent[]>([]);
+  const [playerLastAction, setPlayerLastAction] = useState('');
+  const [enemyLastAction, setEnemyLastAction] = useState('');
+  const [arenaFlash, setArenaFlash] = useState(false);
+  const [energyFlash, setEnergyFlash] = useState(false);
+
+  // --- Refs ---
   const rngRef = useRef<() => number>(() => Math.random);
   const engineRef = useRef<any>(null);
   const botRef = useRef<any>(null);
+  const energyFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // --- VFX ---
+  const spawnVfx = (cell: Vec, text: string, color: string, type: VfxEvent['type'] = 'burst', duration = 600) => {
+    const id = `vfx_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const event: VfxEvent = { id, cell: { ...cell }, text, color, type };
+    setVfxEvents((prev) => [...prev, event]);
+    window.setTimeout(() => {
+      setVfxEvents((prev) => prev.filter((e) => e.id !== id));
+    }, duration);
+  };
 
   const postEvent = async (event: string, meta: Record<string, unknown> = {}) => {
     try {
@@ -796,6 +1200,8 @@ const Play = () => {
       button: 'Unlock Founder Rematch Pass',
     };
   }, [playFounderCopyVariant, winner]);
+
+  // --- Effects ---
 
   useEffect(() => {
     const style = document.createElement('style');
@@ -872,6 +1278,8 @@ const Play = () => {
     });
   }, [activeSeed, enemyHp, founderCtaVariant.key, opponent.name, playFounderCopyVariant, playerHp, turn, winner]);
 
+  // --- Match lifecycle ---
+
   const resetMatch = () => {
     setRunning(false);
     setWinner(null);
@@ -882,6 +1290,11 @@ const Play = () => {
     setTurn(1);
     engineRef.current = null;
     botRef.current = null;
+    setVfxEvents([]);
+    setPlayerLastAction('');
+    setEnemyLastAction('');
+    setArenaFlash(false);
+    setEnergyFlash(false);
   };
 
   const startMatch = () => {
@@ -898,13 +1311,11 @@ const Play = () => {
     setEnemyPos(map.enemyPos);
     setActiveSeed(seed);
 
-    // Derive player armor from bot config sliders: high DEF → heavy, high AGGR → light
     const playerArmor: 'light' | 'medium' | 'heavy' =
       playerBotConfig.defense >= 65 ? 'heavy'
       : playerBotConfig.aggression >= 65 ? 'light'
       : 'medium';
 
-    // Derive enemy armor from opponent archetype
     const enemyArmor: 'light' | 'medium' | 'heavy' =
       opponent.archetype === 'melee' ? 'heavy'
       : opponent.archetype === 'ranged' ? 'light'
@@ -930,9 +1341,10 @@ const Play = () => {
     setFeed([
       `Match initialized. Seed ${seed}.`,
       `Arena size ${GRID_SIZE}x${GRID_SIZE}. Opponent: ${opponent.name} [${opponent.archetype}/${enemyArmor}].`,
-      `Your loadout: ${playerBotConfig.name.trim() || 'My Bot'} — armor:${playerArmor} AGGR:${playerBotConfig.aggression} DEF:${playerBotConfig.defense} RISK:${playerBotConfig.risk}`,
+      `Your loadout: ${playerBotConfig.name.trim() || 'My Bot'} \u2014 armor:${playerArmor} AGGR:${playerBotConfig.aggression} DEF:${playerBotConfig.defense} RISK:${playerBotConfig.risk}`,
     ]);
     setRunning(true);
+    setPhase('match');
     void postEvent('play_match_started', { seed, opponent: opponent.id, opponentArchetype: opponent.archetype, gridSize: GRID_SIZE, playerArmor, playerAggr: playerBotConfig.aggression, playerDef: playerBotConfig.defense, playerRisk: playerBotConfig.risk });
   };
 
@@ -951,7 +1363,7 @@ const Play = () => {
       case 'STATUS_APPLIED':
         return `${who} activated ${event.data.status} (expires tick ${event.data.endsAt})`;
       case 'ILLEGAL_ACTION':
-        return `${who}: ${event.data.action.type} rejected — ${event.data.reason}`;
+        return `${who}: ${event.data.action.type} rejected \u2014 ${event.data.reason}`;
       case 'ACTION_ACCEPTED': {
         const d = event.data;
         if (d.type === 'NO_OP') return null;
@@ -960,7 +1372,7 @@ const Play = () => {
         return `${who} uses ${d.type}.`;
       }
       case 'MATCH_END':
-        return `Match over — winner: ${event.actorId === 'player' ? 'You' : event.actorId === 'enemy' ? opponent.name : 'draw'} (${event.data.reason})`;
+        return `Match over \u2014 winner: ${event.actorId === 'player' ? 'You' : event.actorId === 'enemy' ? opponent.name : 'draw'} (${event.data.reason})`;
       default:
         return null;
     }
@@ -969,6 +1381,17 @@ const Play = () => {
   const executeTurn = (playerAction: { type: string; dir?: string; targetId?: string }) => {
     const state = engineRef.current;
     if (!state || state.ended) return;
+
+    // Energy check before executing
+    const currentEnergy = state.actors?.player?.energy ?? 0;
+    const cost = (ACTION_COST as Record<string, number>)[playerAction.type] ?? 0;
+    if (cost > 0 && currentEnergy < cost) {
+      logFeed([`Not enough energy for ${playerAction.type} (need ${cost / 10}e, have ${Math.round(currentEnergy / 10)}e)`]);
+      setEnergyFlash(true);
+      if (energyFlashTimerRef.current) clearTimeout(energyFlashTimerRef.current);
+      energyFlashTimerRef.current = setTimeout(() => setEnergyFlash(false), 600);
+      return;
+    }
 
     const startEventIdx = state.events.length;
     const enemyAction = botRef.current?.decide(state, 'enemy') ?? null;
@@ -989,32 +1412,57 @@ const Play = () => {
 
     const pActor = state.actors.player;
     const eActor = state.actors.enemy;
-    setPlayerPos({
+    const pPos = {
       x: clamp(Math.round(pActor.position.x / UNIT_SCALE), 0, GRID_SIZE - 1),
       y: clamp(Math.round(pActor.position.y / UNIT_SCALE), 0, GRID_SIZE - 1),
-    });
-    setEnemyPos({
+    };
+    const ePos = {
       x: clamp(Math.round(eActor.position.x / UNIT_SCALE), 0, GRID_SIZE - 1),
       y: clamp(Math.round(eActor.position.y / UNIT_SCALE), 0, GRID_SIZE - 1),
-    });
-
+    };
+    setPlayerPos(pPos);
+    setEnemyPos(ePos);
     setPlayerHp(pActor.hp);
     setEnemyHp(eActor.hp);
     setPlayerEnergy(pActor.energy);
 
+    // Tactic labels
+    setPlayerLastAction(playerAction.type === 'NO_OP' ? '' : playerAction.type.replace(/_/g, ' '));
+    const enemyType = enemyAction?.type ?? '';
+    setEnemyLastAction(enemyType === 'NO_OP' ? '' : enemyType.replace(/_/g, ' '));
+
+    // Process new events: log + VFX
     const newEvents = state.events.slice(startEventIdx);
     const logEntries = newEvents.map(formatEvent).filter((e: string | null): e is string => e !== null);
     if (logEntries.length) logFeed(logEntries);
+
+    for (const evt of newEvents) {
+      if (evt.type === 'DAMAGE_APPLIED') {
+        if (evt.actorId === 'player') {
+          spawnVfx(ePos, 'KAPOW!', '#FF4D4D', 'burst', 600);
+        } else if (evt.actorId === 'enemy') {
+          spawnVfx(pPos, 'CLANG!', '#27D9E8', 'ring', 600);
+        }
+      }
+    }
 
     if (state.ended) {
       if (state.winnerId === 'player') setWinner('You');
       else if (state.winnerId === 'enemy') setWinner(opponent.name);
       else setWinner('Draw');
       setRunning(false);
+      setPhase('result');
+      // KO VFX
+      const koCell = state.winnerId === 'player' ? ePos : pPos;
+      spawnVfx(koCell, 'K.O.!', '#FFD233', 'ko', 800);
+      setArenaFlash(true);
+      window.setTimeout(() => setArenaFlash(false), 600);
     }
 
     setTurn((prev) => prev + 1);
   };
+
+  // --- Action handlers ---
 
   const attemptMove = (dx: number, dy: number) => {
     if (!running || winner) return;
@@ -1046,6 +1494,8 @@ const Play = () => {
     if (!running || winner) return;
     executeTurn({ type: 'NO_OP' });
   };
+
+  // --- Keyboard controls ---
 
   useEffect(() => {
     if (!running || winner) return;
@@ -1091,6 +1541,8 @@ const Play = () => {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [running, winner]);
+
+  // --- Founder checkout ---
 
   const handleFounderCheckout = async () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -1152,7 +1604,94 @@ const Play = () => {
     }
   };
 
+  // --- Derived values ---
+
   const meleeRangeGrid = Math.ceil(MELEE_RANGE / UNIT_SCALE);
+  const actionsDisabled = !running || !!winner;
+
+  const koReason = winner === 'You'
+    ? 'ENEMY DESTROYED'
+    : winner === 'Draw'
+      ? 'MUTUAL DESTRUCTION'
+      : winner
+        ? 'YOU WERE DESTROYED'
+        : '';
+
+  // --- Render helpers ---
+
+  const renderArenaMap = () => (
+    <div
+      className={`arena-map${arenaFlash ? ' arena-flash' : ''}`}
+      style={{ ['--grid-size' as string]: GRID_SIZE }}
+    >
+      {grid.map((row, y) =>
+        row.map((cell, x) => {
+          const pos = { x, y };
+          const inRange = manhattan(playerPos, pos) <= meleeRangeGrid;
+          const isPlayer = isSame(pos, playerPos);
+          const isEnemy = isSame(pos, enemyPos);
+          const cellVfx = vfxEvents.filter((e) => e.cell.x === x && e.cell.y === y);
+          const hasCellVfx = cellVfx.length > 0;
+          const className = [
+            'arena-cell',
+            cell === 'obstacle' ? 'obstacle' : '',
+            inRange ? 'in-range' : '',
+            isPlayer ? 'player' : '',
+            isEnemy ? 'enemy' : '',
+            hasCellVfx ? 'cell-vfx-flash' : '',
+          ].filter(Boolean).join(' ');
+
+          return (
+            <div key={`${x}-${y}`} className={className}>
+              {isPlayer && <PlayerBotSvg />}
+              {isEnemy && <EnemyBotSvg />}
+              {cellVfx.map((vfx) => (
+                <div key={vfx.id} className={`vfx-popup ${vfx.type}`}>
+                  <span style={{ color: vfx.color }}>{vfx.text}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+
+  const renderArenaLegend = () => (
+    <div className="arena-legend">
+      <span className="status-pill" style={{ background: 'rgba(46,204,113,0.2)', borderColor: '#2ecc71' }}>YOU</span>
+      <span className="status-pill" style={{ background: 'rgba(235,77,75,0.2)', borderColor: '#eb4d4b' }}>BOT</span>
+      <span className="status-pill" style={{ background: '#2f2f2f', color: '#fff' }}>OBSTACLE</span>
+      <span className="status-pill" style={{ background: 'var(--c-yellow)' }}>IN RANGE</span>
+    </div>
+  );
+
+  const renderFounderCta = () => (
+    <div className="leaderboard">
+      <div className="section-label">{founderCtaVariant.title}</div>
+      <div className="hint" style={{ marginBottom: '0.7rem' }}>
+        {founderCtaVariant.message}
+      </div>
+      <input
+        className="prompt-box"
+        type="email"
+        placeholder="you@team.com"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        style={{ minHeight: 'unset', height: '48px', marginBottom: '0.8rem' }}
+      />
+      <button className="cta-btn" onClick={handleFounderCheckout} disabled={checkoutBusy}>
+        {checkoutBusy ? 'Opening Checkout\u2026' : founderCtaVariant.button}
+      </button>
+      {checkoutMessage && (
+        <div className="hint" style={{ marginTop: '0.7rem' }}>{checkoutMessage}</div>
+      )}
+    </div>
+  );
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <div className="play-root">
@@ -1165,244 +1704,243 @@ const Play = () => {
         </div>
       </header>
 
-      <main className="play-shell">
-        <div className="play-grid">
-          <section className="panel">
-            <h2>Command Console</h2>
-
-            <div className="section-label">Seeded Match</div>
-            <input
-              className="prompt-box"
-              style={{ minHeight: 'unset', height: '48px', marginBottom: '0.6rem' }}
-              placeholder="Seed (optional, deterministic)"
-              value={seedInput}
-              onChange={(event) => setSeedInput(event.target.value)}
-            />
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button className="cta-btn" onClick={startMatch} disabled={running}>
-                {running ? 'Match Live' : 'Start Match'}
-              </button>
-              <button className="action-btn secondary" onClick={resetMatch} disabled={!running && feed.length === 0}>
-                Reset
-              </button>
-            </div>
-            <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-              <span className="status-pill">Turn {turn}</span>
-              <span className="status-pill">Energy {Math.round(playerEnergy / ENERGY_MAX * 100)}%</span>
-              <span className="seed-pill">Seed {activeSeed ?? '—'}</span>
-            </div>
-
-            <div className="section-label" style={{ marginTop: '1.4rem' }}>Your Bot</div>
-            <div className="your-bot-card">
-              <input
-                className="prompt-box"
-                style={{ minHeight: 'unset', height: '40px', marginBottom: '0.5rem' }}
-                placeholder="Bot name (e.g. Iron Vanguard)"
-                value={playerBotConfig.name}
-                onChange={(e) => setPlayerBotConfig((prev) => ({ ...prev, name: e.target.value }))}
-              />
-              <textarea
-                className="prompt-box"
-                style={{ minHeight: '56px', marginBottom: '0.6rem', fontSize: '0.85rem' }}
-                placeholder="Directive (e.g. 'press hard early, brace when low HP')"
-                value={playerBotConfig.directive}
-                onChange={(e) => setPlayerBotConfig((prev) => ({ ...prev, directive: e.target.value }))}
-              />
-              {[
-                { key: 'aggression' as const, label: 'AGGR', color: 'var(--c-red, #ff4444)' },
-                { key: 'defense' as const, label: 'DEF', color: 'var(--c-cyan, #00e5ff)' },
-                { key: 'risk' as const, label: 'RISK', color: 'var(--c-yellow, #ffd700)' },
-              ].map(({ key, label, color }) => (
-                <div key={key} className="slider-row">
-                  <label>{label}</label>
+      {/* ======================== LOBBY ======================== */}
+      {phase === 'lobby' && (
+        <main className="play-shell">
+          <div className="lobby-container">
+            <div className="lobby-grid">
+              {/* --- Your Bot --- */}
+              <div className="panel">
+                <h2>Your Bot</h2>
+                <div className="your-bot-card">
+                  <h3>Loadout</h3>
                   <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={playerBotConfig[key]}
-                    style={{ accentColor: color }}
-                    onChange={(e) =>
-                      setPlayerBotConfig((prev) => ({ ...prev, [key]: Number(e.target.value) }))
-                    }
+                    className="prompt-box"
+                    style={{ minHeight: 'unset', height: '40px', marginBottom: '0.5rem' }}
+                    placeholder="Bot name (e.g. Iron Vanguard)"
+                    value={playerBotConfig.name}
+                    onChange={(e) => setPlayerBotConfig((prev) => ({ ...prev, name: e.target.value }))}
                   />
-                  <span className="slider-val">{playerBotConfig[key]}</span>
-                </div>
-              ))}
-              <div className="hint" style={{ marginTop: '0.3rem' }}>
-                AGGR → attack damage · DEF → guard strength · RISK ≥ 40 → scan overclock
-              </div>
-            </div>
-
-            <div className="section-label" style={{ marginTop: '1.4rem' }}>Opponent Loadout</div>
-            <div style={{ display: 'grid', gap: '0.8rem' }}>
-              {OPPONENTS.map((bot) => (
-                <label key={bot.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="opponent"
-                    checked={bot.id === opponentId}
-                    onChange={() => setOpponentId(bot.id)}
-                    style={{ marginTop: '0.25rem' }}
+                  <textarea
+                    className="prompt-box"
+                    style={{ minHeight: '56px', marginBottom: '0.6rem', fontSize: '0.85rem' }}
+                    placeholder="Directive (e.g. 'press hard early, brace when low HP')"
+                    value={playerBotConfig.directive}
+                    onChange={(e) => setPlayerBotConfig((prev) => ({ ...prev, directive: e.target.value }))}
                   />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 900 }}>{bot.name}</div>
-                    <div className="hint" style={{ marginBottom: '0.3rem' }}>{bot.tagline}</div>
-                    <span style={{ fontSize: '0.58rem', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '1px 5px', borderRadius: '3px', background: bot.archetype === 'melee' ? '#3a1f1f' : bot.archetype === 'ranged' ? '#1f2f3a' : '#1f2d1f', color: bot.archetype === 'melee' ? '#ff7a7a' : bot.archetype === 'ranged' ? '#7ad4ff' : '#7aff9a', marginBottom: '0.4rem', display: 'inline-block' }}>{bot.archetype}</span>
-                    {[
-                      { label: 'AGGR', value: bot.aggression, color: 'var(--c-red, #ff4444)' },
-                      { label: 'DEF', value: bot.defense, color: 'var(--c-cyan, #00e5ff)' },
-                      { label: 'RISK', value: bot.risk, color: 'var(--c-yellow, #ffd700)' },
-                    ].map(({ label, value, color }) => (
-                      <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
-                        <span style={{ fontSize: '0.6rem', fontFamily: 'monospace', color: 'var(--c-muted, #888)', width: '2.2rem', flexShrink: 0 }}>{label}</span>
-                        <div style={{ flex: 1, height: '4px', background: '#2a2a2a', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ width: `${value}%`, height: '100%', background: color, borderRadius: '2px', transition: 'width 0.3s ease' }} />
-                        </div>
-                        <span style={{ fontSize: '0.6rem', fontFamily: 'monospace', color: 'var(--c-muted, #888)', width: '2rem', textAlign: 'right' }}>{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </label>
-              ))}
-            </div>
-
-            <div className="section-label" style={{ marginTop: '1.4rem' }}>Actions</div>
-            <div className="action-grid">
-              <button className="action-btn secondary" onClick={() => attemptMove(0, -1)} disabled={!running || !!winner}>Up</button>
-              <button className="action-btn secondary" onClick={() => attemptMove(1, 0)} disabled={!running || !!winner}>Right</button>
-              <button className="action-btn secondary" onClick={() => attemptMove(-1, 0)} disabled={!running || !!winner}>Left</button>
-              <button className="action-btn secondary" onClick={() => attemptMove(0, 1)} disabled={!running || !!winner}>Down</button>
-              <button className="action-btn" onClick={handleAttack} disabled={!running || !!winner}>Strike</button>
-              <button className="action-btn" onClick={handleBlock} disabled={!running || !!winner}>Guard</button>
-              <button className="action-btn" onClick={handleScan} disabled={!running || !!winner}>Utility</button>
-              <button className="action-btn secondary" onClick={endTurn} disabled={!running || !!winner}>Skip Turn</button>
-            </div>
-            <div className="hint" style={{ marginBottom: '0.8rem' }}>
-              Strike (18e) · Guard (10e) · Utility (20e) · Move (4e) · WASD/Arrows move, J strike, K guard, L utility, Enter skip.
-            </div>
-
-            <div className="leaderboard" style={{ marginTop: '1.2rem' }}>
-              <div className="section-label">{founderCtaVariant.title}</div>
-              <div className="hint" style={{ marginBottom: '0.7rem' }}>
-                {founderCtaVariant.message}
-              </div>
-              <input
-                className="prompt-box"
-                type="email"
-                placeholder="you@team.com"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                style={{ minHeight: 'unset', height: '48px', marginBottom: '0.8rem' }}
-              />
-              <button className="cta-btn" onClick={handleFounderCheckout} disabled={checkoutBusy}>
-                {checkoutBusy ? 'Opening Checkout…' : founderCtaVariant.button}
-              </button>
-              {checkoutMessage && (
-                <div className="hint" style={{ marginTop: '0.7rem' }}>{checkoutMessage}</div>
-              )}
-            </div>
-          </section>
-
-          <section className="panel">
-            <div className="arena-header">
-              <div>
-                <h2>Arena Ops</h2>
-                <div className="hint">Opponent: <strong>{opponent.name}</strong></div>
-              </div>
-              <span className="arena-badge">Round {turn}</span>
-            </div>
-
-            <div className="stat-block">
-              <div className="stat-title">
-                <span style={{ fontWeight: 900 }}>{playerBotConfig.name.trim() || 'You'}</span>
-                <span className="status-pill">HP {playerHp}</span>
-              </div>
-              <div className="bar-shell">
-                <div className="bar-fill" style={{ width: `${playerHp}%` }} />
-              </div>
-            </div>
-
-            <div className="stat-block">
-              <div className="stat-title">
-                <span>Energy</span>
-                <span className="status-pill">{Math.round(playerEnergy / ENERGY_MAX * 100)}%</span>
-              </div>
-              <div className="bar-shell">
-                <div className="bar-fill" style={{ width: `${playerEnergy / ENERGY_MAX * 100}%`, background: 'linear-gradient(90deg, #00e5ff 0%, #0077b6 100%)' }} />
-              </div>
-            </div>
-
-            <div className="stat-block">
-              <div className="stat-title">
-                <span>{opponent.name}</span>
-                <span className="status-pill">HP {enemyHp}</span>
-              </div>
-              <div className="bar-shell">
-                <div className="bar-fill opponent" style={{ width: `${enemyHp}%` }} />
-              </div>
-            </div>
-
-            <div className="arena-map" style={{ ['--grid-size' as string]: GRID_SIZE }}>
-              {grid.map((row, y) =>
-                row.map((cell, x) => {
-                  const pos = { x, y };
-                  const inRange = manhattan(playerPos, pos) <= meleeRangeGrid;
-                  const isPlayer = isSame(pos, playerPos);
-                  const isEnemy = isSame(pos, enemyPos);
-                  const className = [
-                    'arena-cell',
-                    cell === 'obstacle' ? 'obstacle' : '',
-                    inRange ? 'in-range' : '',
-                    isPlayer ? 'player' : '',
-                    isEnemy ? 'enemy' : '',
-                  ].filter(Boolean).join(' ');
-                  let label = '';
-                  if (isPlayer) label = (playerBotConfig.name.trim() || 'MY BOT').slice(0, 4).toUpperCase();
-                  if (isEnemy) label = 'BOT';
-                  return (
-                    <div key={`${x}-${y}`} className={className}>
-                      {label}
+                  {([
+                    { key: 'aggression' as const, label: 'AGGR', color: 'var(--c-red, #ff4444)' },
+                    { key: 'defense' as const, label: 'DEF', color: 'var(--c-cyan, #00e5ff)' },
+                    { key: 'risk' as const, label: 'RISK', color: 'var(--c-yellow, #ffd700)' },
+                  ]).map(({ key, label, color }) => (
+                    <div key={key} className="slider-row">
+                      <label>{label}</label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={playerBotConfig[key]}
+                        style={{ accentColor: color }}
+                        onChange={(e) =>
+                          setPlayerBotConfig((prev) => ({ ...prev, [key]: Number(e.target.value) }))
+                        }
+                      />
+                      <span className="slider-val">{playerBotConfig[key]}</span>
                     </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="arena-legend">
-              <span className="status-pill">YOU</span>
-              <span className="status-pill" style={{ background: 'var(--c-red)', color: '#fff' }}>BOT</span>
-              <span className="status-pill" style={{ background: '#2f2f2f', color: '#fff' }}>OBSTACLE</span>
-              <span className="status-pill" style={{ background: 'var(--c-yellow)' }}>IN RANGE</span>
-            </div>
-
-            {winner && (
-              <div className="winner-banner" style={{ marginTop: '1.2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.6rem' }}>
-                  <div>
-                    <div style={{ fontWeight: 900 }}>Winner: {winner}</div>
-                    <div className="hint">Final HP {playerHp} vs {enemyHp}</div>
+                  ))}
+                  <div className="hint" style={{ marginTop: '0.3rem' }}>
+                    AGGR &rarr; attack damage &middot; DEF &rarr; guard strength &middot; RISK &ge; 40 &rarr; scan overclock
                   </div>
-                  <button className="action-btn secondary" onClick={startMatch} style={{ flexShrink: 0 }}>
-                    Play Again
-                  </button>
                 </div>
               </div>
-            )}
 
-            <div style={{ marginTop: '1rem' }} className="feed">
-              {feed.length === 0 && (
-                <div className="feed-item">No turns yet. Start a match to generate the arena log.</div>
-              )}
-              {feed.map((entry, index) => (
-                <div key={`${entry}-${index}`} className="feed-item">
-                  {entry}
+              {/* --- Pick Opponent --- */}
+              <div className="panel">
+                <h2>Pick Opponent</h2>
+                <div className="opponent-grid">
+                  {OPPONENTS.map((bot) => {
+                    const colors = archetypeColors(bot.archetype);
+                    return (
+                      <div
+                        key={bot.id}
+                        className={`opponent-card${bot.id === opponentId ? ' selected' : ''}`}
+                        onClick={() => setOpponentId(bot.id)}
+                      >
+                        <h4>{bot.name}</h4>
+                        <span
+                          className="archetype-tag"
+                          style={{ background: colors.bg, color: colors.fg }}
+                        >
+                          {bot.archetype}
+                        </span>
+                        <div className="hint" style={{ fontSize: '0.8rem', marginBottom: '0.3rem' }}>{bot.tagline}</div>
+                        <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#888' }}>
+                          HP {HP_MAX} &middot; AGGR {bot.aggression} &middot; DEF {bot.defense} &middot; RISK {bot.risk}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
             </div>
-          </section>
+
+            {/* --- Seed (collapsible) --- */}
+            <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+              <button className="seed-toggle" onClick={() => setShowSeedInput((p) => !p)}>
+                {showSeedInput ? 'Hide seed' : 'Seed (advanced)'}
+              </button>
+              {showSeedInput && (
+                <input
+                  className="prompt-box"
+                  style={{ minHeight: 'unset', height: '44px', marginTop: '0.5rem', maxWidth: '400px', margin: '0.5rem auto 0' }}
+                  placeholder="Seed (optional, deterministic)"
+                  value={seedInput}
+                  onChange={(event) => setSeedInput(event.target.value)}
+                />
+              )}
+            </div>
+
+            {/* --- Enter Arena --- */}
+            <button className="cta-btn enter-arena-btn" onClick={startMatch}>
+              Enter Arena
+            </button>
+
+            {/* --- Founder CTA --- */}
+            {renderFounderCta()}
+          </div>
+        </main>
+      )}
+
+      {/* ======================== MATCH ======================== */}
+      {phase === 'match' && (
+        <main className="play-shell">
+          <div className="match-grid">
+            {/* --- Left sidebar --- */}
+            <section className="panel match-sidebar">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <span className="turn-counter">Turn {turn}</span>
+                <span className="seed-pill">Seed {activeSeed ?? '\u2014'}</span>
+              </div>
+
+              {/* Player HP */}
+              <div className="stat-block">
+                <div className="stat-title">
+                  <span>
+                    {playerBotConfig.name.trim() || 'You'}
+                    {playerLastAction && <span className="tactic-chip">{playerLastAction}</span>}
+                  </span>
+                  <span className="status-pill">HP {playerHp}</span>
+                </div>
+                <div className="bar-shell">
+                  <div className="bar-fill" style={{ width: `${playerHp}%`, background: hpBarGradient(playerHp) }} />
+                </div>
+              </div>
+
+              {/* Energy */}
+              <div className="stat-block">
+                <div className="stat-title">
+                  <span>Energy</span>
+                  <span className="status-pill">{Math.round(playerEnergy / 10)}e</span>
+                </div>
+                <div className="bar-shell">
+                  <div
+                    className={`bar-fill${energyFlash ? ' energy-flash' : ''}`}
+                    style={{ width: `${playerEnergy / ENERGY_MAX * 100}%`, background: 'linear-gradient(90deg, #00e5ff 0%, #0077b6 100%)' }}
+                  />
+                </div>
+              </div>
+
+              {/* Enemy HP */}
+              <div className="stat-block">
+                <div className="stat-title">
+                  <span>
+                    {opponent.name}
+                    {enemyLastAction && <span className="tactic-chip enemy-chip">{enemyLastAction}</span>}
+                  </span>
+                  <span className="status-pill">HP {enemyHp}</span>
+                </div>
+                <div className="bar-shell">
+                  <div className="bar-fill" style={{ width: `${enemyHp}%`, background: hpBarGradient(enemyHp) }} />
+                </div>
+              </div>
+
+              {/* Combat log */}
+              <div className="section-label" style={{ marginTop: '0.5rem' }}>Combat Log</div>
+              <div className="feed" style={{ maxHeight: '260px' }}>
+                {feed.length === 0 && (
+                  <div className="feed-item">Awaiting first action...</div>
+                )}
+                {feed.slice(0, 8).map((entry, index) => (
+                  <div key={`${entry}-${index}`} className="feed-item">{entry}</div>
+                ))}
+              </div>
+            </section>
+
+            {/* --- Right: Arena + Actions --- */}
+            <section className="panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h2 style={{ marginBottom: 0 }}>Arena</h2>
+                <span className="arena-badge">Round {turn}</span>
+              </div>
+
+              {renderArenaMap()}
+              {renderArenaLegend()}
+
+              {/* Action buttons directly below map */}
+              <div className="controls-row">
+                <div className="dpad">
+                  <div className="dpad-spacer" />
+                  <button className="action-btn secondary" onClick={() => attemptMove(0, -1)} disabled={actionsDisabled}>{'\u2191'}</button>
+                  <div className="dpad-spacer" />
+                  <button className="action-btn secondary" onClick={() => attemptMove(-1, 0)} disabled={actionsDisabled}>{'\u2190'}</button>
+                  <button className="action-btn secondary" onClick={() => attemptMove(0, 1)} disabled={actionsDisabled}>{'\u2193'}</button>
+                  <button className="action-btn secondary" onClick={() => attemptMove(1, 0)} disabled={actionsDisabled}>{'\u2192'}</button>
+                </div>
+                <div className="combat-actions">
+                  <button className="action-btn" onClick={handleAttack} disabled={actionsDisabled}>Strike</button>
+                  <button className="action-btn" onClick={handleBlock} disabled={actionsDisabled}>Guard</button>
+                  <button className="action-btn" onClick={handleScan} disabled={actionsDisabled}>Utility</button>
+                </div>
+              </div>
+              <div className="skip-row">
+                <button className="action-btn secondary" onClick={endTurn} disabled={actionsDisabled}>Skip Turn</button>
+              </div>
+              <div className="energy-hint">
+                Strike 18e &middot; Guard 10e &middot; Utility 20e &middot; Move 4e
+              </div>
+              <div className="kbd-hint">
+                WASD/Arrows move &middot; J strike &middot; K guard &middot; L utility &middot; Enter skip
+              </div>
+            </section>
+          </div>
+        </main>
+      )}
+
+      {/* ======================== RESULT (KO Overlay) ======================== */}
+      {phase === 'result' && (
+        <div className="ko-overlay">
+          <div className="ko-radial-bg" />
+          <div className="ko-content">
+            <div className="ko-title">K.O.!</div>
+            <div className="ko-winner-name">
+              {winner === 'Draw' ? 'DOUBLE K.O.' : `${winner} WINS`}
+            </div>
+            <div className="ko-reason">{koReason}</div>
+            <div className="ko-stats">
+              Turn {turn} &middot; HP {playerHp} vs {enemyHp} &middot; Seed {activeSeed}
+            </div>
+            <div className="ko-actions">
+              <button className="ko-btn" onClick={() => startMatch()}>
+                Play Again
+              </button>
+              <button className="ko-btn secondary" onClick={() => { resetMatch(); setPhase('lobby'); }}>
+                New Match
+              </button>
+            </div>
+          </div>
         </div>
-      </main>
+      )}
     </div>
   );
 };
