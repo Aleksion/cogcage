@@ -856,7 +856,7 @@ const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } =
       clearTimeout(timeout);
       const body = await response.json().catch(() => ({}));
       if (response.ok && body.ok === true) {
-        return body;
+        return { ...body, status: response.status };
       }
 
       const err = new Error(body?.error || `Request failed (${response.status})`);
@@ -875,6 +875,64 @@ const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } =
   }
 
   throw lastError || new Error('Request failed');
+};
+
+const WAITLIST_REPLAY_QUEUE_KEY = 'cogcage_waitlist_replay_queue';
+
+const readWaitlistReplayQueue = () => {
+  try {
+    const raw = localStorage.getItem(WAITLIST_REPLAY_QUEUE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeWaitlistReplayQueue = (queue) => {
+  try {
+    if (!queue.length) {
+      localStorage.removeItem(WAITLIST_REPLAY_QUEUE_KEY);
+      return;
+    }
+    localStorage.setItem(WAITLIST_REPLAY_QUEUE_KEY, JSON.stringify(queue.slice(0, 10)));
+  } catch {
+    // best-effort cache only
+  }
+};
+
+const enqueueWaitlistReplay = (payload) => {
+  const queue = readWaitlistReplayQueue();
+  queue.push({ ...payload, queuedAt: new Date().toISOString() });
+  writeWaitlistReplayQueue(queue);
+};
+
+const replayWaitlistQueue = async () => {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  const queue = readWaitlistReplayQueue();
+  if (!queue.length) return;
+
+  const remaining = [];
+  for (const item of queue) {
+    try {
+      await submitWithRetry('/api/waitlist', {
+        email: item.email,
+        game: item.game || 'Unspecified',
+        source: item.source || 'cogcage-replay',
+      }, { retries: 0, timeoutMs: 7000 });
+      await postJson('/api/events', {
+        event: 'waitlist_replay_sent',
+        source: item.source || 'cogcage-replay',
+        email: item.email,
+        page: '/',
+        meta: { queuedAt: item.queuedAt || null },
+      });
+    } catch {
+      remaining.push(item);
+    }
+  }
+
+  writeWaitlistReplayQueue(remaining);
 };
 
 // ─── Reusable Components ───────────────────────────────────────────────────────
@@ -1093,21 +1151,29 @@ const HeroSection = ({ sectionRef }) => {
         email: trimmed.toLowerCase(),
         page: '/',
         variant,
-        meta: { variant, requestId: payload.requestId },
+        meta: { variant, requestId: payload.requestId, queued: payload.queued === true, status: payload.status },
       });
       setLastSubmittedEmail(trimmed.toLowerCase());
       setStatus('success');
-      setMessage('You are on the list. Watch for your invite.');
+      setMessage(payload.queued === true
+        ? `You are on the list (queued). Ref ${payload.requestId}.`
+        : `You are on the list. Ref ${payload.requestId}.`);
       setEmail('');
     } catch (err) {
+      enqueueWaitlistReplay({
+        email: trimmed.toLowerCase(),
+        game: 'Unspecified',
+        source: `cogcage-hero-${variant}`,
+      });
       void postJson('/api/events', {
-        event: 'waitlist_submit_failed',
+        event: 'waitlist_submit_buffered',
         source: `hero-waitlist-${variant}`,
         page: '/',
+        email: trimmed.toLowerCase(),
         meta: { error: err instanceof Error ? err.message : 'unknown' },
       });
       setStatus('error');
-      setMessage(err instanceof Error ? err.message : 'Something went wrong. Try again.');
+      setMessage('Temporary network/storage issue. Saved locally and will auto-retry when online.');
     }
   };
 
@@ -1438,17 +1504,23 @@ const FooterSection = () => {
         page: '/',
         email: trimmed,
         variant,
-        meta: { variant, requestId: payload.requestId },
+        meta: { variant, requestId: payload.requestId, queued: payload.queued === true, status: payload.status },
       });
       setSubmitted(true);
     } catch (err) {
+      enqueueWaitlistReplay({
+        email: trimmed,
+        game: 'Unspecified',
+        source: `cogcage-footer-${variant}`,
+      });
       void postJson('/api/events', {
-        event: 'waitlist_submit_failed',
+        event: 'waitlist_submit_buffered',
         source: `footer-waitlist-${variant}`,
         page: '/',
+        email: trimmed,
         meta: { error: err instanceof Error ? err.message : 'unknown' },
       });
-      setError(err instanceof Error ? err.message : 'Could not create account.');
+      setError('Could not reach storage. Saved locally and will auto-retry when online.');
     }
   };
 
@@ -1613,6 +1685,13 @@ const App = () => {
     style.textContent = globalStyles;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
+  }, []);
+
+  useEffect(() => {
+    void replayWaitlistQueue();
+    const onOnline = () => { void replayWaitlistQueue(); };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
   }, []);
 
   return (
