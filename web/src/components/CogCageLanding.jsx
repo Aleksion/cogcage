@@ -816,8 +816,8 @@ const NavBar = ({ onNavClick }) => {
   const handlePlay = () => {
     setPlayPressed(true);
     setTimeout(() => setPlayPressed(false), 300);
-    onNavClick('hero');
     setMenuOpen(false);
+    window.location.href = '/play';
   };
 
   const handleNav = (section) => {
@@ -1035,7 +1035,14 @@ const HeroSection = ({ sectionRef }) => {
         </div>
         <div className="hero-actions">
           <button className="btn-arcade red" type="button" onClick={handleFounderCheckout}>Reserve Founder Spot</button>
-          <button className="btn-arcade" style={{ background: 'var(--c-white)' }} type="button">Watch Live</button>
+          <button
+            className="btn-arcade"
+            style={{ background: 'var(--c-white)' }}
+            type="button"
+            onClick={() => { window.location.href = '/play'; }}
+          >
+            Play Demo
+          </button>
         </div>
         <div style={{ marginTop: '0.9rem', fontWeight: 900, fontSize: '0.98rem' }}>
           🔒 <span style={{ color: 'var(--c-red)' }}>{FOUNDER_PRICE_TEXT}</span> for early builders · switches to {FOUNDER_PRICE_FUTURE_TEXT}
