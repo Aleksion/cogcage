@@ -621,6 +621,10 @@ const Play = () => {
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [playFounderCopyVariant, setPlayFounderCopyVariant] = useState<'momentum' | 'utility'>('momentum');
+  const [credits, setCredits] = useState(500);
+  const [wins, setWins] = useState(0);
+  const [losses, setLosses] = useState(0);
+  const [draws, setDraws] = useState(0);
 
   const rngRef = useRef<() => number>(() => Math.random);
 
@@ -811,17 +815,26 @@ const Play = () => {
   const endMatchIfNeeded = (nextPlayerHp: number, nextEnemyHp: number) => {
     if (nextPlayerHp <= 0 && nextEnemyHp <= 0) {
       setWinner('Draw');
+      setDraws((prev) => prev + 1);
+      setCredits((prev) => prev + 15);
       setRunning(false);
+      logFeed(['Draw. +15 CR for a completed spar.']);
       return true;
     }
     if (nextEnemyHp <= 0) {
       setWinner('You');
+      setWins((prev) => prev + 1);
+      setCredits((prev) => prev + 60);
       setRunning(false);
+      logFeed(['Victory. +60 CR bounty awarded.']);
       return true;
     }
     if (nextPlayerHp <= 0) {
       setWinner(opponent.name);
+      setLosses((prev) => prev + 1);
+      setCredits((prev) => Math.max(0, prev - 20));
       setRunning(false);
+      logFeed(['Defeat. -20 CR repair cost.']);
       return true;
     }
     return false;
@@ -1125,7 +1138,7 @@ const Play = () => {
             />
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <button className="cta-btn" onClick={startMatch} disabled={running}>
-                {running ? 'Match Live' : 'Start Match'}
+                {running ? 'Match Live' : winner ? 'Next Match' : 'Start Match'}
               </button>
               <button className="action-btn secondary" onClick={resetMatch} disabled={!running && feed.length === 0}>
                 Reset
@@ -1134,6 +1147,8 @@ const Play = () => {
             <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
               <span className="status-pill">Turn {turn}</span>
               <span className="status-pill">AP {playerAp}/{MAX_AP}</span>
+              <span className="status-pill">W-L-D {wins}-{losses}-{draws}</span>
+              <span className="status-pill">Credits {credits} CR</span>
               <span className="seed-pill">Seed {activeSeed ?? '—'}</span>
             </div>
 

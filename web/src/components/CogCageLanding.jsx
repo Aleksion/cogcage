@@ -1209,6 +1209,7 @@ const HeroSection = ({ sectionRef }) => {
   const [lastSubmittedEmail, setLastSubmittedEmail] = useState('');
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
+  const [founderBusy, setFounderBusy] = useState(false);
   const [botField, setBotField] = useState('');
   const [variant, setVariant] = useState('value');
   const [founderCtaVariant, setFounderCtaVariant] = useState('reserve');
@@ -1312,6 +1313,7 @@ const HeroSection = ({ sectionRef }) => {
     ctaSourcePrefix = 'hero-founder-cta',
     checkoutSourcePrefix = 'hero-founder-checkout',
   } = {}) => {
+    if (founderBusy) return;
     const trimmed = emailOverride || email.trim() || localStorage.getItem('cogcage_email') || '';
     if (!EMAIL_RE.test(trimmed)) {
       setStatus('error');
@@ -1319,8 +1321,10 @@ const HeroSection = ({ sectionRef }) => {
       return;
     }
 
-    localStorage.setItem('cogcage_email', trimmed.toLowerCase());
-    await postJson('/api/events', {
+    setFounderBusy(true);
+    try {
+      localStorage.setItem('cogcage_email', trimmed.toLowerCase());
+      await postJson('/api/events', {
       event: 'founder_checkout_clicked',
       source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
       email: trimmed.toLowerCase(),
@@ -1377,6 +1381,9 @@ const HeroSection = ({ sectionRef }) => {
     });
     setStatus('error');
     setMessage('Founder checkout link not configured yet.');
+    } finally {
+      setFounderBusy(false);
+    }
   };
 
   const heroCopy = HERO_COPY[variant] || HERO_COPY.value;
@@ -1432,8 +1439,8 @@ const HeroSection = ({ sectionRef }) => {
           </div>
         </div>
         <div className="hero-actions">
-          <button className="btn-arcade red" type="button" onClick={() => handleFounderCheckout()}>
-            {founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
+          <button className="btn-arcade red" type="button" onClick={() => handleFounderCheckout()} disabled={founderBusy}>
+            {founderBusy ? 'Opening Checkout...' : founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
           </button>
           <button
             className="btn-arcade"
@@ -1592,6 +1599,7 @@ const FooterSection = () => {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [founderBusy, setFounderBusy] = useState(false);
   const [botField, setBotField] = useState('');
   const [variant, setVariant] = useState('value');
   const [founderCtaVariant, setFounderCtaVariant] = useState('reserve');
@@ -1690,14 +1698,17 @@ const FooterSection = () => {
     ctaSourcePrefix = 'footer-founder-cta',
     checkoutSourcePrefix = 'footer-founder-checkout',
   } = {}) => {
+    if (founderBusy) return;
     const storedEmail = localStorage.getItem('cogcage_email')?.trim().toLowerCase() || '';
     const typedEmail = normalizedEmail();
     const candidateEmail = emailOverride || typedEmail || storedEmail;
     const trimmed = EMAIL_RE.test(candidateEmail) ? candidateEmail : validateEmail();
     if (!trimmed) return;
 
-    localStorage.setItem('cogcage_email', trimmed);
-    await postJson('/api/events', {
+    setFounderBusy(true);
+    try {
+      localStorage.setItem('cogcage_email', trimmed);
+      await postJson('/api/events', {
       event: 'founder_checkout_clicked',
       source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
       email: trimmed,
@@ -1753,6 +1764,9 @@ const FooterSection = () => {
       meta: { variant, founderCtaVariant },
     });
     setError('Founder checkout link not configured yet.');
+    } finally {
+      setFounderBusy(false);
+    }
   };
 
   return (
@@ -1810,9 +1824,9 @@ const FooterSection = () => {
               className="btn-arcade"
               style={{ fontSize: '1rem', padding: '0.8rem 2rem' }}
               onClick={() => { void handleFooterFounderCheckout(); }}
-              disabled={isSubmitting}
+              disabled={isSubmitting || founderBusy}
             >
-              {founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
+              {founderBusy ? 'Opening Checkout...' : founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
             </button>
           </div>
           <p style={{ color: '#f5d66b', fontWeight: 800, fontSize: '0.9rem' }}>
@@ -1832,8 +1846,9 @@ const FooterSection = () => {
               ctaSourcePrefix: 'footer-post-waitlist-founder-cta',
               checkoutSourcePrefix: 'footer-post-waitlist-founder-checkout',
             })}
+            disabled={founderBusy}
           >
-            {founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
+            {founderBusy ? 'Opening Checkout...' : founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
           </button>
           <p style={{ marginTop: '0.75rem', color: '#f5d66b', fontWeight: 800, fontSize: '0.9rem' }}>
             Optional upgrade: lock {FOUNDER_PRICE_TEXT} before it moves to {FOUNDER_PRICE_FUTURE_TEXT}.
