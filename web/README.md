@@ -22,6 +22,12 @@ PUBLIC_TOURNAMENT_WAITLIST_URL="#join"
 
 If `PUBLIC_STRIPE_FOUNDER_URL` is set, Founder checkout now captures email first, logs a server-side founder intent (`POST /api/founder-intent`), and opens Stripe with `prefilled_email` to reduce checkout friction.
 
+Use a Stripe success URL that points to `/success` and includes the checkout session id so paid conversions can be confirmed server-side:
+
+```text
+https://your-domain.com/success?session_id={CHECKOUT_SESSION_ID}
+```
+
 ## Waitlist Data Ownership
 
 The landing form posts to `POST /api/waitlist` (Astro server route) and writes leads to SQLite via `better-sqlite3`.
