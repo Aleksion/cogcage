@@ -1,5 +1,12 @@
 import type { APIRoute } from 'astro';
-import { consumeRateLimit, insertConversionEvent, insertWaitlistLead, type ConversionEvent } from '../../lib/waitlist-db';
+import {
+  consumeRateLimit,
+  insertConversionEvent,
+  insertWaitlistLead,
+  readApiRequestReceipt,
+  writeApiRequestReceipt,
+  type ConversionEvent,
+} from '../../lib/waitlist-db';
 import { appendEventsFallback, appendOpsLog, appendWaitlistFallback } from '../../lib/observability';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -22,6 +29,13 @@ function getRateLimitKey(request: Request) {
   const lang = request.headers.get('accept-language') ?? 'unknown-lang';
   // Fallback avoids global throttling when proxy IP headers are missing.
   return `anon:${ua.slice(0, 80)}:${lang.slice(0, 40)}`;
+}
+
+function getIdempotencyKey(request: Request) {
+  const key = request.headers.get('x-idempotency-key')?.trim() ?? '';
+  if (!key) return undefined;
+  // Keep bounded for storage safety and header abuse prevention.
+  return key.slice(0, 120);
 }
 
 function normalize(value: FormDataEntryValue | null) {
@@ -69,10 +83,60 @@ export const POST: APIRoute = async ({ request }) => {
   const startedAt = Date.now();
   const requestId = crypto.randomUUID();
   const contentType = request.headers.get('content-type') ?? '';
+  const route = '/api/waitlist';
+  const idempotencyKey = getIdempotencyKey(request);
   let email = '';
   let game = '';
   let source = '';
   let honeypot = '';
+
+  const respond = (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
+    if (idempotencyKey) {
+      try {
+        writeApiRequestReceipt({
+          route,
+          idempotencyKey,
+          responseStatus: status,
+          responseBody: JSON.stringify({ ...body, requestId }),
+        });
+      } catch (error) {
+        appendOpsLog({
+          route,
+          level: 'warn',
+          event: 'waitlist_idempotency_write_failed',
+          requestId,
+          error: error instanceof Error ? error.message : 'unknown',
+        });
+      }
+    }
+
+    return jsonResponse(body, status, requestId, extraHeaders);
+  };
+
+  if (idempotencyKey) {
+    try {
+      const cached = readApiRequestReceipt(route, idempotencyKey);
+      if (cached) {
+        appendOpsLog({ route, level: 'info', event: 'waitlist_idempotency_replay', requestId, durationMs: Date.now() - startedAt });
+        return new Response(cached.responseBody, {
+          status: cached.responseStatus,
+          headers: {
+            'content-type': 'application/json',
+            'x-request-id': requestId,
+            'x-idempotent-replay': '1',
+          },
+        });
+      }
+    } catch (error) {
+      appendOpsLog({
+        route,
+        level: 'warn',
+        event: 'waitlist_idempotency_read_failed',
+        requestId,
+        error: error instanceof Error ? error.message : 'unknown',
+      });
+    }
+  }
 
   try {
     if (contentType.includes('application/json')) {
@@ -124,7 +188,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
   } catch (error) {
     appendOpsLog({
-      route: '/api/waitlist',
+      route: route,
       level: 'warn',
       event: 'waitlist_payload_parse_failed',
       requestId,
@@ -132,14 +196,14 @@ export const POST: APIRoute = async ({ request }) => {
       error: error instanceof Error ? error.message : 'unknown',
       durationMs: Date.now() - startedAt,
     });
-    safeTrackConversion('/api/waitlist', requestId, {
+    safeTrackConversion(route, requestId, {
       eventName: 'waitlist_payload_parse_failed',
       source: 'cogcage-landing',
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress: getClientIp(request),
       metaJson: JSON.stringify({ contentType }),
     });
-    return jsonResponse({ ok: false, error: 'Invalid request payload.' }, 400, requestId);
+    return respond({ ok: false, error: 'Invalid request payload.' }, 400);
   }
 
   const ipAddress = getClientIp(request);
@@ -152,7 +216,7 @@ export const POST: APIRoute = async ({ request }) => {
     rateLimit = consumeRateLimit(rateLimitKey, 'waitlist', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
   } catch (error) {
     appendOpsLog({
-      route: '/api/waitlist',
+      route: route,
       level: 'warn',
       event: 'waitlist_rate_limit_failed',
       requestId,
@@ -160,8 +224,8 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
   if (!rateLimit.allowed) {
-    appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_rate_limited', requestId, ipAddress, durationMs: Date.now() - startedAt });
-    safeTrackConversion('/api/waitlist', requestId, {
+    appendOpsLog({ route: route, level: 'warn', event: 'waitlist_rate_limited', requestId, ipAddress, durationMs: Date.now() - startedAt });
+    safeTrackConversion(route, requestId, {
       eventName: 'waitlist_rate_limited',
       source: eventSource,
       email: normalizedEmail || undefined,
@@ -169,14 +233,14 @@ export const POST: APIRoute = async ({ request }) => {
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
-    return jsonResponse({ ok: false, error: 'Too many attempts. Try again in a few minutes.' }, 429, requestId, {
+    return respond({ ok: false, error: 'Too many attempts. Try again in a few minutes.' }, 429, {
       'retry-after': String(Math.ceil(rateLimit.resetMs / 1000)),
     });
   }
 
   if (honeypot) {
-    appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_honeypot_blocked', requestId, ipAddress, durationMs: Date.now() - startedAt });
-    safeTrackConversion('/api/waitlist', requestId, {
+    appendOpsLog({ route: route, level: 'warn', event: 'waitlist_honeypot_blocked', requestId, ipAddress, durationMs: Date.now() - startedAt });
+    safeTrackConversion(route, requestId, {
       eventName: 'waitlist_honeypot_blocked',
       source: eventSource,
       email: normalizedEmail || undefined,
@@ -184,19 +248,19 @@ export const POST: APIRoute = async ({ request }) => {
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
-    return jsonResponse({ ok: false, error: 'Submission blocked.' }, 400, requestId);
+    return respond({ ok: false, error: 'Submission blocked.' }, 400);
   }
 
   if (!EMAIL_RE.test(email)) {
-    appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_invalid_email', requestId, ipAddress, durationMs: Date.now() - startedAt });
-    safeTrackConversion('/api/waitlist', requestId, {
+    appendOpsLog({ route: route, level: 'warn', event: 'waitlist_invalid_email', requestId, ipAddress, durationMs: Date.now() - startedAt });
+    safeTrackConversion(route, requestId, {
       eventName: 'waitlist_invalid_email',
       source: eventSource,
       email: normalizedEmail || undefined,
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
-    return jsonResponse({ ok: false, error: 'Valid email is required.' }, 400, requestId);
+    return respond({ ok: false, error: 'Valid email is required.' }, 400);
   }
 
   const payload = {
@@ -209,22 +273,22 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     insertWaitlistLead(payload);
-    appendOpsLog({ route: '/api/waitlist', level: 'info', event: 'waitlist_saved', requestId, source: payload.source, emailHash: normalizedEmail.slice(0, 3), durationMs: Date.now() - startedAt });
-    safeTrackConversion('/api/waitlist', requestId, {
+    appendOpsLog({ route: route, level: 'info', event: 'waitlist_saved', requestId, source: payload.source, emailHash: normalizedEmail.slice(0, 3), durationMs: Date.now() - startedAt });
+    safeTrackConversion(route, requestId, {
       eventName: 'waitlist_submitted',
       source: payload.source,
       email: normalizedEmail,
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress,
     });
-    return jsonResponse({ ok: true }, 200, requestId);
+    return respond({ ok: true }, 200);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'unknown-error';
-    appendOpsLog({ route: '/api/waitlist', level: 'error', event: 'waitlist_db_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
+    appendOpsLog({ route: route, level: 'error', event: 'waitlist_db_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
 
     try {
-      appendWaitlistFallback({ route: '/api/waitlist', requestId, ...payload, reason: errorMessage });
-      safeTrackConversion('/api/waitlist', requestId, {
+      appendWaitlistFallback({ route: route, requestId, ...payload, reason: errorMessage });
+      safeTrackConversion(route, requestId, {
         eventName: 'waitlist_queued_fallback',
         source: payload.source,
         email: normalizedEmail,
@@ -232,11 +296,11 @@ export const POST: APIRoute = async ({ request }) => {
         userAgent: request.headers.get('user-agent') ?? undefined,
         ipAddress,
       });
-      appendOpsLog({ route: '/api/waitlist', level: 'warn', event: 'waitlist_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
-      return jsonResponse({ ok: true, queued: true }, 202, requestId);
+      appendOpsLog({ route: route, level: 'warn', event: 'waitlist_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
+      return respond({ ok: true, queued: true }, 202);
     } catch (fallbackError) {
-      appendOpsLog({ route: '/api/waitlist', level: 'error', event: 'waitlist_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
-      safeTrackConversion('/api/waitlist', requestId, {
+      appendOpsLog({ route: route, level: 'error', event: 'waitlist_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
+      safeTrackConversion(route, requestId, {
         eventName: 'waitlist_insert_failed',
         source: payload.source,
         email: normalizedEmail,
@@ -244,7 +308,7 @@ export const POST: APIRoute = async ({ request }) => {
         userAgent: request.headers.get('user-agent') ?? undefined,
         ipAddress,
       });
-      return jsonResponse({ ok: false, error: 'Temporary storage issue. Please retry in 1 minute.' }, 503, requestId);
+      return respond({ ok: false, error: 'Temporary storage issue. Please retry in 1 minute.' }, 503);
     }
   }
 };

@@ -54,6 +54,13 @@ export type ReliabilitySnapshot = {
   founderIntentFailed: number;
 };
 
+export type ApiRequestReceipt = {
+  route: string;
+  idempotencyKey: string;
+  responseStatus: number;
+  responseBody: string;
+};
+
 let db: Database.Database | null = null;
 
 export function getDbPath() {
@@ -145,6 +152,18 @@ function getDb() {
       count INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (ip_address, route, window_start)
     );
+
+    CREATE TABLE IF NOT EXISTS api_request_receipts (
+      route TEXT NOT NULL,
+      idempotency_key TEXT NOT NULL,
+      response_status INTEGER NOT NULL,
+      response_body TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (route, idempotency_key)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_api_request_receipts_created_at
+    ON api_request_receipts (created_at);
   `);
 
   return db;
@@ -287,6 +306,35 @@ export function consumeRateLimit(
     ...result,
     resetMs: (windowStart + 1) * windowMs - now,
   };
+}
+
+export function readApiRequestReceipt(route: string, idempotencyKey: string): ApiRequestReceipt | null {
+  const conn = getDb();
+  const row = runWithBusyRetry('api_receipt_read', () => conn.prepare(`
+    SELECT route, idempotency_key AS idempotencyKey, response_status AS responseStatus, response_body AS responseBody
+    FROM api_request_receipts
+    WHERE route = ? AND idempotency_key = ?
+  `).get(route, idempotencyKey)) as ApiRequestReceipt | undefined;
+
+  return row ?? null;
+}
+
+export function writeApiRequestReceipt(receipt: ApiRequestReceipt) {
+  const conn = getDb();
+
+  runWithBusyRetry('api_receipt_write', () => conn.prepare(`
+    INSERT INTO api_request_receipts (route, idempotency_key, response_status, response_body)
+    VALUES (@route, @idempotencyKey, @responseStatus, @responseBody)
+    ON CONFLICT(route, idempotency_key) DO UPDATE SET
+      response_status=excluded.response_status,
+      response_body=excluded.response_body,
+      created_at=CURRENT_TIMESTAMP
+  `).run(receipt));
+
+  runWithBusyRetry('api_receipt_gc', () => conn.prepare(`
+    DELETE FROM api_request_receipts
+    WHERE created_at < datetime('now', '-3 days')
+  `).run());
 }
 
 export function getFunnelCounts(): FunnelCounts {
