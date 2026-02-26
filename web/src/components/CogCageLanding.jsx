@@ -790,8 +790,8 @@ const STRIPE_FOUNDER_URL = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COPY_VARIANT_KEY = 'cogcage_copy_variant';
 const FOUNDER_CTA_VARIANT_KEY = 'cogcage_founder_cta_variant';
-const FOUNDER_PRICE_TEXT = 'Founder Pack $29 one-time';
-const FOUNDER_PRICE_FUTURE_TEXT = '$49 once beta opens';
+const FOUNDER_PRICE_TEXT = '$29/mo founder price';
+const FOUNDER_PRICE_FUTURE_TEXT = '$49/mo after beta';
 const HERO_COPY = {
   value: {
     headline: ['CODE YOUR BOT.', 'WATCH IT FIGHT.', 'WIN THE ARENA.'],
@@ -1108,12 +1108,12 @@ const HeroSection = ({ sectionRef }) => {
     <section className="hero-section" ref={sectionRef} id="hero">
       <div className="hero-content">
         <h1 className="hero-h1 text-stroke">
-          BUILD YOUR BOT.<br />
-          <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>WATCH IT FIGHT.</span><br />
-          WIN THE ARENA.
+          PROGRAM.<br />
+          <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>FIGHT.</span><br />
+          CASH IN.
         </h1>
         <p className="hero-body">
-          Build your AI fighter, tune its strategy, and climb the leaderboard.
+          {heroCopy.body}
         </p>
         <div className="panel-skew hero-waitlist" style={{ background: 'var(--c-white)' }}>
           <div className="panel-content-unskew">
