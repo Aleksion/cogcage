@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { APIRoute } from 'astro';
-import { getFunnelCounts } from '../../lib/waitlist-db';
+import { getFunnelCounts, getReliabilitySnapshot } from '../../lib/waitlist-db';
 import { getRuntimeDir } from '../../lib/runtime-paths';
 
 export const prerender = false;
@@ -58,12 +58,14 @@ export const GET: APIRoute = async ({ request }) => {
   ];
 
   let counts;
+  let reliability;
   try {
     counts = getFunnelCounts();
+    reliability = getReliabilitySnapshot(24);
   } catch (error) {
     return new Response(JSON.stringify({
       ok: false,
-      error: 'Could not read funnel counts',
+      error: 'Could not read ops metrics',
       detail: error instanceof Error ? error.message : 'unknown-error',
       files,
     }), {
@@ -72,10 +74,18 @@ export const GET: APIRoute = async ({ request }) => {
     });
   }
 
+  const queueBacklog = {
+    waitlistFallbackLines: files.find((file) => file.file === 'waitlist-fallback.ndjson')?.lines ?? 0,
+    founderIntentFallbackLines: files.find((file) => file.file === 'founder-intent-fallback.ndjson')?.lines ?? 0,
+    eventsFallbackLines: files.find((file) => file.file === 'events-fallback.ndjson')?.lines ?? 0,
+  };
+
   return new Response(JSON.stringify({
     ok: true,
     ts: new Date().toISOString(),
     counts,
+    reliability,
+    queueBacklog,
     files,
   }), {
     status: 200,

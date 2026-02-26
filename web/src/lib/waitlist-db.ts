@@ -44,6 +44,16 @@ export type FunnelCounts = {
   conversionEvents: number;
 };
 
+export type ReliabilitySnapshot = {
+  windowHours: number;
+  waitlistSubmitted: number;
+  waitlistQueuedFallback: number;
+  waitlistFailed: number;
+  founderIntentSubmitted: number;
+  founderIntentQueuedFallback: number;
+  founderIntentFailed: number;
+};
+
 let db: Database.Database | null = null;
 
 function getDbPath() {
@@ -276,5 +286,38 @@ export function getFunnelCounts(): FunnelCounts {
     waitlistLeads: waitlist.count,
     founderIntents: founders.count,
     conversionEvents: events.count,
+  };
+}
+
+export function getReliabilitySnapshot(windowHours = 24): ReliabilitySnapshot {
+  const conn = getDb();
+  const hours = Math.max(1, Math.min(168, Math.floor(windowHours)));
+
+  const query = conn.prepare(`
+    SELECT event_name AS eventName, COUNT(*) AS count
+    FROM conversion_events
+    WHERE created_at >= datetime('now', ?)
+      AND event_name IN (
+        'waitlist_submitted',
+        'waitlist_queued_fallback',
+        'waitlist_insert_failed',
+        'founder_intent_submitted',
+        'founder_intent_queued_fallback',
+        'founder_intent_insert_failed'
+      )
+    GROUP BY event_name
+  `);
+
+  const rows = runWithBusyRetry('reliability_snapshot', () => query.all(`-${hours} hours`)) as Array<{ eventName: string; count: number }>;
+  const counts = new Map(rows.map((row) => [row.eventName, row.count]));
+
+  return {
+    windowHours: hours,
+    waitlistSubmitted: counts.get('waitlist_submitted') ?? 0,
+    waitlistQueuedFallback: counts.get('waitlist_queued_fallback') ?? 0,
+    waitlistFailed: counts.get('waitlist_insert_failed') ?? 0,
+    founderIntentSubmitted: counts.get('founder_intent_submitted') ?? 0,
+    founderIntentQueuedFallback: counts.get('founder_intent_queued_fallback') ?? 0,
+    founderIntentFailed: counts.get('founder_intent_insert_failed') ?? 0,
   };
 }
