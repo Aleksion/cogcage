@@ -72,11 +72,18 @@ const globalStyles = `
     text-decoration: none;
     position: relative;
     overflow: hidden;
+    min-height: 52px;
   }
 
   .btn-arcade:active {
     transform: translateY(6px);
     box-shadow: 0 0 0 var(--c-dark);
+  }
+
+  .btn-arcade:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
   }
 
   .btn-arcade.red {
@@ -119,6 +126,7 @@ const globalStyles = `
     background: rgba(255,255,255,0.9);
     backdrop-filter: blur(10px);
     border-bottom: 4px solid var(--c-dark);
+    gap: 1.5rem;
   }
 
   .logo {
@@ -131,6 +139,57 @@ const globalStyles = `
   }
 
   .nav-links { display: flex; gap: 2rem; }
+
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .nav-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--c-white);
+    border: 3px solid var(--c-dark);
+    box-shadow: var(--shadow-hard);
+    font-family: var(--f-display);
+    font-size: 1.4rem;
+    cursor: pointer;
+  }
+
+  .nav-toggle span {
+    display: block;
+    line-height: 1;
+  }
+
+  .nav-mobile {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--c-white);
+    border-bottom: 4px solid var(--c-dark);
+    padding: 1rem 1.5rem 1.5rem;
+    box-shadow: 0 12px 0 rgba(0,0,0,0.15);
+    z-index: 99;
+  }
+
+  .nav-mobile .nav-link {
+    font-size: 1.1rem;
+    padding: 0.75rem 0.25rem;
+    text-align: left;
+  }
+
+  .nav-mobile.open {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
 
   .nav-link {
     font-weight: 800;
@@ -169,14 +228,14 @@ const globalStyles = `
   .hero-content { z-index: 2; }
 
   .hero-h1 {
-    font-size: 7rem;
+    font-size: clamp(3.4rem, 8vw, 7rem);
     line-height: 0.85;
     margin-bottom: 1.5rem;
     transform: rotate(-2deg);
   }
 
   .hero-tagline {
-    font-size: 1.5rem;
+    font-size: clamp(1.05rem, 2.5vw, 1.5rem);
     font-weight: 800;
     color: var(--c-dark);
     margin-bottom: 2.5rem;
@@ -195,8 +254,69 @@ const globalStyles = `
     align-items: center;
   }
 
+  .hero-body {
+    font-size: 1.35rem;
+    max-width: 520px;
+    margin-bottom: 2rem;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .hero-waitlist {
+    margin-bottom: 2rem;
+    max-width: 520px;
+    width: min(520px, 100%);
+  }
+
+  .waitlist-label {
+    font-weight: 900;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .waitlist-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.75rem;
+  }
+
+  .waitlist-input {
+    padding: 0.9rem 1.2rem;
+    border: 3px solid var(--c-dark);
+    border-radius: 16px;
+    font-size: 1rem;
+    font-family: var(--f-body);
+    font-weight: 700;
+    background: #fff;
+    color: var(--c-dark);
+    min-height: 52px;
+    outline: none;
+  }
+
+  .waitlist-input:focus {
+    box-shadow: 0 0 0 4px rgba(0, 229, 255, 0.35);
+  }
+
+  .waitlist-message {
+    margin-top: 0.75rem;
+    font-weight: 800;
+  }
+
+  .waitlist-hint {
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+    opacity: 0.8;
+  }
+
   .bot-card {
-    width: 400px;
+    width: min(400px, 90vw);
     height: 550px;
     background: var(--c-white);
     border: 5px solid var(--c-dark);
@@ -297,7 +417,7 @@ const globalStyles = `
   .ticker-item {
     display: inline-block;
     padding: 0 2rem;
-    font-size: 1.2rem;
+    font-size: clamp(0.95rem, 2.2vw, 1.2rem);
     font-weight: 800;
     font-family: var(--f-display);
     letter-spacing: 1px;
@@ -316,7 +436,7 @@ const globalStyles = `
   }
 
   .section-header h2 {
-    font-size: 5rem;
+    font-size: clamp(2.6rem, 7vw, 5rem);
     color: var(--c-yellow);
     -webkit-text-stroke: 3px var(--c-dark);
     text-shadow: 5px 5px 0px var(--c-dark);
@@ -475,7 +595,110 @@ const globalStyles = `
     0%, 90%, 100% { transform: scaleY(1); }
     95% { transform: scaleY(0.1); }
   }
+
+  @media (max-width: 1200px) {
+    .parts-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 900px) {
+    nav.cog-nav {
+      padding: 1rem 1.5rem;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    .logo { font-size: 2rem; }
+
+    .nav-links { display: none; }
+
+    .nav-toggle { display: inline-flex; }
+
+    .nav-cta { display: none; }
+
+    .hero-section {
+      grid-template-columns: 1fr;
+      min-height: auto;
+      padding: 2.5rem 1.5rem 3rem;
+      gap: 2rem;
+    }
+
+    .hero-visual {
+      order: 2;
+    }
+
+    .hero-body {
+      font-size: 1.1rem;
+    }
+
+    .hero-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .hero-actions .btn-arcade {
+      width: 100%;
+    }
+
+    .waitlist-form {
+      grid-template-columns: 1fr;
+    }
+
+    .bot-card {
+      height: auto;
+      min-height: 440px;
+      transform: rotate(2deg);
+    }
+
+    .decor { opacity: 0.3; }
+
+    .section-config,
+    .section-arena {
+      padding: 4rem 1.5rem;
+    }
+
+    .leaderboard-container {
+      padding: 1.5rem;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .parts-grid { grid-template-columns: 1fr; }
+
+    .rank-row {
+      grid-template-columns: 0.6fr 1.6fr 1fr 1fr;
+      font-size: 1rem;
+      gap: 0.5rem;
+    }
+
+    .ticker-wrap { padding: 0.8rem 0; }
+
+    footer {
+      padding: 3rem 1.5rem;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .hero-section { padding: 2rem 1.2rem 2.5rem; }
+    .hero-h1 { letter-spacing: 1px; }
+    .panel-skew { padding: 1.5rem; }
+    .waitlist-label { font-size: 1rem; }
+  }
 `;
+
+const STRIPE_FOUNDER_URL = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const postJson = async (url, payload) => {
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // best-effort tracking only
+  }
+};
 
 // ─── Reusable Components ───────────────────────────────────────────────────────
 
@@ -567,64 +790,170 @@ const RankRow = ({ rank, rankBg, rankColor, name, winRate, status, isOnline }) =
 
 const NavBar = ({ onNavClick }) => {
   const [playPressed, setPlayPressed] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handlePlay = () => {
     setPlayPressed(true);
     setTimeout(() => setPlayPressed(false), 300);
     onNavClick('hero');
+    setMenuOpen(false);
+  };
+
+  const handleNav = (section) => {
+    onNavClick(section);
+    setMenuOpen(false);
   };
 
   return (
     <nav className="cog-nav">
-      <div className="logo" onClick={() => onNavClick('hero')} style={{ cursor: 'pointer' }}>COG CAGE</div>
+      <div className="logo" onClick={() => handleNav('hero')} style={{ cursor: 'pointer' }}>COG CAGE</div>
       <div className="nav-links">
         {[['Builder', 'build'], ['Arena', 'arena'], ['Marketplace', 'build'], ['Guide', 'hero']].map(([label, section]) => (
-          <button key={label} className="nav-link" onClick={() => onNavClick(section)}>{label}</button>
+          <button key={label} className="nav-link" onClick={() => handleNav(section)}>{label}</button>
         ))}
       </div>
-      <button
-        className={`btn-arcade${playPressed ? ' pressed' : ''}`}
-        style={{ fontSize: '1rem', padding: '0.8rem 2rem' }}
-        onClick={handlePlay}
-      >
-        Play Now
-      </button>
+      <div className="nav-controls">
+        <button
+          className={`btn-arcade nav-cta${playPressed ? ' pressed' : ''}`}
+          style={{ fontSize: '1rem', padding: '0.8rem 2rem' }}
+          onClick={handlePlay}
+        >
+          Play Now
+        </button>
+        <button
+          className="nav-toggle"
+          type="button"
+          aria-expanded={menuOpen}
+          aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          onClick={() => setMenuOpen(open => !open)}
+        >
+          <span>{menuOpen ? '✕' : '☰'}</span>
+        </button>
+      </div>
+      <div className={`nav-mobile ${menuOpen ? 'open' : ''}`}>
+        {[['Builder', 'build'], ['Arena', 'arena'], ['Marketplace', 'build'], ['Guide', 'hero']].map(([label, section]) => (
+          <button key={label} className="nav-link" onClick={() => handleNav(section)}>{label}</button>
+        ))}
+        <button
+          className="btn-arcade"
+          style={{ fontSize: '1rem', padding: '0.8rem 2rem', width: '100%' }}
+          onClick={handlePlay}
+        >
+          Play Now
+        </button>
+      </div>
     </nav>
   );
 };
 
 // ─── Sections ─────────────────────────────────────────────────────────────────
 
-const HeroSection = ({ sectionRef }) => (
-  <section className="hero-section" ref={sectionRef} id="hero">
-    <div className="decor circle-decor" />
-    <div className="decor plus-decor">+</div>
+const HeroSection = ({ sectionRef }) => {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle');
+  const [message, setMessage] = useState('');
 
-    <div className="hero-content">
-      <div className="panel-skew" style={{ display: 'inline-block', marginBottom: '2rem', background: 'var(--c-yellow)' }}>
-        <div className="panel-content-unskew">
-          <span style={{ fontWeight: 900, textTransform: 'uppercase', fontSize: '1.2rem' }}>Season 4 is Live!</span>
+  const submitWaitlist = async (event) => {
+    event?.preventDefault();
+    if (status === 'loading') return;
+
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setStatus('error');
+      setMessage('Enter your email to join the beta.');
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(trimmed)) {
+      setStatus('error');
+      setMessage('Please use a valid email address.');
+      return;
+    }
+
+    setStatus('loading');
+    setMessage('');
+
+    try {
+      const response = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          email: trimmed,
+          game: 'Unspecified',
+          source: 'cogcage-hero'
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.ok !== true) {
+        throw new Error(payload.error || 'Something went wrong. Try again.');
+      }
+      setStatus('success');
+      setMessage('You are on the list. Watch for your invite.');
+      setEmail('');
+    } catch (err) {
+      setStatus('error');
+      setMessage(err instanceof Error ? err.message : 'Something went wrong. Try again.');
+    }
+  };
+
+  return (
+    <section className="hero-section" ref={sectionRef} id="hero">
+      <div className="decor circle-decor" />
+      <div className="decor plus-decor">+</div>
+
+      <div className="hero-content">
+        <div className="panel-skew" style={{ display: 'inline-block', marginBottom: '2rem', background: 'var(--c-yellow)' }}>
+          <div className="panel-content-unskew">
+            <span style={{ fontWeight: 900, textTransform: 'uppercase', fontSize: '1.2rem' }}>Season 4 is Live!</span>
+          </div>
+        </div>
+        <h1 className="hero-h1 text-stroke">
+          PROGRAM.<br />
+          <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>FIGHT.</span><br />
+          DOMINATE.
+        </h1>
+        <p className="hero-body">
+          Construct the ultimate LLM-powered combatant. Configure weaponry, optimize logic gates, and bet on the outcome in real-time neural battles.
+        </p>
+        <div className="panel-skew hero-waitlist" style={{ background: 'var(--c-white)' }}>
+          <div className="panel-content-unskew">
+            <div className="waitlist-label">Join the beta waitlist</div>
+            <form className="waitlist-form" onSubmit={submitWaitlist}>
+              <input
+                className="waitlist-input"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@domain.com"
+                autoComplete="email"
+                aria-label="Email address"
+              />
+              <button
+                className="btn-arcade red"
+                style={{ fontSize: '1rem', padding: '0.85rem 1.6rem' }}
+                type="submit"
+                disabled={status === 'loading'}
+              >
+                {status === 'loading' ? 'Joining...' : 'Join Waitlist'}
+              </button>
+            </form>
+            <div className="waitlist-message" role="status" aria-live="polite" style={{ color: status === 'error' ? 'var(--c-red)' : '#00C853' }}>
+              {message}
+            </div>
+            <div className="waitlist-hint">Early access invites, creator perks, and arena updates.</div>
+          </div>
+        </div>
+        <div className="hero-actions">
+          <button className="btn-arcade red" type="button">Enter Cage</button>
+          <button className="btn-arcade" style={{ background: 'var(--c-white)' }} type="button">Watch Live</button>
         </div>
       </div>
-      <h1 className="hero-h1 text-stroke">
-        PROGRAM.<br />
-        <span style={{ color: 'var(--c-red)', WebkitTextStroke: '0' }}>FIGHT.</span><br />
-        DOMINATE.
-      </h1>
-      <p style={{ fontSize: '1.4rem', maxWidth: '500px', marginBottom: '2rem', fontWeight: 500, lineHeight: 1.5 }}>
-        Construct the ultimate LLM-powered combatant. Configure weaponry, optimize logic gates, and bet on the outcome in real-time neural battles.
-      </p>
-      <div style={{ display: 'flex', gap: '1rem' }}>
-        <button className="btn-arcade red">Enter Cage</button>
-        <button className="btn-arcade" style={{ background: 'var(--c-white)' }}>Watch Live</button>
-      </div>
-    </div>
 
-    <div className="hero-visual">
-      <BotCard />
-    </div>
-  </section>
-);
+      <div className="hero-visual">
+        <BotCard />
+      </div>
+    </section>
+  );
+};
 
 const TickerSection = () => {
   const items = [
