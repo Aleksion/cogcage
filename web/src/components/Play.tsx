@@ -234,12 +234,7 @@ const globalStyles = `
 
   .bar-fill {
     height: 100%;
-    transition: width 0.35s ease;
-    background: linear-gradient(90deg, #2ecc71 0%, #27ae60 100%);
-  }
-
-  .bar-fill.opponent {
-    background: linear-gradient(90deg, #ff6b6b 0%, #d63031 100%);
+    transition: width 0.35s ease, background 0.35s ease;
   }
 
   .arena-map {
@@ -248,9 +243,18 @@ const globalStyles = `
     grid-template-columns: repeat(var(--grid-size), minmax(28px, 1fr));
     gap: 6px;
     padding: 0.75rem;
-    background: #101010;
+    background:
+      radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px),
+      #101010;
+    background-size: 8px 8px, 100% 100%;
     border-radius: 16px;
-    border: 3px solid var(--c-dark);
+    border: 3px solid #111;
+    box-shadow: 0 0 0 2px #111, 0 0 0 5px #FFD233;
+    position: relative;
+  }
+
+  .arena-map.arena-flash {
+    animation: arena-ko-flash 0.3s ease-out 2;
   }
 
   .arena-cell {
@@ -263,10 +267,14 @@ const globalStyles = `
     place-items: center;
     font-weight: 900;
     color: #111;
+    overflow: visible;
   }
 
   .arena-cell.obstacle {
-    background: #2f2f2f;
+    background:
+      repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.08) 3px, rgba(255,255,255,0.08) 4px),
+      repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(255,255,255,0.08) 3px, rgba(255,255,255,0.08) 4px),
+      #2f2f2f;
     border-color: #000;
     box-shadow: inset 0 0 0 2px rgba(255,255,255,0.05);
   }
@@ -276,13 +284,19 @@ const globalStyles = `
   }
 
   .arena-cell.player {
-    background: #2ecc71;
-    color: #0f2b18;
+    background: rgba(46, 204, 113, 0.18);
+    border-color: #2ecc71;
+    padding: 3px;
   }
 
   .arena-cell.enemy {
-    background: #eb4d4b;
-    color: #fff;
+    background: rgba(235, 77, 75, 0.18);
+    border-color: #eb4d4b;
+    padding: 3px;
+  }
+
+  .arena-cell.cell-vfx-flash {
+    animation: cell-flash-anim 200ms ease-out;
   }
 
   .arena-legend {
@@ -340,10 +354,261 @@ const globalStyles = `
     align-items: center;
   }
 
+  /* --- VFX Keyframes --- */
+
+  @keyframes vfx-burst-in {
+    0% { transform: scale(0.2) rotate(-12deg); opacity: 0; }
+    20% { transform: scale(1.4) rotate(4deg); opacity: 1; }
+    50% { transform: scale(0.95) rotate(-2deg); opacity: 1; }
+    75% { transform: scale(1.05) rotate(1deg); opacity: 0.7; }
+    100% { transform: scale(1.1) rotate(0deg); opacity: 0; }
+  }
+
+  @keyframes vfx-ring-pulse {
+    0% { transform: scale(0.3); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(1.5); opacity: 0; }
+  }
+
+  @keyframes vfx-bolt-in {
+    0% { transform: scale(0.3) skewX(-10deg); opacity: 0; }
+    25% { transform: scale(1.2) skewX(5deg); opacity: 1; }
+    70% { transform: scale(1) skewX(0deg); opacity: 0.8; }
+    100% { transform: scale(1.1) skewX(-3deg); opacity: 0; }
+  }
+
+  @keyframes cell-flash-anim {
+    0% { box-shadow: inset 0 0 0 50px rgba(255,255,255,0.6); }
+    100% { box-shadow: inset 0 0 0 50px rgba(255,255,255,0); }
+  }
+
+  @keyframes arena-ko-flash {
+    0%, 100% { box-shadow: 0 0 0 2px #111, 0 0 0 5px #FFD233; }
+    50% { box-shadow: 0 0 0 3px #fff, 0 0 0 7px #FF4D4D, 0 0 25px rgba(255,77,77,0.5); }
+  }
+
+  @keyframes ko-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes ko-text-slam {
+    0% { transform: scale(4); opacity: 0; }
+    30% { transform: scale(0.85); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes ko-fade-up {
+    0% { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  /* --- VFX Popup --- */
+
+  .vfx-popup {
+    position: absolute;
+    inset: -50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    pointer-events: none;
+    font-family: var(--f-display);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .vfx-popup.burst {
+    font-size: 1.5em;
+    animation: vfx-burst-in 600ms ease-out forwards;
+  }
+
+  .vfx-popup.ring {
+    font-size: 1.3em;
+    animation: vfx-ring-pulse 600ms ease-out forwards;
+  }
+
+  .vfx-popup.bolt {
+    font-size: 1.3em;
+    font-style: italic;
+    animation: vfx-bolt-in 500ms ease-out forwards;
+  }
+
+  .vfx-popup.ko {
+    font-size: 2em;
+    animation: ko-text-slam 800ms ease-out forwards;
+  }
+
+  .vfx-popup span {
+    text-shadow:
+      2px 2px 0px rgba(0,0,0,0.85),
+      -1px -1px 0px rgba(0,0,0,0.4),
+      0 0 8px rgba(0,0,0,0.3);
+  }
+
+  /* --- KO Overlay --- */
+
+  .ko-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.92);
+    overflow: hidden;
+  }
+
+  .ko-radial-bg {
+    position: absolute;
+    width: 250%;
+    height: 250%;
+    top: -75%;
+    left: -75%;
+    background: repeating-conic-gradient(
+      from 0deg,
+      #FFD233 0deg 5deg,
+      #111 5deg 10deg
+    );
+    animation: ko-spin 20s linear infinite;
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  .ko-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .ko-title {
+    font-family: var(--f-display);
+    font-size: 6rem;
+    color: #FFD233;
+    text-shadow: 4px 4px 0px #111, -2px -2px 0px #111, 0 0 40px rgba(255,210,51,0.4);
+    text-transform: uppercase;
+    animation: ko-text-slam 0.6s ease-out;
+  }
+
+  .ko-winner-name {
+    font-family: var(--f-display);
+    font-size: 2.5rem;
+    color: #fff;
+    text-shadow: 2px 2px 0px #111;
+    text-transform: uppercase;
+    animation: ko-fade-up 0.5s ease-out 0.3s both;
+  }
+
+  .ko-reason {
+    font-family: var(--f-body);
+    font-size: 1.1rem;
+    color: #aaa;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    animation: ko-fade-up 0.5s ease-out 0.5s both;
+  }
+
+  .ko-stats {
+    font-family: var(--f-body);
+    font-size: 1rem;
+    color: #888;
+    animation: ko-fade-up 0.5s ease-out 0.6s both;
+  }
+
+  .ko-play-again {
+    margin-top: 1.5rem;
+    font-family: var(--f-display);
+    font-size: 1.6rem;
+    text-transform: uppercase;
+    padding: 1rem 3rem;
+    background: #FFD233;
+    color: #111;
+    border: 4px solid #111;
+    border-radius: 999px;
+    box-shadow: 0 6px 0 #111;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+    animation: ko-fade-up 0.5s ease-out 0.7s both;
+  }
+
+  .ko-play-again:active { transform: translateY(4px); box-shadow: none; }
+
+  /* --- Tactic Chip --- */
+
+  .tactic-chip {
+    display: inline-flex;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 2px solid var(--c-dark);
+    background: var(--c-yellow);
+    color: var(--c-dark);
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+
+  .tactic-chip.enemy-chip {
+    background: var(--c-red);
+    color: #fff;
+  }
+
+  /* --- Energy Pips --- */
+
+  .energy-pips {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    margin-top: 0.4rem;
+  }
+
+  .energy-pips-label {
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    margin-right: 0.3rem;
+    letter-spacing: 0.5px;
+  }
+
+  .energy-pip {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--c-dark);
+    background: #333;
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .energy-pip.active {
+    background: linear-gradient(135deg, #00E5FF, #0099bb);
+    box-shadow: 0 0 6px rgba(0,229,255,0.5);
+  }
+
+  /* --- Turn Counter --- */
+
+  .turn-counter {
+    font-family: var(--f-display);
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--c-dark);
+  }
+
   @media (max-width: 960px) {
     .play-header { flex-direction: column; align-items: flex-start; }
     .play-shell { padding: 2rem 1.5rem 3rem; }
     .play-grid { grid-template-columns: 1fr; }
+    .ko-title { font-size: 4rem; }
   }
 
   @media (max-width: 640px) {
@@ -352,8 +617,84 @@ const globalStyles = `
     .panel { padding: 1.5rem; }
     .cta-btn { width: 100%; }
     .arena-map { gap: 4px; padding: 0.6rem; }
+    .ko-title { font-size: 3rem; }
+    .ko-winner-name { font-size: 1.6rem; }
   }
 `;
+
+/* --- Inline SVG Bot Sprites --- */
+
+const PlayerBotSvg = () => (
+  <svg viewBox="0 0 40 40" style={{ width: '88%', height: '88%', display: 'block' }}>
+    {/* Head */}
+    <rect x="12" y="2" width="16" height="10" rx="3" fill="#2ecc71" stroke="#111" strokeWidth="2" />
+    {/* Visor band */}
+    <rect x="15" y="5" width="10" height="4" rx="1.5" fill="#111" />
+    {/* Eyes */}
+    <circle cx="18" cy="7" r="1.5" fill="#27D9E8" />
+    <circle cx="22" cy="7" r="1.5" fill="#27D9E8" />
+    {/* Body */}
+    <rect x="10" y="12" width="20" height="13" rx="2" fill="#2ecc71" stroke="#111" strokeWidth="2" />
+    {/* Chest panel */}
+    <rect x="15" y="15" width="10" height="6" rx="1" fill="#27ae60" stroke="#111" strokeWidth="1" />
+    {/* Chest light */}
+    <circle cx="20" cy="18" r="2" fill="#27D9E8" />
+    {/* Arms */}
+    <rect x="3" y="13" width="7" height="10" rx="3" fill="#27ae60" stroke="#111" strokeWidth="2" />
+    <rect x="30" y="13" width="7" height="10" rx="3" fill="#27ae60" stroke="#111" strokeWidth="2" />
+    {/* Fists */}
+    <rect x="4" y="21" width="5" height="4" rx="2" fill="#2ecc71" stroke="#111" strokeWidth="1.5" />
+    <rect x="31" y="21" width="5" height="4" rx="2" fill="#2ecc71" stroke="#111" strokeWidth="1.5" />
+    {/* Legs */}
+    <rect x="12" y="25" width="7" height="10" rx="2" fill="#27ae60" stroke="#111" strokeWidth="2" />
+    <rect x="21" y="25" width="7" height="10" rx="2" fill="#27ae60" stroke="#111" strokeWidth="2" />
+    {/* Feet */}
+    <rect x="11" y="33" width="9" height="5" rx="2" fill="#2ecc71" stroke="#111" strokeWidth="1.5" />
+    <rect x="20" y="33" width="9" height="5" rx="2" fill="#2ecc71" stroke="#111" strokeWidth="1.5" />
+  </svg>
+);
+
+const EnemyBotSvg = () => (
+  <svg viewBox="0 0 40 40" style={{ width: '88%', height: '88%', display: 'block' }}>
+    {/* Head — angular / menacing */}
+    <polygon points="20,1 30,11 10,11" fill="#eb4d4b" stroke="#111" strokeWidth="2" strokeLinejoin="round" />
+    {/* V-shaped visor */}
+    <line x1="13" y1="9" x2="19" y2="5.5" stroke="#FFD233" strokeWidth="2" strokeLinecap="round" />
+    <line x1="27" y1="9" x2="21" y2="5.5" stroke="#FFD233" strokeWidth="2" strokeLinecap="round" />
+    {/* Body — wider, heavier */}
+    <rect x="7" y="11" width="26" height="14" rx="2" fill="#eb4d4b" stroke="#111" strokeWidth="2" />
+    {/* Chest plate */}
+    <rect x="13" y="14" width="14" height="7" rx="1" fill="#c0392b" stroke="#111" strokeWidth="1" />
+    {/* Core */}
+    <circle cx="20" cy="17.5" r="2.5" fill="#FF4D4D" />
+    <circle cx="20" cy="17.5" r="1" fill="#FFD233" />
+    {/* Shoulder spikes */}
+    <polygon points="7,11 2,7 7,15" fill="#c0392b" stroke="#111" strokeWidth="1.5" strokeLinejoin="round" />
+    <polygon points="33,11 38,7 33,15" fill="#c0392b" stroke="#111" strokeWidth="1.5" strokeLinejoin="round" />
+    {/* Arms — heavy */}
+    <rect x="1" y="13" width="6" height="11" rx="2" fill="#c0392b" stroke="#111" strokeWidth="2" />
+    <rect x="33" y="13" width="6" height="11" rx="2" fill="#c0392b" stroke="#111" strokeWidth="2" />
+    {/* Claws */}
+    <rect x="1" y="22" width="6" height="4" rx="1" fill="#eb4d4b" stroke="#111" strokeWidth="1.5" />
+    <rect x="33" y="22" width="6" height="4" rx="1" fill="#eb4d4b" stroke="#111" strokeWidth="1.5" />
+    {/* Legs */}
+    <rect x="10" y="25" width="8" height="11" rx="2" fill="#c0392b" stroke="#111" strokeWidth="2" />
+    <rect x="22" y="25" width="8" height="11" rx="2" fill="#c0392b" stroke="#111" strokeWidth="2" />
+    {/* Feet */}
+    <rect x="9" y="33" width="10" height="5" rx="2" fill="#eb4d4b" stroke="#111" strokeWidth="1.5" />
+    <rect x="21" y="33" width="10" height="5" rx="2" fill="#eb4d4b" stroke="#111" strokeWidth="1.5" />
+  </svg>
+);
+
+/* --- Types --- */
+
+type VfxEvent = {
+  id: string;
+  cell: Vec;
+  text: string;
+  color: string;
+  type: 'burst' | 'ring' | 'bolt' | 'ko';
+};
 
 type BotPreset = {
   id: string;
@@ -625,6 +966,14 @@ const generateMap = (rng: () => number): GameState => {
   return { grid: fallbackGrid, playerPos, enemyPos };
 };
 
+/* --- Helpers --- */
+
+const hpBarGradient = (hp: number): string => {
+  if (hp > 60) return 'linear-gradient(90deg, #2ecc71, #27ae60)';
+  if (hp > 30) return 'linear-gradient(90deg, #f39c12, #e67e22)';
+  return 'linear-gradient(90deg, #FF4D4D, #c0392b)';
+};
+
 const Play = () => {
   const [seedInput, setSeedInput] = useState('');
   const [activeSeed, setActiveSeed] = useState<number | null>(null);
@@ -648,7 +997,22 @@ const Play = () => {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [playFounderCopyVariant, setPlayFounderCopyVariant] = useState<'momentum' | 'utility'>('momentum');
 
+  // --- WS7 Visual State ---
+  const [vfxEvents, setVfxEvents] = useState<VfxEvent[]>([]);
+  const [playerLastAction, setPlayerLastAction] = useState('');
+  const [enemyLastAction, setEnemyLastAction] = useState('');
+  const [arenaFlash, setArenaFlash] = useState(false);
+
   const rngRef = useRef<() => number>(() => Math.random);
+
+  const spawnVfx = (cell: Vec, text: string, color: string, type: VfxEvent['type'] = 'burst', duration = 600) => {
+    const id = `vfx_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const event: VfxEvent = { id, cell: { ...cell }, text, color, type };
+    setVfxEvents((prev) => [...prev, event]);
+    window.setTimeout(() => {
+      setVfxEvents((prev) => prev.filter((e) => e.id !== id));
+    }, duration);
+  };
 
   const postEvent = async (event: string, meta: Record<string, unknown> = {}) => {
     try {
@@ -811,6 +1175,10 @@ const Play = () => {
     setEnemyBlock(0);
     setPlayerScan(0);
     setEnemyScan(0);
+    setVfxEvents([]);
+    setPlayerLastAction('');
+    setEnemyLastAction('');
+    setArenaFlash(false);
   };
 
   const startMatch = () => {
@@ -835,19 +1203,24 @@ const Play = () => {
   };
 
   const endMatchIfNeeded = (nextPlayerHp: number, nextEnemyHp: number) => {
-    if (nextPlayerHp <= 0 && nextEnemyHp <= 0) {
-      setWinner('Draw');
+    const triggerKo = (koWinner: string, koCell: Vec) => {
+      setWinner(koWinner);
       setRunning(false);
+      spawnVfx(koCell, 'K.O.!', '#FFD233', 'ko', 800);
+      setArenaFlash(true);
+      window.setTimeout(() => setArenaFlash(false), 600);
+    };
+
+    if (nextPlayerHp <= 0 && nextEnemyHp <= 0) {
+      triggerKo('Draw', playerPos);
       return true;
     }
     if (nextEnemyHp <= 0) {
-      setWinner('You');
-      setRunning(false);
+      triggerKo('You', enemyPos);
       return true;
     }
     if (nextPlayerHp <= 0) {
-      setWinner(opponent.name);
-      setRunning(false);
+      triggerKo(opponent.name, playerPos);
       return true;
     }
     return false;
@@ -877,6 +1250,7 @@ const Play = () => {
     }
     setPlayerPos(next);
     setPlayerAp((prev) => prev - 1);
+    setPlayerLastAction('MOVED');
     logFeed([`You move to (${next.x + 1}, ${GRID_SIZE - next.y}).`]);
   };
 
@@ -900,6 +1274,15 @@ const Play = () => {
     setEnemyBlock(0);
     setPlayerAp((prev) => prev - 2);
     setPlayerScan(0);
+    setPlayerLastAction('ATTACKED');
+
+    // VFX: melee vs ranged based on distance
+    if (dist <= 1) {
+      spawnVfx(enemyPos, 'KAPOW!', '#FF4D4D', 'burst', 600);
+    } else {
+      spawnVfx(enemyPos, 'ZZT!', '#27D9E8', 'bolt', 500);
+    }
+
     logFeed([
       `You strike for ${mitigated}. Enemy HP ${nextEnemyHp}.`,
     ]);
@@ -916,6 +1299,8 @@ const Play = () => {
     const blockValue = 5 + rngInt(rng, 0, 2);
     setPlayerBlock(blockValue);
     setPlayerAp((prev) => prev - 1);
+    setPlayerLastAction('GUARDED');
+    spawnVfx(playerPos, 'CLANG!', '#27D9E8', 'ring', 600);
     logFeed([`You brace. Block ${blockValue} on next hit.`]);
   };
 
@@ -927,6 +1312,7 @@ const Play = () => {
     }
     setPlayerScan(2);
     setPlayerAp((prev) => prev - 1);
+    setPlayerLastAction('SCANNED');
     logFeed(['You scan the grid. Next strike gains +1 range.']);
   };
 
@@ -940,6 +1326,7 @@ const Play = () => {
     let nextPlayerHp = playerHp;
     let nextPlayerBlock = playerBlock;
     const entries: string[] = [];
+    let lastAction = 'HOLDING';
 
     const enemyRange = () => ATTACK_RANGE + (nextEnemyScan > 0 ? 1 : 0);
 
@@ -973,6 +1360,15 @@ const Play = () => {
         nextPlayerBlock = 0;
         nextEnemyScan = 0;
         entries.push(`${opponent.name} strikes for ${mitigated}. Your HP ${nextPlayerHp}.`);
+        lastAction = 'ATTACKED';
+
+        // VFX: melee vs ranged
+        if (distance <= 1) {
+          spawnVfx(playerPos, 'KAPOW!', '#FF4D4D', 'burst', 600);
+        } else {
+          spawnVfx(playerPos, 'ZZT!', '#27D9E8', 'bolt', 500);
+        }
+
         ap -= 2;
         break;
       }
@@ -980,6 +1376,8 @@ const Play = () => {
       if (ap >= 1 && rng() < blockThreshold) {
         nextEnemyBlock = 5 + rngInt(rng, 0, 2);
         entries.push(`${opponent.name} raises guard (${nextEnemyBlock}).`);
+        lastAction = 'GUARDED';
+        spawnVfx({ ...nextEnemyPos }, 'CLANG!', '#27D9E8', 'ring', 600);
         ap -= 1;
         continue;
       }
@@ -987,6 +1385,7 @@ const Play = () => {
       if (ap >= 1 && rng() < scanThreshold) {
         nextEnemyScan = 2;
         entries.push(`${opponent.name} scans the arena.`);
+        lastAction = 'SCANNED';
         ap -= 1;
         continue;
       }
@@ -994,6 +1393,7 @@ const Play = () => {
       if (ap >= 1) {
         const moved = moveEnemy();
         if (moved) {
+          lastAction = 'MOVED';
           ap -= 1;
           continue;
         }
@@ -1010,6 +1410,7 @@ const Play = () => {
     setPlayerHp(nextPlayerHp);
     setPlayerAp(MAX_AP);
     setTurn((prev) => prev + 1);
+    setEnemyLastAction(lastAction);
     if (entries.length === 0) entries.push(`${opponent.name} holds position.`);
     logFeed(entries);
     endMatchIfNeeded(nextPlayerHp, enemyHp);
@@ -1136,6 +1537,15 @@ const Play = () => {
 
   const range = ATTACK_RANGE + (playerScan > 0 ? 1 : 0);
 
+  // Derive KO reason for overlay
+  const koReason = winner === 'You'
+    ? 'ENEMY DESTROYED'
+    : winner === 'Draw'
+      ? 'MUTUAL DESTRUCTION'
+      : winner
+        ? 'YOU WERE DESTROYED'
+        : '';
+
   return (
     <div className="play-root">
       <div className="bg-scanlines" />
@@ -1168,10 +1578,12 @@ const Play = () => {
                 Reset
               </button>
             </div>
-            <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-              <span className="status-pill">Turn {turn}</span>
+            <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="status-pill">
+                <span className="turn-counter">Turn {turn} / 90</span>
+              </span>
               <span className="status-pill">AP {playerAp}/{MAX_AP}</span>
-              <span className="seed-pill">Seed {activeSeed ?? '—'}</span>
+              <span className="seed-pill">Seed {activeSeed ?? '\u2014'}</span>
             </div>
 
             <div className="section-label" style={{ marginTop: '1.4rem' }}>Opponent Presets</div>
@@ -1204,7 +1616,7 @@ const Play = () => {
               <button className="action-btn secondary" onClick={endTurn} disabled={!running || !!winner}>End Turn</button>
             </div>
             <div className="hint" style={{ marginBottom: '0.8rem' }}>
-              Attack range {range} · Block absorbs next hit · Scan adds +1 range to your next strike · Move with WASD/Arrows, J attack, K block, L scan, Enter end turn.
+              Attack range {range} &middot; Block absorbs next hit &middot; Scan adds +1 range to your next strike &middot; Move with WASD/Arrows, J attack, K block, L scan, Enter end turn.
             </div>
 
             <div className="leaderboard" style={{ marginTop: '1.2rem' }}>
@@ -1221,7 +1633,7 @@ const Play = () => {
                 style={{ minHeight: 'unset', height: '48px', marginBottom: '0.8rem' }}
               />
               <button className="cta-btn" onClick={handleFounderCheckout} disabled={checkoutBusy}>
-                {checkoutBusy ? 'Opening Checkout…' : founderCtaVariant.button}
+                {checkoutBusy ? 'Opening Checkout\u2026' : founderCtaVariant.button}
               </button>
               {checkoutMessage && (
                 <div className="hint" style={{ marginTop: '0.7rem' }}>{checkoutMessage}</div>
@@ -1238,46 +1650,87 @@ const Play = () => {
               <span className="arena-badge">Round {turn}</span>
             </div>
 
+            {/* --- Player Stat Block --- */}
             <div className="stat-block">
               <div className="stat-title">
-                <span>You</span>
+                <span>
+                  You
+                  {playerLastAction && (
+                    <span className="tactic-chip">{playerLastAction}</span>
+                  )}
+                </span>
                 <span className="status-pill">HP {playerHp}</span>
               </div>
               <div className="bar-shell">
-                <div className="bar-fill" style={{ width: `${playerHp}%` }} />
+                <div
+                  className="bar-fill"
+                  style={{ width: `${playerHp}%`, background: hpBarGradient(playerHp) }}
+                />
+              </div>
+              <div className="energy-pips">
+                <span className="energy-pips-label">AP</span>
+                {Array.from({ length: MAX_AP }, (_, i) => (
+                  <div
+                    key={i}
+                    className={`energy-pip${i < playerAp ? ' active' : ''}`}
+                  />
+                ))}
               </div>
             </div>
 
+            {/* --- Enemy Stat Block --- */}
             <div className="stat-block">
               <div className="stat-title">
-                <span>{opponent.name}</span>
+                <span>
+                  {opponent.name}
+                  {enemyLastAction && (
+                    <span className="tactic-chip enemy-chip">{enemyLastAction}</span>
+                  )}
+                </span>
                 <span className="status-pill">HP {enemyHp}</span>
               </div>
               <div className="bar-shell">
-                <div className="bar-fill opponent" style={{ width: `${enemyHp}%` }} />
+                <div
+                  className="bar-fill"
+                  style={{ width: `${enemyHp}%`, background: hpBarGradient(enemyHp) }}
+                />
               </div>
             </div>
 
-            <div className="arena-map" style={{ ['--grid-size' as string]: GRID_SIZE }}>
+            {/* --- Arena Map --- */}
+            <div
+              className={`arena-map${arenaFlash ? ' arena-flash' : ''}`}
+              style={{ ['--grid-size' as string]: GRID_SIZE }}
+            >
               {grid.map((row, y) =>
                 row.map((cell, x) => {
                   const pos = { x, y };
                   const inRange = manhattan(playerPos, pos) <= range;
                   const isPlayer = isSame(pos, playerPos);
                   const isEnemy = isSame(pos, enemyPos);
+                  const cellVfx = vfxEvents.filter((e) => e.cell.x === x && e.cell.y === y);
+                  const hasCellVfx = cellVfx.length > 0;
                   const className = [
                     'arena-cell',
                     cell === 'obstacle' ? 'obstacle' : '',
                     inRange ? 'in-range' : '',
                     isPlayer ? 'player' : '',
                     isEnemy ? 'enemy' : '',
+                    hasCellVfx ? 'cell-vfx-flash' : '',
                   ].filter(Boolean).join(' ');
-                  let label = '';
-                  if (isPlayer) label = 'YOU';
-                  if (isEnemy) label = 'BOT';
+
                   return (
                     <div key={`${x}-${y}`} className={className}>
-                      {label}
+                      {isPlayer && <PlayerBotSvg />}
+                      {isEnemy && <EnemyBotSvg />}
+                      {cellVfx.map((vfx) => (
+                        <div
+                          key={vfx.id}
+                          className={`vfx-popup ${vfx.type}`}
+                        >
+                          <span style={{ color: vfx.color }}>{vfx.text}</span>
+                        </div>
+                      ))}
                     </div>
                   );
                 })
@@ -1285,8 +1738,8 @@ const Play = () => {
             </div>
 
             <div className="arena-legend">
-              <span className="status-pill">YOU</span>
-              <span className="status-pill" style={{ background: 'var(--c-red)', color: '#fff' }}>BOT</span>
+              <span className="status-pill" style={{ background: 'rgba(46,204,113,0.2)', borderColor: '#2ecc71' }}>YOU</span>
+              <span className="status-pill" style={{ background: 'rgba(235,77,75,0.2)', borderColor: '#eb4d4b' }}>BOT</span>
               <span className="status-pill" style={{ background: '#2f2f2f', color: '#fff' }}>OBSTACLE</span>
               <span className="status-pill" style={{ background: 'var(--c-yellow)' }}>IN RANGE</span>
             </div>
@@ -1311,6 +1764,26 @@ const Play = () => {
           </section>
         </div>
       </main>
+
+      {/* --- KO Overlay --- */}
+      {winner && (
+        <div className="ko-overlay">
+          <div className="ko-radial-bg" />
+          <div className="ko-content">
+            <div className="ko-title">K.O.!</div>
+            <div className="ko-winner-name">
+              {winner === 'Draw' ? 'DOUBLE K.O.' : `${winner} WINS`}
+            </div>
+            <div className="ko-reason">{koReason}</div>
+            <div className="ko-stats">
+              Turn {turn} &middot; HP {playerHp} vs {enemyHp} &middot; Seed {activeSeed}
+            </div>
+            <button className="ko-play-again" onClick={resetMatch}>
+              PLAY AGAIN
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
