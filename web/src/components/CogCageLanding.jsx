@@ -895,7 +895,8 @@ const writeWaitlistReplayQueue = (queue) => {
       localStorage.removeItem(WAITLIST_REPLAY_QUEUE_KEY);
       return;
     }
-    localStorage.setItem(WAITLIST_REPLAY_QUEUE_KEY, JSON.stringify(queue.slice(0, 10)));
+    // Keep newest entries (drop oldest noise first) so recent real users are never discarded.
+    localStorage.setItem(WAITLIST_REPLAY_QUEUE_KEY, JSON.stringify(queue.slice(-10)));
   } catch {
     // best-effort cache only
   }
@@ -903,8 +904,15 @@ const writeWaitlistReplayQueue = (queue) => {
 
 const enqueueWaitlistReplay = (payload) => {
   const queue = readWaitlistReplayQueue();
-  queue.push({ ...payload, queuedAt: new Date().toISOString() });
-  writeWaitlistReplayQueue(queue);
+  const next = {
+    ...payload,
+    email: String(payload.email || '').trim().toLowerCase(),
+    source: payload.source || 'cogcage-replay',
+    queuedAt: new Date().toISOString(),
+  };
+  const deduped = queue.filter((item) => !(item.email === next.email && item.source === next.source));
+  deduped.push(next);
+  writeWaitlistReplayQueue(deduped);
 };
 
 const replayWaitlistQueue = async () => {
@@ -927,8 +935,18 @@ const replayWaitlistQueue = async () => {
         page: '/',
         meta: { queuedAt: item.queuedAt || null },
       });
-    } catch {
+    } catch (error) {
       remaining.push(item);
+      await postJson('/api/events', {
+        event: 'waitlist_replay_failed',
+        source: item.source || 'cogcage-replay',
+        email: item.email,
+        page: '/',
+        meta: {
+          queuedAt: item.queuedAt || null,
+          error: error instanceof Error ? error.message : 'unknown',
+        },
+      });
     }
   }
 
