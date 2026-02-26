@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 const founderCheckoutUrl = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
 
@@ -217,6 +217,15 @@ function track(event, payload = {}) {
 export default function CogCageLanding() {
   const [email, setEmail] = useState('');
   const [state, setState] = useState({ saving: false, msg: '' });
+
+  useEffect(() => {
+    const cachedEmail = localStorage.getItem('cogcage_email');
+    if (cachedEmail && EMAIL_RE.test(cachedEmail)) {
+      setEmail(cachedEmail);
+    }
+
+    track('landing_view', { page: '/', source: 'hero' });
+  }, []);
 
   const canSubmit = useMemo(() => EMAIL_RE.test(email.trim()), [email]);
 
