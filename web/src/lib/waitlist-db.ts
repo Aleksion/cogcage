@@ -36,6 +36,12 @@ export type RateLimitResult = {
   resetMs: number;
 };
 
+export type FunnelCounts = {
+  waitlistLeads: number;
+  founderIntents: number;
+  conversionEvents: number;
+};
+
 let db: Database.Database | null = null;
 
 function getDbPath() {
@@ -173,6 +179,12 @@ export function consumeRateLimit(
   const ip = ipAddress || 'unknown';
   const windowStart = Math.floor(Date.now() / windowMs);
 
+  // Keep the rate-limit table bounded in long-running environments.
+  conn.prepare(`
+    DELETE FROM rate_limits
+    WHERE route = ? AND window_start < ?
+  `).run(route, windowStart - 3);
+
   const existing = conn.prepare(`
     SELECT count
     FROM rate_limits
@@ -204,5 +216,18 @@ export function consumeRateLimit(
     allowed: true,
     remaining: Math.max(0, limit - ((existing?.count ?? 0) + 1)),
     resetMs: (windowStart + 1) * windowMs - Date.now(),
+  };
+}
+
+export function getFunnelCounts(): FunnelCounts {
+  const conn = getDb();
+  const waitlist = conn.prepare('SELECT COUNT(*) AS count FROM waitlist_leads').get() as { count: number };
+  const founders = conn.prepare('SELECT COUNT(*) AS count FROM founder_intents').get() as { count: number };
+  const events = conn.prepare('SELECT COUNT(*) AS count FROM conversion_events').get() as { count: number };
+
+  return {
+    waitlistLeads: waitlist.count,
+    founderIntents: founders.count,
+    conversionEvents: events.count,
   };
 }

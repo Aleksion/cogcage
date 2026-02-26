@@ -8,7 +8,20 @@ const RATE_LIMIT_MAX = 6;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 function getClientIp(request: Request) {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? undefined;
+  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  const realIp = request.headers.get('x-real-ip')?.trim();
+  const cfIp = request.headers.get('cf-connecting-ip')?.trim();
+  const flyIp = request.headers.get('fly-client-ip')?.trim();
+  return forwarded || realIp || cfIp || flyIp || undefined;
+}
+
+function getRateLimitKey(request: Request) {
+  const ip = getClientIp(request);
+  if (ip) return ip;
+  const ua = request.headers.get('user-agent') ?? 'unknown-ua';
+  const lang = request.headers.get('accept-language') ?? 'unknown-lang';
+  // Fallback avoids global throttling when proxy IP headers are missing.
+  return `anon:${ua.slice(0, 80)}:${lang.slice(0, 40)}`;
 }
 
 function normalize(value: FormDataEntryValue | null) {
@@ -78,12 +91,13 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const ipAddress = getClientIp(request);
+  const rateLimitKey = getRateLimitKey(request);
   const normalizedEmail = email.toLowerCase();
   const eventSource = source || 'cogcage-landing';
 
   let rateLimit = { allowed: true, remaining: RATE_LIMIT_MAX, resetMs: 0 };
   try {
-    rateLimit = consumeRateLimit(ipAddress, 'waitlist', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+    rateLimit = consumeRateLimit(rateLimitKey, 'waitlist', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
   } catch (error) {
     appendOpsLog({
       route: '/api/waitlist',
