@@ -230,7 +230,8 @@ const globalStyles = `
   }
 
   .hero-section {
-    display: block;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
     min-height: auto;
     padding: 2.5rem var(--page-padding) 3rem;
     position: relative;
@@ -238,6 +239,8 @@ const globalStyles = `
     max-width: var(--content-max);
     width: 100%;
     margin: 0 auto;
+    align-items: center;
+    gap: 2.5rem;
   }
 
   .hero-content {
@@ -245,7 +248,7 @@ const globalStyles = `
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    max-width: 820px;
+    max-width: 720px;
   }
 
   .hero-h1 {
@@ -272,7 +275,7 @@ const globalStyles = `
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: 2rem;
+    margin-top: 0;
   }
 
   .hero-body {
@@ -342,7 +345,7 @@ const globalStyles = `
   }
 
   .bot-card {
-    width: min(540px, 94vw);
+    width: min(520px, 92vw);
     height: 500px;
     background: var(--c-white);
     border: 5px solid var(--c-dark);
@@ -651,7 +654,18 @@ const globalStyles = `
     .nav-cta { display: none; }
 
     .hero-section {
+      grid-template-columns: 1fr;
       padding: 2rem var(--page-padding) 2.5rem;
+      gap: 1.5rem;
+    }
+
+    .hero-visual {
+      order: 2;
+      margin-top: 0.5rem;
+    }
+
+    .hero-content {
+      max-width: none;
     }
 
     .hero-body {
