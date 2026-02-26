@@ -6,11 +6,18 @@ const dbPath = process.env.COGCAGE_DB_PATH ?? path.join(process.cwd(), 'data', '
 
 const args = process.argv.slice(2);
 const daysArg = args.find((arg) => arg.startsWith('--days='));
+const playGuardrailMinSampleArg = args.find((arg) => arg.startsWith('--play-guardrail-min-sample='));
 const jsonMode = args.includes('--json');
 const days = Number(daysArg?.split('=')[1] ?? '7');
+const playGuardrailMinSample = Number(playGuardrailMinSampleArg?.split('=')[1] ?? '5');
 
 if (!Number.isFinite(days) || days <= 0) {
   console.error('Invalid --days value. Example: --days=7');
+  process.exit(1);
+}
+
+if (!Number.isFinite(playGuardrailMinSample) || playGuardrailMinSample < 1) {
+  console.error('Invalid --play-guardrail-min-sample value. Example: --play-guardrail-min-sample=5');
   process.exit(1);
 }
 
@@ -26,7 +33,7 @@ function pct(numerator, denominator) {
   return (numerator / denominator) * 100;
 }
 
-function getPlayFounderDailySplit(windowStart) {
+function getPlayFounderDailySplit(windowStart, minSample) {
   const rows = db
     .prepare(
       `SELECT date(created_at) AS day,
@@ -54,6 +61,7 @@ function getPlayFounderDailySplit(windowStart) {
       loser,
       neutral,
       total,
+      guardrailQualified: total >= minSample,
       loserSharePct: pct(loser, total),
       winnerSharePct: pct(winner, total),
       loserBeatsWinner: loser > winner,
@@ -64,7 +72,7 @@ function getPlayFounderDailySplit(windowStart) {
 function consecutiveLoserBeatsWinnerStreak(days) {
   let streak = 0;
   for (const day of days) {
-    if (!day.loserBeatsWinner) break;
+    if (!day.guardrailQualified || !day.loserBeatsWinner) break;
     streak += 1;
   }
   return streak;
@@ -74,7 +82,7 @@ const windowStart = db
   .prepare("SELECT datetime('now', @window) AS value")
   .get({ window: `-${days} days` })?.value;
 
-const playFounderDailySplit = getPlayFounderDailySplit(windowStart);
+const playFounderDailySplit = getPlayFounderDailySplit(windowStart, playGuardrailMinSample);
 const loserBeatsWinnerStreakDays = consecutiveLoserBeatsWinnerStreak(playFounderDailySplit);
 
 const totals = {
@@ -312,6 +320,8 @@ const rollup = {
   postWaitlistFounderIntentsBySource,
   playFounderDailySplit,
   alerts: {
+    playGuardrailMinSample,
+    playGuardrailQualifiedDaysInWindow: playFounderDailySplit.filter((day) => day.guardrailQualified).length,
     loserCtaOutperformingWinnerStreakDays: loserBeatsWinnerStreakDays,
     loserCtaOutperformingWinnerGuardrailTriggered: loserBeatsWinnerStreakDays >= 3,
   },
@@ -441,9 +451,12 @@ console.log('Play winner vs loser daily guardrail:');
 if (!playFounderDailySplit.length) {
   console.log('- No play founder click data in this window yet.');
 } else {
+  console.log(
+    `- Minimum daily sample for streak qualification: ${playGuardrailMinSample} clicks`,
+  );
   for (const day of playFounderDailySplit) {
     console.log(
-      `- ${day.day}: winner=${day.winner}, loser=${day.loser}, neutral=${day.neutral}, loser>winner=${day.loserBeatsWinner ? 'yes' : 'no'}`,
+      `- ${day.day}: winner=${day.winner}, loser=${day.loser}, neutral=${day.neutral}, total=${day.total}, qualified=${day.guardrailQualified ? 'yes' : 'no'}, loser>winner=${day.loserBeatsWinner ? 'yes' : 'no'}`,
     );
   }
 }
