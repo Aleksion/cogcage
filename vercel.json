@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm --prefix web run build",
+  "buildCommand": "npm --prefix web run build && rm -rf .vercel/output && mkdir -p .vercel && cp -R web/.vercel/output .vercel/output",
   "installCommand": "npm --prefix web install",
   "framework": "astro"
 }
