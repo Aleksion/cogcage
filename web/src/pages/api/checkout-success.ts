@@ -61,6 +61,7 @@ const recordSuccess = ({
   email,
   meta,
   request,
+  requestId,
 }: {
   eventId?: string;
   page?: string;
@@ -70,11 +71,11 @@ const recordSuccess = ({
   email?: string;
   meta?: Record<string, unknown>;
   request: Request;
+  requestId: string;
 }) => {
   const startedAt = Date.now();
   const ipAddress = getClientIp(request);
   const userAgent = request.headers.get('user-agent') ?? undefined;
-  const requestId = crypto.randomUUID();
   const payload = {
     eventName: 'paid_conversion_confirmed',
     eventId,
@@ -108,6 +109,7 @@ const recordSuccess = ({
 };
 
 export const POST: APIRoute = async ({ request }) => {
+  const requestId = crypto.randomUUID();
   const contentType = request.headers.get('content-type') ?? '';
   let payload: Record<string, unknown> = {};
 
@@ -136,9 +138,9 @@ export const POST: APIRoute = async ({ request }) => {
 
   const email = optionalString(payload.email);
   if (email && !EMAIL_RE.test(email)) {
-    return new Response(JSON.stringify({ ok: false, error: 'Invalid email format.' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Invalid email format.', requestId }), {
       status: 400,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   }
 
@@ -163,27 +165,29 @@ export const POST: APIRoute = async ({ request }) => {
       email,
       meta,
       request,
+      requestId,
     });
 
     return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined }), {
       status: result.queued ? 202 : 200,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': result.requestId },
     });
   } catch {
-    return new Response(JSON.stringify({ ok: false, error: 'Conversion storage unavailable.' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Conversion storage unavailable.', requestId }), {
       status: 503,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   }
 };
 
 export const GET: APIRoute = async ({ request }) => {
+  const requestId = crypto.randomUUID();
   const url = new URL(request.url);
   const email = optionalString(url.searchParams.get('email'));
   if (email && !EMAIL_RE.test(email)) {
-    return new Response(JSON.stringify({ ok: false, error: 'Invalid email format.' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Invalid email format.', requestId }), {
       status: 400,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   }
 
@@ -209,16 +213,17 @@ export const GET: APIRoute = async ({ request }) => {
         query: Object.fromEntries(url.searchParams.entries()),
       },
       request,
+      requestId,
     });
 
     return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined }), {
       status: result.queued ? 202 : 200,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': result.requestId },
     });
   } catch {
-    return new Response(JSON.stringify({ ok: false, error: 'Conversion storage unavailable.' }), {
+    return new Response(JSON.stringify({ ok: false, error: 'Conversion storage unavailable.', requestId }), {
       status: 503,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-request-id': requestId },
     });
   }
 };
