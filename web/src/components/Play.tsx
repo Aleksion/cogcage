@@ -395,8 +395,16 @@ const pickPlayFounderCopyVariant = () => {
 const founderCheckoutUrl =
   ((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? '').trim();
 
+const createIdempotencyKey = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
 const submitWithRetry = async (url: string, payload: Record<string, unknown>, retries = 1, timeoutMs = 6000) => {
   let lastError: unknown = null;
+  const idempotencyKey = createIdempotencyKey();
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
@@ -404,16 +412,34 @@ const submitWithRetry = async (url: string, payload: Record<string, unknown>, re
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-idempotency-key': idempotencyKey,
+        },
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
       window.clearTimeout(timeout);
-      const body = await response.json().catch(() => ({}));
+
+      let body: Record<string, unknown> = {};
+      const responseText = await response.text();
+      if (responseText) {
+        try {
+          body = JSON.parse(responseText) as Record<string, unknown>;
+        } catch {
+          body = { raw: responseText.slice(0, 400) };
+        }
+      }
+
       if (response.ok && body.ok === true) return body;
-      const err = new Error(body?.error || `Request failed (${response.status})`) as Error & { status?: number; requestId?: string };
+      const err = new Error(String(body?.error || `Request failed (${response.status})`)) as Error & {
+        status?: number;
+        requestId?: string;
+        retryAfter?: string;
+      };
       err.status = response.status;
-      err.requestId = body?.requestId;
+      err.requestId = String(body?.requestId || response.headers.get('x-request-id') || '');
+      err.retryAfter = response.headers.get('retry-after') || undefined;
       if (response.status >= 500 && attempt < retries) {
         lastError = err;
         await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
