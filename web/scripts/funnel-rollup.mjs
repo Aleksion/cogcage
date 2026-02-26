@@ -109,6 +109,33 @@ const inWindow = {
   ),
 };
 
+const playFounderClicksBySource = {
+  neutral: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source = 'play-page-founder-cta-neutral'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  winner: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source = 'play-page-founder-cta-winner'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+  loser: count(
+    `SELECT COUNT(*) AS value
+     FROM conversion_events
+     WHERE event_name = 'founder_checkout_clicked'
+       AND source = 'play-page-founder-cta-loser'
+       AND created_at >= @windowStart`,
+    { windowStart },
+  ),
+};
+
 const uniqueInWindow = {
   founderClickEmails: count(
     `SELECT COUNT(DISTINCT lower(email)) AS value
@@ -151,6 +178,7 @@ const rollup = {
   windowStart,
   totals,
   inWindow,
+  playFounderClicksBySource,
   uniqueInWindow,
   rates: {
     founderClickToIntentPct: pct(inWindow.founderIntents, inWindow.founderClicks),
@@ -161,6 +189,12 @@ const rollup = {
     playStartToCompletionPct: pct(inWindow.playMatchCompletions, inWindow.playMatchStarts),
     playCompletionToFounderClickPct: pct(inWindow.playFounderClicks, inWindow.playMatchCompletions),
     playViewToFounderClickPct: pct(inWindow.playFounderClicks, inWindow.playPageViews),
+    playCompletionToFounderClickNeutralPct: pct(playFounderClicksBySource.neutral, inWindow.playMatchCompletions),
+    playCompletionToFounderClickWinnerPct: pct(playFounderClicksBySource.winner, inWindow.playMatchCompletions),
+    playCompletionToFounderClickLoserPct: pct(playFounderClicksBySource.loser, inWindow.playMatchCompletions),
+    playFounderClickWinnerSharePct: pct(playFounderClicksBySource.winner, inWindow.playFounderClicks),
+    playFounderClickLoserSharePct: pct(playFounderClicksBySource.loser, inWindow.playFounderClicks),
+    playFounderClickNeutralSharePct: pct(playFounderClicksBySource.neutral, inWindow.playFounderClicks),
   },
 };
 
@@ -211,10 +245,20 @@ console.log(`- Play match completions: ${inWindow.playMatchCompletions}`);
 console.log(`- Play-page founder checkout clicks: ${inWindow.playFounderClicks}`);
 console.log('');
 
+console.log('Play founder clicks by source:');
+console.log(`- Neutral CTA (play-page-founder-cta-neutral): ${playFounderClicksBySource.neutral}`);
+console.log(`- Winner CTA (play-page-founder-cta-winner): ${playFounderClicksBySource.winner}`);
+console.log(`- Loser CTA (play-page-founder-cta-loser): ${playFounderClicksBySource.loser}`);
+console.log('');
+
 console.log('Play funnel conversion rates:');
 console.log(`- Play page view -> match start: ${rollup.rates.playViewToMatchStartPct.toFixed(2)}%`);
 console.log(`- Play match start -> completion: ${rollup.rates.playStartToCompletionPct.toFixed(2)}%`);
 console.log(`- Play completion -> founder click: ${rollup.rates.playCompletionToFounderClickPct.toFixed(2)}%`);
 console.log(`- Play page view -> founder click: ${rollup.rates.playViewToFounderClickPct.toFixed(2)}%`);
+console.log(`- Play completion -> neutral CTA click: ${rollup.rates.playCompletionToFounderClickNeutralPct.toFixed(2)}%`);
+console.log(`- Play completion -> winner CTA click: ${rollup.rates.playCompletionToFounderClickWinnerPct.toFixed(2)}%`);
+console.log(`- Play completion -> loser CTA click: ${rollup.rates.playCompletionToFounderClickLoserPct.toFixed(2)}%`);
+console.log(`- Play founder click mix (neutral/winner/loser): ${rollup.rates.playFounderClickNeutralSharePct.toFixed(2)}% / ${rollup.rates.playFounderClickWinnerSharePct.toFixed(2)}% / ${rollup.rates.playFounderClickLoserSharePct.toFixed(2)}%`);
 
 db.close();
