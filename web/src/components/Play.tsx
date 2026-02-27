@@ -8,7 +8,7 @@ import {
   COOLDOWN_TICKS,
   TICK_RATE,
 } from '../lib/ws2/index.js';
-import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-runner';
+import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-types';
 
 const ENGINE_WS_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_ENGINE_WS_URL) ||
@@ -399,6 +399,7 @@ const Play = () => {
   const [winnerId, setWinnerId] = useState<string | null>(null);
   const [endReason, setEndReason] = useState<string>('');
   const [finalStats, setFinalStats] = useState<any>(null);
+  const [botStats, setBotStats] = useState<Record<string, { ticksPlayed: number; ticksMissed: number; actionsQueued: number }> | null>(null);
 
   // --- VFX ---
   const [vfxEvents, setVfxEvents] = useState<VfxEvent[]>([]);
@@ -643,6 +644,7 @@ const Play = () => {
     setWinnerId(null);
     setEndReason('');
     setFinalStats(null);
+    setBotStats(null);
     setVfxEvents([]);
     setBotALastAction('');
     setBotBLastAction('');
@@ -727,10 +729,13 @@ const Play = () => {
                 endReason: result.endReason ?? result.reason ?? 'UNKNOWN',
                 events: result.events ?? [],
               },
-              tick: result.tick ?? 0,
+              tick: result.finalTick ?? result.tick ?? 0,
               ended: true,
               winnerId: result.winnerId ?? null,
             };
+            if (result.botStats) {
+              setBotStats(result.botStats);
+            }
             handleSnapshot(snap);
             ws.close();
           }
@@ -1394,6 +1399,63 @@ const Play = () => {
                 <span style={{ color: '#eb4d4b' }}>Illegal actions: {finalStats.botBIllegal}</span>
                 <span style={{ color: '#2ecc71' }}>Obj score: {(finalStats.objA / UNIT_SCALE).toFixed(1)}</span>
                 <span style={{ color: '#eb4d4b' }}>Obj score: {(finalStats.objB / UNIT_SCALE).toFixed(1)}</span>
+              </div>
+            )}
+
+            {botStats && (
+              <div style={{
+                marginTop: '0.75rem',
+                padding: '0.75rem 1.25rem',
+                background: 'rgba(0,229,255,0.08)',
+                border: '1px solid rgba(0,229,255,0.25)',
+                borderRadius: '10px',
+                animation: 'ko-fade-up 0.5s ease-out 0.7s both',
+              }}>
+                <div style={{
+                  fontFamily: 'var(--f-display)',
+                  fontSize: '1.1rem',
+                  color: '#00E5FF',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.5rem',
+                  textTransform: 'uppercase',
+                }}>
+                  Connection Stats
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem 2rem', fontSize: '0.9rem' }}>
+                  {(() => {
+                    const statsA = botStats['botA'];
+                    const statsB = botStats['botB'];
+                    if (!statsA && !statsB) return null;
+                    const ticksA = statsA?.ticksPlayed ?? 0;
+                    const ticksB = statsB?.ticksPlayed ?? 0;
+                    const missedA = statsA?.ticksMissed ?? 0;
+                    const missedB = statsB?.ticksMissed ?? 0;
+                    const queuedA = statsA?.actionsQueued ?? 0;
+                    const queuedB = statsB?.actionsQueued ?? 0;
+                    return (
+                      <>
+                        <span style={{ color: '#2ecc71' }}>
+                          {ticksA - missedA}/{ticksA} ticks connected
+                        </span>
+                        <span style={{ color: '#eb4d4b' }}>
+                          {ticksB - missedB}/{ticksB} ticks connected
+                        </span>
+                        <span style={{ color: missedA === 0 ? '#2ecc71' : '#FFD233' }}>
+                          {missedA === 0
+                            ? 'Perfect connection \u2014 0 missed'
+                            : `${missedA} ticks missed \u2014 ${missedA} free ${missedA === 1 ? 'turn' : 'turns'} gifted`}
+                        </span>
+                        <span style={{ color: missedB === 0 ? '#eb4d4b' : '#FFD233' }}>
+                          {missedB === 0
+                            ? 'Perfect connection \u2014 0 missed'
+                            : `${missedB} ticks missed \u2014 ${missedB} free ${missedB === 1 ? 'turn' : 'turns'} gifted`}
+                        </span>
+                        <span style={{ color: '#888' }}>Actions queued: {queuedA}</span>
+                        <span style={{ color: '#888' }}>Actions queued: {queuedB}</span>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             )}
 

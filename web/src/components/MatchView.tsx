@@ -5,8 +5,8 @@ import {
   HP_MAX,
   TICK_RATE,
 } from '../lib/ws2/index.js';
-import { runMatchAsync } from '../lib/ws2/match-runner';
-import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-runner';
+import { runMatchAsync } from '../lib/ws2/run-match';
+import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-types';
 
 /* ── Types ──────────────────────────────────────────────────── */
 

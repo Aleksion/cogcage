@@ -98,6 +98,14 @@ export interface BotConfig {
   moveCost?: number;
 }
 
+// ── Bot Performance Stats ──
+
+export interface BotStats {
+  ticksPlayed: number;
+  ticksMissed: number;
+  actionsQueued: number;
+}
+
 // ── Match Result ──
 
 export interface MatchResult {
@@ -106,4 +114,5 @@ export interface MatchResult {
   finalTick: number;
   actors: Record<string, { hp: number; damageDealt: number; illegalActions: number }>;
   objectiveScore: Record<string, number>;
+  botStats?: Record<string, BotStats>;
 }

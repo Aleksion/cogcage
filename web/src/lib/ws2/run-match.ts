@@ -1,3 +1,11 @@
+/**
+ * Legacy client-side match runner.
+ *
+ * Still used by MatchView.tsx (lobby flow) and SessionRoom.tsx (session flow).
+ * Play.tsx was migrated to the DO WebSocket in TASK-004 and no longer uses this.
+ * TODO: Migrate remaining consumers to DO WebSocket and remove this file.
+ */
+
 import {
   createInitialState,
   createActorState,
@@ -7,80 +15,12 @@ import {
   DECISION_WINDOW_TICKS,
   TICK_MS,
   UNIT_SCALE,
-  ENERGY_MAX,
-  HP_MAX,
   MAX_TICKS,
 } from './constants.js';
+import { getSpawnPositions } from './match-types.js';
+import type { BotConfig, MatchSnapshot, SnapshotCallback } from './match-types.js';
 
-export interface BotConfig {
-  id: string;
-  name: string;
-  systemPrompt: string;
-  loadout: string[];
-  armor: 'light' | 'medium' | 'heavy';
-  position: { x: number; y: number };
-  /** LLM temperature / aggression 0-1 */
-  temperature?: number;
-  /** BYO LLM headers forwarded to decide endpoint */
-  llmHeaders?: Record<string, string>;
-  /** Energy cost per MOVE action (default 4, increases with loadout weight) */
-  moveCost?: number;
-  /** Custom brain prompt (system prompt for the LLM) */
-  brainPrompt?: string;
-  /** Equipped skill IDs (max 3) */
-  skills?: string[];
-}
-
-export interface MatchSnapshot {
-  state: any;
-  tick: number;
-  ended: boolean;
-  winnerId: string | null;
-  /** Queue depth for each bot (how many prefetched decisions are pending) */
-  queueDepth?: Record<string, number>;
-}
-
-export type SnapshotCallback = (snap: MatchSnapshot) => void;
-
-/* ── Message history ───────────────────────────────────────── */
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-/** Cap messages: keep system message + last N user/assistant pairs */
-export function capMessages(messages: ChatMessage[], maxPairs: number): ChatMessage[] {
-  if (messages.length === 0) return messages;
-  const system = messages[0].role === 'system' ? messages[0] : null;
-  const rest = system ? messages.slice(1) : messages;
-  const maxRest = maxPairs * 2;
-  const trimmed = rest.length > maxRest ? rest.slice(-maxRest) : rest;
-  return system ? [system, ...trimmed] : trimmed;
-}
-
-/* ── Spawn positions ───────────────────────────────────────── */
-
-const POSITION_SPREADS: Record<number, Array<{ x: number; y: number }>> = {
-  2: [{ x: 6, y: 10 }, { x: 14, y: 10 }],  // face each other, 8 units apart — within ranged range (max 10)
-  3: [{ x: 4, y: 10 }, { x: 16, y: 10 }, { x: 10, y: 3 }],
-  4: [{ x: 3, y: 3 }, { x: 17, y: 3 }, { x: 3, y: 17 }, { x: 17, y: 17 }],
-  5: [{ x: 10, y: 3 }, { x: 17, y: 8 }, { x: 15, y: 17 }, { x: 5, y: 17 }, { x: 3, y: 8 }],
-};
-
-export function getSpawnPositions(count: number): Array<{ x: number; y: number }> {
-  if (POSITION_SPREADS[count]) return POSITION_SPREADS[count];
-  const cx = 3.5;
-  const cy = 3.5;
-  const r = 3.2;
-  return Array.from({ length: count }, (_, i) => {
-    const angle = (2 * Math.PI * i) / count - Math.PI / 2;
-    return {
-      x: Math.round(cx + r * Math.cos(angle)),
-      y: Math.round(cy + r * Math.sin(angle)),
-    };
-  });
-}
+export type { BotConfig, MatchSnapshot, SnapshotCallback };
 
 const FACING_CYCLE: Array<'N' | 'E' | 'S' | 'W' | 'NE' | 'SE' | 'SW' | 'NW'> =
   ['E', 'W', 'S', 'N', 'SE', 'SW', 'NE', 'NW'];
@@ -198,9 +138,6 @@ async function fetchDecision(
     const data = await res.json();
     const action = data?.action ?? { type: 'NO_OP' };
     if (data?.reasoning) action.reasoning = data.reasoning;
-    if (data?.skillUsed) {
-      console.log(`[match-runner] ${actorId} used skill: ${data.skillUsed}`);
-    }
     return action;
   } catch {
     clearTimeout(timer);
@@ -225,7 +162,6 @@ function ffaWinnerId(actors: Record<string, any>): string | null {
   const alive = Object.entries(actors).filter(([, a]) => a.hp > 0);
   if (alive.length === 1) return alive[0][0];
   if (alive.length === 0) {
-    // All dead — highest damage dealt wins
     let bestId: string | null = null;
     let bestDmg = -1;
     for (const [id, actor] of Object.entries(actors)) {
@@ -234,7 +170,6 @@ function ffaWinnerId(actors: Record<string, any>): string | null {
     }
     return bestId;
   }
-  // Multiple alive (timeout) — highest HP wins
   let bestId: string | null = null;
   let bestHp = -1;
   for (const [id, actor] of alive) {
@@ -271,7 +206,6 @@ export async function runMatchAsync(
 
   const state = createInitialState({ seed, actors });
 
-  // Per-bot LLM headers
   const headersMap = new Map<string, Record<string, string>>();
   for (const bot of bots) {
     const h: Record<string, string> = { ...(bot.llmHeaders || {}) };
@@ -281,13 +215,11 @@ export async function runMatchAsync(
     headersMap.set(bot.id, h);
   }
 
-  // Per-bot decision queues
   const queues = new Map<string, DecisionQueue>();
   for (const bot of bots) {
     queues.set(bot.id, new DecisionQueue());
   }
 
-  // Bot lookup
   const botMap = new Map<string, BotConfig>();
   for (const bot of bots) {
     botMap.set(bot.id, bot);
@@ -330,7 +262,6 @@ export async function runMatchAsync(
       const snap = serializableState(state);
       const aliveBots = bots.filter((bot) => state.actors[bot.id]?.hp > 0);
 
-      // Enqueue decisions for all alive bots
       for (const bot of aliveBots) {
         const queue = queues.get(bot.id)!;
         const enemyId = nearestAliveEnemy(snap.actors, bot.id) ?? bot.id;
@@ -340,7 +271,6 @@ export async function runMatchAsync(
         );
       }
 
-      // Await all decisions in parallel
       const actions = new Map<string, { type: string; dir?: string; targetId?: string; reasoning?: string }>();
       await Promise.all(
         aliveBots.map(async (bot) => {
@@ -350,7 +280,6 @@ export async function runMatchAsync(
         }),
       );
 
-      // INTERRUPT: cancels all other bots' queued decisions
       for (const bot of aliveBots) {
         if (actions.get(bot.id)?.type === 'INTERRUPT') {
           for (const [id, queue] of queues) {
@@ -359,7 +288,6 @@ export async function runMatchAsync(
         }
       }
 
-      // Run all ticks of the decision window synchronously
       for (let i = 0; i < DECISION_WINDOW_TICKS && !state.ended; i++) {
         const actionsByActor = new Map<string, any>();
         if (i === 0) {
@@ -375,7 +303,6 @@ export async function runMatchAsync(
 
       fixWinner();
 
-      // Prefetch next decision window
       if (!state.ended && state.tick < MAX_TICKS) {
         const nextSnap = serializableState(state);
         const nextTick = state.tick;
