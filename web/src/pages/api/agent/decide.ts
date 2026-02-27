@@ -308,7 +308,7 @@ function formatGameState(
 
   // ── Response format
   lines.push('Respond with ONE JSON action: {"type":"...","dir":"...","targetId":"...","reasoning":"..."}');
-  lines.push('dir: required for MOVE/DASH (N/NE/E/SE/S/SW/W/NW). targetId: optional for attacks.');
+  lines.push('dir: required for MOVE/DASH (N/NE/E/SE/S/SW/W/NW). targetId: use the full actor ID (e.g. "bot2"), NOT the map letter.');
 
   return lines.join('\n');
 }
