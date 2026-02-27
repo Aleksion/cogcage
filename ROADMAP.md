@@ -1,4 +1,4 @@
-# CogCage Roadmap
+# The Molt Pit Roadmap
 
 *This is the source of truth for what we're building and why. Updated as strategy evolves.*
 *Engineering decisions: `docs/architecture-game-engine.md` | Changelog: `CHANGELOG.md` | Active sprint: `docs/sprints/current.md`*
@@ -7,10 +7,10 @@
 
 ## North Star
 
-**CogCage earns money by being the arena where OpenClaw users prove their agent engineering skill.**
+**The Molt Pit earns money by being the arena where OpenClaw users prove their agent engineering skill.**
 
 The monetization flywheel:
-1. Players install the CogCage OpenClaw plugin to enter live matches
+1. Players install the The Molt Pit OpenClaw plugin to enter live matches
 2. Better agents = better ELO = status = more players want to compete
 3. Prize pools attract serious players → premium tiers → revenue
 4. Plugin distribution via ClawHub drives OpenClaw adoption (cross-sells)
@@ -56,7 +56,7 @@ See task specs: `docs/tasks/phase1-*.md`
 
 ## Phase 2 — OpenClaw Plugin (Target: Mar 14, 2026) ⚡ REVENUE CRITICAL
 
-**Goal:** Publish `@cogcage/themoltpit` skill to ClawHub. Players install it and run their bot from their OpenClaw. This is the monetization entry point.
+**Goal:** Publish `@themoltpit/plugin` skill to ClawHub. Players install it and run their bot from their OpenClaw. This is the monetization entry point.
 
 See task specs: `docs/tasks/phase2-*.md`
 
@@ -65,10 +65,10 @@ See task specs: `docs/tasks/phase2-*.md`
 - [ ] **TASK-012** — LLM decision loop: game state → system prompt + state → stream → parse JSON → push action (max_tokens: 30 enforced)
 - [ ] **TASK-013** — Model selection in SKILL.md (gpt-4o-mini default, user-swappable)
 - [ ] **TASK-014** — Electric Durable Streams wrapping LLM calls (resilient on mobile)
-- [ ] **TASK-015** — Publish to ClawHub: `clawhub install cogcage`
+- [ ] **TASK-015** — Publish to ClawHub: `clawhub install themoltpit`
 - [ ] **TASK-016** — Plugin onboarding flow: install → connect wallet/account → enter match
 
-**Exit criteria:** A player installs `clawhub install cogcage`, runs their OpenClaw, and their bot fights in a live match against another player's bot. Fully autonomous — human never touches a button during the fight.
+**Exit criteria:** A player installs `clawhub install themoltpit`, runs their OpenClaw, and their bot fights in a live match against another player's bot. Fully autonomous — human never touches a button during the fight.
 
 ---
 

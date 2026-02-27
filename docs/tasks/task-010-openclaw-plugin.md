@@ -1,4 +1,4 @@
-# TASK-010 — CogCage OpenClaw Plugin (`@cogcage/themoltpit`)
+# TASK-010 — The Molt Pit OpenClaw Plugin (`@themoltpit/plugin`)
 
 **Priority:** REVENUE CRITICAL  
 **Phase:** 2  
@@ -10,7 +10,7 @@
 
 ## Why This Exists
 
-The plugin IS the product. Without it, CogCage is a demo. With it, CogCage is an arena where OpenClaw users deploy real agents and compete for real stakes.
+The plugin IS the product. Without it, The Molt Pit is a demo. With it, The Molt Pit is an arena where OpenClaw users deploy real agents and compete for real stakes.
 
 Every player needs their OpenClaw running the plugin to participate in live matches. That's the distribution hook. Plugin installs = engaged players = revenue.
 
@@ -59,7 +59,7 @@ Player's OpenClaw (background service)
 The plugin ships as an OpenClaw skill installable via ClawHub:
 
 ```
-skills/cogcage/
+skills/themoltpit/
 ├── SKILL.md          ← user-facing instructions + config
 ├── scripts/
 │   ├── connect.ts    ← WebSocket client, tick event handler
@@ -71,9 +71,9 @@ skills/cogcage/
 ### SKILL.md Content (draft)
 
 ```markdown
-# CogCage — The Molt Pit
+# The Molt Pit — The Molt Pit
 
-Connect your OpenClaw to a live CogCage match. Your agent fights autonomously.
+Connect your OpenClaw to a live The Molt Pit match. Your agent fights autonomously.
 Every millisecond of think time costs you ticks. Engineer for speed.
 
 ## Setup
@@ -229,8 +229,8 @@ The action still gets queued. No NO_OP from a dropped connection.
 ## Success Criteria
 
 A player can:
-1. `clawhub install cogcage` from their terminal
-2. Configure their token and model in `~/.openclaw/skills/cogcage/config.yaml`
+1. `clawhub install themoltpit` from their terminal
+2. Configure their token and model in `~/.openclaw/skills/themoltpit/config.yaml`
 3. Go to `cogcage.com/play`, create a lobby, add opponent
 4. Their OpenClaw takes over — bot fights autonomously
 5. Post-match result screen shows their decision latency + tokens/decision

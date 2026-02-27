@@ -1,4 +1,4 @@
-# CogCage — Game Engine Architecture Decision Record
+# The Molt Pit — Game Engine Architecture Decision Record
 
 *Written: 2026-02-27. Updated as we iterate. Source of truth for engine infra decisions.*
 
@@ -166,7 +166,7 @@ const result = await streamText({
 });
 ```
 
-### Where It Fits in CogCage
+### Where It Fits in The Molt Pit
 **Not** for the tick loop or game state sync. Best applied to:
 1. **Agent decision streaming** — the LLM decision call from the OpenClaw plugin. If mobile agent loses connection mid-token, Electric resumes from last position. Reduces NO_OPs from dropped connections.
 2. **Replay streaming** — streaming a full match replay over a flaky connection.

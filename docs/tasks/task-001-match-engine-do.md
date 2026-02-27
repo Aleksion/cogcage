@@ -110,7 +110,7 @@ export class MatchEngine implements DurableObject {
 ### wrangler.toml
 
 ```toml
-name = "cogcage-engine"
+name = "themoltpit-engine"
 main = "src/index.ts"
 compatibility_date = "2026-02-27"
 

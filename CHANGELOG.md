@@ -214,3 +214,28 @@ Added full Dashboard → Create Lobby → Lobby → Arena flow. Players can now 
 3. Flag breaking changes — never omit this section
 4. Reference Linear issue if one exists (`PREC-XXXX`)
 5. If the PR fixes a bug — document the root cause, not just the symptom
+
+## [2026-02-27] - chore: rename CogCage → The Molt Pit
+
+**Type:** chore
+
+### Summary
+Project renamed from CogCage to The Molt Pit throughout docs, task specs, and architecture ADR. The core-thesis.md already used this name. UI source files (components, API routes, cookies) to be renamed in a follow-up PR once agents complete current feature branches.
+
+### Changes
+- `ROADMAP.md` — renamed throughout
+- `docs/architecture-game-engine.md` — renamed, wrangler project name updated to `themoltpit-engine`
+- `docs/tasks/task-001-match-engine-do.md` — renamed
+- `docs/tasks/task-010-openclaw-plugin.md` — renamed, skill dir `skills/themoltpit/`, plugin `clawhub install themoltpit`
+- `docs/sprints/current.md` — renamed
+
+### Breaking Changes
+- Wrangler project name: `cogcage-engine` → `themoltpit-engine` (workers.dev subdomain changes)
+- Plugin skill directory: `skills/cogcage/` → `skills/themoltpit/`
+- Plugin install: `clawhub install cogcage` → `clawhub install themoltpit`
+
+### Notes
+- `cogcage.com` domain: keep for now, evaluate `themoltpit.com` separately
+- Redis key prefixes (`cogcage_pid`, `armory:*`, `lobby:*`) — follow-up rename PR
+- GitHub repo URL: `Aleksion/cogcage` — can rename repo in GitHub settings when ready
+
