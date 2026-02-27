@@ -38,21 +38,46 @@ export type SnapshotCallback = (snap: MatchSnapshot) => void;
 
 /* ── Message history ───────────────────────────────────────── */
 
-interface ChatMessage {
+export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
 
 /** Cap messages: keep system message + last N user/assistant pairs */
-function capMessages(messages: ChatMessage[], maxPairs: number): ChatMessage[] {
+export function capMessages(messages: ChatMessage[], maxPairs: number): ChatMessage[] {
   if (messages.length === 0) return messages;
   const system = messages[0].role === 'system' ? messages[0] : null;
   const rest = system ? messages.slice(1) : messages;
-  // Each pair is 2 messages (user + assistant)
   const maxRest = maxPairs * 2;
   const trimmed = rest.length > maxRest ? rest.slice(-maxRest) : rest;
   return system ? [system, ...trimmed] : trimmed;
 }
+
+/* ── Spawn positions ───────────────────────────────────────── */
+
+const POSITION_SPREADS: Record<number, Array<{ x: number; y: number }>> = {
+  2: [{ x: 1, y: 4 }, { x: 6, y: 3 }],
+  3: [{ x: 1, y: 4 }, { x: 6, y: 3 }, { x: 4, y: 1 }],
+  4: [{ x: 1, y: 1 }, { x: 6, y: 1 }, { x: 1, y: 6 }, { x: 6, y: 6 }],
+  5: [{ x: 3, y: 0 }, { x: 6, y: 2 }, { x: 5, y: 6 }, { x: 1, y: 6 }, { x: 0, y: 2 }],
+};
+
+export function getSpawnPositions(count: number): Array<{ x: number; y: number }> {
+  if (POSITION_SPREADS[count]) return POSITION_SPREADS[count];
+  const cx = 3.5;
+  const cy = 3.5;
+  const r = 3.2;
+  return Array.from({ length: count }, (_, i) => {
+    const angle = (2 * Math.PI * i) / count - Math.PI / 2;
+    return {
+      x: Math.round(cx + r * Math.cos(angle)),
+      y: Math.round(cy + r * Math.sin(angle)),
+    };
+  });
+}
+
+const FACING_CYCLE: Array<'N' | 'E' | 'S' | 'W' | 'NE' | 'SE' | 'SW' | 'NW'> =
+  ['E', 'W', 'S', 'N', 'SE', 'SW', 'NE', 'NW'];
 
 /* ── Decision Queue ─────────────────────────────────────────── */
 
@@ -98,7 +123,6 @@ class DecisionQueue {
     }
   }
 
-  /** Cancel all pending decisions (INTERRUPT) */
   interrupt(): void {
     this.queue = [];
   }
@@ -108,14 +132,33 @@ class DecisionQueue {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+function nearestAliveEnemy(actors: Record<string, any>, actorId: string): string | null {
+  const me = actors[actorId];
+  if (!me || me.hp <= 0) return null;
+  let nearest: string | null = null;
+  let minDist = Infinity;
+  for (const id of Object.keys(actors)) {
+    if (id === actorId) continue;
+    const actor = actors[id];
+    if (actor.hp <= 0) continue;
+    const dx = actor.position.x - me.position.x;
+    const dy = actor.position.y - me.position.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < minDist) {
+      minDist = dist;
+      nearest = id;
+    }
+  }
+  return nearest;
+}
+
 async function fetchDecision(
   apiBase: string,
   gameState: any,
   actorId: string,
-  opponentIds: string[],
+  opponentId: string,
   systemPrompt: string,
   loadout: string[],
-  messages: ChatMessage[],
   timeoutMs: number = 4000,
   extraHeaders?: Record<string, string>,
 ): Promise<{ type: string; dir?: string; targetId?: string; reasoning?: string }> {
@@ -134,10 +177,9 @@ async function fetchDecision(
       body: JSON.stringify({
         gameState,
         actorId,
-        opponentIds,
+        opponentId,
         systemPrompt,
         loadout,
-        messages,
       }),
       signal: controller.signal,
     });
@@ -165,67 +207,100 @@ function serializableState(state: any) {
   }));
 }
 
+/** Determine correct FFA winner from actor states (engine's determineWinner only handles 2) */
+function ffaWinnerId(actors: Record<string, any>): string | null {
+  const alive = Object.entries(actors).filter(([, a]) => a.hp > 0);
+  if (alive.length === 1) return alive[0][0];
+  if (alive.length === 0) {
+    // All dead — highest damage dealt wins
+    let bestId: string | null = null;
+    let bestDmg = -1;
+    for (const [id, actor] of Object.entries(actors)) {
+      const dmg = (actor as any).stats?.damageDealt ?? 0;
+      if (dmg > bestDmg) { bestDmg = dmg; bestId = id; }
+    }
+    return bestId;
+  }
+  // Multiple alive (timeout) — highest HP wins
+  let bestId: string | null = null;
+  let bestHp = -1;
+  for (const [id, actor] of alive) {
+    if ((actor as any).hp > bestHp) { bestHp = (actor as any).hp; bestId = id; }
+  }
+  return bestId;
+}
+
 /* ── Main runner ─────────────────────────────────────────────── */
 
 export async function runMatchAsync(
   seed: number,
-  botA: BotConfig,
-  botB: BotConfig,
+  bots: BotConfig[],
   onSnapshot: SnapshotCallback,
   apiBase: string = '/api/agent/decide',
   signal?: AbortSignal,
 ): Promise<MatchSnapshot> {
-  const actors: Record<string, any> = {
-    [botA.id]: createActorState({
-      id: botA.id,
-      position: { x: botA.position.x * UNIT_SCALE, y: botA.position.y * UNIT_SCALE },
-      facing: 'E',
-      armor: botA.armor,
-    }),
-    [botB.id]: createActorState({
-      id: botB.id,
-      position: { x: botB.position.x * UNIT_SCALE, y: botB.position.y * UNIT_SCALE },
-      facing: 'W',
-      armor: botB.armor,
-    }),
-  };
+  if (bots.length < 2) throw new Error('Need at least 2 bots');
+
+  const positions = getSpawnPositions(bots.length);
+
+  const actors: Record<string, any> = {};
+  for (let i = 0; i < bots.length; i++) {
+    const bot = bots[i];
+    const pos = bot.position.x >= 0 ? bot.position : positions[i];
+    actors[bot.id] = createActorState({
+      id: bot.id,
+      position: { x: pos.x * UNIT_SCALE, y: pos.y * UNIT_SCALE },
+      facing: FACING_CYCLE[i % FACING_CYCLE.length],
+      armor: bot.armor,
+    });
+  }
 
   const state = createInitialState({ seed, actors });
 
-  // Build per-bot LLM headers (temperature + BYO keys)
-  const headersA: Record<string, string> = { ...(botA.llmHeaders || {}) };
-  const headersB: Record<string, string> = { ...(botB.llmHeaders || {}) };
-  if (botA.temperature !== undefined) {
-    headersA['X-Llm-Temperature'] = String(botA.temperature);
+  // Per-bot LLM headers
+  const headersMap = new Map<string, Record<string, string>>();
+  for (const bot of bots) {
+    const h: Record<string, string> = { ...(bot.llmHeaders || {}) };
+    if (bot.temperature !== undefined) {
+      h['X-Llm-Temperature'] = String(bot.temperature);
+    }
+    headersMap.set(bot.id, h);
   }
-  if (botB.temperature !== undefined) {
-    headersB['X-Llm-Temperature'] = String(botB.temperature);
+
+  // Per-bot decision queues
+  const queues = new Map<string, DecisionQueue>();
+  for (const bot of bots) {
+    queues.set(bot.id, new DecisionQueue());
   }
 
-  // Per-bot message histories
-  const messagesA: ChatMessage[] = [
-    { role: 'system', content: botA.systemPrompt || 'You are a combat bot. Pick the best tactical action each turn.' },
-  ];
-  const messagesB: ChatMessage[] = [
-    { role: 'system', content: botB.systemPrompt || 'You are a combat bot. Pick the best tactical action each turn.' },
-  ];
+  // Bot lookup
+  const botMap = new Map<string, BotConfig>();
+  for (const bot of bots) {
+    botMap.set(bot.id, bot);
+  }
 
-  // All bot IDs for opponent resolution
-  const allBotIds = [botA.id, botB.id];
+  const isMulti = bots.length > 2;
 
-  // Decision queues for prefetch
-  const queueA = new DecisionQueue();
-  const queueB = new DecisionQueue();
+  const fixWinner = () => {
+    if (isMulti && state.ended) {
+      state.winnerId = ffaWinnerId(state.actors);
+    }
+  };
 
-  const makeSnapshot = (): MatchSnapshot => ({
-    state: serializableState(state),
-    tick: state.tick,
-    ended: state.ended,
-    winnerId: state.winnerId,
-    queueDepth: { [botA.id]: queueA.depth, [botB.id]: queueB.depth },
-  });
+  const makeSnapshot = (): MatchSnapshot => {
+    const queueDepth: Record<string, number> = {};
+    for (const [id, queue] of queues) {
+      queueDepth[id] = queue.depth;
+    }
+    return {
+      state: serializableState(state),
+      tick: state.tick,
+      ended: state.ended,
+      winnerId: state.winnerId,
+      queueDepth,
+    };
+  };
 
-  // Emit initial snapshot
   onSnapshot(makeSnapshot());
 
   while (!state.ended && state.tick < MAX_TICKS) {
@@ -239,86 +314,78 @@ export async function runMatchAsync(
 
     if (isDecision) {
       const snap = serializableState(state);
+      const aliveBots = bots.filter((bot) => state.actors[bot.id]?.hp > 0);
 
-      // Opponent IDs for each bot
-      const opponentsA = allBotIds.filter(id => id !== botA.id);
-      const opponentsB = allBotIds.filter(id => id !== botB.id);
-
-      // Cap message histories before sending (system + last 10 pairs = 21 max)
-      const cappedA = capMessages(messagesA, 10);
-      const cappedB = capMessages(messagesB, 10);
-
-      // Enqueue decisions for this tick
-      queueA.enqueue(state.tick, () =>
-        fetchDecision(apiBase, snap, botA.id, opponentsA, botA.systemPrompt, botA.loadout, cappedA, 4000, headersA),
-      );
-      queueB.enqueue(state.tick, () =>
-        fetchDecision(apiBase, snap, botB.id, opponentsB, botB.systemPrompt, botB.loadout, cappedB, 4000, headersB),
-      );
-
-      // Await both decisions
-      const [actionA, actionB] = await Promise.all([
-        queueA.dequeue(state.tick),
-        queueB.dequeue(state.tick),
-      ]);
-
-      // Append user + assistant messages to histories
-      // The user message was built server-side by decide.ts from the gameState,
-      // so we store a compact summary here for history continuity
-      messagesA.push({ role: 'user', content: `[Turn tick=${state.tick}]` });
-      messagesA.push({ role: 'assistant', content: JSON.stringify(actionA) });
-      messagesB.push({ role: 'user', content: `[Turn tick=${state.tick}]` });
-      messagesB.push({ role: 'assistant', content: JSON.stringify(actionB) });
-
-      // Check for INTERRUPT action — cancels opponent's queued decisions
-      if (actionA.type === 'INTERRUPT') {
-        queueB.interrupt();
+      // Enqueue decisions for all alive bots
+      for (const bot of aliveBots) {
+        const queue = queues.get(bot.id)!;
+        const enemyId = nearestAliveEnemy(snap.actors, bot.id) ?? bot.id;
+        const headers = headersMap.get(bot.id) ?? {};
+        queue.enqueue(state.tick, () =>
+          fetchDecision(apiBase, snap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers),
+        );
       }
-      if (actionB.type === 'INTERRUPT') {
-        queueA.interrupt();
+
+      // Await all decisions in parallel
+      const actions = new Map<string, { type: string; dir?: string; targetId?: string; reasoning?: string }>();
+      await Promise.all(
+        aliveBots.map(async (bot) => {
+          const queue = queues.get(bot.id)!;
+          const action = await queue.dequeue(state.tick);
+          actions.set(bot.id, action);
+        }),
+      );
+
+      // INTERRUPT: cancels all other bots' queued decisions
+      for (const bot of aliveBots) {
+        if (actions.get(bot.id)?.type === 'INTERRUPT') {
+          for (const [id, queue] of queues) {
+            if (id !== bot.id) queue.interrupt();
+          }
+        }
       }
 
       // Run all ticks of the decision window synchronously
       for (let i = 0; i < DECISION_WINDOW_TICKS && !state.ended; i++) {
         const actionsByActor = new Map<string, any>();
         if (i === 0) {
-          actionsByActor.set(botA.id, { ...actionA, tick: state.tick, actorId: botA.id });
-          actionsByActor.set(botB.id, { ...actionB, tick: state.tick, actorId: botB.id });
+          for (const bot of aliveBots) {
+            const action = actions.get(bot.id);
+            if (action) {
+              actionsByActor.set(bot.id, { ...action, tick: state.tick, actorId: bot.id });
+            }
+          }
         }
         resolveTick(state, actionsByActor);
       }
 
-      // Prefetch next decision window while we render
+      fixWinner();
+
+      // Prefetch next decision window
       if (!state.ended && state.tick < MAX_TICKS) {
         const nextSnap = serializableState(state);
         const nextTick = state.tick;
-        // Only prefetch on decision boundaries
         if (nextTick % DECISION_WINDOW_TICKS === 0) {
-          const nextCappedA = capMessages(messagesA, 10);
-          const nextCappedB = capMessages(messagesB, 10);
-          const nextOpponentsA = allBotIds.filter(id => id !== botA.id);
-          const nextOpponentsB = allBotIds.filter(id => id !== botB.id);
-          queueA.enqueue(nextTick, () =>
-            fetchDecision(apiBase, nextSnap, botA.id, nextOpponentsA, botA.systemPrompt, botA.loadout, nextCappedA, 4000, headersA),
-          );
-          queueB.enqueue(nextTick, () =>
-            fetchDecision(apiBase, nextSnap, botB.id, nextOpponentsB, botB.systemPrompt, botB.loadout, nextCappedB, 4000, headersB),
-          );
+          const nextAliveBots = bots.filter((bot) => state.actors[bot.id]?.hp > 0);
+          for (const bot of nextAliveBots) {
+            const queue = queues.get(bot.id)!;
+            const enemyId = nearestAliveEnemy(nextSnap.actors, bot.id) ?? bot.id;
+            const headers = headersMap.get(bot.id) ?? {};
+            queue.enqueue(nextTick, () =>
+              fetchDecision(apiBase, nextSnap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers),
+            );
+          }
         }
       }
 
-      // Emit snapshot after each decision window
       onSnapshot(makeSnapshot());
-
-      // Small delay for UI rendering
       await sleep(TICK_MS * 2);
     } else {
-      // Non-decision ticks shouldn't happen in this loop structure
-      // since we process all 3 ticks per window above, but safety:
       resolveTick(state, new Map());
     }
   }
 
+  fixWinner();
   const finalSnapshot = makeSnapshot();
   onSnapshot(finalSnapshot);
   return finalSnapshot;

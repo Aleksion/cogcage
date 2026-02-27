@@ -417,6 +417,7 @@ const Play = () => {
   const [email, setEmail] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [ffaBusy, setFfaBusy] = useState(false);
 
   // --- PlayCanvas ---
   const [pcActive, setPcActive] = useState(false);
@@ -458,29 +459,13 @@ const Play = () => {
     return () => clearInterval(interval);
   }, [phase, showRoomPanel]);
 
-  // --- PlayCanvas lifecycle ---
+  // --- PlayCanvas lifecycle (disabled — using CSS arena grid) ---
   useEffect(() => {
     if (phase !== 'match' || !playCanvasRef.current) return;
-
-    let destroyed = false;
-
-    import('../lib/ws2/PlayCanvasScene').then(({ PlayCanvasScene }) => {
-      if (destroyed || !playCanvasRef.current) return;
-      try {
-        const scene = new PlayCanvasScene(playCanvasRef.current);
-        sceneRef.current = scene;
-        setPcActive(true);
-      } catch (e) {
-        console.warn('[PlayCanvas] Init failed, using CSS grid:', e);
-        setPcActive(false);
-      }
-    }).catch((e) => {
-      console.warn('[PlayCanvas] Load failed, using CSS grid:', e);
-      setPcActive(false);
-    });
+    // PlayCanvas renderer removed; CSS arena grid is the active renderer
+    setPcActive(false);
 
     return () => {
-      destroyed = true;
       sceneRef.current?.destroy?.();
       sceneRef.current = null;
       setPcActive(false);
@@ -648,8 +633,6 @@ const Play = () => {
       position: { x: 1, y: 4 },
       temperature: botAConfig.temperature,
       llmHeaders: buildLlmHeaders(botAConfig),
-      agentMode: botAConfig.mode,
-      webhookUrl: botAConfig.webhookUrl || undefined,
     };
 
     const configB: BotConfig = {
@@ -661,8 +644,6 @@ const Play = () => {
       position: { x: 6, y: 3 },
       temperature: botBConfig.temperature,
       llmHeaders: buildLlmHeaders(botBConfig),
-      agentMode: botBConfig.mode,
-      webhookUrl: botBConfig.webhookUrl || undefined,
     };
 
     setBotAPos({ x: 1, y: 4 });
@@ -679,7 +660,7 @@ const Play = () => {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    runMatchAsync(seed, configA, configB, handleSnapshot, '/api/agent/decide', controller.signal)
+    runMatchAsync(seed, [configA, configB], handleSnapshot, '/api/agent/decide', controller.signal)
       .catch((err) => {
         console.error('[match-runner] Error:', err);
         setRunning(false);
@@ -705,6 +686,37 @@ const Play = () => {
         : prev.loadout.filter((a) => a !== action);
       return { ...prev, loadout: newLoadout };
     });
+  };
+
+  // --- FFA Tournament ---
+  const handleStartFfa = async () => {
+    setFfaBusy(true);
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          hostName: botAConfig.name || 'Host',
+          bot: {
+            name: botAConfig.name || 'Host Bot',
+            systemPrompt: botAConfig.systemPrompt,
+            loadout: botAConfig.loadout,
+            armor: botAConfig.armor,
+            temperature: botAConfig.temperature,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.sessionId) {
+        window.location.href = `/play/session/${data.sessionId}?pid=${data.participantId}`;
+      } else {
+        alert(data.error || 'Failed to create session');
+        setFfaBusy(false);
+      }
+    } catch {
+      alert('Network error creating session');
+      setFfaBusy(false);
+    }
   };
 
   // --- Founder CTA ---
@@ -1105,9 +1117,19 @@ const Play = () => {
               </div>
             )}
 
-            <button className="cta-btn enter-arena-btn" onClick={startMatch}>
-              Start Battle
-            </button>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button className="cta-btn enter-arena-btn" style={{ flex: '1 1 auto', maxWidth: '400px' }} onClick={startMatch}>
+                Start Battle
+              </button>
+              <button
+                className="cta-btn enter-arena-btn"
+                style={{ flex: '1 1 auto', maxWidth: '400px', background: 'var(--c-purple)' }}
+                onClick={handleStartFfa}
+                disabled={ffaBusy}
+              >
+                {ffaBusy ? 'Creating...' : 'Start FFA Tournament'}
+              </button>
+            </div>
 
             {renderFounderCta()}
           </div>
