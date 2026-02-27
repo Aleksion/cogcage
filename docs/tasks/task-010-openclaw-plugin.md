@@ -2,7 +2,7 @@
 
 **Priority:** REVENUE CRITICAL  
 **Phase:** 2  
-**Depends on:** TASK-001 (MatchEngine DO live at `engine.cogcage.com`)  
+**Depends on:** TASK-001 (MatchEngine DO live at `engine.themoltpit.com`)  
 **Owner:** Daedalus  
 **Target:** Mar 14, 2026
 
@@ -26,7 +26,7 @@ Every tick (150–300ms):
   2. Format: { botId, hp, position, energy, opponentPosition, opponentHp, availableActions, tick }
   3. Call player's configured LLM: system prompt (from armory) + game state JSON
   4. Parse first complete JSON token from stream: { "action": "RANGED_SHOT", "targetId": "botB" }
-  5. POST to engine.cogcage.com/match/{id}/queue immediately — don't wait for full response
+  5. POST to engine.themoltpit.com/match/{id}/queue immediately — don't wait for full response
   6. Loop — already reasoning about next tick before engine advances
 ```
 
@@ -39,7 +39,7 @@ If the agent is slow → empty queue → NO_OP → tick lost → game consequenc
 ```
 Player's OpenClaw (background service)
   │
-  ├── WebSocket: wss://engine.cogcage.com/match/{matchId}?botId={botId}&token={authToken}
+  ├── WebSocket: wss://engine.themoltpit.com/match/{matchId}?botId={botId}&token={authToken}
   │     Receives: { type: "tick", state: GameState, tick: number }
   │     Sends: nothing (read-only from WebSocket perspective)
   │
@@ -48,7 +48,7 @@ Player's OpenClaw (background service)
         ├── LLM call: model=configuredModel, max_tokens=30, stream=true
         │     (wrapped in Electric Durable Streams for resilience)
         ├── Stream parse: extract first complete JSON object from token stream
-        └── POST engine.cogcage.com/match/{matchId}/queue
+        └── POST engine.themoltpit.com/match/{matchId}/queue
               { botId, action, tick, token: authToken }
 ```
 

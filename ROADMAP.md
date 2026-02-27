@@ -45,7 +45,7 @@ See task specs: `docs/tasks/phase1-*.md`
 
 - [ ] **TASK-001** — Cloudflare `MatchEngine` Durable Object
 - [ ] **TASK-002** — Vercel Queues: action transport + event fan-out
-- [ ] **TASK-003** — `engine.cogcage.com` subdomain + wrangler deploy
+- [ ] **TASK-003** — `engine.themoltpit.com` subdomain + wrangler deploy
 - [ ] **TASK-004** — `MatchView.tsx` migrated to WebSocket consumer (no client-side engine)
 - [ ] **TASK-005** — Remove client-side `match-runner.ts` (replaced by DO)
 - [ ] **TASK-006** — Decision latency + tokens/decision stats on result screen

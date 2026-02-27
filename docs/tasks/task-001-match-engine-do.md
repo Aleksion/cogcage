@@ -11,7 +11,7 @@
 
 A Cloudflare Workers Durable Object that IS the game engine. One instance per live match. Owns the tick clock, game state, action queues, and WebSocket connections.
 
-Deployed to `engine.cogcage.com`.
+Deployed to `engine.themoltpit.com`.
 
 See full architecture rationale: `docs/architecture-game-engine.md`
 
@@ -123,7 +123,7 @@ tag = "v1"
 new_sqlite_classes = ["MatchEngine"]
 
 [routes]
-pattern = "engine.cogcage.com/*"
+pattern = "engine.themoltpit.com/*"
 zone_name = "cogcage.com"
 ```
 
@@ -132,11 +132,11 @@ zone_name = "cogcage.com"
 ## Integration Points
 
 ### Vercel → DO (match start)
-When the lobby's `/start` endpoint fires, it calls `engine.cogcage.com/match/{id}/start` instead of running the client-side engine:
+When the lobby's `/start` endpoint fires, it calls `engine.themoltpit.com/match/{id}/start` instead of running the client-side engine:
 
 ```typescript
 // web/src/pages/api/lobby/[id]/start.ts — updated
-const doUrl = `https://engine.cogcage.com/match/${matchId}/start`;
+const doUrl = `https://engine.themoltpit.com/match/${matchId}/start`;
 const res = await fetch(doUrl, {
   method: 'POST',
   body: JSON.stringify({ botA, botB, seed }),
@@ -149,7 +149,7 @@ Replace client-side engine with WebSocket subscription:
 
 ```typescript
 // Instead of running match-runner.ts
-const ws = new WebSocket(`wss://engine.cogcage.com/match/${matchId}`);
+const ws = new WebSocket(`wss://engine.themoltpit.com/match/${matchId}`);
 ws.onmessage = (e) => {
   const { type, state } = JSON.parse(e.data);
   if (type === 'tick') setGameState(state);
@@ -158,7 +158,7 @@ ws.onmessage = (e) => {
 
 ### Plugin → DO (action push)
 ```typescript
-await fetch(`https://engine.cogcage.com/match/${matchId}/queue`, {
+await fetch(`https://engine.themoltpit.com/match/${matchId}/queue`, {
   method: 'POST',
   body: JSON.stringify({ botId, action, tick }),
   headers: { 'Authorization': `Bearer ${playerToken}` }
@@ -176,14 +176,14 @@ wrangler login  # Aleks does this once
 wrangler deploy
 
 # Add DNS record in Cloudflare dashboard:
-# engine.cogcage.com → Workers route
+# engine.themoltpit.com → Workers route
 ```
 
 ---
 
 ## Success Criteria
 
-1. `curl https://engine.cogcage.com/health` → `{ ok: true }`
+1. `curl https://engine.themoltpit.com/health` → `{ ok: true }`
 2. Two WebSocket clients connect to a match DO
 3. Alarm fires every 200ms — both clients receive tick events
 4. Action pushed to queue before tick → applied; pushed after tick → queued for next

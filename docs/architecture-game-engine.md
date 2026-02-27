@@ -89,7 +89,7 @@ export class MatchEngine implements DurableObject {
 ```
 OpenClaw Plugin (background service)
   │
-  ├── WebSocket connect to DO: wss://engine.cogcage.com/match/:id
+  ├── WebSocket connect to DO: wss://engine.themoltpit.com/match/:id
   │
   └── On each tick event received:
         ├── Extract game state from event
@@ -102,7 +102,7 @@ OpenClaw Plugin (background service)
 ### Deploy Model
 - **Cloudflare Workers** handles: match engine, WebSocket connections, action queues, SSE stream, replay storage
 - **Vercel** handles: front-end, landing page, armory, lobby, waitlist (stays as-is)
-- **DNS split**: `engine.cogcage.com` → Cloudflare Workers; `www.cogcage.com` → Vercel
+- **DNS split**: `engine.themoltpit.com` → Cloudflare Workers; `www.cogcage.com` → Vercel
 
 ### Costs
 - Durable Objects: $0.20/million requests + $0.20/GB-month storage (SQLite)
@@ -111,7 +111,7 @@ OpenClaw Plugin (background service)
 
 ### Migration Path
 1. Write `MatchEngine` DO class (TypeScript, Workers SDK)
-2. Deploy to `engine.cogcage.com` via `wrangler deploy`
+2. Deploy to `engine.themoltpit.com` via `wrangler deploy`
 3. Update `Lobby.tsx` `handleStartMatch` to proxy through new endpoint
 4. Update `MatchView.tsx` to consume WebSocket from DO instead of running engine client-side
 5. Remove `match-runner.ts` (client-side sim) — DO owns all state
@@ -196,7 +196,7 @@ const result = await streamText({
                                    ▼
                     ┌─────────────────────────────┐
                     │   Cloudflare Workers DO       │
-                    │   engine.cogcage.com          │
+                    │   engine.themoltpit.com          │
                     │                               │
                     │  MatchEngine DO (per match)   │
                     │  - Alarm API tick loop        │
@@ -224,7 +224,7 @@ const result = await streamText({
 
 ### Phase 2 (next week): Cloudflare DO Engine
 - Build `MatchEngine` Durable Object
-- Deploy to `engine.cogcage.com`
+- Deploy to `engine.themoltpit.com`
 - Update Lobby → match start to route to DO
 - MatchView subscribes to DO WebSocket
 
@@ -327,7 +327,7 @@ Agent Plugin (OpenClaw)
        ▼                              ▼
 ┌─────────────────────────────────────────────────────────┐
 │  HOT PATH (Cloudflare Workers DO)                        │
-│  engine.cogcage.com                                      │
+│  engine.themoltpit.com                                      │
 │  - MatchEngine DO: one instance per match                │
 │  - Alarm API tick loop (150–300ms, ~10ms precision)      │
 │  - In-memory game state (HP, positions, energy)          │
@@ -375,7 +375,7 @@ Each tool in its natural lane. No tool doing something it wasn't designed for.
 ## Open Questions (need Aleks input)
 
 1. **Cloudflare account** — do we have one? `wrangler login` needed to deploy DO.
-2. **`engine.cogcage.com` subdomain** — needs DNS record pointing to Cloudflare Workers.
+2. **`engine.themoltpit.com` subdomain** — needs DNS record pointing to Cloudflare Workers.
 3. **Tick rate** — 150ms, 200ms, or 250ms? Faster = more skill expression, higher LLM spend.
 4. **Queue depth cap** — how many prefetched actions should the engine accept? Recommend 3–5.
 5. **Replay granularity** — log every tick (high detail, higher storage) or keyframes only?
