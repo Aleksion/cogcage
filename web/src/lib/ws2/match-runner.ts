@@ -36,6 +36,24 @@ export interface MatchSnapshot {
 
 export type SnapshotCallback = (snap: MatchSnapshot) => void;
 
+/* ── Message history ───────────────────────────────────────── */
+
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+/** Cap messages: keep system message + last N user/assistant pairs */
+function capMessages(messages: ChatMessage[], maxPairs: number): ChatMessage[] {
+  if (messages.length === 0) return messages;
+  const system = messages[0].role === 'system' ? messages[0] : null;
+  const rest = system ? messages.slice(1) : messages;
+  // Each pair is 2 messages (user + assistant)
+  const maxRest = maxPairs * 2;
+  const trimmed = rest.length > maxRest ? rest.slice(-maxRest) : rest;
+  return system ? [system, ...trimmed] : trimmed;
+}
+
 /* ── Decision Queue ─────────────────────────────────────────── */
 
 interface QueuedDecision {
@@ -94,9 +112,10 @@ async function fetchDecision(
   apiBase: string,
   gameState: any,
   actorId: string,
-  opponentId: string,
+  opponentIds: string[],
   systemPrompt: string,
   loadout: string[],
+  messages: ChatMessage[],
   timeoutMs: number = 4000,
   extraHeaders?: Record<string, string>,
 ): Promise<{ type: string; dir?: string; targetId?: string; reasoning?: string }> {
@@ -115,9 +134,10 @@ async function fetchDecision(
       body: JSON.stringify({
         gameState,
         actorId,
-        opponentId,
+        opponentIds,
         systemPrompt,
         loadout,
+        messages,
       }),
       signal: controller.signal,
     });
@@ -182,6 +202,17 @@ export async function runMatchAsync(
     headersB['X-Llm-Temperature'] = String(botB.temperature);
   }
 
+  // Per-bot message histories
+  const messagesA: ChatMessage[] = [
+    { role: 'system', content: botA.systemPrompt || 'You are a combat bot. Pick the best tactical action each turn.' },
+  ];
+  const messagesB: ChatMessage[] = [
+    { role: 'system', content: botB.systemPrompt || 'You are a combat bot. Pick the best tactical action each turn.' },
+  ];
+
+  // All bot IDs for opponent resolution
+  const allBotIds = [botA.id, botB.id];
+
   // Decision queues for prefetch
   const queueA = new DecisionQueue();
   const queueB = new DecisionQueue();
@@ -209,12 +240,20 @@ export async function runMatchAsync(
     if (isDecision) {
       const snap = serializableState(state);
 
-      // Enqueue decisions for this tick (uses prefetched if already queued)
+      // Opponent IDs for each bot
+      const opponentsA = allBotIds.filter(id => id !== botA.id);
+      const opponentsB = allBotIds.filter(id => id !== botB.id);
+
+      // Cap message histories before sending (system + last 10 pairs = 21 max)
+      const cappedA = capMessages(messagesA, 10);
+      const cappedB = capMessages(messagesB, 10);
+
+      // Enqueue decisions for this tick
       queueA.enqueue(state.tick, () =>
-        fetchDecision(apiBase, snap, botA.id, botB.id, botA.systemPrompt, botA.loadout, 4000, headersA, botA),
+        fetchDecision(apiBase, snap, botA.id, opponentsA, botA.systemPrompt, botA.loadout, cappedA, 4000, headersA),
       );
       queueB.enqueue(state.tick, () =>
-        fetchDecision(apiBase, snap, botB.id, botA.id, botB.systemPrompt, botB.loadout, 4000, headersB, botB),
+        fetchDecision(apiBase, snap, botB.id, opponentsB, botB.systemPrompt, botB.loadout, cappedB, 4000, headersB),
       );
 
       // Await both decisions
@@ -222,6 +261,14 @@ export async function runMatchAsync(
         queueA.dequeue(state.tick),
         queueB.dequeue(state.tick),
       ]);
+
+      // Append user + assistant messages to histories
+      // The user message was built server-side by decide.ts from the gameState,
+      // so we store a compact summary here for history continuity
+      messagesA.push({ role: 'user', content: `[Turn tick=${state.tick}]` });
+      messagesA.push({ role: 'assistant', content: JSON.stringify(actionA) });
+      messagesB.push({ role: 'user', content: `[Turn tick=${state.tick}]` });
+      messagesB.push({ role: 'assistant', content: JSON.stringify(actionB) });
 
       // Check for INTERRUPT action — cancels opponent's queued decisions
       if (actionA.type === 'INTERRUPT') {
@@ -247,11 +294,15 @@ export async function runMatchAsync(
         const nextTick = state.tick;
         // Only prefetch on decision boundaries
         if (nextTick % DECISION_WINDOW_TICKS === 0) {
+          const nextCappedA = capMessages(messagesA, 10);
+          const nextCappedB = capMessages(messagesB, 10);
+          const nextOpponentsA = allBotIds.filter(id => id !== botA.id);
+          const nextOpponentsB = allBotIds.filter(id => id !== botB.id);
           queueA.enqueue(nextTick, () =>
-            fetchDecision(apiBase, nextSnap, botA.id, botB.id, botA.systemPrompt, botA.loadout, 4000, headersA, botA),
+            fetchDecision(apiBase, nextSnap, botA.id, nextOpponentsA, botA.systemPrompt, botA.loadout, nextCappedA, 4000, headersA),
           );
           queueB.enqueue(nextTick, () =>
-            fetchDecision(apiBase, nextSnap, botB.id, botA.id, botB.systemPrompt, botB.loadout, 4000, headersB, botB),
+            fetchDecision(apiBase, nextSnap, botB.id, nextOpponentsB, botB.systemPrompt, botB.loadout, nextCappedB, 4000, headersB),
           );
         }
       }
