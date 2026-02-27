@@ -1,0 +1,627 @@
+import {
+  ACTION_COST,
+  ARENA_SIZE,
+  ARMOR_MULTIPLIER,
+  BASE_DAMAGE,
+  COOLDOWN_TICKS,
+  DASH_BUFF_DURATION_TICKS,
+  DASH_DISTANCE,
+  DECISION_WINDOW_TICKS,
+  ENERGY_MAX,
+  ENERGY_REGEN_PER_TICK,
+  GUARD_DURATION_TICKS,
+  GUARD_MULTIPLIER,
+  HP_MAX,
+  HP_TIE_EPS,
+  MATCH_DURATION_SEC,
+  MAX_TICKS,
+  MELEE_RANGE,
+  MIN_DAMAGE,
+  MOVE_DISTANCE,
+  OBJECTIVE_CENTER,
+  OBJECTIVE_RADIUS,
+  OBJECTIVE_SCORE_PER_TICK,
+  OBJECTIVE_SCORE_TO_WIN,
+  POSTURE_DASH_MULTIPLIER,
+  RANGED_DISTANCE_MULTIPLIER,
+  RANGED_MAX,
+  RANGED_MIN,
+  RULESET_VERSION,
+  UNIT_SCALE,
+  UTILITY_DURATION_TICKS,
+} from './constants.js';
+import type {
+  ActionType,
+  ActorState,
+  AgentAction,
+  ArmorType,
+  BotConfig,
+  Direction,
+  GameEvent,
+  GameState,
+  MatchResult,
+  Position,
+  StatusEffect,
+} from './types.js';
+import { ACTION_TYPES } from './types.js';
+
+// ── Geometry (inlined to avoid extra file) ──
+
+const SQRT1_2 = Math.SQRT1_2;
+
+const DIRS: readonly Direction[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+const DIR_VECTORS: Record<Direction, Position> = {
+  N: { x: 0, y: -1 },
+  NE: { x: SQRT1_2, y: -SQRT1_2 },
+  E: { x: 1, y: 0 },
+  SE: { x: SQRT1_2, y: SQRT1_2 },
+  S: { x: 0, y: 1 },
+  SW: { x: -SQRT1_2, y: SQRT1_2 },
+  W: { x: -1, y: 0 },
+  NW: { x: -SQRT1_2, y: -SQRT1_2 },
+};
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.max(min, Math.min(max, value));
+
+const distanceTenths = (a: Position, b: Position): number => {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.round(Math.hypot(dx, dy));
+};
+
+const applyDirection = (pos: Position, dir: Direction, distance: number): Position => {
+  const vec = DIR_VECTORS[dir];
+  if (!vec) return { ...pos };
+  return {
+    x: Math.round(pos.x + vec.x * distance),
+    y: Math.round(pos.y + vec.y * distance),
+  };
+};
+
+const directionFromVector = (dx: number, dy: number): Direction => {
+  if (dx === 0 && dy === 0) return 'N';
+  const angle = Math.atan2(dy, dx);
+  const octant = Math.round((8 * angle) / (2 * Math.PI)) & 7;
+  const mapping: Direction[] = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+  return mapping[octant];
+};
+
+const facingDot = (facing: Direction, dx: number, dy: number): number => {
+  const vec = DIR_VECTORS[facing] ?? DIR_VECTORS.N;
+  const length = Math.hypot(dx, dy);
+  if (length === 0) return 1;
+  return vec.x * (dx / length) + vec.y * (dy / length);
+};
+
+const inGuardArc = (facing: Direction, defender: Position, attacker: Position): boolean => {
+  const dx = attacker.x - defender.x;
+  const dy = attacker.y - defender.y;
+  return facingDot(facing, dx, dy) >= 0.5;
+};
+
+// ── Engine internals ──
+
+const ACTION_SET = new Set<string>(ACTION_TYPES);
+
+const orderedActorIds = (state: GameState): string[] => Object.keys(state.actors).sort();
+
+const emitEvent = (state: GameState, event: GameEvent): void => {
+  state.events.push(event);
+};
+
+const makeEvent = (
+  type: string,
+  payload: {
+    tick: number;
+    actorId?: string | null;
+    targetId?: string | null;
+    data?: Record<string, unknown> | null;
+  },
+): GameEvent => ({
+  tick: payload.tick,
+  type,
+  actorId: payload.actorId ?? null,
+  targetId: payload.targetId ?? null,
+  data: payload.data ?? null,
+});
+
+const isDecisionTick = (tick: number): boolean => tick % DECISION_WINDOW_TICKS === 0;
+
+const isStatusActive = (status: StatusEffect | null, tick: number): boolean =>
+  !!status && tick < status.endsAt;
+
+const expireStatuses = (actor: ActorState, tick: number): void => {
+  if (actor.statuses.guard && !isStatusActive(actor.statuses.guard, tick))
+    actor.statuses.guard = null;
+  if (actor.statuses.dashBuff && !isStatusActive(actor.statuses.dashBuff, tick))
+    actor.statuses.dashBuff = null;
+  if (actor.statuses.utility && !isStatusActive(actor.statuses.utility, tick))
+    actor.statuses.utility = null;
+};
+
+const regenEnergy = (actor: ActorState): void => {
+  actor.energy = clamp(actor.energy + ENERGY_REGEN_PER_TICK, 0, ENERGY_MAX);
+};
+
+const tickCooldowns = (actor: ActorState): void => {
+  for (const key of Object.keys(actor.cooldowns)) {
+    if (actor.cooldowns[key] > 0) actor.cooldowns[key] -= 1;
+  }
+};
+
+const clampPosition = (pos: Position): Position => ({
+  x: clamp(pos.x, 0, ARENA_SIZE),
+  y: clamp(pos.y, 0, ARENA_SIZE),
+});
+
+const getTargetId = (
+  state: GameState,
+  actorId: string,
+  action: AgentAction | null,
+): string | null => {
+  if (action?.targetId && state.actors[action.targetId]) return action.targetId;
+  const others = orderedActorIds(state).filter((id) => id !== actorId);
+  return others[0] ?? null;
+};
+
+interface ValidationResult {
+  valid: boolean;
+  reason?: string;
+}
+
+const validateAction = (
+  state: GameState,
+  actor: ActorState,
+  action: AgentAction | null,
+): ValidationResult => {
+  if (!action || !ACTION_SET.has(action.type)) {
+    return { valid: false, reason: 'UNKNOWN_ACTION' };
+  }
+  if (!isDecisionTick(state.tick)) {
+    return { valid: false, reason: 'NOT_DECISION_TICK' };
+  }
+  if (action.tick !== state.tick) {
+    return { valid: false, reason: 'WRONG_TICK' };
+  }
+  if (action.type === 'MOVE' || action.type === 'DASH') {
+    if (!action.dir || !DIRS.includes(action.dir)) {
+      return { valid: false, reason: 'INVALID_DIRECTION' };
+    }
+  }
+  if (action.type === 'MELEE_STRIKE' || action.type === 'RANGED_SHOT') {
+    const targetId = getTargetId(state, actor.id, action);
+    if (!targetId) return { valid: false, reason: 'TARGET_MISSING' };
+    const target = state.actors[targetId];
+    const dist = distanceTenths(actor.position, target.position);
+    if (action.type === 'MELEE_STRIKE' && dist > MELEE_RANGE) {
+      return { valid: false, reason: 'OUT_OF_RANGE' };
+    }
+    if (action.type === 'RANGED_SHOT' && (dist < RANGED_MIN || dist > RANGED_MAX)) {
+      return { valid: false, reason: 'OUT_OF_RANGE' };
+    }
+  }
+  if (action.type === 'UTILITY' && isStatusActive(actor.statuses.utility, state.tick)) {
+    return { valid: false, reason: 'UTILITY_ACTIVE' };
+  }
+  let cost = ACTION_COST[action.type as ActionType];
+  if (action.type === 'MOVE' && actor.moveCost !== undefined) {
+    cost = actor.moveCost * UNIT_SCALE;
+  }
+  if (typeof cost === 'number' && actor.energy < cost) {
+    return { valid: false, reason: 'INSUFFICIENT_ENERGY' };
+  }
+  if (actor.cooldowns[action.type] > 0) {
+    return { valid: false, reason: 'COOLDOWN' };
+  }
+  return { valid: true };
+};
+
+const spendEnergy = (actor: ActorState, action: AgentAction): void => {
+  let cost = ACTION_COST[action.type as ActionType] ?? 0;
+  if (action.type === 'MOVE' && actor.moveCost !== undefined) {
+    cost = actor.moveCost * UNIT_SCALE;
+  }
+  actor.energy = clamp(actor.energy - cost, 0, ENERGY_MAX);
+};
+
+const applyCooldown = (actor: ActorState, action: AgentAction): void => {
+  const cd = COOLDOWN_TICKS[action.type as ActionType];
+  if (cd) actor.cooldowns[action.type] = cd;
+};
+
+const applyMove = (actor: ActorState, dir: Direction, distance: number): void => {
+  actor.position = clampPosition(applyDirection(actor.position, dir, distance));
+  actor.facing = dir;
+};
+
+const applyGuard = (state: GameState, actor: ActorState): void => {
+  actor.statuses.guard = { endsAt: state.tick + GUARD_DURATION_TICKS };
+  emitEvent(
+    state,
+    makeEvent('STATUS_APPLIED', {
+      tick: state.tick,
+      actorId: actor.id,
+      data: { status: 'GUARD', endsAt: actor.statuses.guard.endsAt },
+    }),
+  );
+};
+
+const applyDash = (state: GameState, actor: ActorState, dir: Direction): void => {
+  applyMove(actor, dir, DASH_DISTANCE);
+  actor.statuses.dashBuff = { endsAt: state.tick + DASH_BUFF_DURATION_TICKS, charges: 1 };
+  emitEvent(
+    state,
+    makeEvent('STATUS_APPLIED', {
+      tick: state.tick,
+      actorId: actor.id,
+      data: { status: 'DASH_BUFF', endsAt: actor.statuses.dashBuff.endsAt, charges: 1 },
+    }),
+  );
+};
+
+const applyUtility = (state: GameState, actor: ActorState): void => {
+  actor.statuses.utility = { endsAt: state.tick + UTILITY_DURATION_TICKS, kind: 'GENERIC' };
+  emitEvent(
+    state,
+    makeEvent('STATUS_APPLIED', {
+      tick: state.tick,
+      actorId: actor.id,
+      data: { status: 'UTILITY', endsAt: actor.statuses.utility.endsAt, kind: 'GENERIC' },
+    }),
+  );
+};
+
+const applyDamage = (
+  state: GameState,
+  attacker: ActorState,
+  defender: ActorState,
+  base: number,
+  distTenths: number,
+): void => {
+  const postureMult = attacker.statuses.dashBuff?.charges ? POSTURE_DASH_MULTIPLIER : 1.0;
+  const distanceMult =
+    base === BASE_DAMAGE.RANGED_SHOT ? RANGED_DISTANCE_MULTIPLIER(distTenths) : 1.0;
+  const guardActive =
+    isStatusActive(defender.statuses.guard, state.tick) &&
+    inGuardArc(defender.facing, defender.position, attacker.position);
+  const guardMult = guardActive ? GUARD_MULTIPLIER : 1.0;
+  const armorMult = ARMOR_MULTIPLIER[defender.armor] ?? ARMOR_MULTIPLIER.medium;
+  const raw = base * postureMult * distanceMult * guardMult * armorMult;
+  const final = Math.max(MIN_DAMAGE, Math.floor(raw));
+
+  defender.hp = Math.max(0, defender.hp - final);
+  attacker.stats.damageDealt += final;
+  if (attacker.statuses.dashBuff?.charges) {
+    attacker.statuses.dashBuff.charges -= 1;
+    if (attacker.statuses.dashBuff.charges <= 0) attacker.statuses.dashBuff = null;
+  }
+
+  emitEvent(
+    state,
+    makeEvent('DAMAGE_APPLIED', {
+      tick: state.tick,
+      actorId: attacker.id,
+      targetId: defender.id,
+      data: {
+        amount: final,
+        base,
+        postureMult,
+        distanceMult,
+        guardMult,
+        armorMult,
+        distanceTenths: distTenths,
+        defenderGuarded: guardActive,
+      },
+    }),
+  );
+};
+
+const resolveAction = (state: GameState, actor: ActorState, action: AgentAction | null): void => {
+  if (!action || action.type === 'NO_OP') return;
+  spendEnergy(actor, action);
+  applyCooldown(actor, action);
+
+  if (action.type === 'MOVE') {
+    applyMove(actor, action.dir as Direction, MOVE_DISTANCE);
+    return;
+  }
+  if (action.type === 'DASH') {
+    applyDash(state, actor, action.dir as Direction);
+    return;
+  }
+  if (action.type === 'GUARD') {
+    applyGuard(state, actor);
+    return;
+  }
+  if (action.type === 'UTILITY') {
+    applyUtility(state, actor);
+    return;
+  }
+  if (action.type === 'MELEE_STRIKE' || action.type === 'RANGED_SHOT') {
+    const targetId = getTargetId(state, actor.id, action);
+    if (!targetId) return;
+    const target = state.actors[targetId];
+    const dist = distanceTenths(actor.position, target.position);
+    actor.facing = directionFromVector(
+      target.position.x - actor.position.x,
+      target.position.y - actor.position.y,
+    );
+    if (action.type === 'MELEE_STRIKE') {
+      applyDamage(state, actor, target, BASE_DAMAGE.MELEE_STRIKE, dist);
+    } else {
+      applyDamage(state, actor, target, BASE_DAMAGE.RANGED_SHOT, dist);
+    }
+  }
+};
+
+const sanitizeAction = (
+  action: AgentAction,
+): { tick: number; type: string; dir: Direction | null; targetId: string | null } => ({
+  tick: action.tick,
+  type: action.type,
+  dir: (action.dir as Direction) ?? null,
+  targetId: action.targetId ?? null,
+});
+
+const markIllegal = (
+  state: GameState,
+  actor: ActorState,
+  action: AgentAction,
+  reason: string,
+): void => {
+  actor.stats.illegalActions += 1;
+  emitEvent(
+    state,
+    makeEvent('ILLEGAL_ACTION', {
+      tick: state.tick,
+      actorId: actor.id,
+      data: {
+        reason,
+        action: sanitizeAction(action),
+        energyAtReject: actor.energy,
+        cooldowns: { ...actor.cooldowns },
+      },
+    }),
+  );
+};
+
+const determineWinner = (state: GameState): { winnerId: string | null; reason: string } => {
+  const ids = orderedActorIds(state);
+  if (ids.length < 2) return { winnerId: ids[0] ?? null, reason: 'BYE' };
+  const [aId, bId] = ids;
+  const a = state.actors[aId];
+  const b = state.actors[bId];
+
+  if (a.hp > 0 && b.hp <= 0) return { winnerId: aId, reason: 'KO' };
+  if (b.hp > 0 && a.hp <= 0) return { winnerId: bId, reason: 'KO' };
+
+  const aObj = state.objectiveScore[aId];
+  const bObj = state.objectiveScore[bId];
+  const objDiff = aObj - bObj;
+  if (Math.abs(objDiff) >= OBJECTIVE_SCORE_TO_WIN) {
+    return { winnerId: objDiff > 0 ? aId : bId, reason: 'TIME_OBJECTIVE' };
+  }
+
+  const aHpPct = a.hp / HP_MAX;
+  const bHpPct = b.hp / HP_MAX;
+  if (Math.abs(aHpPct - bHpPct) > HP_TIE_EPS) {
+    return { winnerId: aHpPct > bHpPct ? aId : bId, reason: 'TIME_HP' };
+  }
+
+  if (a.stats.damageDealt !== b.stats.damageDealt) {
+    return {
+      winnerId: a.stats.damageDealt > b.stats.damageDealt ? aId : bId,
+      reason: 'TIME_DAMAGE',
+    };
+  }
+
+  if (a.stats.illegalActions !== b.stats.illegalActions) {
+    return {
+      winnerId: a.stats.illegalActions < b.stats.illegalActions ? aId : bId,
+      reason: 'TIME_ILLEGAL',
+    };
+  }
+
+  return { winnerId: null, reason: 'DRAW' };
+};
+
+const endMatch = (state: GameState, reasonOverride: string | null = null): void => {
+  if (state.ended) return;
+  const { winnerId, reason } = determineWinner(state);
+  state.winnerId = winnerId;
+  state.endReason = reasonOverride ?? reason;
+  state.ended = true;
+  emitEvent(
+    state,
+    makeEvent('MATCH_END', {
+      tick: state.tick,
+      actorId: winnerId,
+      data: {
+        reason: state.endReason,
+        objectiveScore: state.objectiveScore,
+        hp: Object.fromEntries(
+          Object.entries(state.actors).map(([id, actor]) => [id, actor.hp]),
+        ),
+        damageDealt: Object.fromEntries(
+          Object.entries(state.actors).map(([id, actor]) => [id, actor.stats.damageDealt]),
+        ),
+        illegalActions: Object.fromEntries(
+          Object.entries(state.actors).map(([id, actor]) => [id, actor.stats.illegalActions]),
+        ),
+      },
+    }),
+  );
+};
+
+// ── Public API ──
+
+export const createActorState = ({
+  id,
+  position,
+  facing = 'N',
+  armor = 'medium',
+  moveCost,
+}: {
+  id: string;
+  position: Position;
+  facing?: Direction;
+  armor?: ArmorType;
+  moveCost?: number;
+}): ActorState => ({
+  id,
+  hp: HP_MAX,
+  energy: ENERGY_MAX,
+  position: { ...position },
+  facing,
+  armor,
+  cooldowns: {
+    MELEE_STRIKE: 0,
+    RANGED_SHOT: 0,
+    GUARD: 0,
+    DASH: 0,
+    UTILITY: 0,
+  },
+  statuses: { guard: null, dashBuff: null, utility: null },
+  stats: { damageDealt: 0, illegalActions: 0 },
+  moveCost,
+});
+
+export const createInitialState = ({
+  seed,
+  actors,
+}: {
+  seed: number;
+  actors: Record<string, ActorState>;
+}): GameState => ({
+  seed,
+  tick: 0,
+  maxTicks: MAX_TICKS,
+  ruleset: RULESET_VERSION,
+  actors,
+  objectiveScore: Object.fromEntries(Object.keys(actors).map((id) => [id, 0])),
+  events: [],
+  winnerId: null,
+  endReason: null,
+  ended: false,
+  durationSec: MATCH_DURATION_SEC,
+});
+
+/** Advance game state by one tick. Mutates `state` in-place. */
+export const advanceTick = (state: GameState, actionsByActor: Map<string, AgentAction>): void => {
+  const actorIds = orderedActorIds(state);
+  for (const actorId of actorIds) {
+    const actor = state.actors[actorId];
+    regenEnergy(actor);
+    tickCooldowns(actor);
+    expireStatuses(actor, state.tick);
+  }
+
+  const acceptedActions = new Map<string, AgentAction>();
+
+  if (isDecisionTick(state.tick)) {
+    for (const actorId of actorIds) {
+      const actor = state.actors[actorId];
+      const action = actionsByActor.get(actorId) ?? { tick: state.tick, type: 'NO_OP' };
+      const validation = validateAction(state, actor, action);
+      if (!validation.valid) {
+        if (action.type !== 'NO_OP') {
+          markIllegal(state, actor, action, validation.reason!);
+        }
+        acceptedActions.set(actorId, { tick: state.tick, type: 'NO_OP' });
+      } else {
+        emitEvent(
+          state,
+          makeEvent('ACTION_ACCEPTED', {
+            tick: state.tick,
+            actorId: actor.id,
+            data: sanitizeAction(action) as unknown as Record<string, unknown>,
+          }),
+        );
+        acceptedActions.set(actorId, action);
+      }
+    }
+  }
+
+  const seedParity = state.seed % 2;
+  const resolveOrder =
+    (state.tick + seedParity) % 2 === 0 ? actorIds : [...actorIds].reverse();
+
+  // Phase 1: non-attack actions
+  const ATTACK_TYPES = new Set(['MELEE_STRIKE', 'RANGED_SHOT']);
+  for (const actorId of resolveOrder) {
+    const action = acceptedActions.get(actorId);
+    if (action && !ATTACK_TYPES.has(action.type)) {
+      resolveAction(state, state.actors[actorId], action);
+    }
+  }
+
+  // Phase 2: attack actions
+  for (const actorId of resolveOrder) {
+    const action = acceptedActions.get(actorId);
+    if (action && ATTACK_TYPES.has(action.type)) {
+      resolveAction(state, state.actors[actorId], action);
+    }
+  }
+
+  scoreObjective(state);
+
+  if (state.tick >= state.maxTicks - 1) {
+    endMatch(state, 'TIMEOUT');
+  } else {
+    const alive = actorIds.filter((id) => state.actors[id].hp > 0);
+    if (alive.length <= 1) {
+      endMatch(state, 'KO');
+    }
+  }
+
+  state.tick += 1;
+};
+
+const scoreObjective = (state: GameState): void => {
+  const ids = orderedActorIds(state);
+  if (ids.length < 2) return;
+  const [aId, bId] = ids;
+  const a = state.actors[aId];
+  const b = state.actors[bId];
+  const aDist = distanceTenths(a.position, OBJECTIVE_CENTER);
+  const bDist = distanceTenths(b.position, OBJECTIVE_CENTER);
+  const aIn = aDist <= OBJECTIVE_RADIUS;
+  const bIn = bDist <= OBJECTIVE_RADIUS;
+  if (aIn && !bIn) {
+    state.objectiveScore[aId] += OBJECTIVE_SCORE_PER_TICK;
+    emitEvent(
+      state,
+      makeEvent('OBJECTIVE_TICK', {
+        tick: state.tick,
+        actorId: aId,
+        data: { score: state.objectiveScore[aId] / UNIT_SCALE },
+      }),
+    );
+  } else if (bIn && !aIn) {
+    state.objectiveScore[bId] += OBJECTIVE_SCORE_PER_TICK;
+    emitEvent(
+      state,
+      makeEvent('OBJECTIVE_TICK', {
+        tick: state.tick,
+        actorId: bId,
+        data: { score: state.objectiveScore[bId] / UNIT_SCALE },
+      }),
+    );
+  }
+};
+
+/** Build a MatchResult summary from final state. */
+export const buildMatchResult = (state: GameState): MatchResult => ({
+  winnerId: state.winnerId,
+  endReason: state.endReason,
+  finalTick: state.tick,
+  actors: Object.fromEntries(
+    Object.entries(state.actors).map(([id, a]) => [
+      id,
+      { hp: a.hp, damageDealt: a.stats.damageDealt, illegalActions: a.stats.illegalActions },
+    ]),
+  ),
+  objectiveScore: { ...state.objectiveScore },
+});
