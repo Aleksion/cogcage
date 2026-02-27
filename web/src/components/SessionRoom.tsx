@@ -6,8 +6,9 @@ import {
   ACTION_TYPES,
   TICK_RATE,
 } from '../lib/ws2/index.js';
-import { runMatchAsync, getSpawnPositions } from '../lib/ws2/match-runner';
-import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-runner';
+import { runMatchAsync } from '../lib/ws2/run-match';
+import { getSpawnPositions } from '../lib/ws2/match-types';
+import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-types';
 import type { Session, BracketMatch, LeaderboardEntry, SessionBot, FfaPlacement } from '../lib/session';
 import { globalStyles } from '../lib/game-styles';
 

@@ -38,6 +38,7 @@ import type {
   BotConfig,
   Direction,
   GameEvent,
+  BotStats,
   GameState,
   MatchResult,
   Position,
@@ -613,7 +614,10 @@ const scoreObjective = (state: GameState): void => {
 };
 
 /** Build a MatchResult summary from final state. */
-export const buildMatchResult = (state: GameState): MatchResult => ({
+export const buildMatchResult = (
+  state: GameState,
+  botStats?: Map<string, BotStats>,
+): MatchResult => ({
   winnerId: state.winnerId,
   endReason: state.endReason,
   finalTick: state.tick,
@@ -624,4 +628,5 @@ export const buildMatchResult = (state: GameState): MatchResult => ({
     ]),
   ),
   objectiveScore: { ...state.objectiveScore },
+  botStats: botStats ? Object.fromEntries(botStats) : undefined,
 });

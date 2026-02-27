@@ -1,5 +1,5 @@
 import { redis } from './redis.ts';
-import type { BotConfig } from './ws2/match-runner.ts';
+import type { BotConfig } from './ws2/match-types.ts';
 
 /* ── Types ──────────────────────────────────────────────────── */
 

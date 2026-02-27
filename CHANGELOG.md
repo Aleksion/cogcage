@@ -4,6 +4,34 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-27] - cleanup+feat: Remove client-side match-runner, add connection stats to result screen — TASK-005+006
+
+**Type:** cleanup + feat | **Phase:** 1
+
+### Summary
+Deleted the old client-side `match-runner.ts` module (no longer used by Play.tsx since TASK-004 migrated to the DO WebSocket). Extracted shared types into `match-types.ts` and moved the legacy runner to `run-match.ts` for remaining consumers (MatchView, SessionRoom). Added per-bot connection stats (ticks connected, ticks missed, actions queued) to the match result screen — framed as a competitive mechanic revealing latency impact.
+
+### Changes
+- `web/src/lib/ws2/match-runner.ts` — **Deleted.** The old client-side async match loop.
+- `web/src/lib/ws2/match-types.ts` — **New.** Shared types (`BotConfig`, `MatchSnapshot`, `SnapshotCallback`, `ChatMessage`) and utility functions (`capMessages`, `getSpawnPositions`) extracted from the deleted file.
+- `web/src/lib/ws2/run-match.ts` — **New.** Legacy `runMatchAsync` runner, still used by MatchView.tsx (lobby flow) and SessionRoom.tsx (session flow). Marked for future migration to DO WebSocket.
+- `web/src/components/Play.tsx` — Updated import from `match-runner` to `match-types`. Added `botStats` state. Extracts `botStats` from `match_complete` WebSocket message. Renders "Connection Stats" section on result screen showing per-bot ticks connected, ticks missed (competitive framing), and actions queued.
+- `web/src/components/MatchView.tsx` — Updated imports from `match-runner` to `run-match` + `match-types`.
+- `web/src/components/SessionRoom.tsx` — Updated imports from `match-runner` to `run-match` + `match-types`.
+- `web/src/lib/session.ts` — Updated `BotConfig` import from `match-runner` to `match-types`.
+- `engine/src/game/types.ts` — Added `BotStats` interface (`ticksPlayed`, `ticksMissed`, `actionsQueued`). Extended `MatchResult` with optional `botStats?: Record<string, BotStats>`.
+- `engine/src/game/engine.ts` — Updated `buildMatchResult` to accept optional `botStats` map and include it in the result.
+- `engine/src/MatchEngine.ts` — Added `botStats` tracking: increments `ticksPlayed`/`ticksMissed` each alarm tick, increments `actionsQueued` on queue push. Passes `botStats` to `buildMatchResult` on match end.
+
+### Breaking Changes
+- None. `botStats` is optional on `MatchResult` — existing consumers unaffected.
+
+### Notes
+- Connection stats are framed competitively: "3 ticks missed — 3 free turns gifted" rather than "3 ticks had errors". This is a deliberate design decision per the core thesis — agent latency is skill expression.
+- `run-match.ts` is a temporary home for the legacy client-side runner. MatchView and SessionRoom should be migrated to the DO WebSocket in a follow-up task.
+
+---
+
 ## [2026-02-27] - feat: Migrate MatchView to DO WebSocket — TASK-004
 
 **Type:** feat | **Phase:** 1

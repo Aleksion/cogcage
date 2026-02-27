@@ -3,7 +3,7 @@ import { validateToken, validateSecret } from './auth.js';
 import { advanceTick, buildMatchResult, createActorState, createInitialState } from './game/engine.js';
 import { TICK_MS, MAX_QUEUE_DEPTH, MATCH_TIMEOUT_MS } from './game/constants.js';
 import { UNIT_SCALE } from './game/constants.js';
-import type { AgentAction, BotConfig, GameState, MatchResult } from './game/types.js';
+import type { AgentAction, BotConfig, BotStats, GameState, MatchResult } from './game/types.js';
 
 interface Env {
   MATCH: DurableObjectNamespace;
@@ -15,6 +15,7 @@ export class MatchEngine extends DurableObject<Env> {
   private queues = new Map<string, AgentAction[]>();
   private matchId: string | null = null;
   private startedAt: number | null = null;
+  private botStats = new Map<string, BotStats>();
 
   // ── Route incoming requests ──
 
@@ -133,6 +134,8 @@ export class MatchEngine extends DurableObject<Env> {
     this.matchState = createInitialState({ seed, actors });
     this.queues.set(body.botA.id, []);
     this.queues.set(body.botB.id, []);
+    this.botStats.set(body.botA.id, { ticksPlayed: 0, ticksMissed: 0, actionsQueued: 0 });
+    this.botStats.set(body.botB.id, { ticksPlayed: 0, ticksMissed: 0, actionsQueued: 0 });
     this.startedAt = Date.now();
 
     // Persist initial state
@@ -177,6 +180,9 @@ export class MatchEngine extends DurableObject<Env> {
     action.actorId = botId;
     queue.push(action);
 
+    const stats = this.botStats.get(botId);
+    if (stats) stats.actionsQueued++;
+
     return jsonResponse({ ok: true, queueDepth: queue.length });
   }
 
@@ -205,15 +211,19 @@ export class MatchEngine extends DurableObject<Env> {
     if (this.startedAt && Date.now() - this.startedAt > MATCH_TIMEOUT_MS) {
       this.matchState.ended = true;
       this.matchState.endReason = 'TIMEOUT_WATCHDOG';
-      this.broadcast({ type: 'match_complete', result: buildMatchResult(this.matchState) });
+      this.broadcast({ type: 'match_complete', result: buildMatchResult(this.matchState, this.botStats) });
       return;
     }
 
     // 1. Pop one action per bot (or nothing → engine defaults to NO_OP)
     const actionsByActor = new Map<string, AgentAction>();
     for (const [botId, queue] of this.queues.entries()) {
+      const stats = this.botStats.get(botId);
+      if (stats) stats.ticksPlayed++;
       if (queue.length > 0) {
         actionsByActor.set(botId, queue.shift()!);
+      } else if (stats) {
+        stats.ticksMissed++;
       }
     }
 
@@ -241,7 +251,7 @@ export class MatchEngine extends DurableObject<Env> {
 
     // 6. Check if match is over
     if (this.matchState.ended) {
-      const result = buildMatchResult(this.matchState);
+      const result = buildMatchResult(this.matchState, this.botStats);
       this.broadcast({ type: 'match_complete', result });
       return;
     }
