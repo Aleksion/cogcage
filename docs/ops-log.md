@@ -308,3 +308,54 @@ bun run build (web/)
 3. Generate `COGCAGE_POSTBACK_KEY` + `COGCAGE_OPS_KEY` → set in Vercel (secures postback + ops endpoints)
 4. Add Stripe webhook → `https://cogcage.com/api/postback` with `x-postback-key: {COGCAGE_POSTBACK_KEY}`
 
+
+---
+
+### Autopilot Directive — 03:53 ET, Feb 27 2026
+
+**Directive**: STOP landing-page copy iterations. Priorities: (1) signup form reliability + storage + observable logs, (2) real playable demo loop with map movement + action economy, (3) monetization path (founder pack checkout + postback), (4) update ops log.
+
+**Actions taken:**
+
+**P1 — Redis-backed storage closed the Vercel ephemerality gap**
+- `web/src/lib/waitlist-redis.ts` (new, 160 lines) — Upstash Redis layer for:
+  - Waitlist leads (`cogcage:waitlist` LIST)
+  - Founder intents (`cogcage:founder-intents` LIST)
+  - Conversion events (`cogcage:conversions` LIST)
+  - Ops log tail (`cogcage:ops-log` LIST, capped 500 entries)
+  - Rate limiting (`cogcage:ratelimit:{key}:{window}` STRING) — survives across Lambda invocations
+- `waitlist.ts` + `founder-intent.ts`: Redis as primary write (fire-and-forget), SQLite as local fallback
+- Previously: leads written only to SQLite in ephemeral Vercel /tmp — lost on cold start
+- Now: every waitlist signup + founder intent is durable in Redis regardless of Lambda lifecycle
+
+**P1 — Observable ops log now Redis-backed**
+- `ops.ts` GET: returns `redisCounts` + `redisOpsLog` (50-entry tail) alongside SQLite data
+- Redis ops log = primary observable layer on Vercel (filesystem is per-invocation)
+- Previously: `/api/ops` returned empty `files[]` on warm-start-miss; now Redis always has data
+
+**P3 — Monetization path: postback + checkout-success now durable**
+- `postback.ts`: Redis write for paid conversion events + founder intents (fire-and-forget, on top of SQLite)
+- `checkout-success.ts`: Redis write for paid_conversion_confirmed on Stripe success return
+- Stripe flow: Landing CTA → `PUBLIC_STRIPE_FOUNDER_URL` → Stripe → `/success?session_id=...` → `POST /api/checkout-success` → SQLite + Redis
+- Postback flow: Stripe webhook → `POST /api/postback` (auth: `x-postback-key`) → SQLite + Redis
+
+**P2 — Demo loop spawn position + action economy fix**
+- `match-runner.ts`: spawn positions (4,10)/(16,10) → **(6,10)/(14,10)** — 8 units apart (ranged max=10u)
+  - Previous 12u gap meant bots spawned outside ranged range; no action economy from tick 1
+- `Play.tsx` DEFAULT_BOT_A: added RANGED_SHOT to loadout; system prompt updated with full AP decision tree
+
+**Commits shipped:**
+- `641d304` — feat(storage): Redis-backed signup, postback, checkout-success + observable ops log
+- `cda3676` — fix(demo): spawn at (6,10)/(14,10) — 8u apart, within ranged range; RANGED_SHOT in loadout A
+
+**Build**: ✅ clean (both commits, `npm --prefix web run build`)
+**Push**: ✅ `origin/main` at `cda3676`
+
+**Aleks action required:**
+1. Set `PUBLIC_STRIPE_FOUNDER_URL` in Vercel → activates founder pack checkout button (currently shows "not configured")
+2. Set `COGCAGE_POSTBACK_KEY` in Vercel + Stripe webhook → secures postback endpoint
+3. Set `COGCAGE_OPS_KEY` in Vercel → secures /api/ops endpoint
+
+**Env vars confirmed set in Vercel:**
+- `OPENAI_API_KEY` ✅ (LLM bot decisions active)
+- `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` ✅ (Redis storage active)
