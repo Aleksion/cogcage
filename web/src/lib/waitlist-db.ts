@@ -203,7 +203,7 @@ export function insertFounderIntent(intent: FounderIntent) {
 export function insertConversionEvent(event: ConversionEvent) {
   const conn = getDb();
   const insert = conn.prepare(`
-    INSERT INTO conversion_events (
+    INSERT OR IGNORE INTO conversion_events (
       event_name,
       event_id,
       page,
@@ -227,7 +227,6 @@ export function insertConversionEvent(event: ConversionEvent) {
       @userAgent,
       @ipAddress
     )
-    ON CONFLICT(event_id) DO NOTHING
   `);
 
   const row = {

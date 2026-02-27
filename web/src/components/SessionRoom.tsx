@@ -9,6 +9,7 @@ import {
 import { runMatchAsync, getSpawnPositions } from '../lib/ws2/match-runner';
 import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-runner';
 import type { Session, BracketMatch, LeaderboardEntry, SessionBot, FfaPlacement } from '../lib/session';
+import { globalStyles } from '../lib/game-styles';
 
 /* ── Types ──────────────────────────────────────────────────── */
 
@@ -120,6 +121,14 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
   const pollRef = useRef<number | null>(null);
   /** Maps bot IDs → participant bot names (set when match starts) */
   const actorNameMapRef = useRef<Map<string, string>>(new Map());
+
+  /* ── Inject global styles ────────────────────────────────── */
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = globalStyles;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
 
   /* ── Poll session in lobby ────────────────────────────────── */
   useEffect(() => {

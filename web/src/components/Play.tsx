@@ -459,13 +459,29 @@ const Play = () => {
     return () => clearInterval(interval);
   }, [phase, showRoomPanel]);
 
-  // --- PlayCanvas lifecycle (disabled — using CSS arena grid) ---
+  // --- PlayCanvas lifecycle ---
   useEffect(() => {
     if (phase !== 'match' || !playCanvasRef.current) return;
-    // PlayCanvas renderer removed; CSS arena grid is the active renderer
-    setPcActive(false);
+
+    let destroyed = false;
+
+    import('../lib/ws2/PlayCanvasScene').then(({ PlayCanvasScene }) => {
+      if (destroyed || !playCanvasRef.current) return;
+      try {
+        const scene = new PlayCanvasScene(playCanvasRef.current);
+        sceneRef.current = scene;
+        setPcActive(true);
+      } catch (e) {
+        console.warn('[PlayCanvas] Init failed, using CSS grid:', e);
+        setPcActive(false);
+      }
+    }).catch((e) => {
+      console.warn('[PlayCanvas] Load failed, using CSS grid:', e);
+      setPcActive(false);
+    });
 
     return () => {
+      destroyed = true;
       sceneRef.current?.destroy?.();
       sceneRef.current = null;
       setPcActive(false);
