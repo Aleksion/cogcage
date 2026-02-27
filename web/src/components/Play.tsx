@@ -413,6 +413,14 @@ const Play = () => {
   const [showRoomPanel, setShowRoomPanel] = useState(false);
   const [showByo, setShowByo] = useState(false);
 
+  // --- FFA Tournament ---
+  const [showJoinCode, setShowJoinCode] = useState(false);
+  const [ffaJoinCode, setFfaJoinCode] = useState('');
+  const [ffaJoinName, setFfaJoinName] = useState('');
+  const [ffaJoinPassword, setFfaJoinPassword] = useState('');
+  const [ffaError, setFfaError] = useState('');
+  const [ffaBusy, setFfaBusy] = useState(false);
+
   // --- Founder CTA ---
   const [email, setEmail] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
@@ -607,6 +615,70 @@ const Play = () => {
       setPhase('result');
     }
   }, [formatEvent, spawnVfx]);
+
+  // --- FFA Tournament handlers ---
+  const handleCreateTournament = async () => {
+    setFfaError('');
+    setFfaBusy(true);
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hostName: botAConfig.name || 'Host',
+          bot: {
+            systemPrompt: botAConfig.systemPrompt,
+            loadout: botAConfig.loadout,
+            armor: botAConfig.armor,
+            temperature: botAConfig.temperature,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.sessionId) {
+        sessionStorage.setItem(`session-${data.sessionId}-pid`, data.participantId);
+        window.location.href = `/play/session/${data.sessionId}`;
+      } else {
+        setFfaError(data.error || 'Failed to create tournament');
+      }
+    } catch {
+      setFfaError('Network error');
+    }
+    setFfaBusy(false);
+  };
+
+  const handleJoinByCode = async () => {
+    if (!ffaJoinCode.trim() || !ffaJoinName.trim()) return;
+    setFfaError('');
+    setFfaBusy(true);
+    try {
+      const res = await fetch('/api/sessions/join-by-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: ffaJoinCode.trim().toUpperCase(),
+          name: ffaJoinName.trim(),
+          bot: {
+            systemPrompt: botAConfig.systemPrompt,
+            loadout: botAConfig.loadout,
+            armor: botAConfig.armor,
+            temperature: botAConfig.temperature,
+          },
+          password: ffaJoinPassword || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.sessionId) {
+        sessionStorage.setItem(`session-${data.sessionId}-pid`, data.participantId);
+        window.location.href = `/play/session/${data.sessionId}`;
+      } else {
+        setFfaError(data.error || 'Failed to join');
+      }
+    } catch {
+      setFfaError('Network error');
+    }
+    setFfaBusy(false);
+  };
 
   // --- Match lifecycle ---
   const startMatch = useCallback(() => {
@@ -1108,6 +1180,62 @@ const Play = () => {
             <button className="cta-btn enter-arena-btn" onClick={startMatch}>
               Start Battle
             </button>
+
+            <button
+              className="cta-btn"
+              style={{ width: '100%', background: 'var(--c-cyan)', color: '#1A1A1A', marginTop: '0.5rem', fontSize: '1.3rem' }}
+              onClick={handleCreateTournament}
+              disabled={ffaBusy}
+            >
+              {ffaBusy ? 'Creating...' : 'Create FFA Tournament'}
+            </button>
+
+            <button
+              className="action-btn secondary"
+              style={{ width: '100%', marginTop: '0.5rem', padding: '0.8rem', fontSize: '1rem' }}
+              onClick={() => setShowJoinCode((p) => !p)}
+            >
+              {showJoinCode ? 'Hide Join Form' : 'Join by Code'}
+            </button>
+
+            {showJoinCode && (
+              <div className="panel" style={{ marginTop: '0.8rem' }}>
+                <h2 style={{ fontSize: '1.3rem' }}>Join FFA Tournament</h2>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <input
+                    className="prompt-box"
+                    style={{ minHeight: 'unset', height: '44px', flex: '1 1 160px', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 900 }}
+                    placeholder="JOIN CODE"
+                    value={ffaJoinCode}
+                    onChange={(e) => setFfaJoinCode(e.target.value)}
+                  />
+                  <input
+                    className="prompt-box"
+                    style={{ minHeight: 'unset', height: '44px', flex: '1 1 140px' }}
+                    placeholder="Your name"
+                    value={ffaJoinName}
+                    onChange={(e) => setFfaJoinName(e.target.value)}
+                  />
+                  <input
+                    className="prompt-box"
+                    type="password"
+                    style={{ minHeight: 'unset', height: '44px', flex: '0 1 130px' }}
+                    placeholder="Password (optional)"
+                    value={ffaJoinPassword}
+                    onChange={(e) => setFfaJoinPassword(e.target.value)}
+                  />
+                  <button
+                    className="action-btn"
+                    style={{ padding: '0.6rem 1.2rem' }}
+                    onClick={handleJoinByCode}
+                    disabled={ffaBusy || !ffaJoinCode.trim() || !ffaJoinName.trim()}
+                  >
+                    {ffaBusy ? 'Joining...' : 'Join'}
+                  </button>
+                </div>
+                {ffaError && <div style={{ color: 'var(--c-red)', fontWeight: 800, marginTop: '0.5rem' }}>{ffaError}</div>}
+              </div>
+            )}
 
             {renderFounderCta()}
           </div>

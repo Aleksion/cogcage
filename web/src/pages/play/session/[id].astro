@@ -1,0 +1,19 @@
+---
+export const prerender = false;
+import SessionRoom from '../../../components/SessionRoom.tsx';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <title>CogCage — Session</title>
+    <style>*, *::before, *::after { box-sizing: border-box; } body { margin: 0; }</style>
+  </head>
+  <body>
+    <SessionRoom client:only="react" sessionId={Astro.params.id!} />
+  </body>
+</html>
