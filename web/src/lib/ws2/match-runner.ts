@@ -58,7 +58,7 @@ export function capMessages(messages: ChatMessage[], maxPairs: number): ChatMess
 /* ── Spawn positions ───────────────────────────────────────── */
 
 const POSITION_SPREADS: Record<number, Array<{ x: number; y: number }>> = {
-  2: [{ x: 4, y: 10 }, { x: 16, y: 10 }],  // face each other across center, 12 units apart
+  2: [{ x: 6, y: 10 }, { x: 14, y: 10 }],  // face each other, 8 units apart — within ranged range (max 10)
   3: [{ x: 4, y: 10 }, { x: 16, y: 10 }, { x: 10, y: 3 }],
   4: [{ x: 3, y: 3 }, { x: 17, y: 3 }, { x: 3, y: 17 }, { x: 17, y: 17 }],
   5: [{ x: 10, y: 3 }, { x: 17, y: 8 }, { x: 15, y: 17 }, { x: 5, y: 17 }, { x: 3, y: 8 }],

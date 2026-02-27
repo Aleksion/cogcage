@@ -315,8 +315,8 @@ const ACTION_INFO: Record<string, { label: string; cost: number; desc: string }>
 
 const DEFAULT_BOT_A: LobbyBotConfig = {
   name: 'Iron Vanguard',
-  systemPrompt: 'You are an aggressive melee fighter. ALWAYS close distance toward the enemy. If enemy dist > 3: DASH toward them. If dist <= 1.5 and MELEE_STRIKE is USABLE: use MELEE_STRIKE. If on cooldown: MOVE toward enemy. Never GUARD unless energy < 20%. Never NO_OP.',
-  loadout: ['MOVE', 'MELEE_STRIKE', 'GUARD', 'DASH'],
+  systemPrompt: 'You are an aggressive brawler with both melee and ranged capability. Priority order: (1) If dist <= 1.5 and MELEE_STRIKE is USABLE: MELEE_STRIKE — maximum damage up close. (2) If dist 2–8 and RANGED_SHOT is USABLE: RANGED_SHOT — punish enemy at mid range. (3) If dist > 8: DASH or MOVE toward enemy. (4) If on cooldown and energy > 30%: GUARD. Never NO_OP.',
+  loadout: ['MOVE', 'MELEE_STRIKE', 'RANGED_SHOT', 'GUARD', 'DASH'],
   armor: 'heavy',
   temperature: 0.7,
   llmProvider: 'openai',
