@@ -56,10 +56,10 @@ export function capMessages(messages: ChatMessage[], maxPairs: number): ChatMess
 /* ── Spawn positions ───────────────────────────────────────── */
 
 const POSITION_SPREADS: Record<number, Array<{ x: number; y: number }>> = {
-  2: [{ x: 1, y: 4 }, { x: 6, y: 3 }],
-  3: [{ x: 1, y: 4 }, { x: 6, y: 3 }, { x: 4, y: 1 }],
-  4: [{ x: 1, y: 1 }, { x: 6, y: 1 }, { x: 1, y: 6 }, { x: 6, y: 6 }],
-  5: [{ x: 3, y: 0 }, { x: 6, y: 2 }, { x: 5, y: 6 }, { x: 1, y: 6 }, { x: 0, y: 2 }],
+  2: [{ x: 4, y: 10 }, { x: 16, y: 10 }],  // face each other across center, 12 units apart
+  3: [{ x: 4, y: 10 }, { x: 16, y: 10 }, { x: 10, y: 3 }],
+  4: [{ x: 3, y: 3 }, { x: 17, y: 3 }, { x: 3, y: 17 }, { x: 17, y: 17 }],
+  5: [{ x: 10, y: 3 }, { x: 17, y: 8 }, { x: 15, y: 17 }, { x: 5, y: 17 }, { x: 3, y: 8 }],
 };
 
 export function getSpawnPositions(count: number): Array<{ x: number; y: number }> {

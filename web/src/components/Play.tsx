@@ -385,8 +385,8 @@ const Play = () => {
   const [botBHp, setBotBHp] = useState(HP_MAX);
   const [botAEnergy, setBotAEnergy] = useState(ENERGY_MAX);
   const [botBEnergy, setBotBEnergy] = useState(ENERGY_MAX);
-  const [botAPos, setBotAPos] = useState({ x: 1, y: 4 });
-  const [botBPos, setBotBPos] = useState({ x: 6, y: 3 });
+  const [botAPos, setBotAPos] = useState({ x: 1, y: 4 }); // visual init; updated by snapshot
+  const [botBPos, setBotBPos] = useState({ x: 6, y: 4 });
   const [tick, setTick] = useState(0);
   const [activeSeed, setActiveSeed] = useState<number>(0);
   const [feed, setFeed] = useState<string[]>([]);
@@ -664,7 +664,7 @@ const Play = () => {
       systemPrompt: botAConfig.systemPrompt,
       loadout: botAConfig.loadout,
       armor: botAConfig.armor,
-      position: { x: 1, y: 4 },
+      position: { x: 4, y: 10 },
       temperature: botAConfig.temperature,
       llmHeaders: buildLlmHeaders(botAConfig),
     };
@@ -675,7 +675,7 @@ const Play = () => {
       systemPrompt: botBConfig.systemPrompt,
       loadout: botBConfig.loadout,
       armor: botBConfig.armor,
-      position: { x: 6, y: 3 },
+      position: { x: 16, y: 10 },
       temperature: botBConfig.temperature,
       llmHeaders: buildLlmHeaders(botBConfig),
     };
