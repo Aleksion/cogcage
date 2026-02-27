@@ -315,7 +315,7 @@ const ACTION_INFO: Record<string, { label: string; cost: number; desc: string }>
 
 const DEFAULT_BOT_A: LobbyBotConfig = {
   name: 'Iron Vanguard',
-  systemPrompt: 'You are an aggressive melee fighter. Prioritize closing distance and striking hard. Use DASH to close gaps and follow with MELEE_STRIKE. Guard when the opponent charges ranged attacks.',
+  systemPrompt: 'You are an aggressive melee fighter. ALWAYS close distance toward the enemy. If enemy dist > 3: DASH toward them. If dist <= 1.5 and MELEE_STRIKE is USABLE: use MELEE_STRIKE. If on cooldown: MOVE toward enemy. Never GUARD unless energy < 20%. Never NO_OP.',
   loadout: ['MOVE', 'MELEE_STRIKE', 'GUARD', 'DASH'],
   armor: 'heavy',
   temperature: 0.7,
@@ -328,7 +328,7 @@ const DEFAULT_BOT_A: LobbyBotConfig = {
 
 const DEFAULT_BOT_B: LobbyBotConfig = {
   name: 'Null Protocol',
-  systemPrompt: 'You are a calculating ranged specialist. Maintain distance in the 4-7 unit optimal band. Use RANGED_SHOT when in range. Kite away when the enemy closes. Guard when cornered.',
+  systemPrompt: 'You are a ranged specialist. ALWAYS prioritize RANGED_SHOT when dist is 2-10 and it is USABLE. If enemy dist < 2: DASH away. If dist > 10: MOVE toward enemy to get back in range. Never retreat off the arena edge — stay near center. Never NO_OP.',
   loadout: ['MOVE', 'RANGED_SHOT', 'GUARD', 'DASH'],
   armor: 'light',
   temperature: 0.7,
@@ -560,13 +560,15 @@ const Play = () => {
     setBotBEnergy(actorB.energy);
     setTick(s.tick);
 
+    // Arena is 20 world-units; CSS grid is GRID_SIZE cells — scale accordingly
+    const ARENA_WORLD = 20;
     const aPosGrid = {
-      x: clamp(Math.round(actorA.position.x / UNIT_SCALE), 0, GRID_SIZE - 1),
-      y: clamp(Math.round(actorA.position.y / UNIT_SCALE), 0, GRID_SIZE - 1),
+      x: clamp(Math.floor((actorA.position.x / UNIT_SCALE) * (GRID_SIZE / ARENA_WORLD)), 0, GRID_SIZE - 1),
+      y: clamp(Math.floor((actorA.position.y / UNIT_SCALE) * (GRID_SIZE / ARENA_WORLD)), 0, GRID_SIZE - 1),
     };
     const bPosGrid = {
-      x: clamp(Math.round(actorB.position.x / UNIT_SCALE), 0, GRID_SIZE - 1),
-      y: clamp(Math.round(actorB.position.y / UNIT_SCALE), 0, GRID_SIZE - 1),
+      x: clamp(Math.floor((actorB.position.x / UNIT_SCALE) * (GRID_SIZE / ARENA_WORLD)), 0, GRID_SIZE - 1),
+      y: clamp(Math.floor((actorB.position.y / UNIT_SCALE) * (GRID_SIZE / ARENA_WORLD)), 0, GRID_SIZE - 1),
     };
     setBotAPos(aPosGrid);
     setBotBPos(bPosGrid);

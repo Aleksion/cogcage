@@ -166,7 +166,7 @@ export class PlayCanvasScene {
     }
 
     // Objective zone — solid bright signal yellow platform
-    this.box('objective', [OBJ_CX, 0.04, OBJ_CZ], [6, 0.08, 6], celMat('#FFD600'));
+    this.box('objective', [OBJ_CX, 0.04, OBJ_CZ], [5, 0.08, 5], celMat('#FFD600')); // radius 2.5 → diameter 5
 
     // Boundary walls — near black, 1.0 tall
     const h = 1.0;

@@ -266,7 +266,7 @@ function formatGameState(
   lines.push('── ACTIONS ──');
   for (const action of loadout) {
     const cost = ACTION_COST[action] ?? 0;
-    const costDisplay = cost / UNIT_SCALE;
+    const costPct = Math.round((cost / ENERGY_MAX) * 100); // show cost as % of energy max
     const cdTicks = me.cooldowns[action] ?? 0;
     const cdSec = (cdTicks / TICK_RATE).toFixed(1);
     const canAfford = me.energy >= cost;
@@ -276,7 +276,7 @@ function formatGameState(
     if (!offCooldown) {
       usability = `NOT USABLE (cooldown ${cdSec}s)`;
     } else if (!canAfford) {
-      usability = `NOT USABLE (need ${costDisplay}e, have ${energyPct(me.energy)}%)`;
+      usability = `NOT USABLE (need ${costPct}% energy, have ${energyPct(me.energy)}%)`;
     } else {
       // Check range for attack actions
       if (action === 'MELEE_STRIKE') {
@@ -301,9 +301,9 @@ function formatGameState(
     const cdInfo = offCooldown ? 'ready' : `cd ${cdSec}s`;
     const dirNote = (action === 'MOVE' || action === 'DASH') ? ' (requires dir)' : '';
 
-    lines.push(`  ${action}${dirNote} — cost: ${costDisplay}e | ${cdInfo} | ${usability}`);
+    lines.push(`  ${action}${dirNote} — cost: ${costPct}% energy | ${cdInfo} | ${usability}`);
   }
-  lines.push('  NO_OP — cost: 0e | ready | USABLE');
+  lines.push('  NO_OP — cost: 0% energy | ready | USABLE');
   lines.push('');
 
   // ── Response format
