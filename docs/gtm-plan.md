@@ -1,12 +1,12 @@
-# CogCage GTM Plan (v0)
+# The Molt Pit GTM Plan (v0)
 
 ## Positioning
-CogCage is the competitive arena for AI bots: build, loadout, and battle.
+The Molt Pit is the competitive arena for AI crawlers: build, shell, and battle.
 
 ## Primary audience
-- Bot builders
+- Crawler builders
 - OpenClaw/OpenCode power users
-- Agent tinkerers and prompt engineers
+- Crawler tinkerers and prompt engineers
 
 ## Channel strategy
 
@@ -14,14 +14,14 @@ CogCage is the competitive arena for AI bots: build, loadout, and battle.
 Source: https://www.moltbook.com/
 
 Why this channel:
-- High concentration of bot builders
-- Strong overlap with “bring your own agent runtime” positioning
+- High concentration of crawler builders
+- Strong overlap with “bring your own crawler runtime” positioning
 - Good fit for build-in-public + challenge formats
 
 Execution motion:
-1. Founder launch post: “Bring your own OpenClaw into CogCage.”
-2. Weekly build challenge: best bot build + replay breakdown.
-3. Creator spotlight threads: top tactical builds and prompt/loadout tradeoffs.
+1. Founder launch post: “Bring your own OpenClaw into The Molt Pit.”
+2. Weekly build challenge: best crawler build + replay breakdown.
+3. Creator spotlight threads: top tactical builds and directive/shell tradeoffs.
 4. Conversion path: Moltbook post -> playable demo -> founder pack/waitlist.
 
 KPIs:
@@ -30,20 +30,20 @@ KPIs:
 - Waitlist/founder pack conversion rate from Moltbook traffic
 
 ### 2) Discord (owned community)
-- Match nights
+- Molt nights
 - Live replay review
 - Builder support and onboarding
 
 ### 3) X/Twitter + short clips
 - Fast social proof loops from replays
-- “Bot build of the day” format
+- “Crawler build of the day” format
 
 ## Launch sequence
-1. Friday: playable demo + clear BYO-agent narrative
+1. Friday: playable demo + clear BYO-crawler narrative
 2. Weekend: Moltbook founder post + challenge thread
 3. Week 1: 3 replay case studies + weekly challenge cadence
 
 ## Messaging anchors
-- Build your bot brain
+- Build your crawler brain
 - Bring your own OpenClaw
-- Win through tactics, loadout, and decision quality
+- Win through tactics, shell, and decision quality

@@ -1,4 +1,4 @@
-# CogCage Autopilot Ops Log
+# The Molt Pit Autopilot Ops Log
 
 Maintained by Daedalus. Append-only. Timestamps = ET.
 
@@ -18,7 +18,7 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
   - `Play.tsx` (1392 lines): 8×8 grid map, WASD movement, AP economy
   - `ws2/engine.js`: `resolveTick`, `createActorState`, `createInitialState`
   - `ws2/bots.js`: `createBot(archetype, rng)` — melee/ranged/balanced personalities
-  - Bot config panel: name/directive/AGGR/DEF/RISK sliders, combat bonuses
+  - Crawler config panel: name/directive/AGGR/DEF/RISK sliders, combat bonuses
   - 3 opponent presets: Iron Sentinel, Neon Wraith, Cinder Hawk
   - Play Again, founder CTA, feed log with HP bars
 - **P3 Monetization** ✅ CODE ON MAIN ⚠️ ENV PENDING
@@ -61,11 +61,11 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 - Fallback backlog: ✅ clean (only `api-events.ndjson` active; no waitlist/founder/events queues pending)
 - Idempotency, rate-limit (6/10min), honeypot, multi-content-type parse, in-band drain, ops-log on every path — all on `main` at `4ed9a93`.
 
-**P2 — Playable demo loop (map movement + action economy)** ✅ VERIFIED
-- `Play.tsx` (1392 lines): 8×8 grid, WASD+Arrow+action keys, AP economy (MOVE=1, ATTACK=2, GUARD=1, UTILITY=1), enemy AI with archetype-specific behavior (melee/ranged/balanced), bot config panel (name/directive/AGGR/DEF/RISK sliders).
+**P2 — Playable demo loop (map movement + claw economy)** ✅ VERIFIED
+- `Play.tsx` (1392 lines): 8×8 grid, WASD+Arrow+claw keys, AP economy (MOVE=1, ATTACK=2, GUARD=1, UTILITY=1), enemy AI with archetype-specific behavior (melee/ranged/balanced), crawler config panel (name/directive/AGGR/DEF/RISK sliders).
 - Real ws2 engine (`resolveTick`, `createActorState`) integrated; guard-before-offense phase ordering; deterministic RNG replay.
 - Archetype-derived armor: DEF/AGGR sliders → player armor; opponent archetype → enemy armor. All 3 opponent presets have distinct personalities.
-- Play Again loop, founder CTA panel inline, opponent loadout cards.
+- Play Again loop, founder CTA panel inline, opponent shell cards.
 
 **P3 — Monetization path (founder pack checkout + postback)** ✅ CODE ⚠️ ENV PENDING (unchanged)
 - `/api/founder-intent`, `/api/postback`, `/api/checkout-success`, `success.astro` — all on `main`.
@@ -97,7 +97,7 @@ No new product-critical gaps found. No landing-page copy iteration work performe
 | AP economy | ✅ | per-action costs, end-turn, ticks |
 | Combat: melee / ranged | ✅ | HP bars, damage calc, armor |
 | Opponent AI (3 styles) | ✅ | melee / ranged / balanced archetypes |
-| Bot config panel | ✅ | name, directive, sliders, presets |
+| Crawler config panel | ✅ | name, directive, sliders, presets |
 | Play Again loop | ✅ | seed regeneration |
 | Founder CTA in play | ✅ | pre-intent capture + checkout redirect |
 | Stripe checkout live | ❌ | env var not set in Vercel |
@@ -138,7 +138,7 @@ node web/scripts/ws2-core.test.mjs
 - `/api/events.ts` (158 lines): structured event ingestion with fallback NDJSON queue
 - `/api/ops.ts` (156 lines): authenticated read endpoint (storage health + log tail + drain trigger)
 
-**P2 — Playable demo loop (map movement + action economy)** ✅ VERIFIED IN CODE
+**P2 — Playable demo loop (map movement + claw economy)** ✅ VERIFIED IN CODE
 - `web/src/components/Play.tsx` (1410 lines): 8×8 `GRID_SIZE` grid, `createActorState` + `resolveTick` from ws2 engine
 - Key bindings: `ArrowUp/W` → move N, `ArrowDown/S` → move S, `ArrowLeft/A` → move W, `ArrowRight/D` → move E; `J` → strike, `K` → guard, `L` → utility, `Enter` → skip
 - AP costs confirmed in render: Strike 18e · Guard 10e · Utility 20e · Move 4e
@@ -167,7 +167,7 @@ node web/scripts/ws2-core.test.mjs
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `web/src/components/Play.tsx` | 1410 | Full game loop: 8×8 map, WASD, AP economy, 3 archetypes, bot config, Play Again, founder CTA |
+| `web/src/components/Play.tsx` | 1410 | Full game loop: 8×8 map, WASD, AP economy, 3 archetypes, crawler config, Play Again, founder CTA |
 | `web/src/lib/waitlist-db.ts` | 400 | SQLite storage, rate-limit, idempotency, schema |
 | `web/src/lib/observability.ts` | 44 | Structured NDJSON ops log + fallback queues |
 | `web/src/lib/fallback-drain.ts` | 113 | Auto-heal drain on successful request |
@@ -215,12 +215,12 @@ bun run build (web/)
 
 **P2 — Real playable demo loop (LLM spectator mode + map movement + action economy)** ✅ SHIPPED
 - **Architecture change** (vs 16:25 snapshot): demo is now full LLM spectator mode — NO keyboard input during match.
-- `web/src/pages/api/agent/decide.ts` (268 lines): POST endpoint, formats game state → GPT-4o-mini system prompt → AgentAction, 3s server timeout, NO_OP fallback on timeout/error
+- `web/src/pages/api/agent/decide.ts` (268 lines): POST endpoint, formats game state → GPT-4o-mini directive → AgentAction, 3s server timeout, NO_OP fallback on timeout/error
 - `web/src/lib/ws2/match-runner.ts` (160 lines): async tick loop, 100ms ticks, 300ms decision windows (3 ticks/window), parallel `Promise.all` LLM calls per window
-- `web/src/components/Play.tsx` (961 lines, rewritten): spectator UI — lobby with bot config panels (name, directive textarea → LLM system prompt, loadout checkboxes, armor radio), arena 8×8 grid with bot positions + VFX, event log, KO overlay
-- Lobby → match flow: `startMatch()` seeds RNG → creates bot configs → `runMatchAsync(seed, configA, configB, handleSnapshot, '/api/agent/decide', signal)`
-- Spectator hint: "Spectator mode — agents decide autonomously via LLM" rendered during match
-- `OPENAI_API_KEY` **not set in Vercel yet** — bots will NO_OP until set. Set this in Vercel env vars for live LLM battles.
+- `web/src/components/Play.tsx` (961 lines, rewritten): spectator UI — tank with crawler config panels (name, directive textarea → LLM directive, shell checkboxes, armor radio), arena 8×8 grid with crawler positions + VFX, event log, KO overlay
+- Tank → molt flow: `startMolt()` seeds RNG → creates crawler configs → `runMoltAsync(seed, configA, configB, handleSnapshot, '/api/agent/decide', signal)`
+- Spectator hint: "Spectator mode — crawlers decide autonomously via LLM" rendered during molt
+- `OPENAI_API_KEY` **not set in Vercel yet** — crawlers will NO_OP until set. Set this in Vercel env vars for live LLM battles.
 - Engine constants: `ENERGY_MAX=1000`, `HP_MAX=100`, `DECISION_WINDOW_TICKS=3`, `TICK_MS=100`, grid 8×8, positions in tenths
 
 **P3 — Monetization path** ✅ CODE COMPLETE ⚠️ ENV VARS STILL NOT SET IN VERCEL
@@ -244,9 +244,9 @@ bun run build (web/)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `web/src/components/Play.tsx` | 961 | LLM spectator mode: 8×8 map, bot config, directive→system prompt, loadout, `runMatchAsync` |
+| `web/src/components/Play.tsx` | 961 | LLM spectator mode: 8×8 map, crawler config, directive, shell, `runMoltAsync` |
 | `web/src/lib/ws2/match-runner.ts` | 160 | Async tick loop, parallel LLM calls, 300ms decision windows |
-| `web/src/pages/api/agent/decide.ts` | 268 | GPT-4o-mini agent decision endpoint, 3s timeout, NO_OP fallback |
+| `web/src/pages/api/agent/decide.ts` | 268 | GPT-4o-mini crawler decision endpoint, 3s timeout, NO_OP fallback |
 | `web/src/lib/waitlist-db.ts` | 400 | SQLite storage, rate-limit, idempotency |
 | `web/src/lib/observability.ts` | 44 | NDJSON ops log + fallback queues |
 | `web/src/lib/fallback-drain.ts` | 113 | Auto-heal drain |
@@ -259,7 +259,7 @@ bun run build (web/)
 | `web/src/lib/ws2/engine.js` | — | Deterministic engine (4/4 tests pass, untouched) |
 
 **Open gaps (no code blocker):**
-1. `OPENAI_API_KEY` → Vercel env vars (bots NO_OP until set)
+1. `OPENAI_API_KEY` → Vercel env vars (crawlers NO_OP until set)
 2. `PUBLIC_STRIPE_FOUNDER_URL` → Vercel env vars (checkout button dead until set)
 3. `COGCAGE_POSTBACK_KEY` + `COGCAGE_OPS_KEY` → Vercel env vars
 4. Vercel SQLite persistence → needs external volume OR Vercel KV for production leads
@@ -289,7 +289,7 @@ bun run build (web/)
 **P2 — Demo loop** (already complete as of 18:17 checkpoint)
 - Phaser 3 MatchScene (20×20 grid, tweened bot movement, HP bars, decision log): `web/src/lib/ws2/MatchScene.ts` — 288 lines
 - match-runner.ts + decide.ts + Play.tsx spectator rewrite — all committed (`686cc8d`, `e5240b1`)
-- `OPENAI_API_KEY` must be set in Vercel for live LLM battles. Bots NO_OP gracefully until set.
+- `OPENAI_API_KEY` must be set in Vercel for live LLM battles. Crawlers NO_OP gracefully until set.
 
 **P3 — Monetization** (code complete since 18:17, blocked on env vars)
 - All code shipped: founder-intent, postback, checkout-success, success.astro

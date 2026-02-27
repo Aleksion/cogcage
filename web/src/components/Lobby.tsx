@@ -200,9 +200,9 @@ export default function Lobby({ lobbyId }: LobbyProps) {
   // Fetch lobby state — only show errors on initial load; poll failures are silent
   const fetchLobby = useCallback(async () => {
     try {
-      const res = await fetch(`/api/lobby/${lobbyId}`);
+      const res = await fetch(`/api/tank/${lobbyId}`);
       if (!res.ok) {
-        if (loading) setError('Lobby not found'); // only show on first load
+        if (loading) setError('Tank not found'); // only show on first load
         setLoading(false);
         return;
       }
@@ -237,7 +237,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
     setActionBusy(true);
     setError('');
     try {
-      const res = await fetch(`/api/lobby/${lobbyId}/dummy`, { method: 'POST' });
+      const res = await fetch(`/api/tank/${lobbyId}/dummy`, { method: 'POST' });
       const data = await res.json();
       if (!data.ok) setError(data.error || 'Failed to add dummy');
       else fetchLobby();
@@ -249,7 +249,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
 
   const handleLeave = async () => {
     try {
-      await fetch(`/api/lobby/${lobbyId}`, { method: 'DELETE' });
+      await fetch(`/api/tank/${lobbyId}`, { method: 'DELETE' });
       window.location.href = '/play';
     } catch { /* ignore */ }
   };
@@ -258,7 +258,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
     setActionBusy(true);
     setError('');
     try {
-      const res = await fetch(`/api/lobby/${lobbyId}/start`, { method: 'POST' });
+      const res = await fetch(`/api/tank/${lobbyId}/start`, { method: 'POST' });
       const data = await res.json();
       if (data.error) {
         setError(data.error);
@@ -285,8 +285,8 @@ export default function Lobby({ lobbyId }: LobbyProps) {
           botB={matchData.botB}
           seed={matchData.seed}
           onBack={() => { window.location.href = '/play'; }}
-          backLabel="Back to Dashboard"
-          onTweakBot={() => { window.location.href = '/armory'; }}
+          backLabel="Back to The Den"
+          onTweakBot={() => { window.location.href = '/shell'; }}
         />
       </div>
     );
@@ -297,10 +297,10 @@ export default function Lobby({ lobbyId }: LobbyProps) {
       <div className="lby-root">
         <header className="lby-header">
           <a href="/" className="lby-logo">The Molt Pit</a>
-          <span className="lby-title">Lobby</span>
+          <span className="lby-title">The Tank</span>
           <div />
         </header>
-        <div className="lby-loading">Loading lobby...</div>
+        <div className="lby-loading">Loading tank...</div>
       </div>
     );
   }
@@ -310,13 +310,13 @@ export default function Lobby({ lobbyId }: LobbyProps) {
       <div className="lby-root">
         <header className="lby-header">
           <a href="/" className="lby-logo">The Molt Pit</a>
-          <span className="lby-title">Lobby</span>
+          <span className="lby-title">The Tank</span>
           <div />
         </header>
         <div className="lby-loading">
-          {error || 'Lobby not found'}
+          {error || 'Tank not found'}
           <div style={{ marginTop: '1rem' }}>
-            <a href="/play" style={{ color: '#FFD600', textDecoration: 'underline' }}>Back to Dashboard</a>
+            <a href="/play" style={{ color: '#FFD600', textDecoration: 'underline' }}>Back to The Den</a>
           </div>
         </div>
       </div>
@@ -332,7 +332,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
       {/* Header */}
       <header className="lby-header">
         <a href="/" className="lby-logo">The Molt Pit</a>
-        <span className="lby-title">Lobby</span>
+        <span className="lby-title">The Tank</span>
         <button className="lby-leave-btn" onClick={handleLeave}>Leave</button>
       </header>
 
@@ -361,7 +361,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
                   </div>
                 )}
                 <div className="lby-bot-stat">
-                  Actions: {lobby.host.actionTypes.join(', ')}
+                  Claws: {lobby.host.actionTypes.join(', ')}
                 </div>
                 <div className="lby-bot-stat">
                   Armor: {lobby.host.armor} &middot; Move cost: {lobby.host.moveCost}e
@@ -372,8 +372,8 @@ export default function Lobby({ lobbyId }: LobbyProps) {
                   </div>
                 )}
                 <div style={{ marginTop: 'auto', paddingTop: '0.8rem' }}>
-                  <a href={`/armory?returnTo=/lobby/${lobbyId}`} className="lby-btn configure">
-                    Configure Bot
+                  <a href={`/shell?returnTo=/lobby/${lobbyId}`} className="lby-btn configure">
+                    Configure Crawler
                   </a>
                 </div>
               </>
@@ -403,7 +403,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
                   </div>
                 )}
                 <div className="lby-bot-stat">
-                  Actions: {lobby.guest.actionTypes.join(', ')}
+                  Claws: {lobby.guest.actionTypes.join(', ')}
                 </div>
                 <div className="lby-bot-stat">
                   Armor: {lobby.guest.armor} &middot; Move cost: {lobby.guest.moveCost}e
@@ -433,13 +433,13 @@ export default function Lobby({ lobbyId }: LobbyProps) {
           </div>
         </div>
 
-        {/* START MATCH */}
+        {/* START MOLT */}
         <button
           className="lby-btn start"
           disabled={!isReady || actionBusy}
           onClick={handleStartMatch}
         >
-          {actionBusy ? 'Starting...' : 'Start Match'}
+          {actionBusy ? 'Starting...' : 'Start Molt'}
         </button>
       </main>
     </div>

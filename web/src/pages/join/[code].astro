@@ -71,15 +71,15 @@ const code = Astro.params.code?.toUpperCase() || '';
 
       <form id="join-form">
         <div class="field">
-          <label>Bot Name</label>
+          <label>Crawler Name</label>
           <input id="bot-name" placeholder="e.g. Iron Vanguard" value="Iron Vanguard" required />
         </div>
         <div class="field">
-          <label>System Prompt (Brain)</label>
-          <textarea id="bot-prompt" placeholder="Describe your bot's strategy...">You are an aggressive melee fighter. Prioritize closing distance and striking hard.</textarea>
+          <label>Directive (Brain)</label>
+          <textarea id="bot-prompt" placeholder="Describe your crawler's strategy...">You are an aggressive melee fighter. Prioritize closing distance and striking hard.</textarea>
         </div>
         <div class="field">
-          <label>Loadout</label>
+          <label>Shell</label>
           <div class="loadout-grid">
             <label class="loadout-item"><input type="checkbox" value="MOVE" checked disabled /> Move (4e)</label>
             <label class="loadout-item"><input type="checkbox" value="MELEE_STRIKE" checked class="loadout-cb" /> Melee (18e)</label>

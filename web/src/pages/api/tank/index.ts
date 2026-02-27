@@ -3,7 +3,7 @@ import { listOpenLobbies, createLobby } from '../../../lib/lobby.ts';
 
 export const prerender = false;
 
-/** GET /api/lobby — list open lobbies */
+/** GET /api/tank — list open tanks */
 export const GET: APIRoute = async () => {
   try {
     const lobbies = await listOpenLobbies();
@@ -19,7 +19,7 @@ export const GET: APIRoute = async () => {
   }
 };
 
-/** POST /api/lobby — create a lobby */
+/** POST /api/tank — create a tank */
 export const POST: APIRoute = async ({ request, cookies }) => {
   const playerId = cookies.get('moltpit_pid')?.value;
   if (!playerId) {

@@ -24,7 +24,7 @@ The plugin is already built. Auth unlocks the player token flow that makes it ac
 | PR #9: OpenClaw skill skills/themoltpit/ | ✅ Merged |
 | PR #10: MatchEngine DO | ✅ Merged |
 | PR #11: MatchView WebSocket migration | ✅ Merged |
-| PR #13: match-runner cleanup + connection stats | ✅ Merged |
+| PR #13: molt-runner cleanup + connection stats | ✅ Merged |
 
 ---
 
@@ -35,7 +35,7 @@ The plugin is already built. Auth unlocks the player token flow that makes it ac
 | Item | What's needed |
 |---|---|
 | TASK-020 env vars | GITHUB_ID/SECRET, GOOGLE_ID/SECRET, AUTH_RESEND_KEY, AUTH_SECRET → add to Vercel |
-| Terminology: "Hardness" vs "Temper" | One word decision (ELO rank label) — see GTM thread |
+| Terminology: "Hardness" vs "Temper" | One word decision (hardness label) — see GTM thread |
 | CF DNS transfer | Move themoltpit.com to Cloudflare DNS to unlock engine.themoltpit.com custom domain |
 
 ### In Progress

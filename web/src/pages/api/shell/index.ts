@@ -3,7 +3,7 @@ import { getLoadouts, saveLoadout } from '../../../lib/armory.ts';
 
 export const prerender = false;
 
-/** GET /api/armory — Fetch player loadouts */
+/** GET /api/shell — Fetch player shells */
 export const GET: APIRoute = async ({ cookies }) => {
   const playerId = cookies.get('moltpit_pid')?.value;
   if (!playerId) {
@@ -27,7 +27,7 @@ export const GET: APIRoute = async ({ cookies }) => {
   }
 };
 
-/** POST /api/armory — Save a new loadout */
+/** POST /api/shell — Save a new shell */
 export const POST: APIRoute = async ({ request, cookies }) => {
   const playerId = cookies.get('moltpit_pid')?.value;
   if (!playerId) {

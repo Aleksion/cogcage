@@ -140,7 +140,7 @@ const globalStyles = `
   .tactic-chip.enemy-chip { background: var(--c-red); color: #fff; }
   .turn-counter { font-family: var(--f-display); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; color: var(--c-dark); }
 
-  /* Lobby */
+  /* Tank */
   .lobby-container { max-width: 1000px; margin: 0 auto; }
   .lobby-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
   .bot-config-card { background: rgba(255,214,0,0.07); border: 2px dashed var(--c-yellow); border-radius: 10px; padding: 0.9rem; margin-bottom: 1rem; }
@@ -155,7 +155,7 @@ const globalStyles = `
   .seed-toggle { font-size: 0.85rem; font-weight: 800; cursor: pointer; color: #666; background: none; border: none; text-decoration: underline; padding: 0; margin-bottom: 0.5rem; }
   .enter-arena-btn { width: 100%; margin-top: 1.5rem; font-size: 1.5rem; padding: 1.1rem 2.5rem; }
 
-  /* Match */
+  /* Molt */
   .match-grid { display: grid; grid-template-columns: 1fr 300px; gap: 2rem; }
   .match-sidebar .feed { max-height: 380px; margin-top: 0.5rem; }
   .match-topbar { display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
@@ -550,7 +550,7 @@ const Play = () => {
         return `[${tick}] ${who} uses ${d.type}`;
       }
       case 'MATCH_END':
-        return `[${tick}] MATCH END \u2014 ${event.data.reason}`;
+        return `[${tick}] MOLT END \u2014 ${event.data.reason}`;
       default:
         return null;
     }
@@ -687,7 +687,7 @@ const Play = () => {
     setBotBPos({ x: 5, y: 4 }); // (14,10) world → grid(5,4)
 
     const initLines = [
-      `Match initialized. Seed ${seed}.`,
+      `Molt initialized. Seed ${seed}.`,
       `${configA.name} (${configA.armor}) vs ${configB.name} (${configB.armor})`,
     ];
     setFeed(initLines.reverse());
@@ -718,7 +718,7 @@ const Play = () => {
         agentBusyRef.current.clear();
 
         /**
-         * Push a bot's decision to the DO action queue.
+         * Push a crawler's decision to the DO action queue.
          * Called at every DECISION_WINDOW_TICKS boundary.
          * Fire-and-forget: errors are logged, never surface to UI.
          */
@@ -836,7 +836,7 @@ const Play = () => {
     setEndReason('ABORTED');
   }, []);
 
-  // --- Lobby helpers ---
+  // --- Tank helpers ---
   const updateLoadout = (setter: React.Dispatch<React.SetStateAction<LobbyBotConfig>>, action: string, checked: boolean) => {
     setter((prev) => {
       if (action === 'MOVE') return prev; // MOVE always on
@@ -933,11 +933,11 @@ const Play = () => {
         <input
           className="prompt-box"
           style={{ minHeight: 'unset', height: '40px', marginBottom: '0.5rem' }}
-          placeholder="Bot name (e.g. Iron Vanguard)"
+          placeholder="Crawler name (e.g. Iron Vanguard)"
           value={config.name}
           onChange={(e) => setConfig((prev) => ({ ...prev, name: e.target.value }))}
         />
-        <div className="section-label" style={{ marginTop: '0.6rem' }}>System Prompt (Brain)</div>
+        <div className="section-label" style={{ marginTop: '0.6rem' }}>Directive (Brain)</div>
         <textarea
           className="prompt-box"
           style={{ minHeight: '100px', marginBottom: '0.6rem', fontSize: '0.85rem' }}
@@ -946,7 +946,7 @@ const Play = () => {
           onChange={(e) => setConfig((prev) => ({ ...prev, systemPrompt: e.target.value }))}
         />
 
-        <div className="section-label">Loadout</div>
+        <div className="section-label">Shell</div>
         <div className="loadout-grid">
           {ACTION_TYPES.map((action: string) => {
             const info = ACTION_INFO[action];
@@ -1103,7 +1103,7 @@ const Play = () => {
     <div className="leaderboard">
       <div className="section-label">Unlock Founder Pricing</div>
       <div className="hint" style={{ marginBottom: '0.7rem' }}>
-        Lock $29/mo before launch pricing moves to $49/mo. Configure and pit your AI agents against each other with full analytics.
+        Lock $29/mo before launch pricing moves to $49/mo. Configure and pit your AI crawlers against each other with full analytics.
       </div>
       <input
         className="prompt-box"
@@ -1131,20 +1131,20 @@ const Play = () => {
         </div>
       </header>
 
-      {/* ======================== LOBBY ======================== */}
+      {/* ======================== TANK ======================== */}
       {phase === 'lobby' && (
         <main className="play-shell">
           <div className="lobby-container">
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ fontFamily: 'var(--f-display)', fontSize: '2.2rem', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                Configure Your Agents
+                Configure Your Crawlers
               </h2>
-              <p className="hint">Two LLM-driven bots fight autonomously. You design their brains and loadouts, then watch.</p>
+              <p className="hint">Two LLM-driven crawlers fight autonomously. You design their brains and shells, then watch.</p>
             </div>
 
             <div className="lobby-grid">
-              {renderBotConfigPanel(botAConfig, setBotAConfig, 'Bot A (Cyan)', false)}
-              {renderBotConfigPanel(botBConfig, setBotBConfig, 'Bot B (Red)', true)}
+              {renderBotConfigPanel(botAConfig, setBotAConfig, 'Crawler A (Cyan)', false)}
+              {renderBotConfigPanel(botBConfig, setBotBConfig, 'Crawler B (Red)', true)}
             </div>
 
             {/* Advanced: Seed + BYO toggle */}
@@ -1175,7 +1175,7 @@ const Play = () => {
             {/* Room system */}
             {showRoomPanel && (
               <div className="panel" style={{ maxWidth: '700px', margin: '1rem auto 0' }}>
-                <h2 style={{ fontSize: '1.4rem' }}>Lobby Rooms</h2>
+                <h2 style={{ fontSize: '1.4rem' }}>Tank Rooms</h2>
 
                 {/* Create room */}
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
@@ -1295,7 +1295,7 @@ const Play = () => {
         </main>
       )}
 
-      {/* ======================== MATCH ======================== */}
+      {/* ======================== MOLT ======================== */}
       {phase === 'match' && (
         <main className="play-shell">
           {/* Top bar: names + HP */}
@@ -1442,7 +1442,7 @@ const Play = () => {
           <div className="ko-radial-bg" />
           <div className="ko-content">
             <div className="ko-title">
-              {endReason === 'ABORTED' ? 'ABORTED' : endReason === 'KO' ? 'K.O.!' : endReason === 'TIMEOUT' ? 'TIME!' : 'MATCH OVER'}
+              {endReason === 'ABORTED' ? 'ABORTED' : endReason === 'KO' ? 'K.O.!' : endReason === 'TIMEOUT' ? 'TIME!' : 'MOLT OVER'}
             </div>
             <div className="ko-winner-name">
               {winnerId ? `${winnerName} WINS` : 'DRAW'}

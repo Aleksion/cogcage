@@ -3,7 +3,7 @@ import { addDummy } from '../../../../lib/lobby.ts';
 
 export const prerender = false;
 
-/** POST /api/lobby/[id]/dummy — add dummy opponent (mirror match) */
+/** POST /api/tank/[id]/dummy — add dummy opponent (mirror match) */
 export const POST: APIRoute = async ({ params }) => {
   const { id } = params;
   if (!id) {

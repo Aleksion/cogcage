@@ -35,9 +35,9 @@ function generateId(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 16);
 }
 
-/* ── Resolve loadout → BotSnapshot ─────────────────────────── */
+/* ── Resolve shell → BotSnapshot ─────────────────────────── */
 
-const DEFAULT_BRAIN_PROMPT = `You are a tactical combat agent in a grid-based arena.
+const DEFAULT_BRAIN_PROMPT = `You are a tactical combat crawler in a grid-based arena.
 Analyze the game state each turn and choose the optimal action.
 Balance offense and defense. Conserve energy for key moments.
 Use your skills strategically — they provide critical advantages.`;

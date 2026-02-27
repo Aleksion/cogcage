@@ -1,5 +1,5 @@
 # WS7: PlayCanvas 3D Renderer Spec
-**Mission:** `501b789e` | **Priority:** P0 for visual demo | **Owner:** WS7 agent
+**Mission:** `501b789e` | **Priority:** P0 for visual demo | **Owner:** WS7
 
 ---
 
@@ -9,7 +9,7 @@ Replace the current Phaser 2D top-down grid with a **PlayCanvas 3D isometric are
 
 Reference: Robostorm on playcanvas.com — industrial cage environment, isometric camera angle, particle effects on combat, real-time shadows.
 
-This is the visual identity of CogCage. The game should feel like Real Steel / F1 for AI — not a board game.
+This is the visual identity of The Molt Pit. The game should feel like Real Steel / F1 for AI — not a board game.
 
 ---
 
@@ -32,13 +32,13 @@ A class that:
 - Creates a PlayCanvas application with WebGL renderer
 - Sets up isometric camera (45° pitch, looking down-right)
 - Builds the arena floor
-- Creates bot entities
-- Accepts `MatchSnapshot` updates and drives entity positions/FX
+- Creates crawler entities
+- Accepts `MoltSnapshot` updates and drives entity positions/FX
 
 ```typescript
 export class PlayCanvasScene {
   constructor(canvas: HTMLCanvasElement) { ... }
-  update(snapshot: MatchSnapshot): void { ... }
+  update(snapshot: MoltSnapshot): void { ... }
   destroy(): void { ... }
 }
 ```
@@ -51,9 +51,9 @@ export class PlayCanvasScene {
 - Arena boundary walls: low flat box meshes around edges
 - Industrial aesthetic: slight roughness, metallic accents
 
-### 3. Bot Entities
+### 3. Crawler Entities
 
-Two bots: Alpha (Green / `#2ecc71`) and Beta (Red / `#eb4d4b`)
+Two crawlers: Alpha (Green / `#2ecc71`) and Beta (Red / `#eb4d4b`)
 
 For Friday skeleton: Simple geometric shapes
 - Body: upright box (0.6×0.8×0.6) with team color material
@@ -75,9 +75,9 @@ Per-event FX triggered from `MatchSnapshot.newEvents` (or `snapshot.state.events
 |-----------|-----|-------|----------|
 | `MELEE_STRIKE` hit | Burst particle spray from target position | Orange/red `#ff6b35` | 400ms |
 | `RANGED_SHOT` hit | Directional plasma streak from attacker to target + small burst | Cyan `#00e5ff` | 300ms |
-| `GUARD` active | Shield ring around bot | White `#ffffff` pulsing | 600ms |
-| `DASH` start | Speed trail behind bot | Team color fading | 400ms |
-| Bot KO | Large burst + screen flash + particles | Team color + white | 1200ms |
+| `GUARD` active | Shield ring around crawler | White `#ffffff` pulsing | 600ms |
+| `DASH` start | Speed trail behind crawler | Team color fading | 400ms |
+| Crawler KO | Large burst + screen flash + particles | Team color + white | 1200ms |
 
 Use PlayCanvas `ParticleSystemComponent` or simple `MeshInstance` pools for simpler FX.
 
@@ -111,7 +111,7 @@ Adjust until the 20×20 grid fills the canvas nicely. No camera movement needed 
 - Ambient light: dark blue-grey `rgba(30, 40, 60)`
 - Directional "sun" light: slightly warm white, coming from top-left at 45°
 - Point light on objective zone: yellow glow, intensity 2.0
-- Optional: small point lights on each bot (team color, intensity 0.5)
+- Optional: small point lights on each crawler (team color, intensity 0.5)
 
 ---
 
@@ -124,9 +124,9 @@ const playCanvasRef = useRef<HTMLCanvasElement>(null);
 const playCanvasScene = useRef<PlayCanvasScene | null>(null);
 const [pcActive, setPcActive] = useState(false);
 
-// Mount PlayCanvas when match starts
+// Mount PlayCanvas when molt starts
 useEffect(() => {
-  if (phase !== 'match' || !playCanvasRef.current) return;
+  if (phase !== 'molt' || !playCanvasRef.current) return;
   
   import('../lib/ws2/PlayCanvasScene').then(({ PlayCanvasScene }) => {
     playCanvasScene.current = new PlayCanvasScene(playCanvasRef.current!);
@@ -180,8 +180,8 @@ Check version compatibility: `@playcanvas/engine@1.x` (latest stable).
 
 1. `npm --prefix web run build` clean — no errors
 2. `/play` page loads with PlayCanvas arena visible
-3. Starting a match shows both bots on the 3D isometric arena
-4. Bots move to correct positions when match ticks (smooth tween)
+3. Starting a molt shows both crawlers on the 3D isometric arena
+4. Crawlers move to correct positions when molt ticks (smooth tween)
 5. At least melee hit FX fires visually (particle burst)
 6. CSS grid fallback works if PlayCanvas fails to mount
 7. Looks dramatically better than the 2D CSS grid — someone watching should say "woah"

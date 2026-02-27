@@ -116,7 +116,7 @@ export const globalStyles = `
   .tactic-chip.enemy-chip { background: var(--c-red); color: #fff; }
   .turn-counter { font-family: var(--f-display); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; color: var(--c-dark); }
 
-  /* Lobby */
+  /* Tank */
   .lobby-container { max-width: 1000px; margin: 0 auto; }
   .lobby-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
   .bot-config-card { background: rgba(255,214,0,0.07); border: 2px dashed var(--c-yellow); border-radius: 10px; padding: 0.9rem; margin-bottom: 1rem; }

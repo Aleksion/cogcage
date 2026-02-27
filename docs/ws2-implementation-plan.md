@@ -11,14 +11,14 @@
 
 1. **TypeScript only.** No `.js` files. Every file in `web/src/lib/ws2/` must be `.ts` with real types.
 2. **Proper game engine.** The match cannot be a React component with `setInterval`. Use Phaser 3.
-3. **BYO OpenClaw is the product.** Users bring their own OpenClaw instance (or any compliant agent endpoint). Built-in GPT-4o-mini is the fallback for users without their own runtime, not the main path.
-4. **Users choose their agent.** The lobby lets you configure a webhook URL (your OpenClaw endpoint) OR pick the built-in hosted runner.
+3. **BYO OpenClaw is the product.** Users bring their own OpenClaw instance (or any compliant crawler endpoint). Built-in GPT-4o-mini is the fallback for users without their own runtime, not the main path.
+4. **Users choose their crawler.** The tank lets you configure a webhook URL (your OpenClaw endpoint) OR pick the built-in hosted runner.
 
 ---
 
 ## TL;DR — What Friday Looks Like
 
-Player opens `/play`. Lobby lets them configure **two bots**: name, system prompt, loadout (which actions available), armor, and — crucially — **their OpenClaw webhook URL** or the hosted runner. They hit **Start Battle** and **watch** Phaser render two LLM agents fighting on the grid. Combat log explains every decision. KO screen at the end.
+Player opens `/play`. Tank lets them configure **two crawlers**: name, directive, shell (which claws available), armor, and — crucially — **their OpenClaw webhook URL** or the hosted runner. They hit **Start Battle** and **watch** Phaser render two LLM crawlers fighting on the grid. Combat log explains every decision. KO screen at the end.
 
 No keyboard input during match. No heuristic bots as the primary path. Two language models reasoning about tactics in real time.
 
@@ -36,12 +36,12 @@ No keyboard input during match. No heuristic bots as the primary path. Two langu
 - Handles the 300ms decision window cleanly: Phaser `update()` fires at 60fps, sim only advances state on decision window ticks
 
 **Integration pattern (Astro + Phaser):**
-- Lobby/result: React components (fast to build, works with existing code)
+- Tank/result: React components (fast to build, works with existing code)
 - Match: Phaser canvas, launched from React via `useEffect` when `phase === 'match'`
 - Phaser creates its own `<canvas>` inside a container `div`
 - Match end → Phaser scene emits event → React transitions to result screen
 
-**Bundle note:** Phaser adds ~3MB to the bundle. Acceptable for a game. Use dynamic import (`const Phaser = await import('phaser')`) to keep it out of the lobby/landing page.
+**Bundle note:** Phaser adds ~3MB to the bundle. Acceptable for a game. Use dynamic import (`const Phaser = await import('phaser')`) to keep it out of the tank/landing page.
 
 ---
 
@@ -52,7 +52,7 @@ No keyboard input during match. No heuristic bots as the primary path. Two langu
 | Component | File | Status |
 |---|---|---|
 | Deterministic sim engine | `ws2/engine.js` → **must become `engine.ts`** | Logic correct. Tests pass. Port to TS, don't change logic. |
-| Bot archetypes (fallback) | `ws2/bots.js` → **`bots.ts`** | Scripted heuristics for non-LLM fallback. Port to TS. |
+| Crawler archetypes (fallback) | `ws2/crawlers.js` → **`crawlers.ts`** | Scripted heuristics for non-LLM fallback. Port to TS. |
 | Async match runner | `ws2/match-runner.ts` | Already TypeScript ✅. Wire to Phaser game loop. |
 | Replay system | `ws2/replay.js` → **`replay.ts`** | Port to TS. |
 | Geometry helpers | `ws2/geometry.js` → **`geometry.ts`** | Port to TS. |
@@ -60,7 +60,7 @@ No keyboard input during match. No heuristic bots as the primary path. Two langu
 | RNG | `ws2/rng.js` → **`rng.ts`** | Port to TS. |
 | Barrel export | `ws2/index.js` → **`index.ts`** | Port to TS. |
 | LLM decision endpoint | `pages/api/agent/decide.ts` | TypeScript ✅. Needs BYO relay support (Task B2). |
-| Play.tsx lobby | `components/Play.tsx` | Needs lobby redesign for BYO OpenClaw config (Task B3). |
+| Play.tsx tank | `components/Play.tsx` | Needs tank redesign for BYO OpenClaw config (Task B3). |
 | Play.tsx result/KO | `components/Play.tsx` | Keep. Wire to Phaser match end event (Task B4). |
 
 ### ❌ NOT BUILT — Friday Blockers
@@ -70,7 +70,7 @@ No keyboard input during match. No heuristic bots as the primary path. Two langu
 | **A** | JS → TS migration | Port 6 `.js` files to `.ts` with real types | ~2–3 hours |
 | **B1** | Phaser 3 match scene | `MatchScene.ts` — renders the arena, bots, VFX, HP bars at 60fps | ~150–200 lines |
 | **B2** | BYO OpenClaw relay | `/api/agent/external` endpoint that proxies to user's OpenClaw webhook | ~50 lines |
-| **B3** | Lobby: BYO config | Add webhook URL field, model selector, loadout checkboxes to lobby | ~80 lines in Play.tsx |
+| **B3** | Tank: BYO config | Add webhook URL field, model selector, shell checkboxes to tank | ~80 lines in Play.tsx |
 | **B4** | Wire match-runner ↔ Phaser | `match-runner.ts` drives sim, Phaser `MatchScene` visualizes it | ~100 lines |
 | **B5** | Decision explainability | LLM returns `reasoning` field; Phaser combat log displays it | ~30 lines total |
 
@@ -80,11 +80,11 @@ No keyboard input during match. No heuristic bots as the primary path. Two langu
 
 ### What "BYO OpenClaw" means
 
-The user configures their **own OpenClaw instance** as the agent for their bot. Their OpenClaw receives game state on each decision window and returns an action.
+The user configures their **own OpenClaw instance** as the crawler for their fighter. Their OpenClaw receives game state on each decision window and returns a claw.
 
 ### Adapter Contract v1
 
-**Inbound (game → agent):**
+**Inbound (game → crawler):**
 ```json
 POST <user_webhook_url>
 {
@@ -98,7 +98,7 @@ POST <user_webhook_url>
     "actors": { ... },
     "objectiveScore": { ... }
   },
-  "loadout": ["MOVE", "MELEE_STRIKE", "RANGED_SHOT", "GUARD"],
+  "shell": ["MOVE", "MELEE_STRIKE", "RANGED_SHOT", "GUARD"],
   "meta": {
     "arenaSize": 20,
     "tickRateHz": 10,
@@ -107,7 +107,7 @@ POST <user_webhook_url>
 }
 ```
 
-**Outbound (agent → game):**
+**Outbound (crawler → game):**
 ```json
 {
   "schema": "cogcage.action.v1",
@@ -120,13 +120,13 @@ POST <user_webhook_url>
 
 **Rules:**
 - Game waits max 4s for response. Timeout → `NO_OP`.
-- `type` must be in the actor's `loadout`. Invalid action → `ILLEGAL_ACTION` + `NO_OP`.
+- `type` must be in the actor's `shell`. Invalid action → `ILLEGAL_ACTION` + `NO_OP`.
 - `reasoning` field optional but encouraged (shown in combat log if present).
 - Requests are unauthenticated in Phase A. Phase B adds HMAC signing.
 
 ### Server-side relay (CORS + security)
 
-Because user-configured external URLs can't be called directly from the browser (CORS), the game routes all external agent calls through:
+Because user-configured external URLs can't be called directly from the browser (CORS), the game routes all external crawler calls through:
 
 ```
 browser → POST /api/agent/external → user's OpenClaw webhook
@@ -147,7 +147,7 @@ This endpoint:
 
 ### Hosted runner (built-in fallback)
 
-For users without their own OpenClaw, the hosted runner uses GPT-4o-mini via `/api/agent/decide`. Same interface, just different URL. Users can still configure the system prompt and loadout.
+For users without their own OpenClaw, the hosted runner uses GPT-4o-mini via `/api/agent/decide`. Same interface, just different URL. Users can still configure the directive and shell.
 
 ---
 
@@ -184,7 +184,7 @@ Note: `match-runner.ts` imports from `./engine.js` with `.js` extension — upda
 // Driven externally by match-runner.ts via applySnapshot(snap: MatchSnapshot)
 export class MatchScene extends Phaser.Scene {
   // Grid: 20×20, each cell = 32px → 640×640 canvas
-  // Bot sprites: colored rectangles or loaded SVG
+  // Crawler sprites: colored rectangles or loaded SVG
   // HP bars: Graphics objects, updated each snapshot
   // VFX: Phaser particles for hits, Phaser tweens for movement
   // Combat log: BitmapText or Text objects, scrolling
@@ -232,18 +232,18 @@ export const POST: APIRoute = async ({ request }) => {
 
 ---
 
-### Task B3: Lobby — BYO OpenClaw Config
+### Task B3: Tank — BYO OpenClaw Config
 
-**File:** `web/src/components/Play.tsx` (lobby section)
+**File:** `web/src/components/Play.tsx` (tank section)
 
-Add per-bot configuration:
-1. **Agent mode**: radio — `hosted` (GPT-4o-mini) | `byo-openclaw` (custom webhook)
+Add per-crawler configuration:
+1. **Crawler mode**: radio — `hosted` (GPT-4o-mini) | `byo-openclaw` (custom webhook)
 2. **Webhook URL** (shown when `byo-openclaw`): text input for OpenClaw endpoint
-3. **System prompt**: large textarea (wired to `systemPrompt` in API call — currently unhooked)
-4. **Loadout**: checkboxes — MOVE locked, 5 others optional. More = harder reasoning.
+3. **Directive**: large textarea (wired to `directive` in API call — currently unhooked)
+4. **Shell**: checkboxes — MOVE locked, 5 others optional. More = harder reasoning.
 5. **Armor**: radio — light / medium / heavy
 
-The `directive` field currently exists but is never sent. Wire it to `systemPrompt` in the decide call.
+The `directive` field currently exists but is never sent. Wire it to `directive` in the decide call.
 
 ---
 
@@ -288,7 +288,7 @@ async function startMatch() {
 ```
 Return `reasoning` in the API response alongside `action`.
 
-**In `/api/agent/external.ts`:** Pass through any `reasoning` field from the external agent.
+**In `/api/agent/external.ts`:** Pass through any `reasoning` field from the external crawler.
 
 **In `match-runner.ts`:** Capture `action.reasoning` per decision, include in `MatchSnapshot.events` or a separate `decisions` log.
 
@@ -307,19 +307,19 @@ Return `reasoning` in the API response alongside `action`.
 - [ ] Phaser 3 installed and working in the Astro project
 - [ ] `MatchScene.ts` renders 20×20 grid, two bots, HP bars, VFX on hits
 - [ ] Match-runner drives the scene via snapshot events (no direct `resolveTick` calls in React)
-- [ ] Bot movement animated with Phaser tweens (smooth, not teleport)
+- [ ] Crawler movement animated with Phaser tweens (smooth, not teleport)
 
 **BYO OpenClaw:**
 - [ ] `/api/agent/external` relay endpoint live
-- [ ] Lobby has agent mode toggle (hosted / BYO webhook URL)
+- [ ] Tank has crawler mode toggle (hosted / BYO webhook URL)
 - [ ] BYO webhook call works end-to-end (can test with a simple echo server)
-- [ ] System prompt directive is wired to the LLM call (not dead UI)
-- [ ] Loadout checkboxes gate which actions the LLM can use
+- [ ] Directive is wired to the LLM call (not dead UI)
+- [ ] Shell checkboxes gate which claws the LLM can use
 
 **Match loop:**
-- [ ] Both bots fight autonomously — zero keyboard input during match
+- [ ] Both crawlers fight autonomously — zero keyboard input during molt
 - [ ] Combat log shows each decision + `reasoning` field when available
-- [ ] Match ends correctly → result/KO screen
+- [ ] Molt ends correctly → result/KO screen
 
 **Deploy:**
 - [ ] `npm run build` clean, no TypeScript errors
@@ -336,14 +336,14 @@ The TS migration + Phaser integration is 2–4 hours of solid work on top of the
 A (TS migration, ~2h) 
 → B1 (Phaser match scene, ~3h) 
 → B2 (relay endpoint, ~1h) 
-→ B3 (lobby BYO config, ~1h) 
+→ B3 (tank BYO config, ~1h)
 → B4 (wire runner ↔ Phaser, ~1h) 
 → B5 (reasoning log, ~0.5h)
 ```
 
 If time runs short, ship in this priority:
-1. TS migration + Phaser rendering + match-runner wired = **you can watch bots fight**
-2. BYO relay + lobby config = **you can plug in your own OpenClaw**
+1. TS migration + Phaser rendering + molt-runner wired = **you can watch crawlers fight**
+2. BYO relay + tank config = **you can plug in your own OpenClaw**
 3. Reasoning log = **polish**
 
 ---
@@ -354,7 +354,7 @@ If time runs short, ship in this priority:
 - Replay step-through viewer using `runMatchFromLog`
 - HMAC auth for BYO webhook calls (Phase B)
 - Win/loss history in DB
-- Bot counter-balance validation (2,000-game suite per spec §11 AC#3)
+- Crawler counter-balance validation (2,000-game suite per spec §11 AC#3)
 - Map obstacles and LOS (deferred per spec §12)
 - 2v2 mode (deferred per spec §12)
 - MCP adapter spec + public certification tests (Phase C)
@@ -365,13 +365,13 @@ If time runs short, ship in this priority:
 
 1. Engine is deterministic: `(seed, actionLog)` → identical winner always
 2. Invalid action → `NO_OP` + `ILLEGAL_ACTION` event, never throws
-3. Match always terminates: KO or tick timeout
+3. Molt always terminates: KO or tick timeout
 4. No `Math.random()` inside engine — `Rng` class only
-5. LLM/agent timeout → `NO_OP` fallback, match continues
+5. LLM/crawler timeout → `NO_OP` fallback, molt continues
 
 ---
 
-## Handoff Contract (for implementing agent)
+## Handoff Contract (for implementing crawler)
 
 Before writing code:
 1. Read this doc fully

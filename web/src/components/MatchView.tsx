@@ -384,7 +384,7 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
     };
 
     const initLines = [
-      `Match initialized. Seed ${seed}.`,
+      `Molt initialized. Seed ${seed}.`,
       `${configA.name} (${configA.armor}) vs ${configB.name} (${configB.armor})`,
     ];
     setFeed(initLines.reverse());
@@ -461,7 +461,7 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
     };
 
     const initLines = [
-      `Match initialized. Seed ${seed}.`,
+      `Molt initialized. Seed ${seed}.`,
       `${configA.name} (${configA.armor}) vs ${configB.name} (${configB.armor})`,
     ];
     setFeed(initLines.reverse());
@@ -605,7 +605,7 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
       <div className="mv-ko-radial-bg" />
       <div className="mv-ko-content">
         <div className="mv-ko-title">
-          {endReason === 'ABORTED' ? 'ABORTED' : endReason === 'KO' ? 'K.O.!' : endReason === 'TIMEOUT' ? 'TIME!' : 'MATCH OVER'}
+          {endReason === 'ABORTED' ? 'ABORTED' : endReason === 'KO' ? 'K.O.!' : endReason === 'TIMEOUT' ? 'TIME!' : 'MOLT OVER'}
         </div>
         <div className="mv-ko-winner-name">
           {winnerId ? `${winnerName} WINS` : 'DRAW'}
@@ -613,7 +613,7 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
         <div className="mv-ko-reason">
           {endReason === 'KO' ? 'KNOCKOUT'
             : endReason === 'TIMEOUT' ? 'TIME EXPIRED'
-            : endReason === 'ABORTED' ? 'MATCH ABORTED'
+            : endReason === 'ABORTED' ? 'MOLT ABORTED'
             : endReason?.replace(/_/g, ' ') || ''}
         </div>
 
@@ -635,10 +635,10 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
         <div className="mv-ko-actions">
           <button className="mv-ko-btn" onClick={rematch}>Rematch</button>
           {onTweakBot && (
-            <button className="mv-ko-btn secondary" onClick={onTweakBot}>Tweak Bot</button>
+            <button className="mv-ko-btn secondary" onClick={onTweakBot}>Tweak Crawler</button>
           )}
           {onBack && (
-            <button className="mv-ko-btn secondary" onClick={onBack}>{backLabel || 'Back to Dashboard'}</button>
+            <button className="mv-ko-btn secondary" onClick={onBack}>{backLabel || 'Back to The Den'}</button>
           )}
         </div>
       </div>

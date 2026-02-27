@@ -291,7 +291,7 @@ export interface LoadoutValidation {
   errors: string[];
 }
 
-/* ── Card → match config mapping ──────────────────────────── */
+/* ── Card → molt config mapping ──────────────────────────── */
 
 export function loadoutToMatchConfig(cardIds: string[]): {
   actionTypes: string[];
