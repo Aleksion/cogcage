@@ -9,6 +9,10 @@ import {
 } from '../../lib/waitlist-db';
 import { appendEventsFallback, appendFounderIntentFallback, appendOpsLog } from '../../lib/observability';
 import { drainFallbackQueues } from '../../lib/fallback-drain';
+import {
+  redisInsertFounderIntent,
+  redisConsumeRateLimit,
+} from '../../lib/waitlist-redis';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
@@ -226,15 +230,20 @@ export const POST: APIRoute = async ({ request }) => {
 
   let rateLimit = { allowed: true, remaining: RATE_LIMIT_MAX, resetMs: 0 };
   try {
-    rateLimit = consumeRateLimit(rateLimitKey, 'founder-intent', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
-  } catch (error) {
-    appendOpsLog({
-      route: '/api/founder-intent',
-      level: 'warn',
-      event: 'founder_intent_rate_limit_failed',
-      requestId,
-      error: error instanceof Error ? error.message : 'unknown',
-    });
+    // Prefer Redis rate limiting — survives across Lambda invocations
+    rateLimit = await redisConsumeRateLimit(rateLimitKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+  } catch {
+    try {
+      rateLimit = consumeRateLimit(rateLimitKey, 'founder-intent', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+    } catch (error) {
+      appendOpsLog({
+        route: '/api/founder-intent',
+        level: 'warn',
+        event: 'founder_intent_rate_limit_failed',
+        requestId,
+        error: error instanceof Error ? error.message : 'unknown',
+      });
+    }
   }
 
   if (!rateLimit.allowed) {
@@ -287,6 +296,10 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     insertFounderIntent(payload);
+    // Fire-and-forget Redis write — durable across Vercel Lambda invocations
+    void redisInsertFounderIntent(payload).catch((e: unknown) => {
+      appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_redis_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
+    });
     appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'founder_intent_saved', requestId, source: payload.source, emailHash: payload.email.slice(0, 3), durationMs: Date.now() - startedAt });
     try {
       const drained = drainFallbackQueues(10);
@@ -311,6 +324,10 @@ export const POST: APIRoute = async ({ request }) => {
 
     try {
       appendFounderIntentFallback({ route: '/api/founder-intent', requestId, ...payload, reason: errorMessage });
+      // Even in fallback path, push to Redis for durability
+      void redisInsertFounderIntent(payload).catch((e: unknown) => {
+        appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_redis_fallback_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
+      });
       safeTrackConversion('/api/founder-intent', requestId, {
         eventName: 'founder_intent_queued_fallback',
         source: payload.source,

@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { insertConversionEvent } from '../../lib/waitlist-db';
 import { appendEventsFallback, appendOpsLog } from '../../lib/observability';
+import { redisInsertConversionEvent } from '../../lib/waitlist-redis';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -90,6 +91,10 @@ const recordSuccess = ({
 
   try {
     insertConversionEvent(payload);
+    // Fire-and-forget Redis write — durable across Lambda invocations
+    void redisInsertConversionEvent(payload).catch((e: unknown) => {
+      appendOpsLog({ route: '/api/checkout-success', level: 'warn', event: 'checkout_success_redis_write_failed', requestId, source: payload.source, error: e instanceof Error ? e.message : 'unknown' });
+    });
     appendOpsLog({ route: '/api/checkout-success', level: 'info', event: 'paid_conversion_confirmed', requestId, source: payload.source, eventId: payload.eventId, durationMs: Date.now() - startedAt });
     return { requestId, queued: false };
   } catch (error) {

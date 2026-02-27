@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { appendEventsFallback, appendOpsLog } from '../../lib/observability';
 import { insertConversionEvent, insertFounderIntent } from '../../lib/waitlist-db';
+import { redisInsertConversionEvent, redisInsertFounderIntent } from '../../lib/waitlist-redis';
 
 export const prerender = false;
 
@@ -169,13 +170,22 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     insertConversionEvent(conversionPayload);
 
+    // Fire-and-forget Redis writes — durable across Lambda invocations
+    void redisInsertConversionEvent(conversionPayload).catch((e: unknown) => {
+      appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_redis_conversion_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
+    });
+
     if (email) {
-      insertFounderIntent({
+      const founderIntentPayload = {
         email,
         source: `${source}-postback`,
         intentId: `paid:${eventId}`,
         userAgent: request.headers.get('user-agent') ?? undefined,
         ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,
+      };
+      insertFounderIntent(founderIntentPayload);
+      void redisInsertFounderIntent(founderIntentPayload).catch((e: unknown) => {
+        appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_redis_founder_intent_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
       });
     }
 

@@ -4,6 +4,7 @@ import type { APIRoute } from 'astro';
 import { getFunnelCounts, getReliabilitySnapshot, getStorageHealth } from '../../lib/waitlist-db';
 import { drainFallbackQueues } from '../../lib/fallback-drain';
 import { getRuntimeDir } from '../../lib/runtime-paths';
+import { redisGetOpsLogTail, redisGetFunnelCounts } from '../../lib/waitlist-redis';
 
 export const prerender = false;
 
@@ -90,16 +91,21 @@ export const GET: APIRoute = async ({ request }) => {
     reliability = getReliabilitySnapshot(24);
     storage = getStorageHealth();
   } catch (error) {
-    return new Response(JSON.stringify({
-      ok: false,
-      error: 'Could not read ops metrics',
-      detail: error instanceof Error ? error.message : 'unknown-error',
-      runtimeDir: LOG_DIR,
-      files,
-    }), {
-      status: 500,
-      headers: { 'content-type': 'application/json' },
-    });
+    counts = null;
+    reliability = null;
+    storage = { error: error instanceof Error ? error.message : 'unknown-error' };
+  }
+
+  // Redis-backed ops data — primary observable layer on Vercel (SQLite/filesystem are ephemeral per-invocation)
+  let redisCounts = null;
+  let redisOpsLog: string[] = [];
+  try {
+    [redisCounts, redisOpsLog] = await Promise.all([
+      redisGetFunnelCounts(),
+      redisGetOpsLogTail(50),
+    ]);
+  } catch {
+    // Redis unavailable — degrade gracefully, SQLite counts still show
   }
 
   const queueBacklog = {
@@ -112,6 +118,8 @@ export const GET: APIRoute = async ({ request }) => {
     ok: true,
     ts: new Date().toISOString(),
     counts,
+    redisCounts,
+    redisOpsLog,
     reliability,
     storage,
     runtimeDir: LOG_DIR,
