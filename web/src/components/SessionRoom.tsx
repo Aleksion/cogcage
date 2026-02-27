@@ -150,6 +150,13 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
     return () => window.clearInterval(id);
   }, [session.status, sessionId]);
 
+  /* ── Auto-start host FFA when session transitions to running ── */
+  useEffect(() => {
+    if (session.status !== 'running' || !isHost || running || ffaActors.length > 0) return;
+    runHostFfa(session);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.status, isHost]);
+
   /* ── Poll session when running (non-host spectators) ──────── */
   useEffect(() => {
     if (session.status !== 'running' || isHost) return;
