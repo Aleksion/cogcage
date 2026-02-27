@@ -1,0 +1,15 @@
+name = "themoltpit-engine"
+main = "src/index.ts"
+compatibility_date = "2026-02-27"
+account_id = "b83dbb4965b4cead1bfdba697e1a137b"
+
+[observability]
+enabled = true
+
+[[durable_objects.bindings]]
+name = "MATCH"
+class_name = "MatchEngine"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MatchEngine"]
