@@ -42,9 +42,7 @@ const armoryStyles = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: radial-gradient(circle at 30% 10%, rgba(124,58,237,0.12), transparent 40%),
-      radial-gradient(circle at 80% 80%, rgba(0,229,255,0.08), transparent 35%),
-      linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
+    background: #1A1A1A;
     font-family: var(--f-body);
     color: #f0f0f5;
     min-height: 100vh;
@@ -56,7 +54,7 @@ const armoryStyles = `
     position: sticky; top: 0; z-index: 10;
     display: flex; justify-content: space-between; align-items: center; gap: 1rem;
     padding: 1rem 2rem;
-    background: rgba(15,15,20,0.95);
+    background: rgba(26,26,26,0.98);
     border-bottom: 2px solid rgba(255,255,255,0.08);
     backdrop-filter: blur(12px);
   }
