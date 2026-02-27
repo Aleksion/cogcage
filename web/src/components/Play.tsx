@@ -189,6 +189,7 @@ const globalStyles = `
   @keyframes ko-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes ko-text-slam { 0% { transform: scale(4); opacity: 0; } 30% { transform: scale(0.85); opacity: 1; } 50% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
   @keyframes ko-fade-up { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+  @keyframes vfxPop { 0% { transform: scale(0.5); opacity: 1; } 50% { transform: scale(1.3); opacity: 1; } 100% { transform: scale(1.0); opacity: 0; } }
 
   @media (max-width: 960px) {
     .play-header { flex-direction: column; align-items: flex-start; }
@@ -422,6 +423,7 @@ const Play = () => {
   // --- PlayCanvas ---
   const [pcActive, setPcActive] = useState(false);
   const playCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [vfxWord, setVfxWord] = useState<{ text: string; color: string; id: number } | null>(null);
 
   // --- Refs ---
   const abortRef = useRef<AbortController | null>(null);
@@ -458,6 +460,20 @@ const Play = () => {
     const interval = setInterval(fetchRooms, 4000);
     return () => clearInterval(interval);
   }, [phase, showRoomPanel]);
+
+  // --- Canvas VFX word overlay listener ---
+  useEffect(() => {
+    const canvas = playCanvasRef.current;
+    if (!canvas) return;
+    const handler = (e: Event) => {
+      const { text, color } = (e as CustomEvent).detail;
+      const id = Date.now();
+      setVfxWord({ text, color, id });
+      setTimeout(() => setVfxWord((prev) => (prev?.id === id ? null : prev)), 700);
+    };
+    canvas.addEventListener('cogcage:vfx', handler);
+    return () => canvas.removeEventListener('cogcage:vfx', handler);
+  }, [phase]);
 
   // --- PlayCanvas lifecycle ---
   useEffect(() => {
@@ -1230,6 +1246,26 @@ const Play = () => {
                 {v.text}
               </div>
             ))}
+            {/* Canvas VFX word overlay (from PlayCanvas DOM events) */}
+            {vfxWord && (
+              <div style={{
+                position: 'absolute', inset: 0, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'none', zIndex: 10,
+              }}>
+                <span style={{
+                  fontFamily: 'Bangers, display',
+                  fontSize: '5rem',
+                  color: vfxWord.color,
+                  WebkitTextStroke: '4px #111',
+                  textShadow: '4px 4px 0 #111, -4px -4px 0 #111, 4px -4px 0 #111, -4px 4px 0 #111',
+                  animation: 'vfxPop 0.7s ease-out forwards',
+                  letterSpacing: '0.05em',
+                }}>
+                  {vfxWord.text}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Below-canvas controls: tick/seed + abort — always visible */}
