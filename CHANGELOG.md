@@ -4,6 +4,39 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-27] - feat: User accounts — Auth.js + player tokens — TASK-020
+
+**Type:** feat | **Phase:** 2
+
+### Summary
+Added user authentication via Auth.js (next-auth v5 beta) with GitHub OAuth, Google OAuth, and Resend email magic links. JWT sessions, protected game routes with middleware redirect, player token endpoint for the OpenClaw plugin, and an auth-aware landing page nav.
+
+### Changes
+- `web/package.json` — Added `next-auth@beta` dependency (v5.0.0-beta.30, brings `@auth/core`).
+- `web/src/lib/auth.ts` — **New.** Auth.js configuration: GitHub, Google, and Resend providers; JWT session strategy; `playerId` threaded through JWT/session callbacks; custom sign-in page at `/sign-in`; `trustHost: true` for Vercel.
+- `web/src/pages/api/auth/[...nextauth].ts` — **New.** Catch-all API route proxying to `@auth/core`'s `Auth()` handler. Handles OAuth callbacks, CSRF, session, and sign-in/sign-out flows.
+- `web/src/pages/api/player/token.ts` — **New.** `GET /api/player/token` — requires auth session. Returns a stable UUID player token (stored in Redis `player:token:{userId}`). Bootstraps `player:profile:{userId}` with username, createdAt, hardness: 1000 on first call.
+- `web/src/middleware.ts` — Extended. Retains anonymous `moltpit_pid` cookie for legacy API routes. Added auth gate: `/armory`, `/play`, `/shell`, `/tank` redirect to `/sign-in` if no valid session. Session resolved via internal `Auth()` call and attached to `locals.session`.
+- `web/src/pages/sign-in.astro` — **New.** Custom sign-in page matching game aesthetic (dark bg, cyan accents, Bangers + Kanit fonts). GitHub/Google OAuth buttons, email magic link form. CSRF token fetched client-side and injected into forms.
+- `web/src/components/MoltPitLanding.jsx` — NavBar updated: fetches `/api/auth/session` on mount. Signed out → "Enter the Pit" CTA linking to `/sign-in`. Signed in → displays username, CTA links to `/play`.
+- `web/src/env.d.ts` — Extended `App.Locals` with optional `session` type (user id, name, email, image, expires).
+
+### Breaking Changes
+- `/armory` and `/play` now require authentication. Unauthenticated visitors are redirected to `/sign-in`.
+
+### Notes
+- **Environment variables required** (add to Vercel dashboard):
+  - `AUTH_SECRET` — random 32+ char string for JWT signing
+  - `GITHUB_ID` / `GITHUB_SECRET` — GitHub OAuth app credentials
+  - `GOOGLE_ID` / `GOOGLE_SECRET` — Google OAuth app credentials
+  - `AUTH_RESEND_KEY` — Resend API key for email magic links
+- Redis schema additions: `player:token:{userId}` (string UUID), `player:profile:{userId}` (JSON).
+- Username customization deferred — uses GitHub/Google display name as default.
+- `/den` (dashboard) not built yet — that's TASK-023.
+- Player token is the auth mechanism for the OpenClaw plugin (TASK-024).
+
+---
+
 ## [2026-02-27] - cleanup+feat: Remove client-side match-runner, add connection stats to result screen — TASK-005+006
 
 **Type:** cleanup + feat | **Phase:** 1

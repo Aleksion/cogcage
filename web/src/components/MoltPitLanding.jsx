@@ -1160,18 +1160,30 @@ const RankRow = ({ rank, rankBg, rankColor, name, winRate, status, isOnline }) =
 const NavBar = ({ onNavClick }) => {
   const [playPressed, setPlayPressed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [session, setSession] = useState(null);
 
-  const handlePlay = () => {
+  useEffect(() => {
+    fetch('/api/auth/session')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.user) setSession(data); })
+      .catch(() => {});
+  }, []);
+
+  const handleCta = () => {
     setPlayPressed(true);
     setTimeout(() => setPlayPressed(false), 300);
     setMenuOpen(false);
-    window.location.href = '/play';
+    window.location.href = session?.user ? '/play' : '/sign-in';
   };
 
   const handleNav = (section) => {
     onNavClick(section);
     setMenuOpen(false);
   };
+
+  const ctaLabel = session?.user
+    ? (session.user.name || 'The Den')
+    : 'Enter the Pit';
 
   return (
     <nav className="cog-nav">
@@ -1184,9 +1196,9 @@ const NavBar = ({ onNavClick }) => {
       <div className="nav-controls">
         <button
           className={`btn-arcade nav-cta${playPressed ? ' pressed' : ''}`}
-          onClick={handlePlay}
+          onClick={handleCta}
         >
-          Play Now
+          {ctaLabel}
         </button>
         <button
           className="nav-toggle"
@@ -1204,9 +1216,9 @@ const NavBar = ({ onNavClick }) => {
         ))}
         <button
           className="btn-arcade"
-          onClick={handlePlay}
+          onClick={handleCta}
         >
-          Play Now
+          {ctaLabel}
         </button>
       </div>
     </nav>

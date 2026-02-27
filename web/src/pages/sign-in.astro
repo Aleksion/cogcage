@@ -1,0 +1,201 @@
+---
+export const prerender = false;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <title>Sign In — The Molt Pit</title>
+    <meta name="description" content="Sign in to The Molt Pit. Build bots, battle agents, climb the ladder." />
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:wght@400;800&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        background: #1A1A1A;
+        color: #fff;
+        font-family: 'Kanit', sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .sign-in-container {
+        max-width: 400px;
+        width: 100%;
+        padding: 2rem;
+      }
+
+      .logo {
+        font-family: 'Bangers', display;
+        font-size: 2.5rem;
+        text-align: center;
+        letter-spacing: 3px;
+        color: #FFD600;
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+      }
+
+      .tagline {
+        text-align: center;
+        font-size: 1.1rem;
+        color: #00E5FF;
+        margin-bottom: 2rem;
+        letter-spacing: 1px;
+      }
+
+      .provider-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 0.875rem 1.5rem;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        font-family: 'Kanit', sans-serif;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        margin-bottom: 0.75rem;
+        text-decoration: none;
+      }
+
+      .provider-btn:hover {
+        border-color: #00E5FF;
+        background: rgba(0, 229, 255, 0.08);
+      }
+
+      .provider-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+      .divider {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin: 1.5rem 0;
+        color: rgba(255, 255, 255, 0.3);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .divider::before, .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .email-form { display: flex; flex-direction: column; gap: 0.75rem; }
+
+      .email-input {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        font-family: 'Kanit', sans-serif;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.15s ease;
+      }
+
+      .email-input::placeholder { color: rgba(255, 255, 255, 0.35); }
+      .email-input:focus { border-color: #00E5FF; }
+
+      .email-submit {
+        width: 100%;
+        padding: 0.875rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        background: #00E5FF;
+        color: #1A1A1A;
+        font-family: 'Kanit', sans-serif;
+        font-size: 1rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: opacity 0.15s ease;
+        letter-spacing: 0.5px;
+      }
+
+      .email-submit:hover { opacity: 0.9; }
+
+      .back-link {
+        display: block;
+        text-align: center;
+        margin-top: 2rem;
+        color: rgba(255, 255, 255, 0.4);
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: color 0.15s ease;
+      }
+
+      .back-link:hover { color: #fff; }
+    </style>
+  </head>
+  <body>
+    <div class="sign-in-container">
+      <div class="logo">The Molt Pit</div>
+      <p class="tagline">Join the pit.</p>
+
+      <!-- GitHub OAuth -->
+      <form method="POST" action="/api/auth/signin/github">
+        <input type="hidden" name="csrfToken" id="csrf-github" />
+        <button type="submit" class="provider-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+          Sign in with GitHub
+        </button>
+      </form>
+
+      <!-- Google OAuth -->
+      <form method="POST" action="/api/auth/signin/google">
+        <input type="hidden" name="csrfToken" id="csrf-google" />
+        <button type="submit" class="provider-btn">
+          <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Sign in with Google
+        </button>
+      </form>
+
+      <div class="divider">or</div>
+
+      <!-- Email magic link -->
+      <form method="POST" action="/api/auth/signin/resend" class="email-form">
+        <input type="hidden" name="csrfToken" id="csrf-email" />
+        <input
+          type="email"
+          name="email"
+          class="email-input"
+          placeholder="your@email.com"
+          required
+          autocomplete="email"
+        />
+        <button type="submit" class="email-submit">Send magic link</button>
+      </form>
+
+      <a href="/" class="back-link">&larr; Back to home</a>
+    </div>
+
+    <script>
+      // Fetch CSRF token and inject into all sign-in forms
+      fetch('/api/auth/csrf')
+        .then(r => r.json())
+        .then(({ csrfToken }) => {
+          document.querySelectorAll('[id^="csrf-"]').forEach(el => {
+            el.value = csrfToken;
+          });
+        })
+        .catch(() => {
+          // CSRF fetch failed — forms will still submit, Auth.js will handle gracefully
+        });
+    </script>
+  </body>
+</html>

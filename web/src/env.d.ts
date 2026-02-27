@@ -12,5 +12,15 @@ interface ImportMeta {
 declare namespace App {
   interface Locals {
     playerId: string;
+    /** Auth.js session — populated by middleware on protected routes. */
+    session?: {
+      user: {
+        id: string;
+        name?: string | null;
+        email?: string | null;
+        image?: string | null;
+      };
+      expires: string;
+    };
   }
 }
