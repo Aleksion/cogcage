@@ -264,3 +264,47 @@ bun run build (web/)
 3. `COGCAGE_POSTBACK_KEY` + `COGCAGE_OPS_KEY` → Vercel env vars
 4. Vercel SQLite persistence → needs external volume OR Vercel KV for production leads
 
+
+---
+
+### Autopilot Directive — 20:28 ET, Feb 26 2026
+
+**Directive**: STOP landing-page copy iterations. Priorities: (1) signup reliability + storage + observable logs, (2) real playable demo loop, (3) monetization path, (4) ops log.
+
+**Actions taken:**
+
+**P1 — Observable logs gap closed (was: file-only, now: stdout + file)**
+- `web/src/lib/observability.ts` — rewritten to emit every `appendOpsLog` call to both:
+  - **stdout/stderr** via `console.log`/`console.warn`/`console.error` (Vercel captures these in function logs dashboard — survives ephemeral /tmp)
+  - NDJSON file in runtime dir (still present for /api/ops endpoint)
+- Fallback queuing functions (`appendWaitlistFallback`, `appendFounderIntentFallback`, `appendEventsFallback`) now also emit to stdout
+- Result: every signup, error, rate-limit, fallback, drain event is now visible in Vercel Logs tab without needing /api/ops or file persistence
+- Build: ✅ clean · Tests: 4/4 ✅
+
+**P1 — Form reliability audit** (no changes needed — already complete)
+- Client: idempotency key per submission, `x-idempotency-key` header, `AbortController` timeout (6-7s), 1 retry, localStorage backup for offline
+- Server: rate-limit (6/10min), honeypot, idempotency replay, busy-retry SQLite, fallback NDJSON drain
+- **Known gap, not fixable without infra**: both SQLite and NDJSON fallback live in Vercel /tmp (ephemeral per-invocation). Persistent leads require `COGCAGE_DB_PATH` → external volume or Vercel KV. Not blocking for Friday demo.
+
+**P2 — Demo loop** (already complete as of 18:17 checkpoint)
+- Phaser 3 MatchScene (20×20 grid, tweened bot movement, HP bars, decision log): `web/src/lib/ws2/MatchScene.ts` — 288 lines
+- match-runner.ts + decide.ts + Play.tsx spectator rewrite — all committed (`686cc8d`, `e5240b1`)
+- `OPENAI_API_KEY` must be set in Vercel for live LLM battles. Bots NO_OP gracefully until set.
+
+**P3 — Monetization** (code complete since 18:17, blocked on env vars)
+- All code shipped: founder-intent, postback, checkout-success, success.astro
+- Checkout button wired to `PUBLIC_STRIPE_FOUNDER_URL` — shows error if unset
+- **Aleks action required**: create Stripe payment link → set `PUBLIC_STRIPE_FOUNDER_URL` in Vercel
+
+**P4 — Copy iteration agent killed**
+- `cc-cogcage-friday` was attempting to edit `CogCageLanding.jsx` (copy iteration) — rejected and stopped per directive
+- `cc-ws2-phaser` (worktree `ws2-phaser-byo-openclaw`, context 8%) directed to commit + push
+
+**Commit**: `fix(observability): emit to stdout for Vercel function log visibility`
+
+**Aleks action required (priority order):**
+1. Vercel dashboard → Environment Variables → Add `OPENAI_API_KEY` (enables LLM battles for Friday demo)
+2. Create Stripe payment link for Founder Pack → set `PUBLIC_STRIPE_FOUNDER_URL` in Vercel (enables checkout)
+3. Generate `COGCAGE_POSTBACK_KEY` + `COGCAGE_OPS_KEY` → set in Vercel (secures postback + ops endpoints)
+4. Add Stripe webhook → `https://cogcage.com/api/postback` with `x-postback-key: {COGCAGE_POSTBACK_KEY}`
+
