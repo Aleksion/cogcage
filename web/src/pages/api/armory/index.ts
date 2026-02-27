@@ -1,0 +1,69 @@
+import type { APIRoute } from 'astro';
+import { getLoadouts, saveLoadout } from '../../../lib/armory.ts';
+
+export const prerender = false;
+
+/** GET /api/armory — Fetch player loadouts */
+export const GET: APIRoute = async ({ cookies }) => {
+  const playerId = cookies.get('cogcage_pid')?.value;
+  if (!playerId) {
+    return new Response(JSON.stringify({ loadouts: [] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  try {
+    const loadouts = await getLoadouts(playerId);
+    return new Response(JSON.stringify({ loadouts }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+};
+
+/** POST /api/armory — Save a new loadout */
+export const POST: APIRoute = async ({ request, cookies }) => {
+  const playerId = cookies.get('cogcage_pid')?.value;
+  if (!playerId) {
+    return new Response(JSON.stringify({ error: 'No player ID' }), {
+      status: 401,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  try {
+    const body = await request.json();
+    const { name, cards } = body;
+
+    if (!name || !Array.isArray(cards)) {
+      return new Response(JSON.stringify({ error: 'name and cards[] required' }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
+    const result = await saveLoadout(playerId, name, cards);
+    if (result.error) {
+      return new Response(JSON.stringify({ error: result.error, loadouts: result.loadouts }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify({ loadouts: result.loadouts }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+};

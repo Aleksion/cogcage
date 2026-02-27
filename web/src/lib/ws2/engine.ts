@@ -69,6 +69,8 @@ export interface ActorState {
     utility: StatusEffect | null;
   };
   stats: ActorStats;
+  /** Per-actor energy cost for MOVE in whole units (default 4). Set from loadout weight. */
+  moveCost?: number;
 }
 
 export interface GameEvent {
@@ -111,11 +113,13 @@ export const createActorState = ({
   position,
   facing = 'N',
   armor = 'medium',
+  moveCost,
 }: {
   id: string;
   position: Position;
   facing?: Direction;
   armor?: ArmorType;
+  moveCost?: number;
 }): ActorState => ({
   id,
   hp: HP_MAX,
@@ -139,6 +143,7 @@ export const createActorState = ({
     damageDealt: 0,
     illegalActions: 0,
   },
+  moveCost,
 });
 
 export const createInitialState = ({ seed, actors }: { seed: number; actors: Record<string, ActorState> }): GameState => ({
@@ -236,7 +241,10 @@ const validateAction = (state: GameState, actor: ActorState, action: AgentAction
   if (action.type === 'UTILITY' && isStatusActive(actor.statuses.utility, state.tick)) {
     return { valid: false, reason: 'UTILITY_ACTIVE' };
   }
-  const cost = ACTION_COST[action.type as ActionType];
+  let cost = ACTION_COST[action.type as ActionType];
+  if (action.type === 'MOVE' && actor.moveCost !== undefined) {
+    cost = actor.moveCost * UNIT_SCALE;
+  }
   if (typeof cost === 'number' && actor.energy < cost) {
     return { valid: false, reason: 'INSUFFICIENT_ENERGY' };
   }
@@ -247,7 +255,11 @@ const validateAction = (state: GameState, actor: ActorState, action: AgentAction
 };
 
 const spendEnergy = (actor: ActorState, action: AgentAction): void => {
-  const cost = ACTION_COST[action.type as ActionType] ?? 0;
+  let cost = ACTION_COST[action.type as ActionType] ?? 0;
+  // Per-actor moveCost from loadout weight
+  if (action.type === 'MOVE' && actor.moveCost !== undefined) {
+    cost = actor.moveCost * UNIT_SCALE;
+  }
   actor.energy = clamp(actor.energy - cost, 0, ENERGY_MAX);
 };
 
