@@ -1,4 +1,4 @@
-# Current Sprint
+# Current Sprint — Phase 2
 
 *Updated: 2026-02-27. Daedalus owns this. Update daily.*
 
@@ -6,48 +6,72 @@
 
 ## Sprint Goal
 
-**Get from demo to real engine + OpenClaw plugin.**
+**Ship user accounts, fix multiplayer ownership, terminology rebrand, then publish to ClawHub.**
 
-The plugin is the revenue entry point. Everything else is infrastructure that makes the plugin worth installing.
+The plugin is already built. Auth unlocks the player token flow that makes it actually work end-to-end. Fixing ownership makes multiplayer real. Rebrand cements the world. ClawHub publish is the money moment.
 
 ---
 
-## Blocked On Aleks
+## Phase 1 — DONE ✅
 
-| Item | What's needed | ETA |
+| Task | Status |
+|---|---|
+| TASK-001: MatchEngine Durable Object | ✅ Deployed to themoltpit-engine.aleks-precurion.workers.dev |
+| TASK-003: DNS | ✅ workers.dev in use; custom domain deferred (CF DNS transfer needed) |
+| TASK-004: MatchView → DO WebSocket | ✅ Merged |
+| TASK-005: Remove client-side engine from Play | ✅ Merged |
+| TASK-006: Connection stats on result screen | ✅ Merged |
+| PR #9: OpenClaw skill skills/themoltpit/ | ✅ Merged |
+| PR #10: MatchEngine DO | ✅ Merged |
+| PR #11: MatchView WebSocket migration | ✅ Merged |
+| PR #13: match-runner cleanup + connection stats | ✅ Merged |
+
+---
+
+## Phase 2 — In Progress
+
+### Blocked On Aleks
+
+| Item | What's needed |
+|---|---|
+| TASK-020 env vars | GITHUB_ID/SECRET, GOOGLE_ID/SECRET, AUTH_RESEND_KEY, AUTH_SECRET → add to Vercel |
+| Terminology: "Hardness" vs "Temper" | One word decision (ELO rank label) — see GTM thread |
+| CF DNS transfer | Move themoltpit.com to Cloudflare DNS to unlock engine.themoltpit.com custom domain |
+
+### In Progress
+
+| Task | Agent | Status |
 |---|---|---|
-| Cloudflare account | `wrangler login` — CF email/credentials | Today (signing up) |
-| Vercel Queues access | Confirm available on current plan | Today |
-| Tick rate decision | 150 / 200 / 250ms? Recommend 200ms | This sprint |
+| TASK-020: User accounts (Auth.js) | Spawning | 🟢 Active |
+| TASK-021: Multiplayer ownership | Spawning | 🟢 Active |
 
----
+### Up Next
 
-## In Progress
-
-| Task | Owner | Status |
+| Task | Spec | Blocked On |
 |---|---|---|
-| Phase 0 demo functional | Daedalus | ✅ Done — live at cogcage.com |
-| Architecture ADR | Daedalus | ✅ Committed — `docs/architecture-game-engine.md` |
-| CHANGELOG + PM in repo | Daedalus | ✅ Done |
+| TASK-022: Terminology rebrand | Not yet written | Hardness/Temper decision |
+| TASK-023: Player profile + molt history | Not yet written | TASK-020 |
+| TASK-024: Publish to ClawHub | skills/themoltpit/ ready | TASK-020 (player token) |
+| TASK-025: Challenge system | Not yet written | TASK-021 |
 
 ---
 
-## Up Next (unblocked)
+## Auth Decision Log
 
-| Task | File | Notes |
+- **Clerk** — rejected: per-MAU billing, unsuitable for consumer product at scale
+- **Auth.js (NextAuth v5)** — selected: self-hosted, zero per-user cost, Redis sessions, email + OAuth
+
+## Terminology Decision Log
+
+| Term | Decision | Notes |
 |---|---|---|
-| TASK-010: Plugin SKILL.md spec | `docs/tasks/task-010-openclaw-plugin.md` | Spec written, agent ready to build |
-| TASK-001: MatchEngine DO | `docs/tasks/task-001-match-engine-do.md` | Blocked on CF account |
-| TASK-002: Vercel Queues transport | `docs/tasks/task-002-vercel-queues.md` | Blocked on confirming plan access |
-
----
-
-## Done This Sprint
-
-- `c62220d` — Redis process.env fix (all API routes working)
-- `a57bc51` — Architecture ADR (CF DO + Queues + Workflow + Blob + Electric)
-- `de875f3` — Vercel Queues + Blob + Workflow evaluated and documented
-- `f9abfd4` — Agent skills merged (LLM tool-use)
-- `9022ef5` — Agent skills PR #7
-- `d55ecd1` — 3D cel-shade visuals merged
-- `23c2c4d` — Dashboard + Lobby + Arena flow merged
+| Armory | → **The Shell** | ✅ Locked |
+| Loadout | → **Shell** | ✅ Locked |
+| Skills/actions | → **Claws** | ✅ Locked |
+| System prompt | → **Directive** | ✅ Locked |
+| Match | → **Molt** | ✅ Locked |
+| Lobby | → **The Tank** | ✅ Locked |
+| ELO/Rank | → **Hardness** or **Temper** | ⏳ Pending Aleks decision |
+| Dashboard | → **The Den** | ✅ Locked |
+| Leaderboard | → **The Ladder** | ✅ Locked |
+| Bot/agent | → **Crawler** | ✅ Locked |
