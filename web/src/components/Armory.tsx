@@ -9,6 +9,8 @@ import {
   MAX_ARMOR_CARDS,
 } from '../lib/cards';
 import type { Card as CardData, CardType, LoadoutStats, ComplexityTier } from '../lib/cards';
+import { SKILL_POOL, getSkill } from '../lib/skills';
+import type { SkillDefinition } from '../lib/skills';
 
 /* ── Saved loadout type (matches Redis schema) ───────────────── */
 
@@ -16,9 +18,46 @@ interface SavedLoadout {
   id: string;
   name: string;
   cards: string[];
+  brainPrompt: string;
+  skills: string[];
   createdAt: number;
   stats: { totalWeight: number; totalOverhead: number; armorValue: number };
 }
+
+/* ── Brain presets ────────────────────────────────────────────── */
+
+const MAX_SKILLS = 3;
+const MAX_BRAIN_CHARS = 600;
+
+const BRAIN_PRESETS: Record<string, { label: string; prompt: string }> = {
+  aggressive: {
+    label: 'Aggressive',
+    prompt: 'You are an aggressive melee fighter. ALWAYS close distance toward the enemy. Use MELEE_STRIKE when dist <= 1.5 and it\'s usable. Use DASH to close distance fast. Never retreat.',
+  },
+  defensive: {
+    label: 'Defensive',
+    prompt: 'You are a defensive fighter. Prioritize GUARD when your HP is below 50%. Stay at range 3-5. Use RANGED_SHOT when available. Only engage in melee as a last resort.',
+  },
+  sniper: {
+    label: 'Sniper',
+    prompt: 'You are a ranged specialist. ALWAYS maintain distance 3-8 from enemy. Use RANGED_SHOT when dist 2-8 and usable. MOVE away if enemy gets within range 2. Never use melee.',
+  },
+  balanced: {
+    label: 'Balanced',
+    prompt: 'You are a balanced tactical fighter. Use RANGED_SHOT at range 3-6. Close to melee when enemy HP is below 40%. Use GUARD when your HP < 40% and energy is low.',
+  },
+  glass_cannon: {
+    label: 'Glass Cannon',
+    prompt: 'You are a glass cannon. Maximize damage output every turn. Always attack \u2014 never GUARD. Use highest-damage attack available. Use DASH to stay in attack range.',
+  },
+};
+
+const SKILL_CATEGORY_COLORS: Record<string, string> = {
+  intel: '#00E5FF',
+  combat: '#EB4D4B',
+  utility: '#FFD600',
+  control: '#7C3AED',
+};
 
 /* ── Styles ──────────────────────────────────────────────────── */
 
@@ -222,6 +261,84 @@ const armoryStyles = `
   }
   .clear-btn:hover { color: var(--c-red); }
 
+  /* Skills panel */
+  .skills-panel, .brain-panel {
+    background: rgba(20,20,28,0.8);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 1.2rem;
+    backdrop-filter: blur(8px);
+    margin-top: 1.5rem;
+  }
+
+  .skill-grid {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0.6rem;
+  }
+  .skill-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 8px;
+    font-size: 0.8rem; font-weight: 800;
+    cursor: pointer; transition: all 0.15s;
+    border: 2px solid transparent;
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.7);
+  }
+  .skill-chip:hover { background: rgba(255,255,255,0.08); }
+  .skill-chip.equipped {
+    background: rgba(255,255,255,0.1);
+    box-shadow: 0 0 8px rgba(255,255,255,0.1);
+  }
+  .skill-chip .skill-icon { font-size: 1.1rem; }
+  .skill-chip .skill-meta {
+    font-size: 0.65rem; font-weight: 600;
+    color: rgba(255,255,255,0.4); margin-left: 2px;
+  }
+
+  .skill-slots {
+    display: flex; gap: 8px; margin-bottom: 0.8rem; flex-wrap: wrap;
+  }
+  .skill-slot {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px;
+    font-size: 0.85rem; font-weight: 800;
+    border: 2px dashed rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.02);
+    color: rgba(255,255,255,0.3);
+    min-width: 80px; justify-content: center;
+  }
+  .skill-slot.filled {
+    border-style: solid;
+    cursor: pointer;
+    color: #fff;
+  }
+  .skill-slot.filled:hover { opacity: 0.8; }
+
+  /* Brain panel */
+  .brain-textarea {
+    width: 100%; min-height: 100px; padding: 0.75rem;
+    border-radius: 8px; border: 2px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04); color: #fff;
+    font-family: var(--f-mono); font-size: 0.8rem;
+    outline: none; resize: vertical; transition: border-color 0.15s;
+  }
+  .brain-textarea:focus { border-color: var(--c-cyan); }
+  .brain-textarea::placeholder { color: rgba(255,255,255,0.2); }
+
+  .preset-row {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 0.6rem;
+  }
+  .preset-btn {
+    font-family: var(--f-body); font-weight: 800; font-size: 0.72rem;
+    text-transform: uppercase; padding: 4px 10px; border-radius: 999px;
+    border: 2px solid rgba(255,255,255,0.15); background: transparent;
+    color: rgba(255,255,255,0.5); cursor: pointer; transition: all 0.15s;
+  }
+  .preset-btn:hover { border-color: var(--c-cyan); color: var(--c-cyan); }
+
+  .char-count {
+    font-family: var(--f-mono); font-size: 0.7rem;
+    color: rgba(255,255,255,0.3); text-align: right; margin-top: 0.3rem;
+  }
+
   @media (max-width: 900px) {
     .armory-layout { grid-template-columns: 1fr; }
     .armory-header { padding: 1rem; }
@@ -270,6 +387,8 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [resolvedReturnTo, setResolvedReturnTo] = useState(returnTo || '');
+  const [equippedSkills, setEquippedSkills] = useState<string[]>([]);
+  const [brainPrompt, setBrainPrompt] = useState('');
 
   // Inject styles
   useEffect(() => {
@@ -354,7 +473,12 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
       const res = await fetch('/api/armory', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: loadoutName.trim(), cards: loadout }),
+        body: JSON.stringify({
+          name: loadoutName.trim(),
+          cards: loadout,
+          brainPrompt,
+          skills: equippedSkills,
+        }),
       });
       const data = await res.json();
       if (data.error) {
@@ -363,6 +487,8 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
         setSavedLoadouts(data.loadouts);
         setLoadoutName('');
         setLoadout([]);
+        setBrainPrompt('');
+        setEquippedSkills([]);
       }
     } catch {
       setError('Failed to save');
@@ -389,6 +515,8 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
   const handleLoadFromSaved = (saved: SavedLoadout) => {
     setLoadout([...saved.cards]);
     setLoadoutName(saved.name);
+    setBrainPrompt(saved.brainPrompt || '');
+    setEquippedSkills(saved.skills || []);
   };
 
   const tierInfo = TIER_LABELS[stats.complexityTier];
@@ -568,6 +696,92 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
               </a>
             )}
           </div>
+        </div>
+
+        {/* Skills Panel */}
+        <div className="skills-panel">
+          <div className="panel-title">Skills (max {MAX_SKILLS})</div>
+
+          {/* Equipped skill slots */}
+          <div className="skill-slots">
+            {Array.from({ length: MAX_SKILLS }).map((_, i) => {
+              const sid = equippedSkills[i];
+              const skill = sid ? getSkill(sid) : undefined;
+              return skill ? (
+                <div
+                  key={i}
+                  className="skill-slot filled"
+                  style={{ borderColor: SKILL_CATEGORY_COLORS[skill.category] }}
+                  onClick={() => setEquippedSkills(prev => prev.filter((_, idx) => idx !== i))}
+                  title="Click to unequip"
+                >
+                  <span className="skill-icon">{skill.icon}</span> {skill.name}
+                </div>
+              ) : (
+                <div key={i} className="skill-slot">+</div>
+              );
+            })}
+          </div>
+
+          {/* Available skills */}
+          <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem' }}>
+            Available Skills (click to equip)
+          </div>
+          <div className="skill-grid">
+            {SKILL_POOL.map((skill) => {
+              const isEquipped = equippedSkills.includes(skill.id);
+              const isFull = equippedSkills.length >= MAX_SKILLS && !isEquipped;
+              return (
+                <div
+                  key={skill.id}
+                  className={`skill-chip ${isEquipped ? 'equipped' : ''}`}
+                  style={{
+                    borderColor: isEquipped ? SKILL_CATEGORY_COLORS[skill.category] : 'transparent',
+                    opacity: isFull ? 0.4 : 1,
+                    cursor: isFull ? 'not-allowed' : 'pointer',
+                  }}
+                  onClick={() => {
+                    if (isEquipped) {
+                      setEquippedSkills(prev => prev.filter(id => id !== skill.id));
+                    } else if (!isFull) {
+                      setEquippedSkills(prev => [...prev, skill.id]);
+                    }
+                  }}
+                  title={`${skill.description}\nEnergy: ${skill.energyCost} | CD: ${skill.cooldownTurns}t | ${skill.rarity}`}
+                >
+                  <span className="skill-icon">{skill.icon}</span>
+                  {skill.name}
+                  <span className="skill-meta">{skill.energyCost}e {skill.cooldownTurns > 0 ? `${skill.cooldownTurns}cd` : ''}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Brain Panel */}
+        <div className="brain-panel">
+          <div className="panel-title">Brain (System Prompt)</div>
+
+          <div className="preset-row">
+            {Object.entries(BRAIN_PRESETS).map(([key, { label }]) => (
+              <button
+                key={key}
+                className="preset-btn"
+                onClick={() => setBrainPrompt(BRAIN_PRESETS[key].prompt)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            className="brain-textarea"
+            placeholder="Write your agent's system prompt... (or click a preset above)"
+            value={brainPrompt}
+            onChange={(e) => setBrainPrompt(e.target.value.slice(0, MAX_BRAIN_CHARS))}
+            maxLength={MAX_BRAIN_CHARS}
+          />
+          <div className="char-count">{brainPrompt.length} / {MAX_BRAIN_CHARS} chars</div>
         </div>
 
         {/* Bottom: Saved Loadouts */}

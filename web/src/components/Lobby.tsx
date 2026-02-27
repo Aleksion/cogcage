@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getCard } from '../lib/cards';
+import { getSkill } from '../lib/skills';
 import MatchView from './MatchView';
 import type { MatchBotConfig } from './MatchView';
 
@@ -8,6 +9,7 @@ import type { MatchBotConfig } from './MatchView';
 interface BotSnapshot {
   botName: string;
   brainPrompt: string;
+  skills?: string[];
   cards: string[];
   actionTypes: string[];
   armor: 'light' | 'medium' | 'heavy';
@@ -350,12 +352,25 @@ export default function Lobby({ lobbyId }: LobbyProps) {
                     return <span key={i} title={c?.name}>{c?.icon ?? '?'}</span>;
                   })}
                 </div>
+                {lobby.host.skills && lobby.host.skills.length > 0 && (
+                  <div className="lby-bot-icons" style={{ fontSize: '0.9rem' }}>
+                    {lobby.host.skills.map((sid, i) => {
+                      const s = getSkill(sid);
+                      return <span key={i} title={s?.name} style={{ padding: '2px 6px', background: 'rgba(0,229,255,0.1)', borderRadius: '6px', fontSize: '0.75rem' }}>{s?.icon ?? '?'} {s?.name ?? sid}</span>;
+                    })}
+                  </div>
+                )}
                 <div className="lby-bot-stat">
                   Actions: {lobby.host.actionTypes.join(', ')}
                 </div>
                 <div className="lby-bot-stat">
                   Armor: {lobby.host.armor} &middot; Move cost: {lobby.host.moveCost}e
                 </div>
+                {lobby.host.brainPrompt && (
+                  <div className="lby-bot-stat" style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.35)' }}>
+                    Brain: &ldquo;{lobby.host.brainPrompt.slice(0, 60)}{lobby.host.brainPrompt.length > 60 ? '...' : ''}&rdquo;
+                  </div>
+                )}
                 <div style={{ marginTop: 'auto', paddingTop: '0.8rem' }}>
                   <a href={`/armory?returnTo=/lobby/${lobbyId}`} className="lby-btn configure">
                     Configure Bot
@@ -379,12 +394,25 @@ export default function Lobby({ lobbyId }: LobbyProps) {
                     return <span key={i} title={c?.name}>{c?.icon ?? '?'}</span>;
                   })}
                 </div>
+                {lobby.guest.skills && lobby.guest.skills.length > 0 && (
+                  <div className="lby-bot-icons" style={{ fontSize: '0.9rem' }}>
+                    {lobby.guest.skills.map((sid, i) => {
+                      const s = getSkill(sid);
+                      return <span key={i} title={s?.name} style={{ padding: '2px 6px', background: 'rgba(235,77,75,0.1)', borderRadius: '6px', fontSize: '0.75rem' }}>{s?.icon ?? '?'} {s?.name ?? sid}</span>;
+                    })}
+                  </div>
+                )}
                 <div className="lby-bot-stat">
                   Actions: {lobby.guest.actionTypes.join(', ')}
                 </div>
                 <div className="lby-bot-stat">
                   Armor: {lobby.guest.armor} &middot; Move cost: {lobby.guest.moveCost}e
                 </div>
+                {lobby.guest.brainPrompt && (
+                  <div className="lby-bot-stat" style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.35)' }}>
+                    Brain: &ldquo;{lobby.guest.brainPrompt.slice(0, 60)}{lobby.guest.brainPrompt.length > 60 ? '...' : ''}&rdquo;
+                  </div>
+                )}
               </>
             ) : (
               <>

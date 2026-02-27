@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { buildAsciiMap, buildActorKey } from '../../../lib/ws2/ascii-map.js';
+import { getSkill } from '../../../lib/skills.js';
 
 export const prerender = false;
 
@@ -353,12 +354,95 @@ function extractContent(data: any, provider: string): string | null {
   return data?.choices?.[0]?.message?.content ?? null;
 }
 
+/* ── Skill execution (simulated) ─────────────────────────── */
+
+interface GameStateContext {
+  myHp: number;
+  enemyHp: number;
+  distanceToEnemy: number;
+  lastEnemyAction: string | null;
+  enemyPosition: { x: number; y: number };
+}
+
+function buildGameStateContext(gameState: any, actorId: string, opponentIds: string[]): GameStateContext {
+  const me = gameState.actors?.[actorId];
+  const oppId = opponentIds[0];
+  const opp = oppId ? gameState.actors?.[oppId] : null;
+  return {
+    myHp: me?.hp ?? 100,
+    enemyHp: opp?.hp ?? 100,
+    distanceToEnemy: me && opp
+      ? Math.round(Math.hypot(me.position.x - opp.position.x, me.position.y - opp.position.y) / 10)
+      : 10,
+    lastEnemyAction: null,
+    enemyPosition: opp ? { x: opp.position.x, y: opp.position.y } : { x: 0, y: 0 },
+  };
+}
+
+function executeSkill(skillId: string, ctx: GameStateContext): unknown {
+  switch (skillId) {
+    case 'scan_enemy':
+      return { intended_action: ctx.lastEnemyAction || 'MOVE' };
+    case 'threat_model': {
+      const threat = ctx.myHp < 30 ? 'critical' : ctx.myHp < 60 ? 'high' : ctx.enemyHp < 30 ? 'low' : 'medium';
+      return {
+        threat_level: threat,
+        recommended_action: threat === 'critical' ? 'GUARD' : 'MELEE_STRIKE',
+        predicted_enemy_moves: [ctx.lastEnemyAction || 'MOVE', 'GUARD'],
+      };
+    }
+    case 'predict_attack': {
+      const prob = ctx.distanceToEnemy <= 2 ? 75 : ctx.distanceToEnemy <= 5 ? 50 : 25;
+      return { attack_probability: prob, confidence: ctx.distanceToEnemy <= 2 ? 'high' : 'medium' };
+    }
+    case 'optimal_position':
+      return {
+        target_position: ctx.enemyPosition,
+        reasoning: 'Close to melee range for maximum pressure',
+        expected_advantage: 'melee_range',
+      };
+    case 'heal':
+      return { hp_restored: 20, message: 'Combat stim applied' };
+    case 'emp_burst':
+      return { energy_drained: 30, message: 'EMP burst fired' };
+    case 'smoke_screen':
+      return { duration_turns: 2, accuracy_reduction: 30 };
+    case 'overclock':
+      return { regen_boost: 30, duration_turns: 3, crash_turns: 1 };
+    case 'hack_action': {
+      const success = Math.random() < 0.6;
+      return { success, message: success ? 'Enemy action overridden to GUARD' : 'Hack failed' };
+    }
+    case 'battle_cry':
+      return { damage_boost: 25, duration_turns: 3 };
+    default:
+      return { message: 'Skill activated' };
+  }
+}
+
+function buildOpenAiTools(skillIds: string[]): any[] {
+  return skillIds
+    .map(id => getSkill(id))
+    .filter(Boolean)
+    .map(skill => ({
+      type: 'function',
+      function: {
+        name: skill!.id,
+        description: skill!.llmDescription,
+        parameters: { type: 'object', properties: {}, required: [] },
+      },
+    }));
+}
+
 /* ── POST handler ────────────────────────────────────────── */
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { gameState, actorId, systemPrompt, loadout, opponentIds, messages: incomingMessages } = body;
+    const {
+      gameState, actorId, systemPrompt, loadout, opponentIds,
+      messages: incomingMessages, brainPrompt, skills = [],
+    } = body;
 
     if (!gameState || !actorId || !loadout) {
       return new Response(JSON.stringify({ action: { type: 'NO_OP' } }), {
@@ -393,32 +477,46 @@ export const POST: APIRoute = async ({ request }) => {
     const resolvedOpponentIds: string[] = opponentIds || [];
     const userMessage = formatGameState(gameState, actorId, resolvedOpponentIds, loadout);
 
+    // Use brainPrompt (from loadout) over systemPrompt (legacy)
+    const effectiveSystemPrompt = (brainPrompt || systemPrompt || 'You are a combat bot. Pick the best tactical action each turn.').slice(0, 2000);
+
     // Build messages: use incoming history if provided, else start fresh
-    let messages: { role: string; content: string }[];
+    let messages: { role: string; content: any }[];
     if (Array.isArray(incomingMessages) && incomingMessages.length > 0) {
-      // Append new user turn to existing conversation
       messages = [...incomingMessages, { role: 'user', content: userMessage }];
     } else {
-      const sysPrompt = (systemPrompt || 'You are a combat bot. Pick the best tactical action each turn.').slice(0, 2000);
       messages = [
-        { role: 'system', content: sysPrompt },
+        { role: 'system', content: effectiveSystemPrompt },
         { role: 'user', content: userMessage },
       ];
     }
+
+    // Build OpenAI tools from equipped skills
+    const openAiTools = buildOpenAiTools(skills);
+    const hasTools = openAiTools.length > 0;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
     let action: { type: string; dir?: string; targetId?: string; reasoning?: string } = { type: 'NO_OP' };
+    let skillUsed: string | undefined;
+    let skillResult: unknown;
 
     try {
+      // Build request body — inject tools if skills are equipped
+      const bodyPayload = providerConfig.bodyBuilder(model, messages, temperature);
+      if (hasTools && llmProvider === 'openai') {
+        (bodyPayload as any).tools = openAiTools;
+        delete (bodyPayload as any).response_format; // can't use json mode with tools
+      }
+
       const res = await fetch(providerConfig.url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...providerConfig.authHeader(apiKey),
         },
-        body: JSON.stringify(providerConfig.bodyBuilder(model, messages, temperature)),
+        body: JSON.stringify(bodyPayload),
         signal: controller.signal,
       });
 
@@ -426,13 +524,64 @@ export const POST: APIRoute = async ({ request }) => {
 
       if (res.ok) {
         const data = await res.json();
-        const content = extractContent(data, llmProvider);
-        if (content) {
+        const finishReason = data?.choices?.[0]?.finish_reason;
+        const assistantMessage = data?.choices?.[0]?.message;
+
+        // Check if LLM wants to call a skill tool
+        if (hasTools && (finishReason === 'tool_calls' || assistantMessage?.tool_calls?.length > 0)) {
+          const toolCall = assistantMessage.tool_calls[0];
+          skillUsed = toolCall.function.name;
+          const gsCtx = buildGameStateContext(gameState, actorId, resolvedOpponentIds);
+          skillResult = executeSkill(skillUsed!, gsCtx);
+          console.log(`[agent/decide] ${actorId} used skill: ${skillUsed}`, skillResult);
+
+          // Pass 2: feed tool result back to LLM for final action
+          const pass2Messages = [
+            ...messages,
+            assistantMessage,
+            { role: 'tool', tool_call_id: toolCall.id, content: JSON.stringify(skillResult) },
+          ];
+          const pass2Body = providerConfig.bodyBuilder(model, pass2Messages, temperature);
+
+          const controller2 = new AbortController();
+          const timeout2 = setTimeout(() => controller2.abort(), DEFAULT_TIMEOUT_MS);
           try {
-            const parsed = JSON.parse(content);
-            action = parseAndValidate(parsed, loadout);
+            const res2 = await fetch(providerConfig.url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...providerConfig.authHeader(apiKey),
+              },
+              body: JSON.stringify(pass2Body),
+              signal: controller2.signal,
+            });
+            clearTimeout(timeout2);
+            if (res2.ok) {
+              const data2 = await res2.json();
+              const content2 = extractContent(data2, llmProvider);
+              if (content2) {
+                try {
+                  const parsed = JSON.parse(content2);
+                  action = parseAndValidate(parsed, loadout);
+                } catch {
+                  action = { type: 'NO_OP' };
+                }
+              }
+            }
           } catch {
+            clearTimeout(timeout2);
             action = { type: 'NO_OP' };
+          }
+        } else {
+          // No tool call — parse action directly
+          const content = extractContent(data, llmProvider);
+          if (content) {
+            try {
+              const parsed = JSON.parse(content);
+              action = parseAndValidate(parsed, loadout);
+            } catch {
+              action = { type: 'NO_OP' };
+            }
           }
         }
       }
@@ -446,7 +595,7 @@ export const POST: APIRoute = async ({ request }) => {
       action = { type: 'NO_OP' };
     }
 
-    return new Response(JSON.stringify({ action }), {
+    return new Response(JSON.stringify({ action, skillUsed, skillResult }), {
       status: 200,
       headers: { 'content-type': 'application/json' },
     });

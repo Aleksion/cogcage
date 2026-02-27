@@ -25,6 +25,10 @@ export interface BotConfig {
   llmHeaders?: Record<string, string>;
   /** Energy cost per MOVE action (default 4, increases with loadout weight) */
   moveCost?: number;
+  /** Custom brain prompt (system prompt for the LLM) */
+  brainPrompt?: string;
+  /** Equipped skill IDs (max 3) */
+  skills?: string[];
 }
 
 export interface MatchSnapshot {
@@ -163,6 +167,8 @@ async function fetchDecision(
   loadout: string[],
   timeoutMs: number = 4000,
   extraHeaders?: Record<string, string>,
+  brainPrompt?: string,
+  skills?: string[],
 ): Promise<{ type: string; dir?: string; targetId?: string; reasoning?: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -182,6 +188,8 @@ async function fetchDecision(
         opponentIds: opponentId ? [opponentId] : [],
         systemPrompt,
         loadout,
+        brainPrompt,
+        skills: skills || [],
       }),
       signal: controller.signal,
     });
@@ -190,6 +198,9 @@ async function fetchDecision(
     const data = await res.json();
     const action = data?.action ?? { type: 'NO_OP' };
     if (data?.reasoning) action.reasoning = data.reasoning;
+    if (data?.skillUsed) {
+      console.log(`[match-runner] ${actorId} used skill: ${data.skillUsed}`);
+    }
     return action;
   } catch {
     clearTimeout(timer);
@@ -325,7 +336,7 @@ export async function runMatchAsync(
         const enemyId = nearestAliveEnemy(snap.actors, bot.id) ?? bot.id;
         const headers = headersMap.get(bot.id) ?? {};
         queue.enqueue(state.tick, () =>
-          fetchDecision(apiBase, snap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers),
+          fetchDecision(apiBase, snap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers, bot.brainPrompt, bot.skills),
         );
       }
 
@@ -375,7 +386,7 @@ export async function runMatchAsync(
             const enemyId = nearestAliveEnemy(nextSnap.actors, bot.id) ?? bot.id;
             const headers = headersMap.get(bot.id) ?? {};
             queue.enqueue(nextTick, () =>
-              fetchDecision(apiBase, nextSnap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers),
+              fetchDecision(apiBase, nextSnap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers, bot.brainPrompt, bot.skills),
             );
           }
         }
