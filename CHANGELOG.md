@@ -4,6 +4,29 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-27] - docs: game engine architecture decision record
+
+**Type:** docs
+
+### Summary
+Documented the full architecture decision for the game engine tick loop. Three options evaluated: Cloudflare Durable Objects (recommended), Upstash QStash + Redis (viable short-term), and Electric SQL Durable Streams (right tool for agent decision streaming, not tick loop). Decision: Cloudflare DO for engine, Vercel stays for front-end/lobby/armory. Electric wraps LLM calls in the OpenClaw plugin for resilient streaming.
+
+### Changes
+- `docs/architecture-game-engine.md` — Created. Full ADR with infra options, trade-off table, code sketches, deployment diagram, phased migration plan, and open questions.
+
+### Breaking Changes
+- None. Docs only.
+
+### Notes
+- **Phase 1 (now):** client-side engine, get demo working — acceptable for Friday gameday
+- **Phase 2 (next week):** build `MatchEngine` Durable Object, deploy `engine.cogcage.com`
+- **Phase 3:** OpenClaw plugin SKILL.md + Electric Durable Transport for resilient agent streams
+- Key constraint: Vercel has NO Durable Objects — that's a Cloudflare Workers primitive. Tick loop cannot live in Vercel serverless functions (stateless, can't hold a loop).
+- QStash minimum tick interval is 500ms — too slow for 150–300ms target. DO alarm API achieves ~10ms precision.
+- Open questions logged in doc: CF account, subdomain, tick rate, queue depth cap, replay granularity.
+
+---
+
 ## [2026-02-27] - fix: Redis import.meta.env → process.env for serverless runtime
 
 **Type:** fix
