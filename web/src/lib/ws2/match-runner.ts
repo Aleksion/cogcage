@@ -211,10 +211,10 @@ export async function runMatchAsync(
 
       // Enqueue decisions for this tick (uses prefetched if already queued)
       queueA.enqueue(state.tick, () =>
-        fetchDecision(apiBase, snap, botA.id, botB.id, botA.systemPrompt, botA.loadout, 4000, headersA),
+        fetchDecision(apiBase, snap, botA.id, botB.id, botA.systemPrompt, botA.loadout, 4000, headersA, botA),
       );
       queueB.enqueue(state.tick, () =>
-        fetchDecision(apiBase, snap, botB.id, botA.id, botB.systemPrompt, botB.loadout, 4000, headersB),
+        fetchDecision(apiBase, snap, botB.id, botA.id, botB.systemPrompt, botB.loadout, 4000, headersB, botB),
       );
 
       // Await both decisions
@@ -248,10 +248,10 @@ export async function runMatchAsync(
         // Only prefetch on decision boundaries
         if (nextTick % DECISION_WINDOW_TICKS === 0) {
           queueA.enqueue(nextTick, () =>
-            fetchDecision(apiBase, nextSnap, botA.id, botB.id, botA.systemPrompt, botA.loadout, 4000, headersA),
+            fetchDecision(apiBase, nextSnap, botA.id, botB.id, botA.systemPrompt, botA.loadout, 4000, headersA, botA),
           );
           queueB.enqueue(nextTick, () =>
-            fetchDecision(apiBase, nextSnap, botB.id, botA.id, botB.systemPrompt, botB.loadout, 4000, headersB),
+            fetchDecision(apiBase, nextSnap, botB.id, botA.id, botB.systemPrompt, botB.loadout, 4000, headersB, botB),
           );
         }
       }

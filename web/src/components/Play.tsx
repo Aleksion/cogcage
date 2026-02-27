@@ -275,6 +275,9 @@ type LobbyBotConfig = {
   llmModel: string;
   /** BYO API key */
   llmKey: string;
+  /** Agent mode — 'hosted' uses CogCage LLM, 'byo' relays to webhookUrl */
+  mode: 'hosted' | 'byo';
+  webhookUrl: string;
 };
 
 type RoomInfo = {
@@ -318,6 +321,8 @@ const DEFAULT_BOT_A: LobbyBotConfig = {
   llmProvider: 'openai',
   llmModel: '',
   llmKey: '',
+  mode: 'hosted',
+  webhookUrl: '',
 };
 
 const DEFAULT_BOT_B: LobbyBotConfig = {
@@ -329,6 +334,8 @@ const DEFAULT_BOT_B: LobbyBotConfig = {
   llmProvider: 'openai',
   llmModel: '',
   llmKey: '',
+  mode: 'hosted',
+  webhookUrl: '',
 };
 
 const ARENA_TASKS: ArenaTask[] = [
@@ -414,6 +421,8 @@ const Play = () => {
   // --- Refs ---
   const abortRef = useRef<AbortController | null>(null);
   const prevEventsLenRef = useRef(0);
+  const phaserGameRef = useRef<any>(null);
+  const sceneRef = useRef<any>(null);
 
   // --- Effects ---
   useEffect(() => {
@@ -445,6 +454,53 @@ const Play = () => {
     const interval = setInterval(fetchRooms, 4000);
     return () => clearInterval(interval);
   }, [phase, showRoomPanel]);
+
+  // --- Phaser lifecycle ---
+  useEffect(() => {
+    if (phase !== 'match') return;
+
+    let destroyed = false;
+
+    (async () => {
+      try {
+        const PhaserMod = await import('phaser');
+        const PhaserLib = (PhaserMod as any).default ?? PhaserMod;
+        const { MatchScene } = await import('../lib/ws2/MatchScene');
+
+        if (destroyed) return;
+
+        const game = new PhaserLib.Game({
+          type: PhaserLib.AUTO,
+          parent: 'game-container',
+          width: 560 + 240,
+          height: 560,
+          backgroundColor: '#1a1a1a',
+          scene: [MatchScene],
+        });
+        phaserGameRef.current = game;
+
+        game.events.once('ready', () => {
+          if (destroyed) return;
+          sceneRef.current = game.scene.getScene('MatchScene');
+          sceneRef.current?.setBotNames?.({
+            alpha: botAConfig.name || 'Bot A',
+            beta: botBConfig.name || 'Bot B',
+          });
+        });
+      } catch (e) {
+        // MatchScene not available in this build — CSS grid fallback
+        console.warn('[Phaser] MatchScene load failed, using CSS grid:', e);
+      }
+    })();
+
+    return () => {
+      destroyed = true;
+      phaserGameRef.current?.destroy(true);
+      phaserGameRef.current = null;
+      sceneRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   // --- VFX helpers ---
   const spawnVfx = useCallback((cell: { x: number; y: number }, text: string, color: string, type: VfxEvent['type'] = 'burst', duration = 600) => {
@@ -487,6 +543,9 @@ const Play = () => {
 
   // --- Snapshot handler ---
   const handleSnapshot = useCallback((snap: MatchSnapshot) => {
+    // Forward snapshot to Phaser scene if available
+    sceneRef.current?.applySnapshot?.(snap);
+
     const s = snap.state;
     const actorA = s.actors?.botA;
     const actorB = s.actors?.botB;
@@ -602,6 +661,8 @@ const Play = () => {
       position: { x: 1, y: 4 },
       temperature: botAConfig.temperature,
       llmHeaders: buildLlmHeaders(botAConfig),
+      agentMode: botAConfig.mode,
+      webhookUrl: botAConfig.webhookUrl || undefined,
     };
 
     const configB: BotConfig = {
@@ -613,6 +674,8 @@ const Play = () => {
       position: { x: 6, y: 3 },
       temperature: botBConfig.temperature,
       llmHeaders: buildLlmHeaders(botBConfig),
+      agentMode: botBConfig.mode,
+      webhookUrl: botBConfig.webhookUrl || undefined,
     };
 
     setBotAPos({ x: 1, y: 4 });
@@ -1103,6 +1166,9 @@ const Play = () => {
               </div>
             </div>
           </div>
+
+          {/* Phaser canvas mount point — mounts on top of CSS arena if MatchScene loads */}
+          <div id="game-container" style={{ margin: '0 auto', borderRadius: '14px', overflow: 'hidden' }} />
 
           <div className="match-grid">
             {/* Main: Arena */}
