@@ -419,10 +419,13 @@ const Play = () => {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [ffaBusy, setFfaBusy] = useState(false);
 
+  // --- PlayCanvas ---
+  const [pcActive, setPcActive] = useState(false);
+  const playCanvasRef = useRef<HTMLCanvasElement>(null);
+
   // --- Refs ---
   const abortRef = useRef<AbortController | null>(null);
   const prevEventsLenRef = useRef(0);
-  const phaserGameRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
 
   // --- Effects ---
@@ -456,49 +459,16 @@ const Play = () => {
     return () => clearInterval(interval);
   }, [phase, showRoomPanel]);
 
-  // --- Phaser lifecycle ---
+  // --- PlayCanvas lifecycle (disabled — using CSS arena grid) ---
   useEffect(() => {
-    if (phase !== 'match') return;
-
-    let destroyed = false;
-
-    (async () => {
-      try {
-        const PhaserMod = await import('phaser');
-        const PhaserLib = (PhaserMod as any).default ?? PhaserMod;
-        const { MatchScene } = await import('../lib/ws2/MatchScene');
-
-        if (destroyed) return;
-
-        const game = new PhaserLib.Game({
-          type: PhaserLib.AUTO,
-          parent: 'game-container',
-          width: 560 + 240,
-          height: 560,
-          backgroundColor: '#1a1a1a',
-          scene: [MatchScene],
-        });
-        phaserGameRef.current = game;
-
-        game.events.once('ready', () => {
-          if (destroyed) return;
-          sceneRef.current = game.scene.getScene('MatchScene');
-          sceneRef.current?.setBotNames?.({
-            alpha: botAConfig.name || 'Bot A',
-            beta: botBConfig.name || 'Bot B',
-          });
-        });
-      } catch (e) {
-        // MatchScene not available in this build — CSS grid fallback
-        console.warn('[Phaser] MatchScene load failed, using CSS grid:', e);
-      }
-    })();
+    if (phase !== 'match' || !playCanvasRef.current) return;
+    // PlayCanvas renderer removed; CSS arena grid is the active renderer
+    setPcActive(false);
 
     return () => {
-      destroyed = true;
-      phaserGameRef.current?.destroy(true);
-      phaserGameRef.current = null;
+      sceneRef.current?.destroy?.();
       sceneRef.current = null;
+      setPcActive(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
@@ -544,8 +514,8 @@ const Play = () => {
 
   // --- Snapshot handler ---
   const handleSnapshot = useCallback((snap: MatchSnapshot) => {
-    // Forward snapshot to Phaser scene if available
-    sceneRef.current?.applySnapshot?.(snap);
+    // Forward snapshot to PlayCanvas scene if available
+    sceneRef.current?.update?.(snap);
 
     const s = snap.state;
     const actorA = s.actors?.botA;
@@ -639,6 +609,7 @@ const Play = () => {
     setBotALastAction('');
     setBotBLastAction('');
     setArenaFlash(false);
+    setPcActive(false);
     prevEventsLenRef.current = 0;
 
     const seedLabel = seedInput.trim() || `${Date.now()}`;
@@ -1013,7 +984,7 @@ const Play = () => {
             </div>
 
             <div className="lobby-grid">
-              {renderBotConfigPanel(botAConfig, setBotAConfig, 'Bot A (Green)', false)}
+              {renderBotConfigPanel(botAConfig, setBotAConfig, 'Bot A (Cyan)', false)}
               {renderBotConfigPanel(botBConfig, setBotBConfig, 'Bot B (Red)', true)}
             </div>
 
@@ -1171,7 +1142,7 @@ const Play = () => {
           {/* Top bar: names + HP */}
           <div className="match-topbar">
             <div style={{ textAlign: 'right' }}>
-              <span className="bot-name" style={{ color: '#2ecc71' }}>
+              <span className="bot-name" style={{ color: '#00E5FF', textShadow: '1px 1px 0 #1A1A1A' }}>
                 {aName}
                 {botALastAction && <span className="tactic-chip">{botALastAction}</span>}
               </span>
@@ -1205,67 +1176,99 @@ const Play = () => {
             </div>
           </div>
 
-          {/* Phaser canvas mount point — mounts on top of CSS arena if MatchScene loads */}
-          <div id="game-container" style={{ margin: '0 auto', borderRadius: '14px', overflow: 'hidden' }} />
-
-          <div className="match-grid">
-            {/* Main: Arena */}
-            <section className="panel">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h2 style={{ marginBottom: 0 }}>Arena</h2>
-                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                  <span className="turn-counter">Tick {tick}</span>
-                  <span className="arena-badge">{matchTimeSec}s</span>
-                  <span className="seed-pill">Seed {activeSeed}</span>
+          {/* PlayCanvas 3D arena — always 560px so canvas has dimensions when scene initialises */}
+          <div style={{ position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto 1rem', height: '560px', overflow: 'hidden', borderRadius: '14px', border: '4px solid #1A1A1A', boxShadow: '8px 8px 0 #1A1A1A', background: '#F9F7F2' }}>
+            <canvas
+              ref={playCanvasRef}
+              style={{ width: '100%', height: '100%', display: 'block' }}
+            />
+            {/* Loading placeholder until PlayCanvas scene starts */}
+            {!pcActive && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', background: '#F9F7F2' }}>
+                <div style={{ fontFamily: 'Bangers, display', fontSize: '2rem', color: '#1A1A1A', letterSpacing: '2px' }}>LOADING ARENA...</div>
+                <div style={{ width: '120px', height: '8px', background: '#e0e0e0', borderRadius: '999px', border: '2px solid #1A1A1A', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: '#00E5FF', width: '60%', animation: 'vfx-burst-in 1s ease-in-out infinite alternate' }} />
                 </div>
               </div>
-
-              {renderArena()}
-
-              <div className="arena-legend">
-                <span className="status-pill" style={{ background: 'rgba(46,204,113,0.2)', borderColor: '#2ecc71' }}>{aName}</span>
-                <span className="status-pill" style={{ background: 'rgba(235,77,75,0.2)', borderColor: '#eb4d4b' }}>{bName}</span>
-                <span className="status-pill" style={{ background: 'rgba(255,214,0,0.15)', borderColor: 'rgba(255,214,0,0.5)' }}>Objective</span>
-                {ARENA_TASKS.map((t) => (
-                  <span key={t.id} className="status-pill" style={{ background: `${t.color}22`, borderColor: t.color, fontSize: '0.75rem' }}>
-                    {t.label} Task
-                  </span>
-                ))}
+            )}
+            {/* Comic art VFX overlay — POW!/BANG! words over the 3D canvas */}
+            {vfxEvents.map((v) => (
+              <div
+                key={v.id}
+                className={`vfx-popup ${v.type}`}
+                style={{
+                  position: 'absolute',
+                  left: `${15 + (v.cell.x / 8) * 70}%`,
+                  top: `${20 + (v.cell.y / 8) * 50}%`,
+                  transform: 'translate(-50%, -50%)',
+                  color: v.color,
+                  fontSize: v.type === 'ko' ? '5rem' : '2.8rem',
+                  fontFamily: 'Bangers, display',
+                  letterSpacing: '2px',
+                  textShadow: '-3px -3px 0 #1A1A1A, 3px -3px 0 #1A1A1A, -3px 3px 0 #1A1A1A, 3px 3px 0 #1A1A1A',
+                  pointerEvents: 'none',
+                  zIndex: 10,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {v.text}
               </div>
+            ))}
+          </div>
 
-              {/* Energy bars */}
-              <div className="energy-row" style={{ marginTop: '1rem' }}>
-                <div className="energy-block">
-                  <div className="energy-label" style={{ color: '#2ecc71' }}>{aName} Energy</div>
-                  <div className="bar-shell">
-                    <div className="bar-fill" style={{ width: `${(botAEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #00e5ff, #0077b6)' }} />
+          {/* Below-canvas controls: tick/seed + abort — always visible */}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', margin: '0.5rem 0', flexWrap: 'wrap' }}>
+            <span className="turn-counter">Tick {tick}</span>
+            <span className="arena-badge">{matchTimeSec}s</span>
+            <span className="seed-pill">Seed {activeSeed}</span>
+            <button className="action-btn secondary" style={{ padding: '0.35rem 1rem', fontSize: '0.85rem' }} onClick={abortMatch}>Abort</button>
+          </div>
+
+          <div className="match-grid" style={pcActive ? { gridTemplateColumns: '1fr' } : undefined}>
+            {/* CSS Arena fallback — only when PlayCanvas isn't running */}
+            {!pcActive && (
+              <section className="panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <h2 style={{ marginBottom: 0 }}>Arena</h2>
+                </div>
+
+                {renderArena()}
+
+                <div className="arena-legend">
+                  <span className="status-pill" style={{ background: 'rgba(0,229,255,0.2)', borderColor: '#00E5FF' }}>{aName}</span>
+                  <span className="status-pill" style={{ background: 'rgba(235,77,75,0.2)', borderColor: '#eb4d4b' }}>{bName}</span>
+                  <span className="status-pill" style={{ background: 'rgba(255,214,0,0.15)', borderColor: 'rgba(255,214,0,0.5)' }}>Objective</span>
+                  {ARENA_TASKS.map((t) => (
+                    <span key={t.id} className="status-pill" style={{ background: `${t.color}22`, borderColor: t.color, fontSize: '0.75rem' }}>
+                      {t.label} Task
+                    </span>
+                  ))}
+                </div>
+
+                {/* Energy bars */}
+                <div className="energy-row" style={{ marginTop: '1rem' }}>
+                  <div className="energy-block">
+                    <div className="energy-label" style={{ color: '#00E5FF' }}>{aName} Energy</div>
+                    <div className="bar-shell">
+                      <div className="bar-fill" style={{ width: `${(botAEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #00e5ff, #0077b6)' }} />
+                    </div>
+                    <div className="hint" style={{ fontSize: '0.75rem' }}>{Math.round(botAEnergy / 10)}e</div>
                   </div>
-                  <div className="hint" style={{ fontSize: '0.75rem' }}>{Math.round(botAEnergy / 10)}e</div>
-                </div>
-                <div className="energy-block">
-                  <div className="energy-label" style={{ color: '#eb4d4b' }}>{bName} Energy</div>
-                  <div className="bar-shell">
-                    <div className="bar-fill" style={{ width: `${(botBEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #ff6b6b, #c0392b)' }} />
+                  <div className="energy-block">
+                    <div className="energy-label" style={{ color: '#eb4d4b' }}>{bName} Energy</div>
+                    <div className="bar-shell">
+                      <div className="bar-fill" style={{ width: `${(botBEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #ff6b6b, #c0392b)' }} />
+                    </div>
+                    <div className="hint" style={{ fontSize: '0.75rem' }}>{Math.round(botBEnergy / 10)}e</div>
                   </div>
-                  <div className="hint" style={{ fontSize: '0.75rem' }}>{Math.round(botBEnergy / 10)}e</div>
                 </div>
-              </div>
+              </section>
+            )}
 
-              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                <span className="hint">Spectator mode \u2014 agents decide autonomously via LLM</span>
-              </div>
-
-              <div style={{ textAlign: 'center', marginTop: '0.8rem' }}>
-                <button className="action-btn secondary" onClick={abortMatch}>
-                  Abort Match
-                </button>
-              </div>
-            </section>
-
-            {/* Sidebar: Combat log */}
-            <section className="panel match-sidebar">
+            {/* Sidebar: Combat log — always visible */}
+            <section className="panel match-sidebar" style={pcActive ? { maxWidth: '800px', margin: '0 auto', width: '100%' } : undefined}>
               <div className="section-label">Combat Log</div>
-              <div className="feed" style={{ maxHeight: '500px' }}>
+              <div className="feed" style={{ maxHeight: pcActive ? '220px' : '500px' }}>
                 {feed.length === 0 && (
                   <div className="feed-item">Waiting for first LLM decisions...</div>
                 )}

@@ -36,6 +36,23 @@ export interface MatchSnapshot {
 
 export type SnapshotCallback = (snap: MatchSnapshot) => void;
 
+/* ── Message history ───────────────────────────────────────── */
+
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+/** Cap messages: keep system message + last N user/assistant pairs */
+export function capMessages(messages: ChatMessage[], maxPairs: number): ChatMessage[] {
+  if (messages.length === 0) return messages;
+  const system = messages[0].role === 'system' ? messages[0] : null;
+  const rest = system ? messages.slice(1) : messages;
+  const maxRest = maxPairs * 2;
+  const trimmed = rest.length > maxRest ? rest.slice(-maxRest) : rest;
+  return system ? [system, ...trimmed] : trimmed;
+}
+
 /* ── Spawn positions ───────────────────────────────────────── */
 
 const POSITION_SPREADS: Record<number, Array<{ x: number; y: number }>> = {
