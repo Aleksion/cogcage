@@ -205,7 +205,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
     safeTrackConversion(route, requestId, {
       eventName: 'waitlist_payload_parse_failed',
-      source: 'cogcage-landing',
+      source: 'moltpit-landing',
       userAgent: request.headers.get('user-agent') ?? undefined,
       ipAddress: getClientIp(request),
       metaJson: JSON.stringify({ contentType }),
@@ -216,7 +216,7 @@ export const POST: APIRoute = async ({ request }) => {
   const ipAddress = getClientIp(request);
   const rateLimitKey = getRateLimitKey(request);
   const normalizedEmail = email.toLowerCase();
-  const eventSource = source || 'cogcage-landing';
+  const eventSource = source || 'moltpit-landing';
 
   let rateLimit = { allowed: true, remaining: RATE_LIMIT_MAX, resetMs: 0 };
   try {

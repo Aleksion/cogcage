@@ -8,7 +8,7 @@ import { redisGetOpsLogTail, redisGetFunnelCounts } from '../../lib/waitlist-red
 
 export const prerender = false;
 
-const LOG_DIR = process.env.COGCAGE_LOG_DIR ?? getRuntimeDir();
+const LOG_DIR = process.env.MOLTPIT_LOG_DIR ?? getRuntimeDir();
 
 type RuntimeFile = {
   file: string;
@@ -59,7 +59,7 @@ function readTail(filePath: string, tailLines = 20): RuntimeFile {
 }
 
 function isAuthorized(request: Request) {
-  const key = process.env.COGCAGE_OPS_KEY;
+  const key = process.env.MOLTPIT_OPS_KEY;
   const provided = request.headers.get('x-ops-key') ?? new URL(request.url).searchParams.get('key');
   return !key || provided === key;
 }

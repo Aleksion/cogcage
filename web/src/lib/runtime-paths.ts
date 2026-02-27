@@ -15,9 +15,9 @@ function isWritableDir(dirPath: string) {
 }
 
 export function getRuntimeDir() {
-  const configured = process.env.COGCAGE_RUNTIME_DIR?.trim();
+  const configured = process.env.MOLTPIT_RUNTIME_DIR?.trim();
   const appDefault = path.join(process.cwd(), '..', 'ops', 'runtime');
-  const tmpFallback = path.join(os.tmpdir(), 'cogcage-runtime');
+  const tmpFallback = path.join(os.tmpdir(), 'moltpit-runtime');
 
   const candidates = [configured, appDefault, tmpFallback].filter(Boolean) as string[];
   for (const candidate of candidates) {

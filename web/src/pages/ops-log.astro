@@ -2,7 +2,7 @@
 export const prerender = false;
 
 // Server-side: fetch ops data from our own /api/ops endpoint
-const key = import.meta.env.COGCAGE_OPS_KEY ?? '';
+const key = import.meta.env.MOLTPIT_OPS_KEY ?? '';
 const baseUrl = import.meta.env.SITE ?? 'http://localhost:4321';
 
 let data: any = null;
@@ -17,7 +17,7 @@ try {
   if (res.ok) {
     data = await res.json();
   } else if (res.status === 401) {
-    fetchError = 'Unauthorized — set COGCAGE_OPS_KEY env var.';
+    fetchError = 'Unauthorized — set MOLTPIT_OPS_KEY env var.';
   } else {
     fetchError = `API returned ${res.status}`;
   }
@@ -31,7 +31,7 @@ try {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CogCage Ops Log</title>
+  <title>The Molt Pit Ops Log</title>
   <style>
     :root {
       --bg: #0e0e0e;
@@ -110,7 +110,7 @@ try {
 </head>
 <body>
 
-<h1>⚙ COGCAGE OPS LOG <span class="refresh">auto-refresh: <a href="/ops-log" style="color:var(--cyan)">↻</a></span></h1>
+<h1>⚙ MOLT PIT OPS LOG <span class="refresh">auto-refresh: <a href="/ops-log" style="color:var(--cyan)">↻</a></span></h1>
 
 {fetchError ? (
   <div class="error-box">Error: {fetchError}</div>
@@ -163,7 +163,7 @@ try {
       <>
         <h2>Redis Ops Log (last {data.redisOpsLog.length})</h2>
         <div class="log-block">
-          <div class="file-header">cogcage:ops-log (Redis LIST, newest first)</div>
+          <div class="file-header">moltpit:ops-log (Redis LIST, newest first)</div>
           {(data.redisOpsLog as string[]).map((line: string) => {
             let parsed: any = null;
             try { parsed = JSON.parse(line); } catch { /* raw */ }

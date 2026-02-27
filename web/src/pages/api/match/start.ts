@@ -4,7 +4,7 @@ export const prerender = false;
 
 const ENGINE_URL =
   process.env.ENGINE_URL ?? 'https://themoltpit-engine.aleks-precurion.workers.dev';
-const ENGINE_SECRET = process.env.COGCAGE_ENGINE_SECRET ?? '';
+const ENGINE_SECRET = process.env.MOLTPIT_ENGINE_SECRET ?? '';
 
 /** POST /api/match/start — start a match on the MatchEngine DO (direct flow, no lobby) */
 export const POST: APIRoute = async ({ request }) => {

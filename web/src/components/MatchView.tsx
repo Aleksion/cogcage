@@ -326,8 +326,8 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
       setVfxWord({ text, color, id });
       setTimeout(() => setVfxWord((prev) => (prev?.id === id ? null : prev)), 700);
     };
-    canvas.addEventListener('cogcage:vfx', handler);
-    return () => canvas.removeEventListener('cogcage:vfx', handler);
+    canvas.addEventListener('moltpit:vfx', handler);
+    return () => canvas.removeEventListener('moltpit:vfx', handler);
   }, [phase]);
 
   // PlayCanvas lifecycle

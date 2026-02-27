@@ -6,11 +6,11 @@
  * SQLite remains as a local-dev / fallback secondary tier.
  *
  * Redis key layout:
- *   cogcage:waitlist              LIST  — newline-delimited JSON entries (newest first)
- *   cogcage:founder-intents       LIST  — newline-delimited JSON entries (newest first)
- *   cogcage:conversions           LIST  — newline-delimited JSON entries (newest first)
- *   cogcage:ops-log               LIST  — last 500 structured log lines (newest first)
- *   cogcage:ratelimit:{key}:{win} STRING — counter per sliding window bucket
+ *   moltpit:waitlist              LIST  — newline-delimited JSON entries (newest first)
+ *   moltpit:founder-intents       LIST  — newline-delimited JSON entries (newest first)
+ *   moltpit:conversions           LIST  — newline-delimited JSON entries (newest first)
+ *   moltpit:ops-log               LIST  — last 500 structured log lines (newest first)
+ *   moltpit:ratelimit:{key}:{win} STRING — counter per sliding window bucket
  */
 
 import { Redis } from '@upstash/redis';
@@ -19,11 +19,11 @@ const MAX_WAITLIST = 20_000;
 const MAX_CONVERSIONS = 10_000;
 const MAX_OPS_LOG = 500;
 
-const WAITLIST_KEY = 'cogcage:waitlist';
-const FOUNDER_INTENT_KEY = 'cogcage:founder-intents';
-const CONVERSIONS_KEY = 'cogcage:conversions';
-const OPS_LOG_KEY = 'cogcage:ops-log';
-const RATE_LIMIT_PREFIX = 'cogcage:ratelimit:';
+const WAITLIST_KEY = 'moltpit:waitlist';
+const FOUNDER_INTENT_KEY = 'moltpit:founder-intents';
+const CONVERSIONS_KEY = 'moltpit:conversions';
+const OPS_LOG_KEY = 'moltpit:ops-log';
+const RATE_LIMIT_PREFIX = 'moltpit:ratelimit:';
 
 function getRedis(): Redis {
   const url = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env

@@ -166,12 +166,12 @@ const dashStyles = `
 /* ── Helpers ────────────────────────────────────────────────── */
 
 function getPlayerId(): string {
-  const match = document.cookie.match(/cogcage_pid=([^;]+)/);
+  const match = document.cookie.match(/moltpit_pid=([^;]+)/);
   if (match) return match[1];
-  let id = localStorage.getItem('cogcage_pid');
+  let id = localStorage.getItem('moltpit_pid');
   if (!id) {
     id = crypto.randomUUID();
-    localStorage.setItem('cogcage_pid', id);
+    localStorage.setItem('moltpit_pid', id);
   }
   return id;
 }
@@ -286,7 +286,7 @@ export default function Dashboard() {
     <div className="dash-root">
       {/* Header */}
       <header className="dash-header">
-        <a href="/" className="dash-logo">CogCage</a>
+        <a href="/" className="dash-logo">The Molt Pit</a>
         <nav className="dash-nav">
           <a href="/">Home</a>
           <a href="/play" className="active">Play</a>

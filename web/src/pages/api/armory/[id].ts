@@ -5,7 +5,7 @@ export const prerender = false;
 
 /** DELETE /api/armory/:id — Remove a saved loadout */
 export const DELETE: APIRoute = async ({ params, cookies }) => {
-  const playerId = cookies.get('cogcage_pid')?.value;
+  const playerId = cookies.get('moltpit_pid')?.value;
   if (!playerId) {
     return new Response(JSON.stringify({ error: 'No player ID' }), {
       status: 401,

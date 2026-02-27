@@ -5,7 +5,7 @@ export const prerender = false;
 
 /** GET /api/armory — Fetch player loadouts */
 export const GET: APIRoute = async ({ cookies }) => {
-  const playerId = cookies.get('cogcage_pid')?.value;
+  const playerId = cookies.get('moltpit_pid')?.value;
   if (!playerId) {
     return new Response(JSON.stringify({ loadouts: [] }), {
       status: 200,
@@ -29,7 +29,7 @@ export const GET: APIRoute = async ({ cookies }) => {
 
 /** POST /api/armory — Save a new loadout */
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const playerId = cookies.get('cogcage_pid')?.value;
+  const playerId = cookies.get('moltpit_pid')?.value;
   if (!playerId) {
     return new Response(JSON.stringify({ error: 'No player ID' }), {
       status: 401,

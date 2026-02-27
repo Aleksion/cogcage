@@ -296,7 +296,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
     return (
       <div className="lby-root">
         <header className="lby-header">
-          <a href="/" className="lby-logo">CogCage</a>
+          <a href="/" className="lby-logo">The Molt Pit</a>
           <span className="lby-title">Lobby</span>
           <div />
         </header>
@@ -309,7 +309,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
     return (
       <div className="lby-root">
         <header className="lby-header">
-          <a href="/" className="lby-logo">CogCage</a>
+          <a href="/" className="lby-logo">The Molt Pit</a>
           <span className="lby-title">Lobby</span>
           <div />
         </header>
@@ -331,7 +331,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
     <div className="lby-root">
       {/* Header */}
       <header className="lby-header">
-        <a href="/" className="lby-logo">CogCage</a>
+        <a href="/" className="lby-logo">The Molt Pit</a>
         <span className="lby-title">Lobby</span>
         <button className="lby-leave-btn" onClick={handleLeave}>Leave</button>
       </header>

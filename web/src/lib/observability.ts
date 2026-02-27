@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ensureRuntimeDir } from './runtime-paths';
 
 function getLogPaths() {
-  const logDir = process.env.COGCAGE_LOG_DIR ?? ensureRuntimeDir();
+  const logDir = process.env.MOLTPIT_LOG_DIR ?? ensureRuntimeDir();
   return {
     logDir,
     logFile: path.join(logDir, 'api-events.ndjson'),
@@ -24,9 +24,32 @@ function appendLine(filePath: string, payload: Record<string, unknown>) {
 }
 
 /**
- * Emit structured log entry to both:
- *   1. NDJSON file in runtime dir (readable via /api/ops endpoint)
- *   2. stdout/stderr (captured by Vercel function logs — survives ephemeral /tmp)
+ * Fire-and-forget Redis ops log write.
+ * Lazy import avoids circular deps and keeps this module sync-compatible.
+ * Never throws — any failure is silently swallowed.
+ */
+function fireRedisOpsLog(entry: Record<string, unknown>): void {
+  try {
+    // Dynamic import keeps this module free of hard Upstash dep at module load time.
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    import('./waitlist-redis').then(({ redisAppendOpsLog }) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      redisAppendOpsLog(entry).catch(() => {
+        // Redis write failure — silently swallow, never crash the request.
+      });
+    }).catch(() => {
+      // Import failure — not possible at runtime but guard anyway.
+    });
+  } catch {
+    // Absolute last resort.
+  }
+}
+
+/**
+ * Emit structured log entry to:
+ *   1. stdout/stderr (captured by Vercel function logs — survives ephemeral /tmp)
+ *   2. NDJSON file in runtime dir (best-effort; /tmp on Vercel is ephemeral per-invocation)
+ *   3. Redis ops log via fire-and-forget (durable across invocations, readable from /api/ops)
  *
  * Vercel log levels: console.error → "error", console.warn → "warning", console.log → "info"
  */
@@ -38,15 +61,18 @@ export function appendOpsLog(event: Record<string, unknown>) {
   try {
     const line = JSON.stringify(entry);
     if (level === 'error') {
-      console.error('[cogcage]', line);
+      console.error('[moltpit]', line);
     } else if (level === 'warn') {
-      console.warn('[cogcage]', line);
+      console.warn('[moltpit]', line);
     } else {
-      console.log('[cogcage]', line);
+      console.log('[moltpit]', line);
     }
   } catch {
     // Serialization failure — never crash the request.
   }
+
+  // Persist to Redis ops log (durable, readable from /api/ops redisOpsLog field).
+  fireRedisOpsLog(entry);
 
   // Also persist to file (best-effort; /tmp on Vercel is ephemeral per-invocation).
   try {
@@ -59,7 +85,7 @@ export function appendOpsLog(event: Record<string, unknown>) {
 export function appendWaitlistFallback(payload: Record<string, unknown>) {
   // Emit to stdout so fallback queuing is visible in Vercel logs.
   try {
-    console.warn('[cogcage:fallback:waitlist]', JSON.stringify({ ts: new Date().toISOString(), ...payload }));
+    console.warn('[moltpit:fallback:waitlist]', JSON.stringify({ ts: new Date().toISOString(), ...payload }));
   } catch {
     // ignore
   }
@@ -68,7 +94,7 @@ export function appendWaitlistFallback(payload: Record<string, unknown>) {
 
 export function appendFounderIntentFallback(payload: Record<string, unknown>) {
   try {
-    console.warn('[cogcage:fallback:founder]', JSON.stringify({ ts: new Date().toISOString(), ...payload }));
+    console.warn('[moltpit:fallback:founder]', JSON.stringify({ ts: new Date().toISOString(), ...payload }));
   } catch {
     // ignore
   }
@@ -77,7 +103,7 @@ export function appendFounderIntentFallback(payload: Record<string, unknown>) {
 
 export function appendEventsFallback(payload: Record<string, unknown>) {
   try {
-    console.warn('[cogcage:fallback:events]', JSON.stringify({ ts: new Date().toISOString(), ...payload }));
+    console.warn('[moltpit:fallback:events]', JSON.stringify({ ts: new Date().toISOString(), ...payload }));
   } catch {
     // ignore
   }
