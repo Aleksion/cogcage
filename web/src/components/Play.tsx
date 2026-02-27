@@ -8,8 +8,11 @@ import {
   COOLDOWN_TICKS,
   TICK_RATE,
 } from '../lib/ws2/index.js';
-import { runMatchAsync } from '../lib/ws2/match-runner';
 import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-runner';
+
+const ENGINE_WS_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_ENGINE_WS_URL) ||
+  'wss://themoltpit-engine.aleks-precurion.workers.dev';
 
 /* ============================================================
    STYLES (preserved from WS7 visual pack)
@@ -429,6 +432,7 @@ const Play = () => {
   const abortRef = useRef<AbortController | null>(null);
   const prevEventsLenRef = useRef(0);
   const sceneRef = useRef<any>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
   // --- Effects ---
   useEffect(() => {
@@ -650,14 +654,6 @@ const Play = () => {
     const seed = hashString(seedLabel) || 1;
     setActiveSeed(seed);
 
-    const buildLlmHeaders = (cfg: LobbyBotConfig): Record<string, string> => {
-      const h: Record<string, string> = {};
-      if (cfg.llmProvider && cfg.llmProvider !== 'openai') h['X-Llm-Provider'] = cfg.llmProvider;
-      if (cfg.llmModel) h['X-Llm-Model'] = cfg.llmModel;
-      if (cfg.llmKey) h['X-Llm-Key'] = cfg.llmKey;
-      return h;
-    };
-
     const configA: BotConfig = {
       id: 'botA',
       name: botAConfig.name || 'Bot A',
@@ -666,7 +662,6 @@ const Play = () => {
       armor: botAConfig.armor,
       position: { x: 6, y: 10 },
       temperature: botAConfig.temperature,
-      llmHeaders: buildLlmHeaders(botAConfig),
     };
 
     const configB: BotConfig = {
@@ -677,7 +672,6 @@ const Play = () => {
       armor: botBConfig.armor,
       position: { x: 14, y: 10 },
       temperature: botBConfig.temperature,
-      llmHeaders: buildLlmHeaders(botBConfig),
     };
 
     setBotAPos({ x: 2, y: 4 }); // (6,10) world → grid(2,4) at 8/20 scale
@@ -691,17 +685,78 @@ const Play = () => {
     setRunning(true);
     setPhase('match');
 
-    const controller = new AbortController();
-    abortRef.current = controller;
+    // Start match on the DO via server route, then connect WebSocket
+    fetch('/api/match/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ botA: configA, botB: configB, seed }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          console.error('[match] Engine start failed:', data.error);
+          setFeed((prev) => [`Engine error: ${data.error}`, ...prev]);
+          setRunning(false);
+          setPhase('lobby');
+          return;
+        }
 
-    runMatchAsync(seed, [configA, configB], handleSnapshot, '/api/agent/decide', controller.signal)
+        const matchId = data.matchId as string;
+        const ws = new WebSocket(`${ENGINE_WS_URL}/match/${matchId}`);
+        wsRef.current = ws;
+
+        ws.onmessage = (e) => {
+          let msg: any;
+          try { msg = JSON.parse(e.data); } catch { return; }
+
+          if (msg.type === 'tick') {
+            const snap: MatchSnapshot = {
+              state: { ...msg.state, events: msg.events ?? msg.state?.events ?? [] },
+              tick: msg.tick,
+              ended: false,
+              winnerId: null,
+            };
+            handleSnapshot(snap);
+          }
+
+          if (msg.type === 'match_complete') {
+            const result = msg.result ?? {};
+            const snap: MatchSnapshot = {
+              state: {
+                ...result,
+                endReason: result.endReason ?? result.reason ?? 'UNKNOWN',
+                events: result.events ?? [],
+              },
+              tick: result.tick ?? 0,
+              ended: true,
+              winnerId: result.winnerId ?? null,
+            };
+            handleSnapshot(snap);
+            ws.close();
+          }
+        };
+
+        ws.onerror = () => {
+          console.error('[ws] WebSocket error');
+          setFeed((prev) => ['WebSocket connection error', ...prev]);
+        };
+
+        ws.onclose = () => {
+          wsRef.current = null;
+        };
+      })
       .catch((err) => {
-        console.error('[match-runner] Error:', err);
+        console.error('[match] Start error:', err);
         setRunning(false);
+        setPhase('lobby');
       });
   }, [seedInput, botAConfig, botBConfig, handleSnapshot]);
 
   const abortMatch = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
     if (abortRef.current) {
       abortRef.current.abort();
       abortRef.current = null;
