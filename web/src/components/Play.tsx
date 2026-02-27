@@ -268,6 +268,8 @@ type LobbyBotConfig = {
   systemPrompt: string;
   loadout: string[];
   armor: 'light' | 'medium' | 'heavy';
+  mode: 'hosted' | 'byo';
+  webhookUrl: string;
 };
 
 /* --- Constants --- */
@@ -289,6 +291,8 @@ const DEFAULT_BOT_A: LobbyBotConfig = {
   systemPrompt: 'You are an aggressive melee fighter. Prioritize closing distance and striking hard. Use DASH to close gaps and follow with MELEE_STRIKE. Guard when the opponent charges ranged attacks.',
   loadout: ['MOVE', 'MELEE_STRIKE', 'GUARD', 'DASH'],
   armor: 'heavy',
+  mode: 'hosted',
+  webhookUrl: '',
 };
 
 const DEFAULT_BOT_B: LobbyBotConfig = {
@@ -296,6 +300,8 @@ const DEFAULT_BOT_B: LobbyBotConfig = {
   systemPrompt: 'You are a calculating ranged specialist. Maintain distance in the 4-7 unit optimal band. Use RANGED_SHOT when in range. Kite away when the enemy closes. Guard when cornered.',
   loadout: ['MOVE', 'RANGED_SHOT', 'GUARD', 'DASH'],
   armor: 'light',
+  mode: 'hosted',
+  webhookUrl: '',
 };
 
 const founderCheckoutUrl =
@@ -363,6 +369,8 @@ const Play = () => {
   // --- Refs ---
   const abortRef = useRef<AbortController | null>(null);
   const prevEventsLenRef = useRef(0);
+  const phaserGameRef = useRef<any>(null);
+  const sceneRef = useRef<any>(null);
 
   // --- Effects ---
   useEffect(() => {
@@ -377,6 +385,48 @@ const Play = () => {
     const saved = window.localStorage.getItem(EMAIL_KEY) || '';
     if (saved) setEmail(saved);
   }, []);
+
+  // --- Phaser lifecycle ---
+  useEffect(() => {
+    if (phase !== 'match') return;
+
+    let destroyed = false;
+
+    (async () => {
+      const PhaserMod = await import('phaser');
+      const PhaserLib = PhaserMod.default ?? PhaserMod;
+      const { MatchScene } = await import('../lib/ws2/MatchScene');
+
+      if (destroyed) return;
+
+      const game = new PhaserLib.Game({
+        type: PhaserLib.AUTO,
+        parent: 'game-container',
+        width: 560 + 240,
+        height: 560,
+        backgroundColor: '#1a1a1a',
+        scene: [MatchScene],
+      });
+      phaserGameRef.current = game;
+
+      game.events.once('ready', () => {
+        if (destroyed) return;
+        sceneRef.current = game.scene.getScene('MatchScene') as InstanceType<typeof MatchScene>;
+        sceneRef.current?.setBotNames({
+          alpha: botAConfig.name || 'Bot A',
+          beta: botBConfig.name || 'Bot B',
+        });
+      });
+    })();
+
+    return () => {
+      destroyed = true;
+      phaserGameRef.current?.destroy(true);
+      phaserGameRef.current = null;
+      sceneRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   // --- VFX helpers ---
   const spawnVfx = useCallback((cell: { x: number; y: number }, text: string, color: string, type: VfxEvent['type'] = 'burst', duration = 600) => {
@@ -446,6 +496,13 @@ const Play = () => {
     const prevLen = prevEventsLenRef.current;
     const newEvents = events.slice(prevLen);
     prevEventsLenRef.current = events.length;
+
+    // Forward to Phaser scene
+    sceneRef.current?.applySnapshot({
+      state: s,
+      decisions: [],
+      newEvents,
+    });
 
     // Combat log
     const logEntries = newEvents.map(formatEvent).filter((e: string | null): e is string => e !== null);
@@ -524,6 +581,8 @@ const Play = () => {
       loadout: botAConfig.loadout,
       armor: botAConfig.armor,
       position: { x: 1, y: 4 },
+      agentMode: botAConfig.mode,
+      webhookUrl: botAConfig.webhookUrl,
     };
 
     const configB: BotConfig = {
@@ -533,6 +592,8 @@ const Play = () => {
       loadout: botBConfig.loadout,
       armor: botBConfig.armor,
       position: { x: 6, y: 3 },
+      agentMode: botBConfig.mode,
+      webhookUrl: botBConfig.webhookUrl,
     };
 
     setBotAPos({ x: 1, y: 4 });
@@ -855,7 +916,12 @@ const Play = () => {
                 </div>
               </div>
 
-              {renderArena()}
+              <div id="game-container" style={{ margin: '1rem 0 1.2rem', borderRadius: '16px', overflow: 'hidden', border: '3px solid #111', boxShadow: '0 0 0 2px #111, 0 0 0 5px #FFD233' }} />
+
+              {/* CSS grid arena hidden fallback */}
+              <div style={{ display: 'none' }}>
+                {renderArena()}
+              </div>
 
               <div className="arena-legend">
                 <span className="status-pill" style={{ background: 'rgba(46,204,113,0.2)', borderColor: '#2ecc71' }}>{aName}</span>

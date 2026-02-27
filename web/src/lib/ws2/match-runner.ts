@@ -19,6 +19,8 @@ export interface BotConfig {
   loadout: string[];
   armor: 'light' | 'medium' | 'heavy';
   position: { x: number; y: number };
+  agentMode?: 'hosted' | 'byo';
+  webhookUrl?: string;
 }
 
 export interface MatchSnapshot {
@@ -33,30 +35,47 @@ export type SnapshotCallback = (snap: MatchSnapshot) => void;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchDecision(
-  apiBase: string,
+  botConfig: BotConfig,
   gameState: any,
-  actorId: string,
   opponentId: string,
-  systemPrompt: string,
-  loadout: string[],
   timeoutMs: number = 250,
+  apiBase: string = '/api/agent/decide',
 ): Promise<{ type: string; dir?: string; targetId?: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetch(apiBase, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        gameState,
-        actorId,
-        opponentId,
-        systemPrompt,
-        loadout,
-      }),
-      signal: controller.signal,
-    });
+    let res: Response;
+    if (botConfig.agentMode === 'byo' && botConfig.webhookUrl) {
+      res = await fetch('/api/agent/external', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          webhookUrl: botConfig.webhookUrl,
+          payload: {
+            gameState,
+            actorId: botConfig.id,
+            opponentId,
+            loadout: botConfig.loadout,
+            systemPrompt: botConfig.systemPrompt,
+          },
+        }),
+        signal: controller.signal,
+      });
+    } else {
+      res = await fetch(apiBase, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameState,
+          actorId: botConfig.id,
+          opponentId,
+          systemPrompt: botConfig.systemPrompt,
+          loadout: botConfig.loadout,
+        }),
+        signal: controller.signal,
+      });
+    }
     clearTimeout(timer);
     if (!res.ok) return { type: 'NO_OP' };
     const data = await res.json();
@@ -128,8 +147,8 @@ export async function runMatchAsync(
       // Fire parallel fetch calls for both agents with client-side 4s timeout
       // (server has 3s timeout, plus network overhead)
       const [actionA, actionB] = await Promise.all([
-        fetchDecision(apiBase, serializableState(state), botA.id, botB.id, botA.systemPrompt, botA.loadout, 4000),
-        fetchDecision(apiBase, serializableState(state), botB.id, botA.id, botB.systemPrompt, botB.loadout, 4000),
+        fetchDecision(botA, serializableState(state), botB.id, 4000, apiBase),
+        fetchDecision(botB, serializableState(state), botA.id, 4000, apiBase),
       ]);
 
       // Run all 3 ticks of the decision window synchronously
