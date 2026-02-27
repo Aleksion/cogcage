@@ -4,6 +4,29 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-27] - chore: PM structure — ROADMAP, sprint, task specs in repo
+
+**Type:** chore
+
+### Summary
+Established full PM structure in the repo. PMAing straight in the repo from here on — no external tools. Every task gets a spec, every sprint gets a doc, everything traces to the ROADMAP.
+
+### Changes
+- `ROADMAP.md` — Full phase roadmap (Phase 0→4), revenue model, open questions table
+- `docs/sprints/current.md` — Active sprint: what's blocked, in-progress, up next
+- `docs/tasks/task-001-match-engine-do.md` — MatchEngine Durable Object spec (Phase 1)
+- `docs/tasks/task-010-openclaw-plugin.md` — OpenClaw plugin spec (Phase 2, REVENUE CRITICAL)
+
+### Breaking Changes
+- None.
+
+### Notes
+- Plugin (TASK-010) is the monetization entry point. Building it unblocks paying users.
+- TASK-001 is blocked on Cloudflare account — Aleks signing up now.
+- Operating procedure: every PR updates `docs/sprints/current.md` and `CHANGELOG.md`. Every new task gets a spec in `docs/tasks/`.
+
+---
+
 ## [2026-02-27] - docs: architecture ADR updated — Vercel Queues + Blob + Workflow evaluation
 
 **Type:** docs
