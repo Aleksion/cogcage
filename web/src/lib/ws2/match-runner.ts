@@ -177,7 +177,7 @@ async function fetchDecision(
       body: JSON.stringify({
         gameState,
         actorId,
-        opponentId,
+        opponentIds: opponentId ? [opponentId] : [],
         systemPrompt,
         loadout,
       }),
