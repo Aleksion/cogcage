@@ -1278,60 +1278,36 @@ const Play = () => {
             <button className="action-btn secondary" style={{ padding: '0.35rem 1rem', fontSize: '0.85rem' }} onClick={abortMatch}>Abort</button>
           </div>
 
-          <div className="match-grid" style={pcActive ? { gridTemplateColumns: '1fr' } : undefined}>
-            {/* CSS Arena fallback — only when PlayCanvas isn't running */}
-            {!pcActive && (
-              <section className="panel">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <h2 style={{ marginBottom: 0 }}>Arena</h2>
-                </div>
-
-                {renderArena()}
-
-                <div className="arena-legend">
-                  <span className="status-pill" style={{ background: 'rgba(0,229,255,0.2)', borderColor: '#00E5FF' }}>{aName}</span>
-                  <span className="status-pill" style={{ background: 'rgba(235,77,75,0.2)', borderColor: '#eb4d4b' }}>{bName}</span>
-                  <span className="status-pill" style={{ background: 'rgba(255,214,0,0.15)', borderColor: 'rgba(255,214,0,0.5)' }}>Objective</span>
-                  {ARENA_TASKS.map((t) => (
-                    <span key={t.id} className="status-pill" style={{ background: `${t.color}22`, borderColor: t.color, fontSize: '0.75rem' }}>
-                      {t.label} Task
-                    </span>
-                  ))}
-                </div>
-
-                {/* Energy bars */}
-                <div className="energy-row" style={{ marginTop: '1rem' }}>
-                  <div className="energy-block">
-                    <div className="energy-label" style={{ color: '#00E5FF' }}>{aName} Energy</div>
-                    <div className="bar-shell">
-                      <div className="bar-fill" style={{ width: `${(botAEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #00e5ff, #0077b6)' }} />
-                    </div>
-                    <div className="hint" style={{ fontSize: '0.75rem' }}>{Math.round(botAEnergy / 10)}e</div>
-                  </div>
-                  <div className="energy-block">
-                    <div className="energy-label" style={{ color: '#eb4d4b' }}>{bName} Energy</div>
-                    <div className="bar-shell">
-                      <div className="bar-fill" style={{ width: `${(botBEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #ff6b6b, #c0392b)' }} />
-                    </div>
-                    <div className="hint" style={{ fontSize: '0.75rem' }}>{Math.round(botBEnergy / 10)}e</div>
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Sidebar: Combat log — always visible */}
-            <section className="panel match-sidebar" style={pcActive ? { maxWidth: '800px', margin: '0 auto', width: '100%' } : undefined}>
-              <div className="section-label">Combat Log</div>
-              <div className="feed" style={{ maxHeight: pcActive ? '220px' : '500px' }}>
-                {feed.length === 0 && (
-                  <div className="feed-item">Waiting for first LLM decisions...</div>
-                )}
-                {feed.map((entry, index) => (
-                  <div key={`${index}-${entry.slice(0, 20)}`} className="feed-item">{entry}</div>
-                ))}
+          {/* Energy bars — always visible below canvas */}
+          <div className="energy-row" style={{ maxWidth: '800px', margin: '0 auto 1rem' }}>
+            <div className="energy-block">
+              <div className="energy-label" style={{ color: '#00E5FF' }}>{aName} Energy</div>
+              <div className="bar-shell">
+                <div className="bar-fill" style={{ width: `${(botAEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #00e5ff, #0077b6)' }} />
               </div>
-            </section>
+              <div className="hint" style={{ fontSize: '0.75rem' }}>{Math.round(botAEnergy / 10)}e</div>
+            </div>
+            <div className="energy-block">
+              <div className="energy-label" style={{ color: '#eb4d4b' }}>{bName} Energy</div>
+              <div className="bar-shell">
+                <div className="bar-fill" style={{ width: `${(botBEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #ff6b6b, #c0392b)' }} />
+              </div>
+              <div className="hint" style={{ fontSize: '0.75rem' }}>{Math.round(botBEnergy / 10)}e</div>
+            </div>
           </div>
+
+          {/* Combat log — always visible, no CSS grid fallback */}
+          <section className="panel" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div className="section-label">Combat Log</div>
+            <div className="feed" style={{ maxHeight: '220px' }}>
+              {feed.length === 0 && (
+                <div className="feed-item">Waiting for first LLM decisions...</div>
+              )}
+              {feed.map((entry, index) => (
+                <div key={`${index}-${entry.slice(0, 20)}`} className="feed-item">{entry}</div>
+              ))}
+            </div>
+          </section>
         </main>
       )}
 
