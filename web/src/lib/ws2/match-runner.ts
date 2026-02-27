@@ -23,6 +23,8 @@ export interface BotConfig {
   temperature?: number;
   /** BYO LLM headers forwarded to decide endpoint */
   llmHeaders?: Record<string, string>;
+  /** Energy cost per MOVE action (default 4, increases with loadout weight) */
+  moveCost?: number;
 }
 
 export interface MatchSnapshot {
@@ -252,6 +254,7 @@ export async function runMatchAsync(
       position: { x: pos.x * UNIT_SCALE, y: pos.y * UNIT_SCALE },
       facing: FACING_CYCLE[i % FACING_CYCLE.length],
       armor: bot.armor,
+      moveCost: bot.moveCost,
     });
   }
 
