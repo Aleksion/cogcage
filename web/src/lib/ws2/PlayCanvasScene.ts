@@ -81,8 +81,8 @@ export class PlayCanvasScene {
     this.camera();
     this.lights();
     this.arena();
-    this.buildStriker('botA', 1, 4);
-    this.buildCrusher('botB', 6, 3);
+    this.buildStriker('botA', 6, 10);
+    this.buildCrusher('botB', 14, 10);
 
     app.on('update', (dt: number) => this.tick(dt));
     app.start();
