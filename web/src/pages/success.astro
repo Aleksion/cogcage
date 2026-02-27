@@ -2,20 +2,20 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="CogCage — Founder Spot Confirmed" description="Your CogCage Founder checkout is complete. Next steps for alpha access inside.">
+<Layout title="The Molt Pit — Founder Spot Confirmed" description="Your Molt Pit Founder checkout is complete. Next steps for alpha access inside.">
   <main class="shell">
     <section class="panel success">
       <p class="eyebrow">PAYMENT CONFIRMED</p>
       <h1>You’re in — Founder spot reserved.</h1>
       <p>
-        Thanks for backing CogCage early. We’re preparing your founder onboarding email with alpha queue details,
+        Thanks for backing The Molt Pit early. We’re preparing your founder onboarding email with alpha queue details,
         rank-season kickoff timing, and tournament invite priority.
       </p>
 
       <div class="next-steps">
         <article>
           <strong>1) Check your inbox</strong>
-          <span>Look for your Stripe receipt + CogCage onboarding within 24 hours.</span>
+          <span>Look for your Stripe receipt + The Molt Pit onboarding within 24 hours.</span>
         </article>
         <article>
           <strong>2) Join waitlist backup</strong>
@@ -34,8 +34,8 @@ import Layout from '../layouts/Layout.astro';
 </Layout>
 
 <script is:inline>
-  const key = 'cogcage_paid_conversions';
-  const pendingKey = 'cogcage_pending_paid_conversions';
+  const key = 'moltpit_paid_conversions';
+  const pendingKey = 'moltpit_pending_paid_conversions';
 
   function rememberPaidConversion(id) {
     const known = JSON.parse(localStorage.getItem(key) || '[]');
@@ -109,13 +109,13 @@ import Layout from '../layouts/Layout.astro';
   async function trackPaidConversion() {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id') || params.get('checkout_session_id');
-    const email = params.get('prefilled_email') || localStorage.getItem('cogcage_email') || undefined;
+    const email = params.get('prefilled_email') || localStorage.getItem('moltpit_email') || undefined;
     const conversionId = sessionId || `success:${window.location.pathname}:${new Date().toISOString().slice(0, 10)}`;
 
     if (hasPaidConversion(conversionId)) return;
 
-    const checkoutSource = localStorage.getItem('cogcage_last_founder_checkout_source') || 'stripe-success';
-    const checkoutIntentSource = localStorage.getItem('cogcage_last_founder_intent_source') || undefined;
+    const checkoutSource = localStorage.getItem('moltpit_last_founder_checkout_source') || 'stripe-success';
+    const checkoutIntentSource = localStorage.getItem('moltpit_last_founder_intent_source') || undefined;
 
     const payload = {
       eventId: conversionId,

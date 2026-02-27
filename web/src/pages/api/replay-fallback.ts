@@ -14,7 +14,7 @@ function readLines(filePath: string): string[] {
 }
 
 function authorize(request: Request): boolean {
-  const key = process.env.COGCAGE_OPS_KEY?.trim();
+  const key = process.env.MOLTPIT_OPS_KEY?.trim();
   if (!key) return true;
   const provided = request.headers.get('x-ops-key') ?? new URL(request.url).searchParams.get('key') ?? '';
   return provided === key;
@@ -69,7 +69,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const runtimeDir = process.env.COGCAGE_LOG_DIR ?? getRuntimeDir();
+  const runtimeDir = process.env.MOLTPIT_LOG_DIR ?? getRuntimeDir();
   const waitlistFile = path.join(runtimeDir, 'waitlist-fallback.ndjson');
   const founderFile = path.join(runtimeDir, 'founder-intent-fallback.ndjson');
   const eventsFile = path.join(runtimeDir, 'events-fallback.ndjson');

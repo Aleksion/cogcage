@@ -545,7 +545,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
     <div className="play-root">
       <div className="bg-scanlines" />
       <header className="play-header">
-        <a className="logo" href="/">COG CAGE</a>
+        <a className="logo" href="/">THE MOLT PIT</a>
         <div className="header-links">
           <a className="header-link" href="/">Home</a>
           <a className="header-link" href="/play">Play</a>

@@ -366,13 +366,13 @@ function weightColor(w: number): string {
 
 function getPlayerId(): string {
   // Read from cookie
-  const match = document.cookie.match(/cogcage_pid=([^;]+)/);
+  const match = document.cookie.match(/moltpit_pid=([^;]+)/);
   if (match) return match[1];
   // Fallback: localStorage
-  let id = localStorage.getItem('cogcage_pid');
+  let id = localStorage.getItem('moltpit_pid');
   if (!id) {
     id = crypto.randomUUID();
-    localStorage.setItem('cogcage_pid', id);
+    localStorage.setItem('moltpit_pid', id);
   }
   return id;
 }
@@ -401,7 +401,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
     }
     // Store playerId in localStorage as fallback
     const pid = getPlayerId();
-    localStorage.setItem('cogcage_pid', pid);
+    localStorage.setItem('moltpit_pid', pid);
     // Read returnTo from URL if not passed as prop
     if (!returnTo) {
       const params = new URLSearchParams(window.location.search);
@@ -525,7 +525,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
     <div className="armory-root">
       {/* Header */}
       <header className="armory-header">
-        <a href="/" className="armory-logo">CogCage</a>
+        <a href="/" className="armory-logo">The Molt Pit</a>
         <nav className="armory-nav">
           {resolvedReturnTo ? (
             <a href={resolvedReturnTo} style={{ color: '#FFD600', fontFamily: "'Bangers', display", fontSize: '1rem' }}>

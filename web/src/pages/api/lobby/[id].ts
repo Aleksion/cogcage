@@ -50,7 +50,7 @@ export const GET: APIRoute = async ({ params }) => {
 /** DELETE /api/lobby/[id] — leave/close lobby */
 export const DELETE: APIRoute = async ({ params, cookies }) => {
   const { id } = params;
-  const playerId = cookies.get('cogcage_pid')?.value;
+  const playerId = cookies.get('moltpit_pid')?.value;
   if (!id || !playerId) {
     return new Response(JSON.stringify({ error: 'Missing id or player' }), {
       status: 400,

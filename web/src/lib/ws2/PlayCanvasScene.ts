@@ -357,7 +357,7 @@ export class PlayCanvasScene {
 
   private dispatchVfx(text: string, color: string): void {
     this.app.graphicsDevice.canvas.dispatchEvent(
-      new CustomEvent('cogcage:vfx', {
+      new CustomEvent('moltpit:vfx', {
         detail: { text, color },
         bubbles: true,
       }),

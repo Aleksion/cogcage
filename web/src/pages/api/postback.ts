@@ -40,7 +40,7 @@ function normalizeEmail(value: unknown): string | undefined {
 }
 
 function authorize(request: Request): boolean {
-  const key = process.env.COGCAGE_POSTBACK_KEY?.trim();
+  const key = process.env.MOLTPIT_POSTBACK_KEY?.trim();
   if (!key) return true;
   const provided = request.headers.get('x-postback-key')?.trim() ?? '';
   return provided === key;

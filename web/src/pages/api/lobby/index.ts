@@ -21,7 +21,7 @@ export const GET: APIRoute = async () => {
 
 /** POST /api/lobby — create a lobby */
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const playerId = cookies.get('cogcage_pid')?.value;
+  const playerId = cookies.get('moltpit_pid')?.value;
   if (!playerId) {
     return new Response(JSON.stringify({ error: 'No player ID' }), {
       status: 401,

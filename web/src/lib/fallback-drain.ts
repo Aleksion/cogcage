@@ -16,7 +16,7 @@ const FOUNDER_FILE = 'founder-intent-fallback.ndjson';
 const EVENTS_FILE = 'events-fallback.ndjson';
 
 function runtimeFile(file: string) {
-  const dir = process.env.COGCAGE_LOG_DIR ?? ensureRuntimeDir();
+  const dir = process.env.MOLTPIT_LOG_DIR ?? ensureRuntimeDir();
   return path.join(dir, file);
 }
 

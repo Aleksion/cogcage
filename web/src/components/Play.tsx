@@ -14,6 +14,11 @@ const ENGINE_WS_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_ENGINE_WS_URL) ||
   'wss://themoltpit-engine.aleks-precurion.workers.dev';
 
+/** HTTP base URL for DO REST calls (queue, state) — derived from WS URL */
+const ENGINE_HTTP_URL = ENGINE_WS_URL.replace(/^wss?:\/\//, (p) =>
+  p.startsWith('wss') ? 'https://' : 'http://',
+);
+
 /* ============================================================
    STYLES (preserved from WS7 visual pack)
    ============================================================ */
@@ -279,7 +284,7 @@ type LobbyBotConfig = {
   llmModel: string;
   /** BYO API key */
   llmKey: string;
-  /** Agent mode — 'hosted' uses CogCage LLM, 'byo' relays to webhookUrl */
+  /** Agent mode — 'hosted' uses Molt Pit LLM, 'byo' relays to webhookUrl */
   mode: 'hosted' | 'byo';
   webhookUrl: string;
 };
@@ -305,7 +310,7 @@ interface ArenaTask {
 /* --- Constants --- */
 
 const GRID_SIZE = 8;
-const EMAIL_KEY = 'cogcage_email';
+const EMAIL_KEY = 'moltpit_email';
 
 const ACTION_INFO: Record<string, { label: string; cost: number; desc: string }> = {
   MOVE: { label: 'Move', cost: 4, desc: 'Move 1 cell in any direction' },
@@ -433,6 +438,8 @@ const Play = () => {
   const prevEventsLenRef = useRef(0);
   const sceneRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  /** Tracks bots with an in-flight /api/agent/decide call — prevents queuing overlapping decisions */
+  const agentBusyRef = useRef<Set<string>>(new Set());
 
   // --- Effects ---
   useEffect(() => {
@@ -475,8 +482,8 @@ const Play = () => {
       setVfxWord({ text, color, id });
       setTimeout(() => setVfxWord((prev) => (prev?.id === id ? null : prev)), 700);
     };
-    canvas.addEventListener('cogcage:vfx', handler);
-    return () => canvas.removeEventListener('cogcage:vfx', handler);
+    canvas.addEventListener('moltpit:vfx', handler);
+    return () => canvas.removeEventListener('moltpit:vfx', handler);
   }, [phase]);
 
   // --- PlayCanvas lifecycle ---
@@ -705,6 +712,57 @@ const Play = () => {
         const ws = new WebSocket(`${ENGINE_WS_URL}/match/${matchId}`);
         wsRef.current = ws;
 
+        // Clear busy flags when a new match starts
+        agentBusyRef.current.clear();
+
+        /**
+         * Push a bot's decision to the DO action queue.
+         * Called at every DECISION_WINDOW_TICKS boundary.
+         * Fire-and-forget: errors are logged, never surface to UI.
+         */
+        const fireAgentDecision = async (
+          botId: string,
+          config: BotConfig,
+          gameState: any,
+          currentMatchId: string,
+        ) => {
+          if (agentBusyRef.current.has(botId)) return; // skip if previous call still in-flight
+          agentBusyRef.current.add(botId);
+          try {
+            const opponentId = botId === 'botA' ? 'botB' : 'botA';
+            const decideRes = await fetch('/api/agent/decide', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                gameState,
+                actorId: botId,
+                opponentIds: [opponentId],
+                loadout: config.loadout,
+                systemPrompt: config.systemPrompt,
+                brainPrompt: config.systemPrompt,
+              }),
+              signal: AbortSignal.timeout(4000),
+            });
+            if (!decideRes.ok) return;
+            const decision = await decideRes.json();
+            const action = decision.action ?? { type: 'NO_OP' };
+            // Push action to DO queue
+            await fetch(`${ENGINE_HTTP_URL}/match/${currentMatchId}/queue`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${botId}`,
+              },
+              body: JSON.stringify(action),
+              signal: AbortSignal.timeout(2000),
+            });
+          } catch {
+            // silently swallow — match continues with NO_OP on missed windows
+          } finally {
+            agentBusyRef.current.delete(botId);
+          }
+        };
+
         ws.onmessage = (e) => {
           let msg: any;
           try { msg = JSON.parse(e.data); } catch { return; }
@@ -717,6 +775,13 @@ const Play = () => {
               winnerId: null,
             };
             handleSnapshot(snap);
+
+            // Fire agent decisions at every DECISION_WINDOW_TICKS boundary
+            // (DECISION_WINDOW_TICKS = 3 → every 600ms at 200ms/tick)
+            if (msg.tick % 3 === 0 && msg.state) {
+              void fireAgentDecision('botA', configA, msg.state, matchId);
+              void fireAgentDecision('botB', configB, msg.state, matchId);
+            }
           }
 
           if (msg.type === 'match_complete') {
@@ -1054,7 +1119,7 @@ const Play = () => {
     <div className="play-root">
       <div className="bg-scanlines" />
       <header className="play-header">
-        <a className="logo" href="/">COG CAGE</a>
+        <a className="logo" href="/">THE MOLT PIT</a>
         <div className="header-links">
           <a className="header-link" href="/">Home</a>
           <a className="header-link active" href="/play">Play</a>

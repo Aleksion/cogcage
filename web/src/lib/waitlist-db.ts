@@ -64,7 +64,7 @@ export type ApiRequestReceipt = {
 let db: Database.Database | null = null;
 
 export function getDbPath() {
-  return process.env.COGCAGE_DB_PATH ?? resolveRuntimePath('cogcage.db');
+  return process.env.MOLTPIT_DB_PATH ?? resolveRuntimePath('moltpit.db');
 }
 
 function runWithBusyRetry<T>(label: string, fn: () => T): T {

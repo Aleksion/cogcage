@@ -797,8 +797,8 @@ const globalStyles = `
 
 const STRIPE_FOUNDER_URL = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const COPY_VARIANT_KEY = 'cogcage_copy_variant';
-const FOUNDER_CTA_VARIANT_KEY = 'cogcage_founder_cta_variant';
+const COPY_VARIANT_KEY = 'moltpit_copy_variant';
+const FOUNDER_CTA_VARIANT_KEY = 'moltpit_founder_cta_variant';
 const FOUNDER_PRICE_TEXT = 'Founder Pack $29 one-time';
 const FOUNDER_PRICE_FUTURE_TEXT = '$49 once beta opens';
 const HERO_COPY = {
@@ -918,8 +918,8 @@ const shouldQueueForReplay = (error) => {
   return true;
 };
 
-const WAITLIST_REPLAY_QUEUE_KEY = 'cogcage_waitlist_replay_queue';
-const FOUNDER_INTENT_REPLAY_QUEUE_KEY = 'cogcage_founder_intent_replay_queue';
+const WAITLIST_REPLAY_QUEUE_KEY = 'moltpit_waitlist_replay_queue';
+const FOUNDER_INTENT_REPLAY_QUEUE_KEY = 'moltpit_founder_intent_replay_queue';
 
 const readWaitlistReplayQueue = () => {
   try {
@@ -949,7 +949,7 @@ const enqueueWaitlistReplay = (payload) => {
   const next = {
     ...payload,
     email: String(payload.email || '').trim().toLowerCase(),
-    source: payload.source || 'cogcage-replay',
+    source: payload.source || 'moltpit-replay',
     queuedAt: new Date().toISOString(),
   };
   const deduped = queue.filter((item) => !(item.email === next.email && item.source === next.source));
@@ -968,11 +968,11 @@ const replayWaitlistQueue = async () => {
       await submitWithRetry('/api/waitlist', {
         email: item.email,
         game: item.game || 'Unspecified',
-        source: item.source || 'cogcage-replay',
+        source: item.source || 'moltpit-replay',
       }, { retries: 0, timeoutMs: 7000 });
       await postJson('/api/events', {
         event: 'waitlist_replay_sent',
-        source: item.source || 'cogcage-replay',
+        source: item.source || 'moltpit-replay',
         email: item.email,
         page: '/',
         meta: { queuedAt: item.queuedAt || null },
@@ -983,7 +983,7 @@ const replayWaitlistQueue = async () => {
       }
       await postJson('/api/events', {
         event: 'waitlist_replay_failed',
-        source: item.source || 'cogcage-replay',
+        source: item.source || 'moltpit-replay',
         email: item.email,
         page: '/',
         meta: {
@@ -1043,7 +1043,7 @@ const replayFounderIntentQueue = async () => {
       await submitWithRetry('/api/founder-intent', item, { retries: 0, timeoutMs: 7000 });
       await postJson('/api/events', {
         event: 'founder_intent_replay_sent',
-        source: item.source || 'cogcage-founder-replay',
+        source: item.source || 'moltpit-founder-replay',
         email: item.email,
         page: '/',
         meta: { queuedAt: item.queuedAt || null, intentId: item.intentId || null },
@@ -1054,7 +1054,7 @@ const replayFounderIntentQueue = async () => {
       }
       await postJson('/api/events', {
         event: 'founder_intent_replay_failed',
-        source: item.source || 'cogcage-founder-replay',
+        source: item.source || 'moltpit-founder-replay',
         email: item.email,
         page: '/',
         meta: {
@@ -1175,7 +1175,7 @@ const NavBar = ({ onNavClick }) => {
 
   return (
     <nav className="cog-nav">
-      <div className="logo" onClick={() => handleNav('hero')} style={{ cursor: 'pointer' }}>COG CAGE</div>
+      <div className="logo" onClick={() => handleNav('hero')} style={{ cursor: 'pointer' }}>THE MOLT PIT</div>
       <div className="nav-links">
         {[['Builder', 'build'], ['Arena', 'arena'], ['Marketplace', 'build'], ['Guide', 'hero']].map(([label, section]) => (
           <button key={label} className="nav-link" onClick={() => handleNav(section)}>{label}</button>
@@ -1225,7 +1225,7 @@ const HeroSection = ({ sectionRef }) => {
   const [founderCtaVariant, setFounderCtaVariant] = useState('reserve');
 
   useEffect(() => {
-    const savedEmail = localStorage.getItem('cogcage_email');
+    const savedEmail = localStorage.getItem('moltpit_email');
     if (savedEmail) setEmail(savedEmail);
     const assignedVariant = getOrCreateVariant();
     const assignedFounderCtaVariant = getOrCreateFounderCtaVariant();
@@ -1275,10 +1275,10 @@ const HeroSection = ({ sectionRef }) => {
       const payload = await submitWithRetry('/api/waitlist', {
         email: trimmed,
         game: 'Unspecified',
-        source: `cogcage-hero-${variant}`,
+        source: `moltpit-hero-${variant}`,
         company: botField,
       });
-      localStorage.setItem('cogcage_email', trimmed.toLowerCase());
+      localStorage.setItem('moltpit_email', trimmed.toLowerCase());
       await postJson('/api/events', {
         event: 'waitlist_joined',
         source: `hero-waitlist-${variant}`,
@@ -1298,7 +1298,7 @@ const HeroSection = ({ sectionRef }) => {
         enqueueWaitlistReplay({
           email: trimmed.toLowerCase(),
           game: 'Unspecified',
-          source: `cogcage-hero-${variant}`,
+          source: `moltpit-hero-${variant}`,
         });
       }
       void postJson('/api/events', {
@@ -1322,14 +1322,14 @@ const HeroSection = ({ sectionRef }) => {
     ctaSourcePrefix = 'hero-founder-cta',
     checkoutSourcePrefix = 'hero-founder-checkout',
   } = {}) => {
-    const trimmed = emailOverride || email.trim() || localStorage.getItem('cogcage_email') || '';
+    const trimmed = emailOverride || email.trim() || localStorage.getItem('moltpit_email') || '';
     if (!EMAIL_RE.test(trimmed)) {
       setStatus('error');
       setMessage('Add your email first so we can reserve your founder slot.');
       return;
     }
 
-    localStorage.setItem('cogcage_email', trimmed.toLowerCase());
+    localStorage.setItem('moltpit_email', trimmed.toLowerCase());
     await postJson('/api/events', {
       event: 'founder_checkout_clicked',
       source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
@@ -1366,8 +1366,8 @@ const HeroSection = ({ sectionRef }) => {
     if (STRIPE_FOUNDER_URL) {
       const checkoutSource = `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`;
       const checkoutIntentSource = `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`;
-      localStorage.setItem('cogcage_last_founder_checkout_source', checkoutSource);
-      localStorage.setItem('cogcage_last_founder_intent_source', checkoutIntentSource);
+      localStorage.setItem('moltpit_last_founder_checkout_source', checkoutSource);
+      localStorage.setItem('moltpit_last_founder_intent_source', checkoutIntentSource);
       const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
       target.searchParams.set('prefilled_email', trimmed.toLowerCase());
       window.location.href = target.toString();
@@ -1424,7 +1424,7 @@ const HeroSection = ({ sectionRef }) => {
                 aria-label="Email address"
               />
               <input type="hidden" name="game" value="Unspecified" />
-              <input type="hidden" name="source" value={`cogcage-hero-${variant}`} />
+              <input type="hidden" name="source" value={`moltpit-hero-${variant}`} />
               <button
                 className="btn-arcade red waitlist-submit"
                 type="submit"
@@ -1607,7 +1607,7 @@ const FooterSection = () => {
   useEffect(() => {
     const assignedVariant = getOrCreateVariant();
     const assignedFounderCtaVariant = getOrCreateFounderCtaVariant();
-    const savedEmail = localStorage.getItem('cogcage_email');
+    const savedEmail = localStorage.getItem('moltpit_email');
     setVariant(assignedVariant);
     setFounderCtaVariant(assignedFounderCtaVariant);
     if (savedEmail) {
@@ -1653,10 +1653,10 @@ const FooterSection = () => {
       const payload = await submitWithRetry('/api/waitlist', {
         email: trimmed,
         game: 'Unspecified',
-        source: `cogcage-footer-${variant}`,
+        source: `moltpit-footer-${variant}`,
         company: botField,
       });
-      localStorage.setItem('cogcage_email', trimmed);
+      localStorage.setItem('moltpit_email', trimmed);
       setSubmittedEmail(trimmed);
       await postJson('/api/events', {
         event: 'waitlist_joined',
@@ -1672,7 +1672,7 @@ const FooterSection = () => {
         enqueueWaitlistReplay({
           email: trimmed,
           game: 'Unspecified',
-          source: `cogcage-footer-${variant}`,
+          source: `moltpit-footer-${variant}`,
         });
       }
       void postJson('/api/events', {
@@ -1697,13 +1697,13 @@ const FooterSection = () => {
     ctaSourcePrefix = 'footer-founder-cta',
     checkoutSourcePrefix = 'footer-founder-checkout',
   } = {}) => {
-    const storedEmail = localStorage.getItem('cogcage_email')?.trim().toLowerCase() || '';
+    const storedEmail = localStorage.getItem('moltpit_email')?.trim().toLowerCase() || '';
     const typedEmail = normalizedEmail();
     const candidateEmail = emailOverride || typedEmail || storedEmail;
     const trimmed = EMAIL_RE.test(candidateEmail) ? candidateEmail : validateEmail();
     if (!trimmed) return;
 
-    localStorage.setItem('cogcage_email', trimmed);
+    localStorage.setItem('moltpit_email', trimmed);
     await postJson('/api/events', {
       event: 'founder_checkout_clicked',
       source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
@@ -1740,8 +1740,8 @@ const FooterSection = () => {
     if (STRIPE_FOUNDER_URL) {
       const checkoutSource = `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`;
       const checkoutIntentSource = `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`;
-      localStorage.setItem('cogcage_last_founder_checkout_source', checkoutSource);
-      localStorage.setItem('cogcage_last_founder_intent_source', checkoutIntentSource);
+      localStorage.setItem('moltpit_last_founder_checkout_source', checkoutSource);
+      localStorage.setItem('moltpit_last_founder_intent_source', checkoutIntentSource);
       const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
       target.searchParams.set('prefilled_email', trimmed);
       window.location.href = target.toString();
@@ -1848,7 +1848,7 @@ const FooterSection = () => {
       )}
 
       <div style={{ marginTop: '4rem', fontSize: '0.8rem', opacity: 0.5 }}>
-        © 2023 Cog Cage eSports League. All bots are simulated.
+        © 2023 The Molt Pit. All bots are simulated.. All bots are simulated.
       </div>
     </footer>
   );
