@@ -417,6 +417,7 @@ const Play = () => {
   const [email, setEmail] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [ffaBusy, setFfaBusy] = useState(false);
 
   // --- Refs ---
   const abortRef = useRef<AbortController | null>(null);
@@ -718,6 +719,37 @@ const Play = () => {
         : prev.loadout.filter((a) => a !== action);
       return { ...prev, loadout: newLoadout };
     });
+  };
+
+  // --- FFA Tournament ---
+  const handleStartFfa = async () => {
+    setFfaBusy(true);
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          hostName: botAConfig.name || 'Host',
+          bot: {
+            name: botAConfig.name || 'Host Bot',
+            systemPrompt: botAConfig.systemPrompt,
+            loadout: botAConfig.loadout,
+            armor: botAConfig.armor,
+            temperature: botAConfig.temperature,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.sessionId) {
+        window.location.href = `/play/session/${data.sessionId}?pid=${data.participantId}`;
+      } else {
+        alert(data.error || 'Failed to create session');
+        setFfaBusy(false);
+      }
+    } catch {
+      alert('Network error creating session');
+      setFfaBusy(false);
+    }
   };
 
   // --- Founder CTA ---
@@ -1118,9 +1150,19 @@ const Play = () => {
               </div>
             )}
 
-            <button className="cta-btn enter-arena-btn" onClick={startMatch}>
-              Start Battle
-            </button>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button className="cta-btn enter-arena-btn" style={{ flex: '1 1 auto', maxWidth: '400px' }} onClick={startMatch}>
+                Start Battle
+              </button>
+              <button
+                className="cta-btn enter-arena-btn"
+                style={{ flex: '1 1 auto', maxWidth: '400px', background: 'var(--c-purple)' }}
+                onClick={handleStartFfa}
+                disabled={ffaBusy}
+              >
+                {ffaBusy ? 'Creating...' : 'Start FFA Tournament'}
+              </button>
+            </div>
 
             {renderFounderCta()}
           </div>
