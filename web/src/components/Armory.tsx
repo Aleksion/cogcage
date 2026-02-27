@@ -264,13 +264,14 @@ function getPlayerId(): string {
 
 /* ── Component ────────────────────────────────────────────────── */
 
-export default function Armory() {
+export default function Armory({ returnTo }: { returnTo?: string }) {
   const [filter, setFilter] = useState<'all' | CardType>('all');
   const [loadout, setLoadout] = useState<string[]>([]);
   const [savedLoadouts, setSavedLoadouts] = useState<SavedLoadout[]>([]);
   const [loadoutName, setLoadoutName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [resolvedReturnTo, setResolvedReturnTo] = useState(returnTo || '');
 
   // Inject styles
   useEffect(() => {
@@ -284,7 +285,13 @@ export default function Armory() {
     // Store playerId in localStorage as fallback
     const pid = getPlayerId();
     localStorage.setItem('cogcage_pid', pid);
-  }, []);
+    // Read returnTo from URL if not passed as prop
+    if (!returnTo) {
+      const params = new URLSearchParams(window.location.search);
+      const rt = params.get('returnTo');
+      if (rt) setResolvedReturnTo(rt);
+    }
+  }, [returnTo]);
 
   // Fetch saved loadouts
   const fetchLoadouts = useCallback(async () => {
@@ -394,8 +401,16 @@ export default function Armory() {
       <header className="armory-header">
         <a href="/" className="armory-logo">CogCage</a>
         <nav className="armory-nav">
-          <a href="/play">Play</a>
-          <a href="/armory" className="active">Armory</a>
+          {resolvedReturnTo ? (
+            <a href={resolvedReturnTo} style={{ color: '#FFD600', fontFamily: "'Bangers', display", fontSize: '1rem' }}>
+              Back to Lobby
+            </a>
+          ) : (
+            <>
+              <a href="/play">Play</a>
+              <a href="/armory" className="active">Armory</a>
+            </>
+          )}
         </nav>
       </header>
 
@@ -541,6 +556,19 @@ export default function Armory() {
                 {saving ? '...' : 'Save'}
               </button>
             </div>
+            {resolvedReturnTo && savedLoadouts.length > 0 && (
+              <a
+                href={resolvedReturnTo}
+                style={{
+                  display: 'block', marginTop: '0.8rem', textAlign: 'center',
+                  fontFamily: "'Bangers', display", fontSize: '1.1rem', textTransform: 'uppercase',
+                  padding: '0.6rem 1.2rem', background: '#FFD600', color: '#111',
+                  borderRadius: '8px', textDecoration: 'none',
+                }}
+              >
+                Back to Lobby
+              </a>
+            )}
           </div>
         </div>
 

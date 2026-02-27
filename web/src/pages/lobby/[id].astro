@@ -1,5 +1,6 @@
 ---
-import Dashboard from '../components/Dashboard.tsx';
+import Lobby from '../../components/Lobby.tsx';
+const { id } = Astro.params;
 ---
 
 <!doctype html>
@@ -9,11 +10,11 @@ import Dashboard from '../components/Dashboard.tsx';
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
-    <title>CogCage — Play</title>
-    <meta name="description" content="Battle AI bots in the CogCage arena. Build your strategy, earn your rank." />
+    <title>CogCage — Lobby</title>
+    <meta name="description" content="Waiting in the lobby. Configure your bot and start the match." />
     <style>*, *::before, *::after { box-sizing: border-box; } body { margin: 0; }</style>
   </head>
   <body>
-    <Dashboard client:only="react" />
+    <Lobby client:only="react" lobbyId={id!} />
   </body>
 </html>
