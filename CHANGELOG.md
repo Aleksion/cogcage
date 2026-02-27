@@ -4,6 +4,28 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-27] - docs: architecture ADR updated — Vercel Queues + Blob + Workflow evaluation
+
+**Type:** docs
+
+### Summary
+Evaluated Vercel Blob, Vercel Workflow, and Vercel Queues as potential game engine primitives. Queues solves the action transport layer (agent → engine, engine → consumers) and slots cleanly into the stack. Blob is right for replay archives. Workflow is right for post-match lifecycle. None of them solve the tick clock — Cloudflare DO remains the only component that isn't Vercel-native, solely because no Vercel primitive supports sub-second server-authoritative scheduling.
+
+### Changes
+- `docs/architecture-game-engine.md` — Added Option D (Workflow + Blob evaluation), Vercel Queues section, revised full layered stack diagram showing all five layers and their natural lanes.
+
+### Breaking Changes
+- None. Docs only.
+
+### Notes
+- Vercel Queues: perfect for action transport + event fan-out. NOT for tick clock (no sub-second scheduling).
+- Vercel Blob: perfect for replay archive (seed + action log → permanent CDN URL). NOT for live state.
+- Vercel Workflow: perfect for post-match lifecycle (ELO, leaderboard, notifications). NOT for tick loop.
+- Electric Durable Streams: wraps LLM calls in agent plugin for resilient streaming.
+- The stack is now: Queues (transport) + CF DO (clock) + Workflow (lifecycle) + Blob (archive) + Electric (agent streams) + Vercel (app layer).
+
+---
+
 ## [2026-02-27] - docs: game engine architecture decision record
 
 **Type:** docs

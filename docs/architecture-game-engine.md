@@ -235,6 +235,143 @@ const result = await streamText({
 
 ---
 
+## Option D: Vercel Workflow + Vercel Blob (Evaluated 2026-02-27)
+
+Aleks asked: is this viable for the game engine?
+
+### Vercel Workflow
+
+Vercel Workflow is a durable workflow orchestration platform (WDK) — `'use workflow'` + `'use step'` directives that compile into pause/resume queued function invocations. Managed by Vercel, no infra to operate.
+
+```typescript
+export async function matchLifecycle(matchId: string) {
+  'use workflow';
+  const match = await startMatch(matchId);   // step
+  await sleep('2 hours');                    // wait for match to finish or timeout
+  const results = await computeElo(match);  // step
+  await notifyPlayers(results);             // step
+}
+```
+
+**Verdict for tick loop: NO.**
+- Each step invocation has queue + serialize + network overhead: conservatively 100–200ms per step
+- That overhead alone exceeds our entire 250ms tick budget before game logic runs
+- No in-memory state between steps — everything serialized to managed DB on each tick
+- No WebSocket API — agent plugins cannot maintain a persistent connection
+
+**Verdict for match lifecycle: YES. This is the right tool.**
+Workflow is ideal for the cold path:
+- Lobby confirmed → start match → wait for completion → compute ELO → update leaderboard → notify players → archive replay
+- None of this is latency-critical
+- Hook API lets the tick loop signal match completion: `completionHook.resume(matchId, results)`
+- Deterministic replay of multi-step logic on crash is exactly what we want here
+
+### Vercel Blob
+
+S3-backed object storage with CDN. `put(name, data)` → public URL. 99.999999999% durability.
+
+**Verdict for live match state: NO.**
+Not a real-time data structure. No atomic ops. No pub/sub. Not a coordination primitive.
+
+**Verdict for replay archive: YES. Perfect.**
+After a match ends, the Cloudflare DO serializes `{ seed, tickLog: Action[][] }` and POSTs to a Vercel function that writes it to Blob:
+```typescript
+const replay = await put(`replays/${matchId}.json`, JSON.stringify(replayData), { access: 'public' });
+// replay.url → permanent, CDN-cached, shareable link
+```
+One JSON file per match. Instantly addressable. Works with the deterministic engine — seed + action log is all you need to reproduce any match frame-by-frame.
+
+### Vercel Queues (Evaluated 2026-02-27)
+
+Vercel Queues is a **durable, append-only topic log with fan-out consumers** — the primitive underlying Vercel Workflow.
+
+Key properties:
+- Publish messages to topics; consumer groups subscribe and process in parallel
+- Durable: messages persisted until expiry, with retries and delivery guarantees
+- Fan-out: one topic → multiple independent consumer groups (each gets the full stream)
+- Push mode (Vercel invokes your function) and poll mode (you pull)
+- Idempotency keys for deduplication
+- "Schedule tasks" = delay delivery by seconds to days (NOT sub-second precision)
+
+**Verdict by requirement:**
+
+| Requirement | Fit |
+|---|---|
+| Agent action transport (agent → engine) | ✅ Perfect. Agents publish `{matchId, botId, action}` to a topic. Tick processor subscribes. Durable — no lost actions if consumer crashes. |
+| Match event fan-out (engine → spectators, ELO calc, replay logger) | ✅ Perfect. One topic, multiple consumer groups, each gets the independent stream. |
+| Tick clock at 250ms precision | ❌ No. Not a scheduler. "Delay delivery" means seconds/minutes, not milliseconds. |
+| In-memory game state between ticks | ❌ No. Stateless consumers — state must be serialized to storage every tick. |
+| WebSocket for persistent agent connections | ❌ No. Push/poll model only. |
+
+**Conclusion:** Queues solves the *transport layer* (agent → engine, engine → consumers). It does NOT solve the tick clock problem. These are separable concerns — we can adopt Queues for transport regardless of what we choose for the clock.
+
+**Where Queues slots in:** Agent plugins publish to a Queues topic. The Cloudflare DO (or any other tick loop implementation) subscribes and pops actions at tick time. Match result events publish to a separate topic; Vercel Workflow consumes for lifecycle, replay logger writes to Blob.
+
+### The Full Layered Stack (revised — all tools in natural lane)
+
+```
+Agent Plugin (OpenClaw)
+  │
+  │  POST action to topic
+  ▼
+┌─────────────────────────────────────────────────────────┐
+│  TRANSPORT (Vercel Queues)                               │
+│  Topic: match.{matchId}.actions                          │
+│  - Agent publishes {botId, action, tick}                 │
+│  - Durable, retryable, no lost actions                   │
+│  Topic: match.{matchId}.events                           │
+│  - Engine emits tick results                             │
+│  - Fan-out: spectator SSE, replay logger, lifecycle      │
+└──────┬──────────────────────────────┬───────────────────┘
+       │ consume on tick              │ emit on tick
+       ▼                              ▼
+┌─────────────────────────────────────────────────────────┐
+│  HOT PATH (Cloudflare Workers DO)                        │
+│  engine.cogcage.com                                      │
+│  - MatchEngine DO: one instance per match                │
+│  - Alarm API tick loop (150–300ms, ~10ms precision)      │
+│  - In-memory game state (HP, positions, energy)          │
+│  - Pops from Queues action topic each tick               │
+│  - Publishes to Queues events topic each tick            │
+│  - WebSocket: direct spectator connections               │
+└─────────────────────┬───────────────────────────────────┘
+                      │ match.complete event
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  LIFECYCLE (Vercel Workflow)                             │
+│  Triggered by match.{matchId}.events topic               │
+│  Steps: computeElo → updateLeaderboard → notify         │
+│  Durable: survives deploys and crashes                   │
+└─────────────────────┬───────────────────────────────────┘
+                      │ write replay file
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  ARCHIVE (Vercel Blob)                                   │
+│  replays/{matchId}.json                                  │
+│  seed + full action log = bit-for-bit reproducible      │
+│  CDN-cached permanent URL → shareable replay links      │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│  AGENT STREAM RESILIENCE (Electric Durable Streams)      │
+│  Wraps LLM calls in OpenClaw plugin                      │
+│  Resumable on mobile network drops — no NO_OPs from      │
+│  dropped agent connections                               │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│  APP LAYER (Vercel)                                      │
+│  cogcage.com — landing, armory, lobby, dashboard         │
+│  Upstash Redis — lobby state, armory, waitlist           │
+└─────────────────────────────────────────────────────────┘
+```
+
+Each tool in its natural lane. No tool doing something it wasn't designed for.
+
+**The single remaining non-Vercel component is the Cloudflare DO** — solely because Vercel has no answer for a server-authoritative sub-second tick clock. Every other layer is Vercel-native. If Vercel ships Durable Objects or a sub-second alarm API, we drop CF immediately.
+
+---
+
 ## Open Questions (need Aleks input)
 
 1. **Cloudflare account** — do we have one? `wrangler login` needed to deploy DO.
