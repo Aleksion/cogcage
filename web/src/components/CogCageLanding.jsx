@@ -1383,8 +1383,8 @@ const HeroSection = ({ sectionRef }) => {
       variant,
       meta: { variant, founderCtaVariant },
     });
-    setStatus('error');
-    setMessage('Founder checkout link not configured yet.');
+    setStatus('success');
+    setMessage("You're on the list! We'll email you when the Founder Pack opens.");
   };
 
   const heroCopy = HERO_COPY[variant] || HERO_COPY.value;
@@ -1757,7 +1757,8 @@ const FooterSection = () => {
       variant,
       meta: { variant, founderCtaVariant },
     });
-    setError('Founder checkout link not configured yet.');
+    setSubmittedEmail(trimmed);
+    setSubmitted(true);
   };
 
   return (

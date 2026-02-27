@@ -664,7 +664,7 @@ const Play = () => {
       systemPrompt: botAConfig.systemPrompt,
       loadout: botAConfig.loadout,
       armor: botAConfig.armor,
-      position: { x: 4, y: 10 },
+      position: { x: 6, y: 10 },
       temperature: botAConfig.temperature,
       llmHeaders: buildLlmHeaders(botAConfig),
     };
@@ -675,13 +675,13 @@ const Play = () => {
       systemPrompt: botBConfig.systemPrompt,
       loadout: botBConfig.loadout,
       armor: botBConfig.armor,
-      position: { x: 16, y: 10 },
+      position: { x: 14, y: 10 },
       temperature: botBConfig.temperature,
       llmHeaders: buildLlmHeaders(botBConfig),
     };
 
-    setBotAPos({ x: 1, y: 4 });
-    setBotBPos({ x: 6, y: 3 });
+    setBotAPos({ x: 2, y: 4 }); // (6,10) world → grid(2,4) at 8/20 scale
+    setBotBPos({ x: 5, y: 4 }); // (14,10) world → grid(5,4)
 
     const initLines = [
       `Match initialized. Seed ${seed}.`,
