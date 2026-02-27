@@ -22,6 +22,8 @@ interface FxParticle {
   vz: number;
   ttl: number;
   maxTtl: number;
+  noScale?: boolean; // skip auto-shrink (used for bolt tracers)
+  boltLength?: number; // original Z-length for bolt tracers
 }
 
 /* ── Helpers ──────────────────────────────────────────────────── */
@@ -329,6 +331,28 @@ export class PlayCanvasScene {
     }
   }
 
+  private spawnBolt(sx: number, sy: number, sz: number, tx: number, ty: number, tz: number): void {
+    // Tracer bolt from shooter to target — thin elongated box oriented along the shot path
+    const dx = tx - sx;
+    const dy = ty - sy;
+    const dz = tz - sz;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (dist < 0.01) return;
+
+    const bolt = new pc.Entity('bolt');
+    bolt.addComponent('render', { type: 'box' });
+    // Orient: PlayCanvas Y-up, bolt travels in XZ plane. Rotate around Y to face target.
+    const angleY = Math.atan2(dx, dz) * (180 / Math.PI);
+    bolt.setPosition((sx + tx) / 2, (sy + ty) / 2, (sz + tz) / 2);
+    bolt.setEulerAngles(0, angleY, 0);
+    bolt.setLocalScale(0.07, 0.07, dist); // thin cylinder-like tracer
+    const m = celMat('#27D9E8'); // signal cyan
+    if (bolt.render) bolt.render.meshInstances[0].material = m;
+    this.app.root.addChild(bolt);
+
+    this.fx.push({ entity: bolt, vx: 0, vy: 0, vz: 0, ttl: 0.14, maxTtl: 0.14, noScale: true, boltLength: dist });
+  }
+
   /* ── DOM VFX dispatcher ─────────────────────────────────── */
 
   private dispatchVfx(text: string, color: string): void {
@@ -365,13 +389,27 @@ export class PlayCanvasScene {
     for (const evt of fresh) {
       if (evt.type === 'DAMAGE_APPLIED') {
         const tid = evt.targetId as string;
+        const aid = evt.actorId as string;
+        const isRanged = (evt.data?.base as number) === 16;
         if (tid && this.bots[tid]) {
-          const p = this.bots[tid].root.getPosition();
-          if (evt.data?.base === 16) {
-            this.spawnBurst(p.x, 0.5, p.z, '#00e5ff', 8, 300);
+          const tp = this.bots[tid].root.getPosition();
+          if (isRanged) {
+            // Ranged: bolt tracer from shooter + muzzle flash + big cyan impact
+            if (aid && this.bots[aid]) {
+              const ap = this.bots[aid].root.getPosition();
+              // Muzzle flash at shooter
+              this.spawnBurst(ap.x, 0.8, ap.z, '#27D9E8', 6, 180);
+              // Bolt tracer from shooter to target
+              this.spawnBolt(ap.x, 0.8, ap.z, tp.x, 0.8, tp.z);
+            }
+            // Impact burst at target — large, bright cyan
+            this.spawnBurst(tp.x, 0.5, tp.z, '#27D9E8', 20, 500);
+            this.spawnBurst(tp.x, 0.8, tp.z, '#ffffff', 8, 200);
             this.dispatchVfx('ZZT!', '#27D9E8');
           } else {
-            this.spawnBurst(p.x, 0.5, p.z, '#ff6b35', 12, 400);
+            // Melee: orange/red close-range burst
+            this.spawnBurst(tp.x, 0.5, tp.z, '#ff6b35', 18, 450);
+            this.spawnBurst(tp.x, 0.8, tp.z, '#FFD600', 6, 250);
             this.dispatchVfx('KAPOW!', '#FF4D4D');
           }
         }
@@ -434,16 +472,25 @@ export class PlayCanvasScene {
         p.entity.destroy();
         continue;
       }
-      p.vy -= 8 * dt; // gravity
+      if (!p.noScale) {
+        p.vy -= 8 * dt; // gravity — skip for bolts
+      }
       const pos = p.entity.getPosition();
       p.entity.setPosition(
         pos.x + p.vx * dt,
-        Math.max(0.03, pos.y + p.vy * dt),
+        p.noScale ? pos.y : Math.max(0.03, pos.y + p.vy * dt),
         pos.z + p.vz * dt,
       );
-      const frac = p.ttl / p.maxTtl;
-      const s = 0.06 * frac;
-      p.entity.setLocalScale(s, s, s);
+      if (!p.noScale) {
+        const frac = p.ttl / p.maxTtl;
+        const s = 0.06 * frac;
+        p.entity.setLocalScale(s, s, s);
+      } else if (p.boltLength !== undefined) {
+        // Bolt: fade width but keep length
+        const frac = p.ttl / p.maxTtl;
+        const w = 0.07 * frac;
+        p.entity.setLocalScale(w, w, p.boltLength);
+      }
       alive.push(p);
     }
     this.fx = alive;
