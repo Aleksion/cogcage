@@ -1,10 +1,11 @@
 import type { APIRoute } from 'astro';
-import { getLobby, closeLobby, resolveSnapshot } from '../../../lib/lobby.ts';
+import { getLobby, getRole, closeLobby } from '../../../lib/lobby.ts';
+import { getUserId } from '../../../lib/auth.ts';
 
 export const prerender = false;
 
-/** GET /api/lobby/[id] — get lobby state */
-export const GET: APIRoute = async ({ params }) => {
+/** GET /api/lobby/[id] — get lobby state with viewer role */
+export const GET: APIRoute = async ({ params, cookies }) => {
   const { id } = params;
   if (!id) {
     return new Response(JSON.stringify({ error: 'Missing lobby id' }), {
@@ -22,19 +23,20 @@ export const GET: APIRoute = async ({ params }) => {
       });
     }
 
-    const host = await resolveSnapshot(lobby.hostPlayerId, lobby.hostLoadoutId);
-    let guest = null;
-    if (lobby.guestPlayerId && lobby.guestLoadoutId) {
-      guest = await resolveSnapshot(lobby.guestPlayerId, lobby.guestLoadoutId);
-    }
+    const userId = getUserId({ cookies });
+    const role = getRole(lobby, userId);
 
     return new Response(JSON.stringify({
       id: lobby.id,
-      host,
-      guest,
+      ownerId: lobby.ownerId,
+      challengerId: lobby.challengerId,
+      ownerBot: lobby.ownerBot,
+      challengerBot: lobby.challengerBot ?? null,
+      ownerReady: lobby.ownerReady,
+      challengerReady: lobby.challengerReady,
       status: lobby.status,
-      hostPlayerId: lobby.hostPlayerId,
       createdAt: lobby.createdAt,
+      role,
     }), {
       status: 200,
       headers: { 'content-type': 'application/json' },
@@ -50,16 +52,16 @@ export const GET: APIRoute = async ({ params }) => {
 /** DELETE /api/lobby/[id] — leave/close lobby */
 export const DELETE: APIRoute = async ({ params, cookies }) => {
   const { id } = params;
-  const playerId = cookies.get('moltpit_pid')?.value;
-  if (!id || !playerId) {
-    return new Response(JSON.stringify({ error: 'Missing id or player' }), {
+  const userId = getUserId({ cookies });
+  if (!id || !userId) {
+    return new Response(JSON.stringify({ error: 'Missing id or not authenticated' }), {
       status: 400,
       headers: { 'content-type': 'application/json' },
     });
   }
 
   try {
-    await closeLobby(id, playerId);
+    await closeLobby(id, userId);
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { 'content-type': 'application/json' },

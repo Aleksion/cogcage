@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { listOpenLobbies, createLobby } from '../../../lib/lobby.ts';
+import { getUserId } from '../../../lib/auth.ts';
 
 export const prerender = false;
 
@@ -21,9 +22,9 @@ export const GET: APIRoute = async () => {
 
 /** POST /api/lobby — create a lobby */
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const playerId = cookies.get('moltpit_pid')?.value;
-  if (!playerId) {
-    return new Response(JSON.stringify({ error: 'No player ID' }), {
+  const userId = getUserId({ cookies });
+  if (!userId) {
+    return new Response(JSON.stringify({ error: 'Not authenticated' }), {
       status: 401,
       headers: { 'content-type': 'application/json' },
     });
@@ -39,7 +40,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    const lobby = await createLobby(playerId, loadoutId);
+    const lobby = await createLobby(userId, loadoutId);
     return new Response(JSON.stringify({ lobbyId: lobby.id }), {
       status: 200,
       headers: { 'content-type': 'application/json' },

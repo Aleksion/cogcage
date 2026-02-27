@@ -1,11 +1,11 @@
 import type { APIRoute } from 'astro';
-import { joinLobby } from '../../../../lib/lobby.ts';
+import { updateBot, getLobby, getRole } from '../../../../lib/lobby.ts';
 import { getUserId } from '../../../../lib/auth.ts';
 
 export const prerender = false;
 
-/** POST /api/lobby/[id]/join — join as challenger */
-export const POST: APIRoute = async ({ params, request, cookies }) => {
+/** PUT /api/lobby/[id]/bot — update your bot config (ownership-enforced) */
+export const PUT: APIRoute = async ({ params, request, cookies }) => {
   const { id } = params;
   const userId = getUserId({ cookies });
   if (!id || !userId) {
@@ -16,6 +16,22 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
   }
 
   try {
+    const lobby = await getLobby(id);
+    if (!lobby) {
+      return new Response(JSON.stringify({ error: 'Lobby not found' }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
+    const role = getRole(lobby, userId);
+    if (role === 'spectator') {
+      return new Response(JSON.stringify({ error: 'Forbidden — you are not a participant in this lobby' }), {
+        status: 403,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
     const body = await request.json();
     const { loadoutId } = body;
     if (!loadoutId) {
@@ -25,8 +41,8 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       });
     }
 
-    const lobby = await joinLobby(id, userId, loadoutId);
-    return new Response(JSON.stringify({ ok: true, status: lobby.status }), {
+    const updated = await updateBot(id, userId, loadoutId);
+    return new Response(JSON.stringify({ ok: true, status: updated.status }), {
       status: 200,
       headers: { 'content-type': 'application/json' },
     });

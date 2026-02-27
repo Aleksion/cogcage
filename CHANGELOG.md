@@ -4,6 +4,37 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-27] - feat: Multiplayer ownership — bot config locked per player — TASK-021
+
+**Type:** feat | **Phase:** 2
+
+### Summary
+Fixed the lobby config bug where any player could modify any bot's configuration. Lobbies now enforce ownership: each player can only edit their own bot, opponents get a read-only view, and spectators see both shells without controls. Challenge URLs via `/tank/{lobbyId}` enable direct invitations.
+
+### Changes
+- `web/src/lib/auth.ts` — **New.** Auth helper `getUserId()` extracts userId from request context. Currently uses `moltpit_pid` cookie; wired for Auth.js session (`session.user.id`) when TASK-020 lands.
+- `web/src/lib/lobby.ts` — **Rewritten.** `LobbyRecord` now has `ownerId`, `challengerId`, `ownerBot: BotSnapshot`, `challengerBot?: BotSnapshot`, `ownerReady`, `challengerReady`. Status enum: `'waiting' | 'ready' | 'active' | 'complete'`. New exports: `getRole()`, `updateBot()`, `setReady()`. `createLobby()` and `joinLobby()` resolve loadouts immediately into stored bot snapshots. `startLobbyMatch()` uses stored bots directly (no on-the-fly resolution). `addDummy()` clones owner's bot as mirror match.
+- `web/src/pages/api/lobby/index.ts` — Uses `getUserId()` for auth instead of raw cookie read.
+- `web/src/pages/api/lobby/[id].ts` — GET returns full ownership state (`ownerId`, `challengerId`, `ownerBot`, `challengerBot`, `ownerReady`, `challengerReady`, `role`). DELETE uses `getUserId()`.
+- `web/src/pages/api/lobby/[id]/join.ts` — Uses `getUserId()` for auth. Calls `joinLobby()` which now resolves challengerBot immediately.
+- `web/src/pages/api/lobby/[id]/bot.ts` — **New.** `PUT` endpoint for updating bot config. Enforces ownership: returns 403 if the caller is not a participant. Accepts `{ loadoutId }`, re-resolves from armory.
+- `web/src/pages/api/lobby/[id]/ready.ts` — **New.** `POST` endpoint to toggle ready state. Returns 403 for spectators. Auto-advances lobby to `'ready'` when both players ready up.
+- `web/src/pages/tank/[id].astro` — **New.** Challenge URL page (`/tank/{lobbyId}`). Renders `<Lobby>` component.
+- `web/src/components/Lobby.tsx` — **Rewritten.** Two-panel layout: "Your Shell" (editable, with Configure + Ready buttons) and "Opponent's Shell" (read-only). Spectator mode shows both shells without controls. Challenge URL with copy button for owner. Start button requires both players ready. Extracted `BotPanel` sub-component for DRY rendering.
+- `web/src/components/Dashboard.tsx` — Updated `LobbyInfo` interface for new schema (`ownerId`, `ownerBot`). Lobby creation and join now redirect to `/tank/{id}`. Lobby list shows bot name.
+
+### Breaking Changes
+- `LobbyRecord` schema changed in Redis: `hostPlayerId` → `ownerId`, `guestPlayerId` → `challengerId`, loadout IDs replaced by stored `BotSnapshot` objects. Existing lobbies in Redis will not be readable (2-hour TTL will clear them).
+- Lobby status enum changed: `'in-match'` → `'active'`, `'closed'` → `'complete'`.
+- Lobby GET endpoint response shape changed: `host`/`guest`/`hostPlayerId` → `ownerBot`/`challengerBot`/`ownerId`/`challengerId`/`role`.
+
+### Notes
+- Auth is bridged via `moltpit_pid` cookie until TASK-020 wires Auth.js sessions. The `getUserId()` helper centralizes this — single place to swap when Auth.js lands.
+- The `/lobby/[id]` Astro page still exists for backward compat; `/tank/[id]` is the canonical challenge URL going forward.
+- Spectator mode is read-only. Future: wire to DO WebSocket for live match spectating (TASK-004 already supports this).
+
+---
+
 ## [2026-02-27] - cleanup+feat: Remove client-side match-runner, add connection stats to result screen — TASK-005+006
 
 **Type:** cleanup + feat | **Phase:** 1

@@ -16,13 +16,19 @@ interface BotSnapshot {
   moveCost: number;
 }
 
+type LobbyRole = 'owner' | 'challenger' | 'spectator';
+
 interface LobbyState {
   id: string;
-  host: BotSnapshot | null;
-  guest: BotSnapshot | null;
+  ownerId: string;
+  challengerId?: string;
+  ownerBot: BotSnapshot;
+  challengerBot: BotSnapshot | null;
+  ownerReady: boolean;
+  challengerReady: boolean;
   status: string;
-  hostPlayerId: string;
   createdAt: number;
+  role: LobbyRole;
 }
 
 interface LobbyProps {
@@ -159,6 +165,42 @@ const lobbyStyles = `
     display: block; margin-top: 0.3rem; word-break: break-all;
   }
 
+  .lby-slot.ready-glow {
+    border-color: rgba(46,204,113,0.6);
+    box-shadow: 0 0 20px rgba(46,204,113,0.15);
+  }
+
+  .lby-ready-badge {
+    display: inline-block; font-family: var(--f-display); font-size: 0.7rem;
+    text-transform: uppercase; letter-spacing: 1px;
+    padding: 0.2rem 0.6rem; border-radius: 6px; margin-bottom: 0.5rem;
+  }
+  .lby-ready-badge.is-ready { background: rgba(46,204,113,0.2); color: var(--c-green); }
+  .lby-ready-badge.not-ready { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); }
+
+  .lby-btn.ready {
+    background: var(--c-green); color: #fff; margin-top: 0.6rem;
+  }
+  .lby-btn.unready {
+    background: rgba(255,255,255,0.1); color: #fff; margin-top: 0.6rem;
+  }
+
+  .lby-spectator-banner {
+    text-align: center; padding: 0.6rem 1rem;
+    background: rgba(255,214,0,0.08); border-radius: 8px;
+    font-family: var(--f-mono); font-size: 0.8rem;
+    color: rgba(255,255,255,0.5); margin-bottom: 1.5rem;
+  }
+
+  .lby-copy-btn {
+    font-family: var(--f-mono); font-size: 0.7rem;
+    padding: 0.3rem 0.8rem; background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px; cursor: pointer; margin-top: 0.4rem;
+    transition: background 0.15s;
+  }
+  .lby-copy-btn:hover { background: rgba(255,255,255,0.15); }
+
   .lby-error {
     color: var(--c-red); font-weight: 800; font-size: 0.85rem;
     text-align: center; margin-bottom: 1rem;
@@ -177,6 +219,51 @@ const lobbyStyles = `
   }
 `;
 
+/* ── BotPanel (reused for both sides) ──────────────────────── */
+
+function BotPanel({ bot, label, isOwn, isReady, accentBg }: {
+  bot: BotSnapshot;
+  label: string;
+  isOwn: boolean;
+  isReady: boolean;
+  accentBg: string;
+}) {
+  return (
+    <>
+      <div className="lby-slot-label">{label}{isOwn ? ' (You)' : ''}</div>
+      <span className={`lby-ready-badge ${isReady ? 'is-ready' : 'not-ready'}`}>
+        {isReady ? 'Ready' : 'Not Ready'}
+      </span>
+      <div className="lby-bot-name">{bot.botName}</div>
+      <div className="lby-bot-icons">
+        {bot.cards.map((cid, i) => {
+          const c = getCard(cid);
+          return <span key={i} title={c?.name}>{c?.icon ?? '?'}</span>;
+        })}
+      </div>
+      {bot.skills && bot.skills.length > 0 && (
+        <div className="lby-bot-icons" style={{ fontSize: '0.9rem' }}>
+          {bot.skills.map((sid, i) => {
+            const s = getSkill(sid);
+            return <span key={i} title={s?.name} style={{ padding: '2px 6px', background: accentBg, borderRadius: '6px', fontSize: '0.75rem' }}>{s?.icon ?? '?'} {s?.name ?? sid}</span>;
+          })}
+        </div>
+      )}
+      <div className="lby-bot-stat">
+        Actions: {bot.actionTypes.join(', ')}
+      </div>
+      <div className="lby-bot-stat">
+        Armor: {bot.armor} &middot; Move cost: {bot.moveCost}e
+      </div>
+      {bot.brainPrompt && (
+        <div className="lby-bot-stat" style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.35)' }}>
+          Brain: &ldquo;{bot.brainPrompt.slice(0, 60)}{bot.brainPrompt.length > 60 ? '...' : ''}&rdquo;
+        </div>
+      )}
+    </>
+  );
+}
+
 /* ── Component ──────────────────────────────────────────────── */
 
 export default function Lobby({ lobbyId }: LobbyProps) {
@@ -184,6 +271,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionBusy, setActionBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [matchData, setMatchData] = useState<{ botA: MatchBotConfig; botB: MatchBotConfig; seed: number } | null>(null);
 
   // Inject styles
@@ -202,18 +290,17 @@ export default function Lobby({ lobbyId }: LobbyProps) {
     try {
       const res = await fetch(`/api/lobby/${lobbyId}`);
       if (!res.ok) {
-        if (loading) setError('Lobby not found'); // only show on first load
+        if (loading) setError('Lobby not found');
         setLoading(false);
         return;
       }
       const data = await res.json();
       setLobby(data);
-      setError(''); // clear any prior error on success
+      setError('');
       setLoading(false);
     } catch {
-      if (loading) setError('Connection issue — retrying...'); // only block on first load
+      if (loading) setError('Connection issue — retrying...');
       setLoading(false);
-      // subsequent poll failures are ignored — stale data stays visible
     }
   }, [lobbyId, loading]);
 
@@ -226,12 +313,23 @@ export default function Lobby({ lobbyId }: LobbyProps) {
   // If match started externally, stop polling
   useEffect(() => {
     if (matchData) return;
-    if (lobby?.status === 'in-match') {
-      // Someone else started — try to get match data
+    if (lobby?.status === 'active') {
       handleStartMatch();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lobby?.status]);
+
+  const challengeUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/tank/${lobbyId}`
+    : '';
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(challengeUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  };
 
   const handleAddDummy = async () => {
     setActionBusy(true);
@@ -240,6 +338,24 @@ export default function Lobby({ lobbyId }: LobbyProps) {
       const res = await fetch(`/api/lobby/${lobbyId}/dummy`, { method: 'POST' });
       const data = await res.json();
       if (!data.ok) setError(data.error || 'Failed to add dummy');
+      else fetchLobby();
+    } catch {
+      setError('Network error');
+    }
+    setActionBusy(false);
+  };
+
+  const handleReady = async (ready: boolean) => {
+    setActionBusy(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/lobby/${lobbyId}/ready`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ready }),
+      });
+      const data = await res.json();
+      if (!data.ok) setError(data.error || 'Failed to update ready state');
       else fetchLobby();
     } catch {
       setError('Network error');
@@ -297,7 +413,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
       <div className="lby-root">
         <header className="lby-header">
           <a href="/" className="lby-logo">The Molt Pit</a>
-          <span className="lby-title">Lobby</span>
+          <span className="lby-title">The Tank</span>
           <div />
         </header>
         <div className="lby-loading">Loading lobby...</div>
@@ -310,7 +426,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
       <div className="lby-root">
         <header className="lby-header">
           <a href="/" className="lby-logo">The Molt Pit</a>
-          <span className="lby-title">Lobby</span>
+          <span className="lby-title">The Tank</span>
           <div />
         </header>
         <div className="lby-loading">
@@ -323,58 +439,73 @@ export default function Lobby({ lobbyId }: LobbyProps) {
     );
   }
 
-  const isReady = lobby.status === 'ready';
-  const hasGuest = !!lobby.guest;
-  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const role = lobby.role;
+  const isParticipant = role === 'owner' || role === 'challenger';
+  const bothReady = lobby.status === 'ready';
+  const hasChallenger = !!lobby.challengerBot;
+
+  // Determine which bot is "yours" and which is "opponent's"
+  const myBot = role === 'owner' ? lobby.ownerBot : role === 'challenger' ? lobby.challengerBot : null;
+  const myReady = role === 'owner' ? lobby.ownerReady : lobby.challengerReady;
+  const opponentBot = role === 'owner' ? lobby.challengerBot : lobby.ownerBot;
+  const opponentReady = role === 'owner' ? lobby.challengerReady : lobby.ownerReady;
 
   return (
     <div className="lby-root">
       {/* Header */}
       <header className="lby-header">
         <a href="/" className="lby-logo">The Molt Pit</a>
-        <span className="lby-title">Lobby</span>
-        <button className="lby-leave-btn" onClick={handleLeave}>Leave</button>
+        <span className="lby-title">The Tank</span>
+        {isParticipant ? (
+          <button className="lby-leave-btn" onClick={handleLeave}>Leave</button>
+        ) : (
+          <div />
+        )}
       </header>
 
       <main className="lby-shell">
+        {role === 'spectator' && (
+          <div className="lby-spectator-banner">
+            Spectator mode — you are watching this match
+          </div>
+        )}
+
         {error && <div className="lby-error">{error}</div>}
 
         <div className="lby-slots">
-          {/* SLOT 1 — Host */}
-          <div className={`lby-slot ${lobby.host ? 'filled' : 'empty'}`}>
-            <div className="lby-slot-label">Slot 1 (You)</div>
-            {lobby.host ? (
+          {/* LEFT PANEL — Your Shell (or Owner's shell for spectators) */}
+          <div className={`lby-slot ${myBot || role === 'spectator' ? (myReady || (role === 'spectator' && lobby.ownerReady) ? 'filled ready-glow' : 'filled') : 'empty'}`}>
+            {role === 'spectator' ? (
+              /* Spectator sees owner's bot read-only */
+              <BotPanel
+                bot={lobby.ownerBot}
+                label="Owner's Shell"
+                isOwn={false}
+                isReady={lobby.ownerReady}
+                accentBg="rgba(0,229,255,0.1)"
+              />
+            ) : myBot ? (
               <>
-                <div className="lby-bot-name">{lobby.host.botName}</div>
-                <div className="lby-bot-icons">
-                  {lobby.host.cards.map((cid, i) => {
-                    const c = getCard(cid);
-                    return <span key={i} title={c?.name}>{c?.icon ?? '?'}</span>;
-                  })}
-                </div>
-                {lobby.host.skills && lobby.host.skills.length > 0 && (
-                  <div className="lby-bot-icons" style={{ fontSize: '0.9rem' }}>
-                    {lobby.host.skills.map((sid, i) => {
-                      const s = getSkill(sid);
-                      return <span key={i} title={s?.name} style={{ padding: '2px 6px', background: 'rgba(0,229,255,0.1)', borderRadius: '6px', fontSize: '0.75rem' }}>{s?.icon ?? '?'} {s?.name ?? sid}</span>;
-                    })}
-                  </div>
-                )}
-                <div className="lby-bot-stat">
-                  Actions: {lobby.host.actionTypes.join(', ')}
-                </div>
-                <div className="lby-bot-stat">
-                  Armor: {lobby.host.armor} &middot; Move cost: {lobby.host.moveCost}e
-                </div>
-                {lobby.host.brainPrompt && (
-                  <div className="lby-bot-stat" style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.35)' }}>
-                    Brain: &ldquo;{lobby.host.brainPrompt.slice(0, 60)}{lobby.host.brainPrompt.length > 60 ? '...' : ''}&rdquo;
-                  </div>
-                )}
-                <div style={{ marginTop: 'auto', paddingTop: '0.8rem' }}>
-                  <a href={`/armory?returnTo=/lobby/${lobbyId}`} className="lby-btn configure">
-                    Configure Bot
+                <BotPanel
+                  bot={myBot}
+                  label="Your Shell"
+                  isOwn={true}
+                  isReady={myReady}
+                  accentBg="rgba(0,229,255,0.1)"
+                />
+                <div style={{ marginTop: 'auto', paddingTop: '0.8rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <a href={`/armory?returnTo=/tank/${lobbyId}`} className="lby-btn configure">
+                    Configure
                   </a>
+                  {hasChallenger && (
+                    <button
+                      className={`lby-btn ${myReady ? 'unready' : 'ready'}`}
+                      onClick={() => handleReady(!myReady)}
+                      disabled={actionBusy}
+                    >
+                      {myReady ? 'Unready' : 'Ready'}
+                    </button>
+                  )}
                 </div>
               </>
             ) : (
@@ -382,65 +513,64 @@ export default function Lobby({ lobbyId }: LobbyProps) {
             )}
           </div>
 
-          {/* SLOT 2 — Guest */}
-          <div className={`lby-slot ${hasGuest ? 'guest-filled' : 'empty'}`}>
-            <div className="lby-slot-label">Slot 2</div>
-            {hasGuest && lobby.guest ? (
-              <>
-                <div className="lby-bot-name">{lobby.guest.botName}</div>
-                <div className="lby-bot-icons">
-                  {lobby.guest.cards.map((cid, i) => {
-                    const c = getCard(cid);
-                    return <span key={i} title={c?.name}>{c?.icon ?? '?'}</span>;
-                  })}
-                </div>
-                {lobby.guest.skills && lobby.guest.skills.length > 0 && (
-                  <div className="lby-bot-icons" style={{ fontSize: '0.9rem' }}>
-                    {lobby.guest.skills.map((sid, i) => {
-                      const s = getSkill(sid);
-                      return <span key={i} title={s?.name} style={{ padding: '2px 6px', background: 'rgba(235,77,75,0.1)', borderRadius: '6px', fontSize: '0.75rem' }}>{s?.icon ?? '?'} {s?.name ?? sid}</span>;
-                    })}
-                  </div>
-                )}
-                <div className="lby-bot-stat">
-                  Actions: {lobby.guest.actionTypes.join(', ')}
-                </div>
-                <div className="lby-bot-stat">
-                  Armor: {lobby.guest.armor} &middot; Move cost: {lobby.guest.moveCost}e
-                </div>
-                {lobby.guest.brainPrompt && (
-                  <div className="lby-bot-stat" style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.35)' }}>
-                    Brain: &ldquo;{lobby.guest.brainPrompt.slice(0, 60)}{lobby.guest.brainPrompt.length > 60 ? '...' : ''}&rdquo;
-                  </div>
-                )}
-              </>
+          {/* RIGHT PANEL — Opponent's Shell (or empty waiting slot) */}
+          <div className={`lby-slot ${hasChallenger ? (opponentReady || (role === 'spectator' && lobby.challengerReady) ? 'guest-filled ready-glow' : 'guest-filled') : 'empty'}`}>
+            {role === 'spectator' && hasChallenger && lobby.challengerBot ? (
+              /* Spectator sees challenger's bot read-only */
+              <BotPanel
+                bot={lobby.challengerBot}
+                label="Challenger's Shell"
+                isOwn={false}
+                isReady={lobby.challengerReady}
+                accentBg="rgba(235,77,75,0.1)"
+              />
+            ) : hasChallenger && opponentBot ? (
+              /* Participant sees opponent read-only */
+              <BotPanel
+                bot={opponentBot}
+                label="Opponent's Shell"
+                isOwn={false}
+                isReady={opponentReady}
+                accentBg="rgba(235,77,75,0.1)"
+              />
             ) : (
+              /* No challenger yet */
               <>
+                <div className="lby-slot-label">Challenger</div>
                 <div className="lby-waiting-text">Waiting for opponent...</div>
-                <button
-                  className="lby-btn dummy"
-                  onClick={handleAddDummy}
-                  disabled={actionBusy}
-                >
-                  {actionBusy ? '...' : '+ Add Dummy'}
-                </button>
-                <div className="lby-share">
-                  Or share this link to invite a friend:
-                  <code>{shareUrl}</code>
-                </div>
+                {role === 'owner' && (
+                  <>
+                    <button
+                      className="lby-btn dummy"
+                      onClick={handleAddDummy}
+                      disabled={actionBusy}
+                    >
+                      {actionBusy ? '...' : '+ Add Dummy'}
+                    </button>
+                    <div className="lby-share">
+                      Share this challenge link:
+                      <code>{challengeUrl}</code>
+                      <button className="lby-copy-btn" onClick={handleCopyUrl}>
+                        {copied ? 'Copied!' : 'Copy URL'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
         </div>
 
-        {/* START MATCH */}
-        <button
-          className="lby-btn start"
-          disabled={!isReady || actionBusy}
-          onClick={handleStartMatch}
-        >
-          {actionBusy ? 'Starting...' : 'Start Match'}
-        </button>
+        {/* START MATCH — only for participants when both ready */}
+        {isParticipant && (
+          <button
+            className="lby-btn start"
+            disabled={!bothReady || actionBusy}
+            onClick={handleStartMatch}
+          >
+            {actionBusy ? 'Starting...' : bothReady ? 'Start Match' : 'Waiting for both players to ready up...'}
+          </button>
+        )}
       </main>
     </div>
   );

@@ -4,16 +4,6 @@ import { loadoutToMatchConfig, getCard } from './cards.ts';
 
 /* ── Types ──────────────────────────────────────────────────── */
 
-export interface LobbyRecord {
-  id: string;
-  hostPlayerId: string;
-  hostLoadoutId: string;
-  guestPlayerId?: string;
-  guestLoadoutId?: string;
-  status: 'waiting' | 'ready' | 'in-match' | 'closed';
-  createdAt: number;
-}
-
 export interface BotSnapshot {
   botName: string;
   brainPrompt: string;
@@ -23,6 +13,21 @@ export interface BotSnapshot {
   armor: 'light' | 'medium' | 'heavy';
   moveCost: number;
 }
+
+export interface LobbyRecord {
+  id: string;
+  ownerId: string;              // userId of creator
+  challengerId?: string;        // userId of opponent (set on join)
+  ownerBot: BotSnapshot;        // owner's bot — only owner can edit
+  challengerBot?: BotSnapshot;  // challenger's bot — only challenger can edit
+  ownerReady: boolean;
+  challengerReady: boolean;
+  status: 'waiting' | 'ready' | 'active' | 'complete';
+  createdAt: number;
+}
+
+/** Role the current viewer has in a lobby. */
+export type LobbyRole = 'owner' | 'challenger' | 'spectator';
 
 const LOBBY_TTL = 7200; // 2 hours
 const OPEN_SET_KEY = 'lobbies:open';
@@ -62,21 +67,34 @@ export async function resolveSnapshot(
   };
 }
 
-/* ── CRUD ───────────────────────────────────────────────────── */
+/* ── Helpers ────────────────────────────────────────────────── */
 
 async function saveLobby(lobby: LobbyRecord): Promise<void> {
   await redis.set(lobbyKey(lobby.id), JSON.stringify(lobby), { ex: LOBBY_TTL });
 }
 
+export function getRole(lobby: LobbyRecord, userId: string | null): LobbyRole {
+  if (userId && userId === lobby.ownerId) return 'owner';
+  if (userId && userId === lobby.challengerId) return 'challenger';
+  return 'spectator';
+}
+
+/* ── CRUD ───────────────────────────────────────────────────── */
+
 export async function createLobby(
-  hostPlayerId: string,
-  hostLoadoutId: string,
+  ownerId: string,
+  loadoutId: string,
 ): Promise<LobbyRecord> {
+  const ownerBot = await resolveSnapshot(ownerId, loadoutId);
+  if (!ownerBot) throw new Error('Could not resolve loadout');
+
   const id = generateId();
   const lobby: LobbyRecord = {
     id,
-    hostPlayerId,
-    hostLoadoutId,
+    ownerId,
+    ownerBot,
+    ownerReady: false,
+    challengerReady: false,
     status: 'waiting',
     createdAt: Date.now(),
   };
@@ -108,29 +126,90 @@ export async function listOpenLobbies(limit = 20): Promise<LobbyRecord[]> {
 
 export async function joinLobby(
   lobbyId: string,
-  guestPlayerId: string,
-  guestLoadoutId: string,
+  challengerId: string,
+  loadoutId: string,
 ): Promise<LobbyRecord> {
   const lobby = await getLobby(lobbyId);
   if (!lobby) throw new Error('Lobby not found');
   if (lobby.status !== 'waiting') throw new Error('Lobby not available');
-  if (lobby.guestPlayerId) throw new Error('Lobby full');
+  if (lobby.challengerId) throw new Error('Lobby full');
+  if (challengerId === lobby.ownerId) throw new Error('Cannot join your own lobby');
 
-  lobby.guestPlayerId = guestPlayerId;
-  lobby.guestLoadoutId = guestLoadoutId;
-  lobby.status = 'ready';
+  const challengerBot = await resolveSnapshot(challengerId, loadoutId);
+  if (!challengerBot) throw new Error('Could not resolve loadout');
+
+  lobby.challengerId = challengerId;
+  lobby.challengerBot = challengerBot;
   await saveLobby(lobby);
   await redis.zrem(OPEN_SET_KEY, lobbyId);
+  return lobby;
+}
+
+export async function updateBot(
+  lobbyId: string,
+  userId: string,
+  loadoutId: string,
+): Promise<LobbyRecord> {
+  const lobby = await getLobby(lobbyId);
+  if (!lobby) throw new Error('Lobby not found');
+
+  const role = getRole(lobby, userId);
+  if (role === 'spectator') throw new Error('Forbidden');
+
+  const bot = await resolveSnapshot(userId, loadoutId);
+  if (!bot) throw new Error('Could not resolve loadout');
+
+  if (role === 'owner') {
+    lobby.ownerBot = bot;
+    lobby.ownerReady = false; // editing resets ready
+  } else {
+    lobby.challengerBot = bot;
+    lobby.challengerReady = false;
+  }
+
+  await saveLobby(lobby);
+  return lobby;
+}
+
+export async function setReady(
+  lobbyId: string,
+  userId: string,
+  ready: boolean,
+): Promise<LobbyRecord> {
+  const lobby = await getLobby(lobbyId);
+  if (!lobby) throw new Error('Lobby not found');
+
+  const role = getRole(lobby, userId);
+  if (role === 'spectator') throw new Error('Forbidden');
+
+  if (role === 'owner') {
+    lobby.ownerReady = ready;
+  } else {
+    lobby.challengerReady = ready;
+  }
+
+  // Auto-advance to 'ready' when both players are ready
+  if (lobby.ownerReady && lobby.challengerReady && lobby.challengerId) {
+    lobby.status = 'ready';
+  } else if (lobby.challengerId) {
+    // Revert if someone un-readied
+    lobby.status = 'waiting';
+  }
+
+  await saveLobby(lobby);
   return lobby;
 }
 
 export async function addDummy(lobbyId: string): Promise<LobbyRecord> {
   const lobby = await getLobby(lobbyId);
   if (!lobby) throw new Error('Lobby not found');
-  if (lobby.guestPlayerId) throw new Error('Guest slot already filled');
+  if (lobby.challengerId) throw new Error('Challenger slot already filled');
 
-  lobby.guestPlayerId = lobby.hostPlayerId;
-  lobby.guestLoadoutId = lobby.hostLoadoutId;
+  // Mirror match: clone the owner's bot
+  lobby.challengerId = lobby.ownerId;
+  lobby.challengerBot = { ...lobby.ownerBot, botName: lobby.ownerBot.botName + ' (Mirror)' };
+  lobby.challengerReady = true;
+  lobby.ownerReady = true;
   lobby.status = 'ready';
   await saveLobby(lobby);
   await redis.zrem(OPEN_SET_KEY, lobbyId);
@@ -143,13 +222,12 @@ export async function startLobbyMatch(
   const lobby = await getLobby(lobbyId);
   if (!lobby) throw new Error('Lobby not found');
   if (lobby.status !== 'ready') throw new Error('Lobby not ready');
-  if (!lobby.guestPlayerId || !lobby.guestLoadoutId) throw new Error('Guest not set');
+  if (!lobby.challengerId || !lobby.challengerBot) throw new Error('Challenger not set');
 
-  const botA = await resolveSnapshot(lobby.hostPlayerId, lobby.hostLoadoutId);
-  const botB = await resolveSnapshot(lobby.guestPlayerId, lobby.guestLoadoutId);
-  if (!botA || !botB) throw new Error('Could not resolve loadouts');
+  const botA = lobby.ownerBot;
+  const botB = lobby.challengerBot;
 
-  lobby.status = 'in-match';
+  lobby.status = 'active';
   await saveLobby(lobby);
   await redis.zrem(OPEN_SET_KEY, lobbyId);
 
@@ -164,13 +242,15 @@ export async function closeLobby(
   const lobby = await getLobby(lobbyId);
   if (!lobby) return;
 
-  if (playerId === lobby.hostPlayerId) {
-    lobby.status = 'closed';
+  if (playerId === lobby.ownerId) {
+    lobby.status = 'complete';
     await saveLobby(lobby);
     await redis.zrem(OPEN_SET_KEY, lobbyId);
-  } else if (playerId === lobby.guestPlayerId) {
-    lobby.guestPlayerId = undefined;
-    lobby.guestLoadoutId = undefined;
+  } else if (playerId === lobby.challengerId) {
+    lobby.challengerId = undefined;
+    lobby.challengerBot = undefined;
+    lobby.challengerReady = false;
+    lobby.ownerReady = false;
     lobby.status = 'waiting';
     await saveLobby(lobby);
     await redis.zadd(OPEN_SET_KEY, { score: lobby.createdAt, member: lobbyId });

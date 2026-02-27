@@ -13,9 +13,9 @@ interface SavedLoadout {
 
 interface LobbyInfo {
   id: string;
-  hostPlayerId: string;
-  hostLoadoutId: string;
+  ownerId: string;
   status: string;
+  ownerBot?: { botName: string };
   createdAt: number;
 }
 
@@ -242,7 +242,7 @@ export default function Dashboard() {
       });
       const data = await res.json();
       if (data.lobbyId) {
-        window.location.href = `/lobby/${data.lobbyId}`;
+        window.location.href = `/tank/${data.lobbyId}`;
       } else {
         setError(data.error || 'Failed to create lobby');
         setCreating(false);
@@ -268,7 +268,7 @@ export default function Dashboard() {
       });
       const data = await res.json();
       if (data.ok) {
-        window.location.href = `/lobby/${lobbyId}`;
+        window.location.href = `/tank/${lobbyId}`;
       } else {
         setError(data.error || 'Failed to join');
         setJoining(null);
@@ -280,7 +280,7 @@ export default function Dashboard() {
   };
 
   const pid = typeof document !== 'undefined' ? getPlayerId() : '';
-  const otherLobbies = lobbies.filter((l) => l.hostPlayerId !== pid);
+  const otherLobbies = lobbies.filter((l) => l.ownerId !== pid);
 
   return (
     <div className="dash-root">
@@ -351,7 +351,7 @@ export default function Dashboard() {
             {otherLobbies.map((lobby) => (
               <div key={lobby.id} className="dash-lobby-row">
                 <div>
-                  <span className="dash-lobby-host">Lobby</span>
+                  <span className="dash-lobby-host">{lobby.ownerBot?.botName ?? 'Lobby'}</span>
                   <span className="dash-lobby-vs"> vs ???</span>
                 </div>
                 <button
