@@ -1155,11 +1155,34 @@ const Play = () => {
           </div>
 
           {/* PlayCanvas 3D arena */}
-          <div style={{ position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto 1rem', height: pcActive ? '560px' : '0', overflow: 'hidden', borderRadius: '14px' }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto 1rem', height: pcActive ? '560px' : '0', overflow: 'hidden', borderRadius: '14px', border: '4px solid #1A1A1A', boxShadow: '8px 8px 0 #1A1A1A' }}>
             <canvas
               ref={playCanvasRef}
               style={{ width: '100%', height: '100%', display: 'block' }}
             />
+            {/* Comic art VFX overlay — POW!/BANG! words over the 3D canvas */}
+            {vfxEvents.map((v) => (
+              <div
+                key={v.id}
+                className={`vfx-popup ${v.type}`}
+                style={{
+                  position: 'absolute',
+                  left: `${15 + (v.cell.x / 8) * 70}%`,
+                  top: `${20 + (v.cell.y / 8) * 50}%`,
+                  transform: 'translate(-50%, -50%)',
+                  color: v.color,
+                  fontSize: v.type === 'ko' ? '5rem' : '2.8rem',
+                  fontFamily: 'Bangers, display',
+                  letterSpacing: '2px',
+                  textShadow: '-3px -3px 0 #1A1A1A, 3px -3px 0 #1A1A1A, -3px 3px 0 #1A1A1A, 3px 3px 0 #1A1A1A',
+                  pointerEvents: 'none',
+                  zIndex: 10,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {v.text}
+              </div>
+            ))}
           </div>
 
           <div className="match-grid">
