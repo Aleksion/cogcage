@@ -155,19 +155,19 @@ DELETE /api/sessions/:id/participants/:pid
   → { ok }
 ```
 
-### Match Relay
+### Molt Relay
 
 ```
 POST /api/sessions/:id/snapshot
-  body: { matchId, crawlerAName, crawlerBName, snapshot: MoltSnapshot }
+  body: { moltId, crawlerAName, crawlerBName, snapshot: MoltSnapshot }
   → { ok }
 
 GET /api/sessions/:id/snapshot
-  → { matchId, crawlerAName, crawlerBName, snapshot }
+  → { moltId, crawlerAName, crawlerBName, snapshot }
 
-POST /api/sessions/:id/match/:matchId/complete
+POST /api/sessions/:id/molt/:moltId/complete
   body: { winnerId, scoreA, scoreB, hostParticipantId }
-  → { nextMatchId, ladder, done: boolean }
+  → { nextMoltId, ladder, done: boolean }
 ```
 
 ---
@@ -200,10 +200,10 @@ POST /api/sessions/:id/match/:matchId/complete
 - Implement all /api/sessions/* routes
 - Test: create → join → get → start → bracket generated
 
-### Phase 2: Match Relay (1h)
+### Phase 2: Molt Relay (1h)
 - POST /api/sessions/:id/snapshot — host writes
 - GET /api/sessions/:id/snapshot — spectators read
-- POST /api/sessions/:id/match/:id/complete — advance bracket
+- POST /api/sessions/:id/molt/:id/complete — advance bracket
 
 ### Phase 3: Host Molt Runner (2h)
 - Modify Play.tsx or new SessionMolt component

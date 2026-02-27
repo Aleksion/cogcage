@@ -56,7 +56,7 @@ Owner sends this to their opponent. Opponent clicks, joins as challenger, config
 ### 6. Spectator mode
 If you open a tank URL and you're neither owner nor challenger (or not signed in):
 - Read-only view of both shells
-- Can watch the match in real time via DO WebSocket (TASK-004)
+- Can watch the molt in real time via DO WebSocket (TASK-004)
 - No config controls shown at all
 
 ## Acceptance Criteria
@@ -64,7 +64,7 @@ If you open a tank URL and you're neither owner nor challenger (or not signed in
 - [ ] Opponent clicks URL → joins as challenger
 - [ ] Each player can only edit their own crawler config
 - [ ] Trying to edit opponent's config returns 403
-- [ ] Both players must mark "Ready" before match starts
+- [ ] Both players must mark "Ready" before molt starts
 - [ ] Signed-out users see spectator-only view
 - [ ] Build passes: `npm --prefix web run build`
 - [ ] PR opened with CHANGELOG entry

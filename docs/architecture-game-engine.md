@@ -6,7 +6,7 @@
 
 ## The Core Constraint
 
-The game engine must tick at a **fixed rate (150–300ms per tick)** regardless of agent think time.  
+The game engine must tick at a **fixed rate (150–300ms per tick)** regardless of crawler think time.  
 This is the immutable design principle. See `docs/core-thesis.md`.
 
 This constraint rules out anything that runs inside a single HTTP request-response cycle.  
@@ -19,7 +19,7 @@ Vercel serverless functions are stateless and max out at ~60s. They cannot hold 
 For each live molt:
 1. **Persistent in-memory state** — HP, positions, queue depths, current tick
 2. **Reliable clock** — fire every 150–300ms, don't drift
-3. **Per-bot action queue** — push from agent, pop on tick
+3. **Per-crawler claw queue** — push from crawler, pop on tick
 4. **Fan-out to spectators** — broadcast game state after each tick (SSE or WebSocket)
 5. **Deterministic replay** — bit-for-bit reproducible from seed + action log
 
@@ -30,7 +30,7 @@ For each live molt:
 ### What Are They
 Cloudflare Workers are stateless compute at the edge. Durable Objects (DOs) are the exception:  
 each DO is a single-instance worker with **colocated compute + storage** and a **globally unique ID**.  
-Every request to `match-abc123` routes to the same physical instance, anywhere in the world.
+Every request to `molt-abc123` routes to the same physical instance, anywhere in the world.
 
 ### Why They're Perfect For This
 
@@ -106,7 +106,7 @@ OpenClaw Plugin (background service)
 
 ### Costs
 - Durable Objects: $0.20/million requests + $0.20/GB-month storage (SQLite)
-- Alarm calls: essentially free at match scale
+- Alarm calls: essentially free at molt scale
 - Free tier covers ~10M requests/month
 
 ### Migration Path
@@ -139,7 +139,7 @@ If we don't want to introduce Cloudflare:
 | Infra complexity | Redis + QStash (both Upstash — already have account) | New Cloudflare account + wrangler |
 | WebSocket support | No — SSE polling only | Full WebSocket (hibernation API) |
 | Replay | Redis sorted set per tick | SQLite built into DO |
-| Cold start | Vercel function cold starts possible | DO stays warm during match |
+| Cold start | Vercel function cold starts possible | DO stays warm during molt |
 | Cost at scale | ~$3/10M requests (Upstash) | ~$0.20/10M (Cloudflare) |
 
 ### Why QStash Is a Short-Term Solution, Not Long-Term
@@ -192,7 +192,7 @@ const result = await streamText({
                     │  - /api/waitlist              │
                     │  - Redis (Upstash) for above  │
                     └──────────────┬──────────────┘
-                                   │  match start
+                                   │  molt start
                                    ▼
                     ┌─────────────────────────────┐
                     │   Cloudflare Workers DO       │
@@ -257,7 +257,7 @@ export async function moltLifecycle(moltId: string) {
 - Each step invocation has queue + serialize + network overhead: conservatively 100–200ms per step
 - That overhead alone exceeds our entire 250ms tick budget before game logic runs
 - No in-memory state between steps — everything serialized to managed DB on each tick
-- No WebSocket API — agent plugins cannot maintain a persistent connection
+- No WebSocket API — crawler plugins cannot maintain a persistent connection
 
 **Verdict for molt lifecycle: YES. This is the right tool.**
 Workflow is ideal for the cold path:
@@ -303,7 +303,7 @@ Key properties:
 | In-memory game state between ticks | ❌ No. Stateless consumers — state must be serialized to storage every tick. |
 | WebSocket for persistent crawler connections | ❌ No. Push/poll model only. |
 
-**Conclusion:** Queues solves the *transport layer* (agent → engine, engine → consumers). It does NOT solve the tick clock problem. These are separable concerns — we can adopt Queues for transport regardless of what we choose for the clock.
+**Conclusion:** Queues solves the *transport layer* (crawler → engine, engine → consumers). It does NOT solve the tick clock problem. These are separable concerns — we can adopt Queues for transport regardless of what we choose for the clock.
 
 **Where Queues slots in:** Crawler plugins publish to a Queues topic. The Cloudflare DO (or any other tick loop implementation) subscribes and pops claws at tick time. Molt result events publish to a separate topic; Vercel Workflow consumes for lifecycle, replay logger writes to Blob.
 

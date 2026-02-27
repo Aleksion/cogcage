@@ -35,7 +35,7 @@ Derived:
 - `distance(a,b)` Euclidean, quantized to 0.1
 
 ## 4) Action Economy
-Each decision window is every `300ms` (3 ticks). Agent may emit one action.
+Each decision window is every `300ms` (3 ticks). Crawler may emit one claw.
 
 ### Action Costs / Cooldowns
 - `MOVE(dir)` — cost 4 energy, no cooldown

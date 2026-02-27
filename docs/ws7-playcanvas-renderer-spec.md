@@ -17,7 +17,7 @@ This is the visual identity of The Molt Pit. The game should feel like Real Stee
 
 - **Package:** `@playcanvas/engine` npm — NOT the cloud editor. Standalone engine only.
 - **Framework:** Astro + React. PlayCanvas mounts into a `<canvas>` via `useRef`.
-- **Renderer-agnostic engine:** `web/src/lib/ws2/engine.ts` + `match-runner.ts` emit `MatchSnapshot` objects. The PlayCanvas renderer reads those snapshots and drives visuals. No changes to game logic.
+- **Renderer-agnostic engine:** `web/src/lib/ws2/engine.ts` + `molt-runner.ts` emit `MoltSnapshot` objects. The PlayCanvas renderer reads those snapshots and drives visuals. No changes to game logic.
 - **CSS grid fallback:** Keep the existing CSS grid. If PlayCanvas fails to load, fall back silently.
 - **Build must stay clean:** `npm --prefix web run build` must pass.
 
