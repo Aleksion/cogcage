@@ -1,0 +1,225 @@
+---
+export const prerender = false;
+
+// Server-side: fetch ops data from our own /api/ops endpoint
+const key = import.meta.env.COGCAGE_OPS_KEY ?? '';
+const baseUrl = import.meta.env.SITE ?? 'http://localhost:4321';
+
+let data: any = null;
+let fetchError: string | null = null;
+
+try {
+  const url = new URL('/api/ops', baseUrl);
+  if (key) url.searchParams.set('key', key);
+  const res = await fetch(url.toString(), {
+    headers: key ? { 'x-ops-key': key } : {},
+  });
+  if (res.ok) {
+    data = await res.json();
+  } else if (res.status === 401) {
+    fetchError = 'Unauthorized — set COGCAGE_OPS_KEY env var.';
+  } else {
+    fetchError = `API returned ${res.status}`;
+  }
+} catch (e: unknown) {
+  fetchError = e instanceof Error ? e.message : 'Unknown fetch error';
+}
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CogCage Ops Log</title>
+  <style>
+    :root {
+      --bg: #0e0e0e;
+      --surface: #1a1a1a;
+      --border: #2a2a2a;
+      --text: #e0e0e0;
+      --muted: #888;
+      --green: #2ecc71;
+      --red: #eb4d4b;
+      --yellow: #ffd600;
+      --cyan: #27d9e8;
+      --mono: 'Courier New', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 1.5rem;
+    }
+    h1 { font-size: 1.1rem; color: var(--yellow); margin-bottom: 1.2rem; letter-spacing: 0.05em; }
+    h2 { font-size: 0.85rem; color: var(--cyan); margin: 1.5rem 0 0.5rem; letter-spacing: 0.08em; text-transform: uppercase; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1.2rem; }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.75rem 1rem;
+    }
+    .stat .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .stat .value { font-size: 1.4rem; margin-top: 0.15rem; color: var(--green); }
+    .stat .value.red { color: var(--red); }
+    .stat .value.yellow { color: var(--yellow); }
+    .log-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      overflow-x: auto;
+    }
+    .log-block .file-header {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.4rem;
+    }
+    .log-line {
+      padding: 2px 0;
+      border-bottom: 1px solid #1e1e1e;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .log-line:last-child { border-bottom: none; }
+    .level-error { color: var(--red); }
+    .level-warn { color: var(--yellow); }
+    .level-info { color: var(--text); }
+    .level-debug { color: var(--muted); }
+    .error-box {
+      background: #2a1010;
+      border: 1px solid var(--red);
+      border-radius: 4px;
+      padding: 1rem;
+      color: var(--red);
+    }
+    .health-ok { color: var(--green); }
+    .health-warn { color: var(--yellow); }
+    .health-err { color: var(--red); }
+    .ts { color: var(--muted); }
+    .refresh { float: right; color: var(--muted); font-size: 11px; }
+    .section { margin-bottom: 0.3rem; }
+  </style>
+</head>
+<body>
+
+<h1>⚙ COGCAGE OPS LOG <span class="refresh">auto-refresh: <a href="/ops-log" style="color:var(--cyan)">↻</a></span></h1>
+
+{fetchError ? (
+  <div class="error-box">Error: {fetchError}</div>
+) : data ? (
+  <>
+    <!-- Funnel counts -->
+    <h2>Funnel</h2>
+    <div class="grid">
+      <div class="stat">
+        <div class="label">Waitlist Leads</div>
+        <div class="value">{data.funnel?.waitlistLeads ?? data.redisFunnel?.waitlistLeads ?? '—'}</div>
+      </div>
+      <div class="stat">
+        <div class="label">Founder Intents</div>
+        <div class="value yellow">{data.funnel?.founderIntents ?? data.redisFunnel?.founderIntents ?? '—'}</div>
+      </div>
+      <div class="stat">
+        <div class="label">Conversions</div>
+        <div class="value yellow">{data.funnel?.conversionEvents ?? data.redisFunnel?.conversionEvents ?? '—'}</div>
+      </div>
+    </div>
+
+    <!-- Storage health -->
+    {data.reliability && (
+      <>
+        <h2>Storage Health</h2>
+        <div class="grid">
+          <div class="stat">
+            <div class="label">Total Signups</div>
+            <div class="value">{data.reliability.totalSignups ?? '—'}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Idempotency Hits</div>
+            <div class="value">{data.reliability.idempotencyHits ?? '—'}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Rate Limit Blocks</div>
+            <div class="value red">{data.reliability.rateLimitBlocks ?? '—'}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Honeypot Blocks</div>
+            <div class="value red">{data.reliability.honeypotBlocks ?? '—'}</div>
+          </div>
+        </div>
+      </>
+    )}
+
+    <!-- Redis ops log tail -->
+    {data.redisOpsLog && data.redisOpsLog.length > 0 && (
+      <>
+        <h2>Redis Ops Log (last {data.redisOpsLog.length})</h2>
+        <div class="log-block">
+          <div class="file-header">cogcage:ops-log (Redis LIST, newest first)</div>
+          {(data.redisOpsLog as string[]).map((line: string) => {
+            let parsed: any = null;
+            try { parsed = JSON.parse(line); } catch { /* raw */ }
+            const level = parsed?.level ?? 'info';
+            const ts = parsed?.ts ? parsed.ts.slice(11, 19) : '';
+            const rest = parsed ? JSON.stringify({ ...parsed, ts: undefined, level: undefined }) : line;
+            return (
+              <div class={`log-line level-${level}`}>
+                <span class="ts">{ts} </span>
+                <span class={`level-${level}`}>[{level.toUpperCase()}] </span>
+                {rest}
+              </div>
+            );
+          })}
+        </div>
+      </>
+    )}
+
+    <!-- File-based log tails -->
+    {data.files && data.files.length > 0 && (
+      <>
+        <h2>Local File Logs</h2>
+        {(data.files as any[]).map((f: any) => f.exists && f.tail.length > 0 && (
+          <div class="log-block">
+            <div class="file-header">{f.file} — {f.lines}{f.lineCountApprox ? '+' : ''} lines · {Math.round(f.bytes / 1024)}KB</div>
+            {(f.tail as string[]).map((line: string) => {
+              let parsed: any = null;
+              try { parsed = JSON.parse(line); } catch { /* raw */ }
+              const level = parsed?.level ?? 'info';
+              const ts = parsed?.ts ? parsed.ts.slice(11, 19) : '';
+              const rest = parsed ? JSON.stringify({ ...parsed, ts: undefined, level: undefined }) : line;
+              return (
+                <div class={`log-line level-${level}`}>
+                  <span class="ts">{ts} </span>
+                  {rest}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </>
+    )}
+
+    <!-- Raw JSON fallback -->
+    {!data.funnel && !data.redisFunnel && !data.redisOpsLog && (
+      <>
+        <h2>Raw Response</h2>
+        <div class="log-block">
+          <pre>{JSON.stringify(data, null, 2)}</pre>
+        </div>
+      </>
+    )}
+  </>
+) : (
+  <div class="error-box">No data received from /api/ops</div>
+)}
+
+</body>
+</html>
