@@ -4,6 +4,34 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-27] - feat: Migrate MatchView to DO WebSocket — TASK-004
+
+**Type:** feat | **Phase:** 1
+
+### Summary
+Play.tsx is now a dumb spectator. Match execution moved from client-side `runMatchAsync` to the MatchEngine Durable Object. The client subscribes to the DO WebSocket and renders whatever state it receives — no local engine, no LLM polling from the browser.
+
+### Changes
+- `web/src/components/Play.tsx` — Removed `runMatchAsync` call; `startMatch()` now POSTs to `/api/match/start` to create the match on the DO, then opens a WebSocket to `wss://themoltpit-engine.aleks-precurion.workers.dev/match/:matchId` for live tick events. `handleSnapshot` wired to `onmessage`. `abortMatch` closes the WebSocket. All rendering logic (HP bars, energy, combat log, VFX, PlayCanvas) unchanged.
+- `web/src/pages/api/lobby/[id]/start.ts` — After resolving bots via `startLobbyMatch()`, POSTs to `${ENGINE_URL}/match/${lobbyId}/start` with botA, botB, seed. Returns `matchId` in response so the client can connect via WebSocket.
+- `web/src/pages/api/match/start.ts` — New server route for Play.tsx's direct match start (no lobby required). Generates matchId, POSTs to DO, returns matchId. Keeps ENGINE_SECRET server-side.
+- `web/src/env.d.ts` — Added `PUBLIC_ENGINE_WS_URL` to `ImportMetaEnv` for configurable engine WebSocket URL.
+
+### Design Decisions
+- **Server-side match start proxy**: The DO's `/start` endpoint requires `COGCAGE_ENGINE_SECRET` auth. Rather than exposing the secret client-side, both `/api/lobby/[id]/start` and `/api/match/start` proxy the start call. The WebSocket connection itself is unauthenticated (spectator mode).
+- **MatchSnapshot adapter**: DO tick messages (`{type:"tick", state, tick, events}`) are mapped to the existing `MatchSnapshot` interface so `handleSnapshot` works unchanged. Zero UI refactoring needed.
+- **Workers.dev URL as default**: `engine.themoltpit.com` DNS is still pending. The hardcoded fallback is `wss://themoltpit-engine.aleks-precurion.workers.dev`. Configurable via `PUBLIC_ENGINE_WS_URL` env var.
+
+### Breaking Changes
+- `Play.tsx` no longer runs matches locally. Requires the MatchEngine DO to be reachable.
+- `startMatch` is now async (POST + WebSocket) rather than synchronous `runMatchAsync`.
+
+### Next Steps
+- TASK-005: Remove `web/src/lib/ws2/match-runner.ts` and remaining client-side engine code
+- TASK-003: Complete `engine.themoltpit.com` DNS CNAME
+
+---
+
 ## [2026-02-27] - feat: OpenClaw plugin — `skills/themoltpit/` (PR #9)
 
 **Type:** feat | **Phase:** 2 (Revenue Critical)

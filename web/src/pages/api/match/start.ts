@@ -1,5 +1,4 @@
 import type { APIRoute } from 'astro';
-import { startLobbyMatch } from '../../../../lib/lobby.ts';
 
 export const prerender = false;
 
@@ -7,21 +6,29 @@ const ENGINE_URL =
   process.env.ENGINE_URL ?? 'https://themoltpit-engine.aleks-precurion.workers.dev';
 const ENGINE_SECRET = process.env.COGCAGE_ENGINE_SECRET ?? '';
 
-/** POST /api/lobby/[id]/start — start match on the MatchEngine DO */
-export const POST: APIRoute = async ({ params }) => {
-  const { id } = params;
-  if (!id) {
-    return new Response(JSON.stringify({ error: 'Missing lobby id' }), {
+/** POST /api/match/start — start a match on the MatchEngine DO (direct flow, no lobby) */
+export const POST: APIRoute = async ({ request }) => {
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
       status: 400,
       headers: { 'content-type': 'application/json' },
     });
   }
 
-  try {
-    const { botA, botB, seed } = await startLobbyMatch(id);
+  const { botA, botB, seed } = body;
+  if (!botA || !botB) {
+    return new Response(JSON.stringify({ error: 'botA and botB are required' }), {
+      status: 400,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
 
-    // Use lobbyId as the matchId on the DO
-    const matchId = id;
+  const matchId = `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  try {
     const doRes = await fetch(`${ENGINE_URL}/match/${matchId}/start`, {
       method: 'POST',
       headers: {
@@ -32,15 +39,15 @@ export const POST: APIRoute = async ({ params }) => {
     });
 
     if (!doRes.ok) {
-      const body = await doRes.text();
-      console.error(`[lobby/start] DO start failed (${doRes.status}): ${body}`);
-      return new Response(JSON.stringify({ error: 'Engine start failed', detail: body }), {
+      const detail = await doRes.text();
+      console.error(`[match/start] DO start failed (${doRes.status}): ${detail}`);
+      return new Response(JSON.stringify({ error: 'Engine start failed', detail }), {
         status: 502,
         headers: { 'content-type': 'application/json' },
       });
     }
 
-    return new Response(JSON.stringify({ matchId, botA, botB, seed }), {
+    return new Response(JSON.stringify({ matchId }), {
       status: 200,
       headers: { 'content-type': 'application/json' },
     });
