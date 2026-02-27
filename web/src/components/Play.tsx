@@ -418,10 +418,13 @@ const Play = () => {
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
 
+  // --- PlayCanvas ---
+  const [pcActive, setPcActive] = useState(false);
+  const playCanvasRef = useRef<HTMLCanvasElement>(null);
+
   // --- Refs ---
   const abortRef = useRef<AbortController | null>(null);
   const prevEventsLenRef = useRef(0);
-  const phaserGameRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
 
   // --- Effects ---
@@ -455,49 +458,32 @@ const Play = () => {
     return () => clearInterval(interval);
   }, [phase, showRoomPanel]);
 
-  // --- Phaser lifecycle ---
+  // --- PlayCanvas lifecycle ---
   useEffect(() => {
-    if (phase !== 'match') return;
+    if (phase !== 'match' || !playCanvasRef.current) return;
 
     let destroyed = false;
 
-    (async () => {
+    import('../lib/ws2/PlayCanvasScene').then(({ PlayCanvasScene }) => {
+      if (destroyed || !playCanvasRef.current) return;
       try {
-        const PhaserMod = await import('phaser');
-        const PhaserLib = (PhaserMod as any).default ?? PhaserMod;
-        const { MatchScene } = await import('../lib/ws2/MatchScene');
-
-        if (destroyed) return;
-
-        const game = new PhaserLib.Game({
-          type: PhaserLib.AUTO,
-          parent: 'game-container',
-          width: 560 + 240,
-          height: 560,
-          backgroundColor: '#1a1a1a',
-          scene: [MatchScene],
-        });
-        phaserGameRef.current = game;
-
-        game.events.once('ready', () => {
-          if (destroyed) return;
-          sceneRef.current = game.scene.getScene('MatchScene');
-          sceneRef.current?.setBotNames?.({
-            alpha: botAConfig.name || 'Bot A',
-            beta: botBConfig.name || 'Bot B',
-          });
-        });
+        const scene = new PlayCanvasScene(playCanvasRef.current);
+        sceneRef.current = scene;
+        setPcActive(true);
       } catch (e) {
-        // MatchScene not available in this build — CSS grid fallback
-        console.warn('[Phaser] MatchScene load failed, using CSS grid:', e);
+        console.warn('[PlayCanvas] Init failed, using CSS grid:', e);
+        setPcActive(false);
       }
-    })();
+    }).catch((e) => {
+      console.warn('[PlayCanvas] Load failed, using CSS grid:', e);
+      setPcActive(false);
+    });
 
     return () => {
       destroyed = true;
-      phaserGameRef.current?.destroy(true);
-      phaserGameRef.current = null;
+      sceneRef.current?.destroy?.();
       sceneRef.current = null;
+      setPcActive(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
@@ -543,8 +529,8 @@ const Play = () => {
 
   // --- Snapshot handler ---
   const handleSnapshot = useCallback((snap: MatchSnapshot) => {
-    // Forward snapshot to Phaser scene if available
-    sceneRef.current?.applySnapshot?.(snap);
+    // Forward snapshot to PlayCanvas scene if available
+    sceneRef.current?.update?.(snap);
 
     const s = snap.state;
     const actorA = s.actors?.botA;
@@ -638,6 +624,7 @@ const Play = () => {
     setBotALastAction('');
     setBotBLastAction('');
     setArenaFlash(false);
+    setPcActive(false);
     prevEventsLenRef.current = 0;
 
     const seedLabel = seedInput.trim() || `${Date.now()}`;
@@ -1167,8 +1154,13 @@ const Play = () => {
             </div>
           </div>
 
-          {/* Phaser canvas mount point — mounts on top of CSS arena if MatchScene loads */}
-          <div id="game-container" style={{ margin: '0 auto', borderRadius: '14px', overflow: 'hidden' }} />
+          {/* PlayCanvas 3D arena */}
+          <div style={{ position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto 1rem', height: pcActive ? '560px' : '0', overflow: 'hidden', borderRadius: '14px' }}>
+            <canvas
+              ref={playCanvasRef}
+              style={{ width: '100%', height: '100%', display: 'block' }}
+            />
+          </div>
 
           <div className="match-grid">
             {/* Main: Arena */}
@@ -1182,7 +1174,7 @@ const Play = () => {
                 </div>
               </div>
 
-              {renderArena()}
+              {!pcActive && renderArena()}
 
               <div className="arena-legend">
                 <span className="status-pill" style={{ background: 'rgba(46,204,113,0.2)', borderColor: '#2ecc71' }}>{aName}</span>
