@@ -291,6 +291,43 @@ export interface LoadoutValidation {
   errors: string[];
 }
 
+/* ── Card → match config mapping ──────────────────────────── */
+
+export function loadoutToMatchConfig(cardIds: string[]): {
+  actionTypes: string[];
+  armor: 'light' | 'medium' | 'heavy';
+  moveCost: number;
+} {
+  const cards = cardIds.map((id) => CARD_INDEX.get(id)).filter((c): c is Card => !!c);
+  const actionTypes: string[] = ['MOVE'];
+  let armor: 'light' | 'medium' | 'heavy' = 'medium';
+
+  for (const card of cards) {
+    if (card.type === 'weapon') {
+      if (card.subtype === 'melee') actionTypes.push('MELEE_STRIKE');
+      if (card.subtype === 'ranged') actionTypes.push('RANGED_SHOT');
+    }
+    if (card.type === 'armor') {
+      const def = card.stats.defense ?? 0;
+      armor = def >= 35 ? 'heavy' : def >= 20 ? 'medium' : 'light';
+    }
+    if (card.id === 'emp-pulse' || card.id === 'battle-stim' || card.id === 'overclock') {
+      actionTypes.push('UTILITY');
+    }
+    if (card.id === 'hack-module' || card.id === 'threat-matrix') {
+      actionTypes.push('UTILITY');
+    }
+  }
+
+  if (!actionTypes.includes('GUARD')) actionTypes.push('GUARD');
+  if (!actionTypes.includes('DASH')) actionTypes.push('DASH');
+
+  const stats = calculateLoadoutStats(cardIds);
+  const moveCost = 4 + Math.floor(stats.totalWeight / 3);
+
+  return { actionTypes: [...new Set(actionTypes)], armor, moveCost };
+}
+
 export function validateLoadout(cardIds: string[]): LoadoutValidation {
   const errors: string[] = [];
 
