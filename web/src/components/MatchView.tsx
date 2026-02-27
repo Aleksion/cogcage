@@ -13,6 +13,7 @@ import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-runner';
 export interface MatchBotConfig {
   botName: string;
   brainPrompt: string;
+  skills?: string[];
   cards: string[];
   actionTypes: string[];
   armor: 'light' | 'medium' | 'heavy';
@@ -366,6 +367,8 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
       armor: botA.armor,
       position: { x: 4, y: 10 },
       moveCost: botA.moveCost,
+      brainPrompt: botA.brainPrompt || defaultPrompt,
+      skills: botA.skills || [],
     };
 
     const configB: BotConfig = {
@@ -376,6 +379,8 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
       armor: botB.armor,
       position: { x: 16, y: 10 },
       moveCost: botB.moveCost,
+      brainPrompt: botB.brainPrompt || defaultPrompt,
+      skills: botB.skills || [],
     };
 
     const initLines = [
@@ -440,6 +445,8 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
       armor: botA.armor,
       position: { x: 4, y: 10 },
       moveCost: botA.moveCost,
+      brainPrompt: botA.brainPrompt || defaultPrompt,
+      skills: botA.skills || [],
     };
     const configB: BotConfig = {
       id: 'botB',
@@ -449,6 +456,8 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
       armor: botB.armor,
       position: { x: 16, y: 10 },
       moveCost: botB.moveCost,
+      brainPrompt: botB.brainPrompt || defaultPrompt,
+      skills: botB.skills || [],
     };
 
     const initLines = [

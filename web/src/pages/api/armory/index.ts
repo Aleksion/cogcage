@@ -39,7 +39,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   try {
     const body = await request.json();
-    const { name, cards } = body;
+    const { name, cards, brainPrompt, skills } = body;
 
     if (!name || !Array.isArray(cards)) {
       return new Response(JSON.stringify({ error: 'name and cards[] required' }), {
@@ -48,7 +48,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    const result = await saveLoadout(playerId, name, cards);
+    const result = await saveLoadout(playerId, name, cards, brainPrompt || '', Array.isArray(skills) ? skills : []);
     if (result.error) {
       return new Response(JSON.stringify({ error: result.error, loadouts: result.loadouts }), {
         status: 400,

@@ -7,6 +7,8 @@ export interface SavedLoadout {
   id: string;
   name: string;
   cards: string[];
+  brainPrompt: string;
+  skills: string[];
   createdAt: number;
   stats: {
     totalWeight: number;
@@ -38,6 +40,8 @@ export async function saveLoadout(
   playerId: string,
   name: string,
   cards: string[],
+  brainPrompt: string = '',
+  skills: string[] = [],
 ): Promise<{ loadouts: SavedLoadout[]; error?: string }> {
   const validation = validateLoadout(cards);
   if (!validation.valid) {
@@ -54,6 +58,8 @@ export async function saveLoadout(
     id: crypto.randomUUID(),
     name: name.trim() || 'Unnamed Loadout',
     cards,
+    brainPrompt,
+    skills: skills.slice(0, 3),
     createdAt: Date.now(),
     stats: {
       totalWeight: stats.totalWeight,

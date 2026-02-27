@@ -17,6 +17,7 @@ export interface LobbyRecord {
 export interface BotSnapshot {
   botName: string;
   brainPrompt: string;
+  skills: string[];
   cards: string[];
   actionTypes: string[];
   armor: 'light' | 'medium' | 'heavy';
@@ -36,6 +37,11 @@ function generateId(): string {
 
 /* ── Resolve loadout → BotSnapshot ─────────────────────────── */
 
+const DEFAULT_BRAIN_PROMPT = `You are a tactical combat agent in a grid-based arena.
+Analyze the game state each turn and choose the optimal action.
+Balance offense and defense. Conserve energy for key moments.
+Use your skills strategically — they provide critical advantages.`;
+
 export async function resolveSnapshot(
   playerId: string,
   loadoutId: string,
@@ -47,7 +53,8 @@ export async function resolveSnapshot(
   const matchCfg = loadoutToMatchConfig(loadout.cards);
   return {
     botName: loadout.name,
-    brainPrompt: '', // player sets this client-side or we use a default
+    brainPrompt: loadout.brainPrompt || DEFAULT_BRAIN_PROMPT,
+    skills: loadout.skills || [],
     cards: loadout.cards,
     actionTypes: matchCfg.actionTypes,
     armor: matchCfg.armor,
