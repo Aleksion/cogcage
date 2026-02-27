@@ -42,9 +42,9 @@ export const POST: APIRoute = async ({ params, request }) => {
 
   try {
     const body = await request.json();
-    const { matchId, botAName, botBName, snapshot } = body;
+    const { matchId, botAName, botBName, botNames, snapshot } = body;
 
-    const payload = { matchId, botAName, botBName, snapshot, updatedAt: Date.now() };
+    const payload = { matchId, botAName, botBName, botNames, snapshot, updatedAt: Date.now() };
     await redis.set(`session-snapshot:${sessionId}`, JSON.stringify(payload), { ex: SNAPSHOT_TTL });
 
     return new Response(JSON.stringify({ ok: true }), {

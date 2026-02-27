@@ -1,9 +1,9 @@
 import type { APIRoute } from 'astro';
-import { completeMatch, getSession } from '../../../../lib/session.ts';
+import { completeMatch, completeFfaMatch, getSession } from '../../../../lib/session.ts';
 
 export const prerender = false;
 
-/** POST /api/sessions/:id/complete — Complete current match */
+/** POST /api/sessions/:id/complete — Complete current match (bracket or FFA) */
 export const POST: APIRoute = async ({ params, request }) => {
   const sessionId = params.id;
   if (!sessionId) {
@@ -15,10 +15,10 @@ export const POST: APIRoute = async ({ params, request }) => {
 
   try {
     const body = await request.json();
-    const { matchId, winnerId, scoreA, scoreB, hostParticipantId } = body;
+    const { matchId, winnerId, hostParticipantId } = body;
 
-    if (!matchId || !winnerId) {
-      return new Response(JSON.stringify({ error: 'matchId and winnerId required' }), {
+    if (!matchId) {
+      return new Response(JSON.stringify({ error: 'matchId required' }), {
         status: 400,
         headers: { 'content-type': 'application/json' },
       });
@@ -39,6 +39,25 @@ export const POST: APIRoute = async ({ params, request }) => {
       });
     }
 
+    // FFA completion path
+    if (matchId === 'ffa') {
+      const placements = body.placements ?? [];
+      const result = await completeFfaMatch(sessionId, winnerId ?? null, placements);
+      return new Response(JSON.stringify({ ...result, done: true, nextMatchId: null }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
+    // Bracket completion path
+    if (!winnerId) {
+      return new Response(JSON.stringify({ error: 'winnerId required for bracket match' }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
+    const { scoreA, scoreB } = body;
     const result = await completeMatch(sessionId, matchId, winnerId, scoreA ?? 0, scoreB ?? 0);
     return new Response(JSON.stringify(result), {
       status: 200,

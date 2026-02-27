@@ -266,3 +266,38 @@ export async function completeMatch(
     done: !nextMatchId,
   };
 }
+
+export interface FfaPlacement {
+  participantId: string;
+  placement: number;
+  damageDealt: number;
+  hp: number;
+}
+
+export async function completeFfaMatch(
+  sessionId: string,
+  winnerId: string | null,
+  placements: FfaPlacement[],
+): Promise<{ leaderboard: LeaderboardEntry[] }> {
+  const session = await getSession(sessionId);
+  if (!session) throw new Error('Session not found');
+
+  session.status = 'done';
+  session.currentMatchId = null;
+
+  // Build leaderboard from FFA placements (sorted by placement ascending)
+  const sorted = [...placements].sort((a, b) => a.placement - b.placement);
+  session.leaderboard = sorted.map((r) => {
+    const p = session.participants.find((pp) => pp.id === r.participantId);
+    return {
+      participantId: r.participantId,
+      name: p?.name ?? 'Unknown',
+      wins: r.participantId === winnerId ? 1 : 0,
+      losses: r.participantId === winnerId ? 0 : 1,
+      points: session.participants.length - r.placement + 1,
+    };
+  });
+
+  await saveSession(session);
+  return { leaderboard: session.leaderboard };
+}

@@ -662,8 +662,6 @@ const Play = () => {
       position: { x: 1, y: 4 },
       temperature: botAConfig.temperature,
       llmHeaders: buildLlmHeaders(botAConfig),
-      agentMode: botAConfig.mode,
-      webhookUrl: botAConfig.webhookUrl || undefined,
     };
 
     const configB: BotConfig = {
@@ -675,8 +673,6 @@ const Play = () => {
       position: { x: 6, y: 3 },
       temperature: botBConfig.temperature,
       llmHeaders: buildLlmHeaders(botBConfig),
-      agentMode: botBConfig.mode,
-      webhookUrl: botBConfig.webhookUrl || undefined,
     };
 
     setBotAPos({ x: 1, y: 4 });
@@ -693,7 +689,7 @@ const Play = () => {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    runMatchAsync(seed, configA, configB, handleSnapshot, '/api/agent/decide', controller.signal)
+    runMatchAsync(seed, [configA, configB], handleSnapshot, '/api/agent/decide', controller.signal)
       .catch((err) => {
         console.error('[match-runner] Error:', err);
         setRunning(false);

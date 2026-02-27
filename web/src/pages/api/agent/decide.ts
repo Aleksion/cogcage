@@ -123,40 +123,95 @@ function formatGameState(
   loadout: string[],
 ) {
   const me: ActorState = gameState.actors[actorId];
-  const enemy: ActorState = gameState.actors[opponentId];
   const tick = gameState.tick;
-  const dist = distanceTenths(me.position, enemy.position);
-  const distU = (dist / UNIT_SCALE).toFixed(1);
+
+  // Gather all enemies sorted by distance
+  const enemies: Array<{ id: string; actor: ActorState; dist: number }> = [];
+  for (const [id, actor] of Object.entries(gameState.actors) as [string, ActorState][]) {
+    if (id === actorId) continue;
+    enemies.push({ id, actor, dist: distanceTenths(me.position, actor.position) });
+  }
+  enemies.sort((a, b) => a.dist - b.dist);
+
+  const isFfa = enemies.length > 1;
+  const aliveEnemies = enemies.filter((e) => e.actor.hp > 0);
+
+  // Primary target (nearest alive, passed as opponentId)
+  const primary = gameState.actors[opponentId] as ActorState;
+  const primaryDist = primary ? distanceTenths(me.position, primary.position) : 0;
 
   const myPos = `(${(me.position.x / UNIT_SCALE).toFixed(1)}, ${(me.position.y / UNIT_SCALE).toFixed(1)})`;
-  const enemyPos = `(${(enemy.position.x / UNIT_SCALE).toFixed(1)}, ${(enemy.position.y / UNIT_SCALE).toFixed(1)})`;
-
-  const meInObj = isInObjective(me.position);
-  const enemyInObj = isInObjective(enemy.position);
-  const objStatus = meInObj && enemyInObj
-    ? 'CONTESTED'
-    : meInObj
-      ? 'you are INSIDE (scoring!)'
-      : enemyInObj
-        ? 'enemy is INSIDE (scoring!)'
-        : 'both OUTSIDE';
 
   const lines: string[] = [];
   lines.push(`=== BATTLE STATE (tick ${tick}) ===`);
-  lines.push(`YOU: HP ${me.hp}/100 | Energy ${energyPct(me.energy)}% | Position ${myPos} | Facing: ${me.facing}`);
-  lines.push(`ENEMY: HP ${enemy.hp}/100 | Energy ${energyPct(enemy.energy)}% | Position ${enemyPos}`);
-  lines.push(`Distance to enemy: ${distU} units`);
-  lines.push('');
-  lines.push(`OBJECTIVE ZONE: center (10,10) radius 2.5 — ${objStatus}`);
+  lines.push(`YOU (${actorId}): HP ${me.hp}/100 | Energy ${energyPct(me.energy)}% | Position ${myPos} | Facing: ${me.facing}`);
 
+  if (isFfa) {
+    lines.push(`ENEMIES (${aliveEnemies.length} alive of ${enemies.length}):`);
+    for (const e of enemies) {
+      const pos = `(${(e.actor.position.x / UNIT_SCALE).toFixed(1)}, ${(e.actor.position.y / UNIT_SCALE).toFixed(1)})`;
+      const distU = (e.dist / UNIT_SCALE).toFixed(1);
+      const tag = e.id === opponentId ? ' *NEAREST*' : '';
+      if (e.actor.hp <= 0) {
+        lines.push(`  ${e.id}${tag}: ELIMINATED`);
+      } else {
+        lines.push(`  ${e.id}${tag}: HP ${e.actor.hp}/100 | Energy ${energyPct(e.actor.energy)}% | Pos ${pos} | Dist ${distU}`);
+      }
+    }
+  } else {
+    const enemy = primary;
+    const enemyPos = `(${(enemy.position.x / UNIT_SCALE).toFixed(1)}, ${(enemy.position.y / UNIT_SCALE).toFixed(1)})`;
+    lines.push(`ENEMY: HP ${enemy.hp}/100 | Energy ${energyPct(enemy.energy)}% | Position ${enemyPos}`);
+    lines.push(`Distance to enemy: ${(primaryDist / UNIT_SCALE).toFixed(1)} units`);
+  }
+
+  lines.push('');
+
+  // Objective zone
+  const meInObj = isInObjective(me.position);
+  if (isFfa) {
+    const inObj = aliveEnemies.filter((e) => isInObjective(e.actor.position));
+    const objStatus = meInObj && inObj.length > 0
+      ? 'CONTESTED'
+      : meInObj
+        ? 'you are INSIDE (scoring!)'
+        : inObj.length > 0
+          ? `${inObj.length} enemy/ies INSIDE`
+          : 'all OUTSIDE';
+    lines.push(`OBJECTIVE ZONE: center (10,10) radius 2.5 — ${objStatus}`);
+  } else {
+    const enemyInObj = isInObjective(primary.position);
+    const objStatus = meInObj && enemyInObj
+      ? 'CONTESTED'
+      : meInObj
+        ? 'you are INSIDE (scoring!)'
+        : enemyInObj
+          ? 'enemy is INSIDE (scoring!)'
+          : 'both OUTSIDE';
+    lines.push(`OBJECTIVE ZONE: center (10,10) radius 2.5 — ${objStatus}`);
+  }
+
+  // Scores
   const myScore = gameState.objectiveScore?.[actorId] ?? 0;
-  const enemyScore = gameState.objectiveScore?.[opponentId] ?? 0;
-  if (myScore > 0 || enemyScore > 0) {
-    lines.push(`SCORES: you ${(myScore / UNIT_SCALE).toFixed(1)} | enemy ${(enemyScore / UNIT_SCALE).toFixed(1)}`);
+  if (isFfa) {
+    const scoreParts = aliveEnemies.map((e) =>
+      `${e.id}: ${((gameState.objectiveScore?.[e.id] ?? 0) / UNIT_SCALE).toFixed(1)}`,
+    );
+    if (myScore > 0 || scoreParts.length > 0) {
+      lines.push(`SCORES: you ${(myScore / UNIT_SCALE).toFixed(1)} | ${scoreParts.join(' | ')}`);
+    }
+  } else {
+    const enemyScore = gameState.objectiveScore?.[opponentId] ?? 0;
+    if (myScore > 0 || enemyScore > 0) {
+      lines.push(`SCORES: you ${(myScore / UNIT_SCALE).toFixed(1)} | enemy ${(enemyScore / UNIT_SCALE).toFixed(1)}`);
+    }
   }
 
   lines.push('');
   lines.push('YOUR AVAILABLE ACTIONS (loadout):');
+
+  // Use distance to nearest alive enemy for range checks
+  const dist = aliveEnemies.length > 0 ? aliveEnemies[0].dist : primaryDist;
 
   for (const action of loadout) {
     const cost = ACTION_COST[action] ?? 0;
@@ -172,18 +227,18 @@ function formatGameState(
       rangeInfo = ' | dirs: N/NE/E/SE/S/SW/W/NW';
     } else if (action === 'MELEE_STRIKE') {
       const inRange = dist <= MELEE_RANGE;
-      rangeInfo = ` | requires distance ≤1.5 (${inRange ? 'IN RANGE ✓' : 'ENEMY TOO FAR'})`;
+      rangeInfo = ` | requires distance ≤1.5 (${inRange ? 'NEAREST IN RANGE \u2713' : 'NEAREST TOO FAR'})`;
     } else if (action === 'RANGED_SHOT') {
       const inRange = dist >= RANGED_MIN && dist <= RANGED_MAX;
       const optimal = dist >= 40 && dist <= 70;
       if (inRange) {
         rangeInfo = optimal
-          ? ' | range 2-10, optimal 4-7 (ENEMY IN OPTIMAL BAND ✓)'
-          : ' | range 2-10, optimal 4-7 (IN RANGE ✓)';
+          ? ' | range 2-10, optimal 4-7 (NEAREST IN OPTIMAL BAND \u2713)'
+          : ' | range 2-10, optimal 4-7 (IN RANGE \u2713)';
       } else {
         rangeInfo = dist < RANGED_MIN
-          ? ' | range 2-10 (ENEMY TOO CLOSE)'
-          : ' | range 2-10 (ENEMY TOO FAR)';
+          ? ' | range 2-10 (NEAREST TOO CLOSE)'
+          : ' | range 2-10 (NEAREST TOO FAR)';
       }
     } else if (action === 'GUARD') {
       rangeInfo = ' | blocks 35% frontal damage for 0.8s';
@@ -194,20 +249,30 @@ function formatGameState(
     }
 
     const cdDisplay = offCooldown ? 'no cooldown' : `cooldown ${cdSec}s`;
-    const readyMark = ready ? 'READY ✓' : offCooldown ? 'NO ENERGY ✗' : 'ON COOLDOWN ✗';
+    const readyMark = ready ? 'READY \u2713' : offCooldown ? 'NO ENERGY \u2717' : 'ON COOLDOWN \u2717';
     const dirNote = (action === 'MOVE' || action === 'DASH') ? '(dir)' : '';
 
-    lines.push(`  ${action}${dirNote} — cost ${costDisplay}e | ${cdDisplay} | ${readyMark}${rangeInfo}`);
+    lines.push(`  ${action}${dirNote} \u2014 cost ${costDisplay}e | ${cdDisplay} | ${readyMark}${rangeInfo}`);
   }
 
   lines.push('');
-  lines.push('Respond with ONE action as JSON. Examples:');
-  lines.push('  {"type":"MOVE","dir":"NE"}');
-  lines.push('  {"type":"MELEE_STRIKE"}');
-  lines.push('  {"type":"RANGED_SHOT"}');
-  lines.push('  {"type":"GUARD"}');
-  lines.push('  {"type":"DASH","dir":"E"}');
-  lines.push('  {"type":"NO_OP"}');
+  if (isFfa) {
+    lines.push('Respond with ONE action as JSON. Include targetId for attacks. Examples:');
+    lines.push('  {"type":"MOVE","dir":"NE"}');
+    lines.push(`  {"type":"MELEE_STRIKE","targetId":"${opponentId}"}`);
+    lines.push(`  {"type":"RANGED_SHOT","targetId":"${opponentId}"}`);
+    lines.push('  {"type":"GUARD"}');
+    lines.push('  {"type":"DASH","dir":"E"}');
+    lines.push('  {"type":"NO_OP"}');
+  } else {
+    lines.push('Respond with ONE action as JSON. Examples:');
+    lines.push('  {"type":"MOVE","dir":"NE"}');
+    lines.push('  {"type":"MELEE_STRIKE"}');
+    lines.push('  {"type":"RANGED_SHOT"}');
+    lines.push('  {"type":"GUARD"}');
+    lines.push('  {"type":"DASH","dir":"E"}');
+    lines.push('  {"type":"NO_OP"}');
+  }
 
   return lines.join('\n');
 }
