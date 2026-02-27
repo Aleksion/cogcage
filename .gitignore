@@ -1,2 +1,20 @@
 # runtime SQLite db + NDJSON logs (managed at runtime, not committed)
 ops/runtime/
+
+# Build outputs
+dist/
+.astro/
+.vercel/
+
+# Dependencies
+node_modules/
+web/node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Misc
+.DS_Store
+*.log
