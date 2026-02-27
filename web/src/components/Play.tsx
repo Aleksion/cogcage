@@ -268,7 +268,32 @@ type LobbyBotConfig = {
   systemPrompt: string;
   loadout: string[];
   armor: 'light' | 'medium' | 'heavy';
+  temperature: number;
+  /** BYO LLM provider (openai, anthropic, groq, openrouter) */
+  llmProvider: string;
+  /** BYO model override */
+  llmModel: string;
+  /** BYO API key */
+  llmKey: string;
 };
+
+type RoomInfo = {
+  id: string;
+  name: string;
+  hostName: string;
+  hasPassword: boolean;
+  playerCount: number;
+  inviteCode: string;
+  createdAt: number;
+};
+
+/** Arena task objectives */
+interface ArenaTask {
+  id: string;
+  label: string;
+  cell: { x: number; y: number };
+  color: string;
+}
 
 /* --- Constants --- */
 
@@ -289,6 +314,10 @@ const DEFAULT_BOT_A: LobbyBotConfig = {
   systemPrompt: 'You are an aggressive melee fighter. Prioritize closing distance and striking hard. Use DASH to close gaps and follow with MELEE_STRIKE. Guard when the opponent charges ranged attacks.',
   loadout: ['MOVE', 'MELEE_STRIKE', 'GUARD', 'DASH'],
   armor: 'heavy',
+  temperature: 0.7,
+  llmProvider: 'openai',
+  llmModel: '',
+  llmKey: '',
 };
 
 const DEFAULT_BOT_B: LobbyBotConfig = {
@@ -296,7 +325,18 @@ const DEFAULT_BOT_B: LobbyBotConfig = {
   systemPrompt: 'You are a calculating ranged specialist. Maintain distance in the 4-7 unit optimal band. Use RANGED_SHOT when in range. Kite away when the enemy closes. Guard when cornered.',
   loadout: ['MOVE', 'RANGED_SHOT', 'GUARD', 'DASH'],
   armor: 'light',
+  temperature: 0.7,
+  llmProvider: 'openai',
+  llmModel: '',
+  llmKey: '',
 };
+
+const ARENA_TASKS: ArenaTask[] = [
+  { id: 'task-energy', label: '+E', cell: { x: 2, y: 2 }, color: '#00E5FF' },
+  { id: 'task-dmg', label: '+D', cell: { x: 5, y: 5 }, color: '#FF9F1C' },
+  { id: 'task-shield', label: '+S', cell: { x: 1, y: 6 }, color: '#2ecc71' },
+  { id: 'task-speed', label: '+V', cell: { x: 6, y: 1 }, color: '#5f27cd' },
+];
 
 const founderCheckoutUrl =
   ((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? '').trim();
@@ -355,6 +395,17 @@ const Play = () => {
   const [botALastAction, setBotALastAction] = useState('');
   const [botBLastAction, setBotBLastAction] = useState('');
 
+  // --- Room / Lobby ---
+  const [roomList, setRoomList] = useState<RoomInfo[]>([]);
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [roomName, setRoomName] = useState('Arena Room');
+  const [roomPassword, setRoomPassword] = useState('');
+  const [roomJoinPassword, setRoomJoinPassword] = useState('');
+  const [roomInviteCode, setRoomInviteCode] = useState<string | null>(null);
+  const [roomError, setRoomError] = useState('');
+  const [showRoomPanel, setShowRoomPanel] = useState(false);
+  const [showByo, setShowByo] = useState(false);
+
   // --- Founder CTA ---
   const [email, setEmail] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
@@ -377,6 +428,23 @@ const Play = () => {
     const saved = window.localStorage.getItem(EMAIL_KEY) || '';
     if (saved) setEmail(saved);
   }, []);
+
+  // Fetch room list periodically when lobby is open
+  useEffect(() => {
+    if (phase !== 'lobby' || !showRoomPanel) return;
+    const fetchRooms = async () => {
+      try {
+        const res = await fetch('/api/rooms');
+        if (res.ok) {
+          const data = await res.json();
+          setRoomList(data.rooms || []);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchRooms();
+    const interval = setInterval(fetchRooms, 4000);
+    return () => clearInterval(interval);
+  }, [phase, showRoomPanel]);
 
   // --- VFX helpers ---
   const spawnVfx = useCallback((cell: { x: number; y: number }, text: string, color: string, type: VfxEvent['type'] = 'burst', duration = 600) => {
@@ -517,6 +585,14 @@ const Play = () => {
     const seed = hashString(seedLabel) || 1;
     setActiveSeed(seed);
 
+    const buildLlmHeaders = (cfg: LobbyBotConfig): Record<string, string> => {
+      const h: Record<string, string> = {};
+      if (cfg.llmProvider && cfg.llmProvider !== 'openai') h['X-Llm-Provider'] = cfg.llmProvider;
+      if (cfg.llmModel) h['X-Llm-Model'] = cfg.llmModel;
+      if (cfg.llmKey) h['X-Llm-Key'] = cfg.llmKey;
+      return h;
+    };
+
     const configA: BotConfig = {
       id: 'botA',
       name: botAConfig.name || 'Bot A',
@@ -524,6 +600,8 @@ const Play = () => {
       loadout: botAConfig.loadout,
       armor: botAConfig.armor,
       position: { x: 1, y: 4 },
+      temperature: botAConfig.temperature,
+      llmHeaders: buildLlmHeaders(botAConfig),
     };
 
     const configB: BotConfig = {
@@ -533,6 +611,8 @@ const Play = () => {
       loadout: botBConfig.loadout,
       armor: botBConfig.armor,
       position: { x: 6, y: 3 },
+      temperature: botBConfig.temperature,
+      llmHeaders: buildLlmHeaders(botBConfig),
     };
 
     setBotAPos({ x: 1, y: 4 });
@@ -687,6 +767,59 @@ const Play = () => {
             </label>
           ))}
         </div>
+
+        {/* Temperature / Aggression slider */}
+        <div className="section-label" style={{ marginTop: '0.8rem' }}>
+          Aggression (LLM Temperature): {config.temperature.toFixed(2)}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span className="hint" style={{ fontSize: '0.75rem' }}>Cautious</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={config.temperature}
+            onChange={(e) => setConfig((prev) => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+            style={{ flex: 1, accentColor: 'var(--c-red)' }}
+          />
+          <span className="hint" style={{ fontSize: '0.75rem' }}>Reckless</span>
+        </div>
+        <div className="hint" style={{ fontSize: '0.72rem', marginTop: '0.2rem' }}>
+          Low = precise/predictable, High = creative/chaotic
+        </div>
+
+        {/* BYO LLM Keys */}
+        {showByo && (
+          <div style={{ marginTop: '0.6rem', padding: '0.6rem', background: 'rgba(0,0,0,0.03)', borderRadius: '8px' }}>
+            <div className="section-label" style={{ fontSize: '0.8rem' }}>BYO LLM Provider</div>
+            <select
+              value={config.llmProvider}
+              onChange={(e) => setConfig((prev) => ({ ...prev, llmProvider: e.target.value }))}
+              style={{ width: '100%', padding: '0.4rem', borderRadius: '8px', border: '2px solid var(--c-dark)', fontWeight: 700, marginBottom: '0.4rem' }}
+            >
+              <option value="openai">OpenAI (default)</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="groq">Groq</option>
+              <option value="openrouter">OpenRouter</option>
+            </select>
+            <input
+              className="prompt-box"
+              style={{ minHeight: 'unset', height: '36px', marginBottom: '0.4rem', fontSize: '0.85rem' }}
+              placeholder="Model override (optional)"
+              value={config.llmModel}
+              onChange={(e) => setConfig((prev) => ({ ...prev, llmModel: e.target.value }))}
+            />
+            <input
+              className="prompt-box"
+              type="password"
+              style={{ minHeight: 'unset', height: '36px', fontSize: '0.85rem' }}
+              placeholder="API Key (stays in browser, never stored)"
+              value={config.llmKey}
+              onChange={(e) => setConfig((prev) => ({ ...prev, llmKey: e.target.value }))}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -699,6 +832,7 @@ const Play = () => {
         const isB = botBPos.x === x && botBPos.y === y;
         const inObj = isInObjectiveZone(x, y);
         const cellVfx = vfxEvents.filter((e) => e.cell.x === x && e.cell.y === y);
+        const task = ARENA_TASKS.find((t) => t.cell.x === x && t.cell.y === y);
         const className = [
           'arena-cell',
           inObj ? 'objective-zone' : '',
@@ -709,6 +843,20 @@ const Play = () => {
 
         cells.push(
           <div key={`${x}-${y}`} className={className}>
+            {task && !isA && !isB && (
+              <div style={{
+                position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'var(--f-display)', fontSize: '0.7rem', color: task.color,
+                textShadow: '1px 1px 0 rgba(0,0,0,0.3)', opacity: 0.85, zIndex: 1,
+              }}>
+                <div style={{
+                  width: '70%', height: '70%', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: `${task.color}22`, border: `2px dashed ${task.color}66`,
+                }}>
+                  {task.label}
+                </div>
+              </div>
+            )}
             {isA && <PlayerBotSvg />}
             {isB && <EnemyBotSvg />}
             {cellVfx.map((vfx) => (
@@ -778,12 +926,21 @@ const Play = () => {
               {renderBotConfigPanel(botBConfig, setBotBConfig, 'Bot B (Red)', true)}
             </div>
 
-            {/* Seed */}
-            <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+            {/* Advanced: Seed + BYO toggle */}
+            <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center', marginTop: '0.5rem', flexWrap: 'wrap' }}>
               <button className="seed-toggle" onClick={() => setShowSeedInput((p) => !p)}>
                 {showSeedInput ? 'Hide seed' : 'Seed (advanced)'}
               </button>
-              {showSeedInput && (
+              <button className="seed-toggle" onClick={() => setShowByo((p) => !p)}>
+                {showByo ? 'Hide BYO Keys' : 'BYO LLM Keys'}
+              </button>
+              <button className="seed-toggle" onClick={() => setShowRoomPanel((p) => !p)}>
+                {showRoomPanel ? 'Hide Rooms' : 'Multiplayer Rooms'}
+              </button>
+            </div>
+
+            {showSeedInput && (
+              <div style={{ textAlign: 'center' }}>
                 <input
                   className="prompt-box"
                   style={{ minHeight: 'unset', height: '44px', marginTop: '0.5rem', maxWidth: '400px', margin: '0.5rem auto 0' }}
@@ -791,8 +948,112 @@ const Play = () => {
                   value={seedInput}
                   onChange={(e) => setSeedInput(e.target.value)}
                 />
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Room system */}
+            {showRoomPanel && (
+              <div className="panel" style={{ maxWidth: '700px', margin: '1rem auto 0' }}>
+                <h2 style={{ fontSize: '1.4rem' }}>Lobby Rooms</h2>
+
+                {/* Create room */}
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                  <input
+                    className="prompt-box"
+                    style={{ minHeight: 'unset', height: '40px', flex: '1 1 160px' }}
+                    placeholder="Room name"
+                    value={roomName}
+                    onChange={(e) => setRoomName(e.target.value)}
+                  />
+                  <input
+                    className="prompt-box"
+                    type="password"
+                    style={{ minHeight: 'unset', height: '40px', flex: '0 1 140px' }}
+                    placeholder="Password (optional)"
+                    value={roomPassword}
+                    onChange={(e) => setRoomPassword(e.target.value)}
+                  />
+                  <button
+                    className="action-btn"
+                    onClick={async () => {
+                      setRoomError('');
+                      try {
+                        const res = await fetch('/api/rooms', {
+                          method: 'POST',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({ name: roomName, hostName: botAConfig.name || 'Host', password: roomPassword || undefined }),
+                        });
+                        const data = await res.json();
+                        if (data.ok) {
+                          setRoomId(data.room.id);
+                          setRoomInviteCode(data.room.inviteCode);
+                        } else {
+                          setRoomError(data.error || 'Failed to create room');
+                        }
+                      } catch { setRoomError('Network error'); }
+                    }}
+                  >
+                    Create Room
+                  </button>
+                </div>
+
+                {/* Invite code */}
+                {roomInviteCode && roomId && (
+                  <div style={{ marginBottom: '1rem', padding: '0.6rem', background: 'rgba(0,229,255,0.1)', borderRadius: '8px', textAlign: 'center' }}>
+                    <div className="section-label" style={{ fontSize: '0.8rem' }}>Invite Link</div>
+                    <code style={{ fontWeight: 900, fontSize: '0.95rem', letterSpacing: '1px' }}>
+                      {typeof window !== 'undefined' ? `${window.location.origin}/play?room=${roomId}` : `*/play?room=${roomId}`}
+                    </code>
+                    <div className="hint" style={{ marginTop: '0.3rem' }}>Code: {roomInviteCode}</div>
+                  </div>
+                )}
+
+                {/* Room list */}
+                {roomList.length > 0 && (
+                  <div>
+                    <div className="section-label">Open Rooms</div>
+                    {roomList.map((r) => (
+                      <div key={r.id} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '0.5rem 0.7rem', borderBottom: '1px solid #eee',
+                      }}>
+                        <div>
+                          <strong>{r.name}</strong>{' '}
+                          <span className="hint">by {r.hostName} ({r.playerCount}/2){r.hasPassword ? ' [pw]' : ''}</span>
+                        </div>
+                        <button
+                          className="action-btn"
+                          style={{ fontSize: '0.8rem', padding: '0.3rem 0.7rem' }}
+                          onClick={async () => {
+                            setRoomError('');
+                            const pw = r.hasPassword ? prompt('Enter room password:') : undefined;
+                            if (r.hasPassword && !pw) return;
+                            try {
+                              const res = await fetch(`/api/rooms/${r.id}`, {
+                                method: 'POST',
+                                headers: { 'content-type': 'application/json' },
+                                body: JSON.stringify({ playerName: botBConfig.name || 'Challenger', password: pw }),
+                              });
+                              const data = await res.json();
+                              if (data.ok) {
+                                setRoomId(r.id);
+                                setRoomInviteCode(r.inviteCode);
+                              } else {
+                                setRoomError(data.error || 'Failed to join');
+                              }
+                            } catch { setRoomError('Network error'); }
+                          }}
+                        >
+                          Join
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {roomList.length === 0 && <div className="hint">No open rooms. Create one above.</div>}
+                {roomError && <div style={{ color: 'var(--c-red)', fontWeight: 800, marginTop: '0.5rem' }}>{roomError}</div>}
+              </div>
+            )}
 
             <button className="cta-btn enter-arena-btn" onClick={startMatch}>
               Start Battle
@@ -861,6 +1122,11 @@ const Play = () => {
                 <span className="status-pill" style={{ background: 'rgba(46,204,113,0.2)', borderColor: '#2ecc71' }}>{aName}</span>
                 <span className="status-pill" style={{ background: 'rgba(235,77,75,0.2)', borderColor: '#eb4d4b' }}>{bName}</span>
                 <span className="status-pill" style={{ background: 'rgba(255,214,0,0.15)', borderColor: 'rgba(255,214,0,0.5)' }}>Objective</span>
+                {ARENA_TASKS.map((t) => (
+                  <span key={t.id} className="status-pill" style={{ background: `${t.color}22`, borderColor: t.color, fontSize: '0.75rem' }}>
+                    {t.label} Task
+                  </span>
+                ))}
               </div>
 
               {/* Energy bars */}

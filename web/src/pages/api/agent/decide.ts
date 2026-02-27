@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 
 export const prerender = false;
 
-const OPENAI_TIMEOUT_MS = 3000;
+const DEFAULT_TIMEOUT_MS = 3000;
 
 const ACTION_COST: Record<string, number> = {
   MOVE: 40,
@@ -31,12 +31,72 @@ const OBJECTIVE_RADIUS = 25;
 const VALID_ACTIONS = new Set(['MOVE', 'MELEE_STRIKE', 'RANGED_SHOT', 'GUARD', 'DASH', 'UTILITY', 'NO_OP']);
 const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
-function distanceTenths(a: { x: number; y: number }, b: { x: number; y: number }) {
-  return Math.round(Math.hypot(a.x - b.x, a.y - b.y));
+/* ── Provider config ────────────────────────────────────── */
+
+interface ProviderConfig {
+  url: string;
+  model: string;
+  apiKey: string;
+  temperature: number;
+  authHeader: (key: string) => Record<string, string>;
+  bodyBuilder: (model: string, messages: any[], temperature: number) => Record<string, unknown>;
 }
 
-function distanceUnits(a: { x: number; y: number }, b: { x: number; y: number }) {
-  return (distanceTenths(a, b) / UNIT_SCALE).toFixed(1);
+const PROVIDERS: Record<string, Omit<ProviderConfig, 'apiKey' | 'temperature'>> = {
+  openai: {
+    url: 'https://api.openai.com/v1/chat/completions',
+    model: 'gpt-4o-mini',
+    authHeader: (key) => ({ Authorization: `Bearer ${key}` }),
+    bodyBuilder: (model, messages, temperature) => ({
+      model,
+      messages,
+      response_format: { type: 'json_object' },
+      max_tokens: 100,
+      temperature,
+    }),
+  },
+  anthropic: {
+    url: 'https://api.anthropic.com/v1/messages',
+    model: 'claude-haiku-4-5-20251001',
+    authHeader: (key) => ({ 'x-api-key': key, 'anthropic-version': '2023-06-01' }),
+    bodyBuilder: (model, messages, temperature) => ({
+      model,
+      max_tokens: 100,
+      temperature,
+      system: messages.find((m: any) => m.role === 'system')?.content || '',
+      messages: messages.filter((m: any) => m.role !== 'system'),
+    }),
+  },
+  groq: {
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    model: 'llama-3.1-8b-instant',
+    authHeader: (key) => ({ Authorization: `Bearer ${key}` }),
+    bodyBuilder: (model, messages, temperature) => ({
+      model,
+      messages,
+      response_format: { type: 'json_object' },
+      max_tokens: 100,
+      temperature,
+    }),
+  },
+  openrouter: {
+    url: 'https://openrouter.ai/api/v1/chat/completions',
+    model: 'meta-llama/llama-3.1-8b-instruct',
+    authHeader: (key) => ({ Authorization: `Bearer ${key}` }),
+    bodyBuilder: (model, messages, temperature) => ({
+      model,
+      messages,
+      response_format: { type: 'json_object' },
+      max_tokens: 100,
+      temperature,
+    }),
+  },
+};
+
+/* ── Helpers ─────────────────────────────────────────────── */
+
+function distanceTenths(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.round(Math.hypot(a.x - b.x, a.y - b.y));
 }
 
 function energyPct(energy: number) {
@@ -89,7 +149,6 @@ function formatGameState(
   lines.push('');
   lines.push(`OBJECTIVE ZONE: center (10,10) radius 2.5 — ${objStatus}`);
 
-  // Objective scores
   const myScore = gameState.objectiveScore?.[actorId] ?? 0;
   const enemyScore = gameState.objectiveScore?.[opponentId] ?? 0;
   if (myScore > 0 || enemyScore > 0) {
@@ -156,14 +215,14 @@ function formatGameState(
 function parseAndValidate(
   raw: any,
   loadout: string[],
-): { type: string; dir?: string; targetId?: string } {
+): { type: string; dir?: string; targetId?: string; reasoning?: string } {
   if (!raw || typeof raw !== 'object') return { type: 'NO_OP' };
 
   const type = typeof raw.type === 'string' ? raw.type.toUpperCase() : '';
   if (!VALID_ACTIONS.has(type)) return { type: 'NO_OP' };
   if (type !== 'NO_OP' && !loadout.includes(type)) return { type: 'NO_OP' };
 
-  const result: { type: string; dir?: string; targetId?: string } = { type };
+  const result: { type: string; dir?: string; targetId?: string; reasoning?: string } = { type };
 
   if (type === 'MOVE' || type === 'DASH') {
     const dir = typeof raw.dir === 'string' ? raw.dir.toUpperCase() : '';
@@ -177,7 +236,18 @@ function parseAndValidate(
     }
   }
 
+  if (raw.reasoning && typeof raw.reasoning === 'string') {
+    result.reasoning = raw.reasoning.slice(0, 200);
+  }
+
   return result;
+}
+
+function extractContent(data: any, provider: string): string | null {
+  if (provider === 'anthropic') {
+    return data?.content?.[0]?.text ?? null;
+  }
+  return data?.choices?.[0]?.message?.content ?? null;
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -192,9 +262,22 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    const apiKey = import.meta.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    // Read BYO headers (client passes these per-bot)
+    const llmProvider = (request.headers.get('x-llm-provider') || 'openai').toLowerCase();
+    const llmModel = request.headers.get('x-llm-model') || '';
+    const llmKey = request.headers.get('x-llm-key') || '';
+    const llmTemperature = parseFloat(request.headers.get('x-llm-temperature') || '');
+
+    const providerConfig = PROVIDERS[llmProvider] || PROVIDERS.openai;
+    const model = llmModel || providerConfig.model;
+    const temperature = Number.isFinite(llmTemperature) ? llmTemperature : 0.7;
+
+    // API key: BYO header > server env
+    const serverKey = import.meta.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY || '';
+    const apiKey = llmKey || (llmProvider === 'openai' ? serverKey : '');
+
     if (!apiKey) {
-      console.error('[agent/decide] OPENAI_API_KEY not set');
+      console.error(`[agent/decide] No API key for provider ${llmProvider}`);
       return new Response(JSON.stringify({ action: { type: 'NO_OP' } }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -202,31 +285,26 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const userMessage = formatGameState(gameState, actorId, opponentId, loadout);
-
     const sysPrompt = (systemPrompt || 'You are a combat bot. Pick the best tactical action each turn.').slice(0, 2000);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
+    const messages = [
+      { role: 'system', content: sysPrompt },
+      { role: 'user', content: userMessage },
+    ];
 
-    let action: { type: string; dir?: string; targetId?: string } = { type: 'NO_OP' };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+    let action: { type: string; dir?: string; targetId?: string; reasoning?: string } = { type: 'NO_OP' };
 
     try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      const res = await fetch(providerConfig.url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
+          ...providerConfig.authHeader(apiKey),
         },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: sysPrompt },
-            { role: 'user', content: userMessage },
-          ],
-          response_format: { type: 'json_object' },
-          max_tokens: 100,
-          temperature: 0.7,
-        }),
+        body: JSON.stringify(providerConfig.bodyBuilder(model, messages, temperature)),
         signal: controller.signal,
       });
 
@@ -234,7 +312,7 @@ export const POST: APIRoute = async ({ request }) => {
 
       if (res.ok) {
         const data = await res.json();
-        const content = data?.choices?.[0]?.message?.content;
+        const content = extractContent(data, llmProvider);
         if (content) {
           try {
             const parsed = JSON.parse(content);
@@ -247,9 +325,9 @@ export const POST: APIRoute = async ({ request }) => {
     } catch (err: any) {
       clearTimeout(timeout);
       if (err?.name === 'AbortError') {
-        console.warn(`[agent/decide] OpenAI timeout for ${actorId}`);
+        console.warn(`[agent/decide] ${llmProvider} timeout for ${actorId}`);
       } else {
-        console.error(`[agent/decide] OpenAI error:`, err?.message || err);
+        console.error(`[agent/decide] ${llmProvider} error:`, err?.message || err);
       }
       action = { type: 'NO_OP' };
     }

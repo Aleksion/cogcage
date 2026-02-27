@@ -803,12 +803,12 @@ const FOUNDER_PRICE_TEXT = 'Founder Pack $29 one-time';
 const FOUNDER_PRICE_FUTURE_TEXT = '$49 once beta opens';
 const HERO_COPY = {
   value: {
-    headline: ['EARN.', 'CLIMB.', 'OWN.'],
-    body: 'Turn every match into upside: lock founder pricing, build your LLM fighter, and stack wins into real rewards before public pricing jumps.',
+    headline: ['BUILD.', 'BATTLE.', 'WIN.'],
+    body: 'Design your LLM fighter, pit it against rivals in a live arena, and climb the ladder before public pricing kicks in.',
   },
   competition: {
-    headline: ['RULE.', 'THE.', 'ARENA.'],
-    body: 'Outbuild rivals, outsmart their prompts, and take the top slot in a live ladder where every match is a public proving ground.',
+    headline: ['BUILD.', 'BATTLE.', 'WIN.'],
+    body: 'Design your LLM fighter, pit it against rivals in a live arena, and climb the ladder before public pricing kicks in.',
   },
 };
 
