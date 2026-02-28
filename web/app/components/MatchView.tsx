@@ -53,8 +53,8 @@ const matchStyles = `
   .mv-topbar .vs { font-family: var(--f-display); font-size: 2rem; color: var(--c-red); }
   .mv-stat-block { margin-bottom: 0; margin-top: 0.3rem; }
   .mv-stat-title { display: flex; justify-content: space-between; font-weight: 800; margin-bottom: 0.35rem; }
-  .mv-bar-shell { height: 16px; background: #101010; border-radius: 999px; overflow: hidden; border: 2px solid var(--c-dark); width: 180px; }
-  .mv-bar-fill { height: 100%; transition: width 0.35s ease, background 0.35s ease; }
+  .mv-bar-shell { height: 14px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.12); width: 180px; }
+  .mv-bar-fill { height: 100%; border-radius: 3px; transition: width 0.15s ease-out, background 0.35s ease; }
   .mv-status-pill { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 900; padding: 0.35rem 0.8rem; border-radius: 999px; border: 2px solid var(--c-dark); background: var(--c-white); font-size: 0.85rem; }
   .mv-tactic-chip { display: inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; border: 2px solid var(--c-dark); background: var(--c-yellow); color: var(--c-dark); margin-left: 0.5rem; }
   .mv-tactic-chip.enemy-chip { background: var(--c-red); color: #fff; }
@@ -162,6 +162,11 @@ const hpBarGradient = (hp: number): string => {
   if (hp > 60) return 'linear-gradient(90deg, #2ecc71, #27ae60)';
   if (hp > 30) return 'linear-gradient(90deg, #f39c12, #e67e22)';
   return 'linear-gradient(90deg, #FF4D4D, #c0392b)';
+};
+const hpGlowColor = (hp: number): string => {
+  if (hp > 60) return '#2ecc71';
+  if (hp > 30) return '#f39c12';
+  return '#FF4D4D';
 };
 const hashString = (input: string) => {
   let hash = 2166136261;
@@ -494,7 +499,7 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
                 <span className="mv-status-pill">{botAHp}</span>
               </div>
               <div className="mv-bar-shell">
-                <div className="mv-bar-fill" style={{ width: `${botAHp}%`, background: hpBarGradient(botAHp) }} />
+                <div className="mv-bar-fill" style={{ width: `${botAHp}%`, background: hpBarGradient(botAHp), boxShadow: `0 0 8px ${hpGlowColor(botAHp)}` }} />
               </div>
             </div>
           </div>
@@ -512,18 +517,18 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
                 <span className="mv-status-pill">{botBHp}</span>
               </div>
               <div className="mv-bar-shell">
-                <div className="mv-bar-fill" style={{ width: `${botBHp}%`, background: hpBarGradient(botBHp) }} />
+                <div className="mv-bar-fill" style={{ width: `${botBHp}%`, background: hpBarGradient(botBHp), boxShadow: `0 0 8px ${hpGlowColor(botBHp)}` }} />
               </div>
             </div>
           </div>
         </div>
 
         {/* PlayCanvas 3D arena */}
-        <div style={{ position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto 1rem', height: '560px', overflow: 'hidden', borderRadius: '14px', border: '4px solid #1A1A1A', boxShadow: '8px 8px 0 #1A1A1A', background: '#F9F7F2' }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto 1rem', height: '560px', overflow: 'hidden', borderRadius: '14px', border: '4px solid #1A1A1A', boxShadow: '8px 8px 0 #1A1A1A', background: '#0A0A0E' }}>
           <canvas ref={playCanvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
           {!pcActive && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', background: '#F9F7F2' }}>
-              <div style={{ fontFamily: 'Bangers, display', fontSize: '2rem', color: '#1A1A1A', letterSpacing: '2px' }}>LOADING ARENA...</div>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', background: '#0A0A0E' }}>
+              <div style={{ fontFamily: 'Bangers, display', fontSize: '2rem', color: '#FFD600', letterSpacing: '2px' }}>LOADING ARENA...</div>
             </div>
           )}
           {vfxEvents.map((v) => (
@@ -572,14 +577,14 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
           <div className="mv-energy-block">
             <div className="mv-energy-label" style={{ color: '#00E5FF' }}>{aName} Energy</div>
             <div className="mv-bar-shell" style={{ width: '100%' }}>
-              <div className="mv-bar-fill" style={{ width: `${(botAEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #00e5ff, #0077b6)' }} />
+              <div className="mv-bar-fill" style={{ width: `${(botAEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #00e5ff, #0077b6)', boxShadow: '0 0 6px #00e5ff' }} />
             </div>
             <div className="mv-hint" style={{ fontSize: '0.75rem' }}>{Math.round(botAEnergy / 10)}e</div>
           </div>
           <div className="mv-energy-block">
             <div className="mv-energy-label" style={{ color: '#eb4d4b' }}>{bName} Energy</div>
             <div className="mv-bar-shell" style={{ width: '100%' }}>
-              <div className="mv-bar-fill" style={{ width: `${(botBEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #ff6b6b, #c0392b)' }} />
+              <div className="mv-bar-fill" style={{ width: `${(botBEnergy / ENERGY_MAX) * 100}%`, background: 'linear-gradient(90deg, #ff6b6b, #c0392b)', boxShadow: '0 0 6px #ff6b6b' }} />
             </div>
             <div className="mv-hint" style={{ fontSize: '0.75rem' }}>{Math.round(botBEnergy / 10)}e</div>
           </div>

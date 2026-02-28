@@ -11,7 +11,7 @@ import { UNIT_SCALE } from './constants';
 const ARENA = 20;
 const OBJ_CX = 10;
 const OBJ_CZ = 10;
-const TWEEN_SPEED = 12; // lerp rate (per second)
+const TWEEN_SPEED = 6; // slower lerp — smooth, visible movement
 
 /* ── FX particle ─────────────────────────────────────────────── */
 
@@ -22,8 +22,9 @@ interface FxParticle {
   vz: number;
   ttl: number;
   maxTtl: number;
-  noScale?: boolean; // skip auto-shrink (used for bolt tracers)
-  boltLength?: number; // original Z-length for bolt tracers
+  noScale?: boolean;
+  boltLength?: number;
+  initScale?: { x: number; y: number; z: number };
 }
 
 /* ── Helpers ──────────────────────────────────────────────────── */
@@ -63,6 +64,12 @@ export class PlayCanvasScene {
   private fx: FxParticle[] = [];
   private lastEvtLen = 0;
   private dead = false;
+  private time = 0;
+  private vfxCounter = 0;
+  private cameraEntity!: pc.Entity;
+  private shake = { x: 0, z: 0, ttl: 0, maxTtl: 0 };
+  private hitStopUntil = 0;
+  private resizeHandler: (() => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     const app = new pc.Application(canvas, {});
@@ -71,18 +78,18 @@ export class PlayCanvasScene {
     app.setCanvasFillMode(pc.FILLMODE_NONE);
     app.setCanvasResolution(pc.RESOLUTION_AUTO);
 
-    const resize = () => {
+    this.resizeHandler = () => {
       const p = canvas.parentElement;
       if (p) app.resizeCanvas(p.clientWidth, p.clientHeight);
     };
-    window.addEventListener('resize', resize);
-    resize();
+    window.addEventListener('resize', this.resizeHandler);
+    this.resizeHandler();
 
     this.camera();
     this.lights();
     this.arena();
-    this.buildStriker('botA', 6, 10);
-    this.buildCrusher('botB', 14, 10);
+    this.buildAlpha('botA', 6, 10);
+    this.buildBeta('botB', 14, 10);
 
     app.on('update', (dt: number) => this.tick(dt));
     app.start();
@@ -93,19 +100,44 @@ export class PlayCanvasScene {
   private camera(): void {
     const e = new pc.Entity('camera');
     e.addComponent('camera', {
-      clearColor: new pc.Color(0.96, 0.94, 0.91), // warm cream background
+      clearColor: new pc.Color(0.04, 0.04, 0.06),
       fov: 45,
     });
-    e.setPosition(10, 14, 18);
+    e.setPosition(10, 12, ARENA + 2);
     e.lookAt(new pc.Vec3(10, 0, 10));
     this.app.root.addChild(e);
+    this.cameraEntity = e;
   }
 
   /* ── Lights ─────────────────────────────────────────────── */
 
   private lights(): void {
-    // Full white ambient — flat cel-shaded, no shadow variation
-    this.app.scene.ambientLight = new pc.Color(1, 1, 1);
+    // Very dark blue-black ambient
+    this.app.scene.ambientLight = new pc.Color(0.04, 0.04, 0.08);
+
+    // Warm overhead spotlight
+    const light1 = new pc.Entity('spot1');
+    light1.addComponent('light', {
+      type: 'omni',
+      color: new pc.Color(1, 0.95, 0.8),
+      intensity: 0.8,
+      range: 25,
+      castShadows: false,
+    });
+    light1.setLocalPosition(5, 8, 5);
+    this.app.root.addChild(light1);
+
+    // Cool cyan fill light
+    const light2 = new pc.Entity('spot2');
+    light2.addComponent('light', {
+      type: 'omni',
+      color: new pc.Color(0.2, 0.8, 1.0),
+      intensity: 0.4,
+      range: 25,
+      castShadows: false,
+    });
+    light2.setLocalPosition(15, 6, 15);
+    this.app.root.addChild(light2);
 
     // Objective zone point light (warm glow)
     const obj = new pc.Entity('objLight');
@@ -137,17 +169,17 @@ export class PlayCanvasScene {
   }
 
   private arena(): void {
-    // Floor — warm paper/cream (Borderlands ground)
-    this.box('floor', [ARENA / 2, -0.05, ARENA / 2], [ARENA, 0.1, ARENA], celMat('#F5F0E8'));
+    // Floor — dark industrial
+    this.box('floor', [ARENA / 2, -0.05, ARENA / 2], [ARENA, 0.1, ARENA], celMat('#1A1A1A'));
 
-    // Grid lines — bold dark, every 2 units
-    const gridMat = celMat('#222222');
+    // Grid lines — faint cyan
+    const gridMat = celMat('#0D2628');
     for (let i = 0; i <= ARENA; i += 2) {
       this.box(`gx${i}`, [ARENA / 2, 0.015, i], [ARENA, 0.015, 0.06], gridMat);
       this.box(`gz${i}`, [i, 0.015, ARENA / 2], [0.06, 0.015, ARENA], gridMat);
     }
 
-    // Cover blocks — earthy brown Borderlands rubble
+    // Cover blocks — earthy brown rubble
     const covers: { pos: [number, number, number]; scale: [number, number, number] }[] = [
       { pos: [4, 0.4, 4], scale: [1.2, 0.8, 0.4] },
       { pos: [16, 0.4, 4], scale: [0.4, 0.8, 1.2] },
@@ -167,8 +199,8 @@ export class PlayCanvasScene {
       );
     }
 
-    // Objective zone — solid bright signal yellow platform
-    this.box('objective', [OBJ_CX, 0.04, OBJ_CZ], [6, 0.08, 6], celMat('#FFD600'));
+    // Objective zone — bright signal yellow, taller
+    this.box('objective', [OBJ_CX, 0.06, OBJ_CZ], [6, 0.12, 6], celMat('#FFD600'));
 
     // Boundary walls — near black, 1.0 tall
     const h = 1.0;
@@ -182,6 +214,25 @@ export class PlayCanvasScene {
     this.box('wW_ol', [-t / 2, h / 2, ARENA / 2], [t * 1.06, h * 1.06, (ARENA + t * 2) * 1.06], outlineMat);
     this.box('wE', [ARENA + t / 2, h / 2, ARENA / 2], [t, h, ARENA + t * 2], wallMat);
     this.box('wE_ol', [ARENA + t / 2, h / 2, ARENA / 2], [t * 1.06, h * 1.06, (ARENA + t * 2) * 1.06], outlineMat);
+
+    // Cage pillars (4 corners)
+    const pillarMat = celMat('#2A2A2A');
+    const corners: [number, number, number][] = [
+      [-0.5, 1.5, -0.5],
+      [20.5, 1.5, -0.5],
+      [-0.5, 1.5, 20.5],
+      [20.5, 1.5, 20.5],
+    ];
+    for (const pos of corners) {
+      this.box(`pillar_${pos.join('_')}`, pos, [0.4, 3.0, 0.4], pillarMat);
+      this.box(`pillar_ol_${pos.join('_')}`, pos, [0.48, 3.12, 0.48], outlineMat);
+    }
+
+    // Crossbeam bars (top of cage)
+    this.box('barN', [10, 2.9, -0.5], [21, 0.15, 0.25], pillarMat);
+    this.box('barS', [10, 2.9, 20.5], [21, 0.15, 0.25], pillarMat);
+    this.box('barW', [-0.5, 2.9, 10], [0.25, 0.15, 21], pillarMat);
+    this.box('barE', [20.5, 2.9, 10], [0.25, 0.15, 21], pillarMat);
   }
 
   /* ── Mech part helper ──────────────────────────────────── */
@@ -200,41 +251,39 @@ export class PlayCanvasScene {
     if (e.render) e.render.meshInstances[0].material = celMat(color);
     parent.addChild(e);
 
-    // Outline shell — inflated 1.12x, black back-face cull
+    // Outline shell — inflated 1.07x, black back-face cull
     const ol = new pc.Entity(name + '_ol');
     ol.addComponent('render', { type: 'box' });
     ol.setLocalPosition(0, 0, 0);
-    ol.setLocalScale(1.12, 1.12, 1.12);
+    ol.setLocalScale(1.07, 1.07, 1.07);
     if (ol.render) ol.render.meshInstances[0].material = outlineMat;
     e.addChild(ol);
 
     return e;
   }
 
-  /* ── Striker (botA — green #2ecc71) ────────────────────── */
+  /* ── Alpha Crawler (botA — cyan #00E5FF) ────────────────── */
 
-  private buildStriker(id: string, startX: number, startZ: number): void {
+  private buildAlpha(id: string, startX: number, startZ: number): void {
     const root = new pc.Entity(`bot-${id}`);
     root.setPosition(startX, 0, startZ);
     const parts: pc.Entity[] = [];
+    const c = '#00E5FF';
 
-    parts.push(this.part(root, 'legL', [-0.18, 0.15, 0], [0.22, 0.3, 0.22], '#27ae60'));
-    parts.push(this.part(root, 'legR', [0.18, 0.15, 0], [0.22, 0.3, 0.22], '#27ae60'));
-    parts.push(this.part(root, 'hips', [0, 0.32, 0], [0.5, 0.1, 0.3], '#2ecc71'));
-    parts.push(this.part(root, 'torso', [0, 0.62, 0], [0.42, 0.52, 0.28], '#2ecc71'));
-    parts.push(this.part(root, 'shoulderL', [-0.32, 0.74, 0], [0.18, 0.22, 0.22], '#27ae60'));
-    parts.push(this.part(root, 'shoulderR', [0.32, 0.74, 0], [0.18, 0.22, 0.22], '#27ae60'));
-    parts.push(this.part(root, 'armL', [-0.34, 0.48, 0], [0.14, 0.28, 0.14], '#2ecc71'));
-    parts.push(this.part(root, 'armR', [0.36, 0.48, 0.02], [0.08, 0.32, 0.06], '#27D9E8')); // blade
-    parts.push(this.part(root, 'head', [0, 0.98, 0], [0.28, 0.22, 0.24], '#2ecc71'));
-    parts.push(this.part(root, 'visor', [0, 0.98, 0.13], [0.22, 0.06, 0.04], '#27D9E8'));
-    parts.push(this.part(root, 'antenna', [0.1, 1.12, 0], [0.04, 0.12, 0.04], '#FFD233'));
+    parts.push(this.part(root, 'legs_L', [-0.18, 0.18, 0], [0.18, 0.36, 0.22], c));
+    parts.push(this.part(root, 'legs_R', [0.18, 0.18, 0], [0.18, 0.36, 0.22], c));
+    parts.push(this.part(root, 'torso', [0, 0.62, 0], [0.52, 0.44, 0.36], c));
+    parts.push(this.part(root, 'shoulder_L', [-0.34, 0.72, 0], [0.14, 0.22, 0.28], c));
+    parts.push(this.part(root, 'shoulder_R', [0.34, 0.72, 0], [0.14, 0.22, 0.28], c));
+    parts.push(this.part(root, 'neck', [0, 0.88, 0], [0.16, 0.12, 0.16], c));
+    parts.push(this.part(root, 'head', [0, 1.04, 0], [0.36, 0.28, 0.30], c));
+    parts.push(this.part(root, 'visor', [0, 1.04, 0.16], [0.28, 0.10, 0.04], '#FFD600'));
 
     // Team glow point light
     const light = new pc.Entity('botLight');
     light.addComponent('light', {
       type: 'point',
-      color: hexColor('#2ecc71'),
+      color: hexColor(c),
       intensity: 0.5,
       range: 3,
     });
@@ -246,32 +295,28 @@ export class PlayCanvasScene {
     this.target[id] = { x: startX, z: startZ };
   }
 
-  /* ── Crusher (botB — red #eb4d4b) ──────────────────────── */
+  /* ── Beta Crawler (botB — red #EB4D4B) ──────────────────── */
 
-  private buildCrusher(id: string, startX: number, startZ: number): void {
+  private buildBeta(id: string, startX: number, startZ: number): void {
     const root = new pc.Entity(`bot-${id}`);
     root.setPosition(startX, 0, startZ);
     const parts: pc.Entity[] = [];
+    const c = '#EB4D4B';
 
-    parts.push(this.part(root, 'legL', [-0.22, 0.12, 0], [0.26, 0.24, 0.28], '#c0392b'));
-    parts.push(this.part(root, 'legR', [0.22, 0.12, 0], [0.26, 0.24, 0.28], '#c0392b'));
-    parts.push(this.part(root, 'hips', [0, 0.28, 0], [0.62, 0.12, 0.36], '#eb4d4b'));
-    parts.push(this.part(root, 'torso', [0, 0.58, 0], [0.66, 0.5, 0.34], '#eb4d4b'));
-    parts.push(this.part(root, 'pauldronL', [-0.46, 0.72, 0], [0.26, 0.28, 0.28], '#c0392b'));
-    parts.push(this.part(root, 'pauldronR', [0.46, 0.72, 0], [0.26, 0.28, 0.28], '#c0392b'));
-    parts.push(this.part(root, 'cannon', [0.42, 0.44, 0.04], [0.22, 0.18, 0.18], '#7f0000'));
-    parts.push(this.part(root, 'barrelTip', [0.42, 0.3, 0.04], [0.14, 0.1, 0.14], '#333333'));
-    parts.push(this.part(root, 'clawArm', [-0.4, 0.44, 0], [0.16, 0.26, 0.14], '#c0392b'));
-    parts.push(this.part(root, 'head', [0, 0.9, 0], [0.38, 0.2, 0.3], '#eb4d4b'));
-    parts.push(this.part(root, 'eyeSlit', [0, 0.9, 0.16], [0.3, 0.04, 0.02], '#FFD233'));
-    parts.push(this.part(root, 'hornL', [-0.12, 1.02, 0], [0.06, 0.12, 0.06], '#c0392b'));
-    parts.push(this.part(root, 'hornR', [0.12, 1.02, 0], [0.06, 0.12, 0.06], '#c0392b'));
+    parts.push(this.part(root, 'base', [0, 0.12, 0], [0.48, 0.24, 0.38], c));
+    parts.push(this.part(root, 'torso', [0, 0.58, 0], [0.42, 0.52, 0.32], c));
+    parts.push(this.part(root, 'arm_L', [-0.34, 0.58, 0], [0.16, 0.44, 0.16], c));
+    parts.push(this.part(root, 'arm_R', [0.34, 0.58, 0], [0.16, 0.44, 0.16], c));
+    parts.push(this.part(root, 'head', [0, 0.96, 0], [0.28, 0.32, 0.26], c));
+    parts.push(this.part(root, 'antenna', [0, 1.22, 0], [0.04, 0.20, 0.04], c));
+    parts.push(this.part(root, 'eye_L', [-0.08, 0.98, 0.14], [0.08, 0.06, 0.04], '#FFD600'));
+    parts.push(this.part(root, 'eye_R', [0.08, 0.98, 0.14], [0.08, 0.06, 0.04], '#FFD600'));
 
     // Team glow point light
     const light = new pc.Entity('botLight');
     light.addComponent('light', {
       type: 'point',
-      color: hexColor('#eb4d4b'),
+      color: hexColor(c),
       intensity: 0.5,
       range: 3,
     });
@@ -285,18 +330,70 @@ export class PlayCanvasScene {
 
   /* ── FX spawners ────────────────────────────────────────── */
 
+  private spawnParticle(pos: pc.Vec3, color: pc.Color): FxParticle {
+    const e = new pc.Entity('fx');
+    e.addComponent('render', { type: 'box' });
+    e.setPosition(pos.x, pos.y, pos.z);
+    const m = new pc.StandardMaterial();
+    m.diffuse = new pc.Color(0, 0, 0);
+    m.emissive = color;
+    m.useLighting = false;
+    m.update();
+    if (e.render) e.render.meshInstances[0].material = m;
+    this.app.root.addChild(e);
+    e.setLocalScale(0.1, 0.1, 0.1);
+    const p: FxParticle = {
+      entity: e,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      ttl: 1,
+      maxTtl: 1,
+      initScale: { x: 0.1, y: 0.1, z: 0.1 },
+    };
+    this.fx.push(p);
+    return p;
+  }
+
+  private spawnMeleeBurst(pos: pc.Vec3, color: string): void {
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const speed = 4 + Math.random() * 5;
+      const p = this.spawnParticle(pos, hexColor(color));
+      p.entity.setLocalScale(0.35, 0.35, 0.35);
+      p.initScale = { x: 0.35, y: 0.35, z: 0.35 };
+      p.vx = Math.cos(angle) * speed;
+      p.vy = 3 + Math.random() * 4;
+      p.vz = Math.sin(angle) * speed;
+      p.ttl = 0.35;
+      p.maxTtl = 0.35;
+    }
+    // 4 "shard" particles — flat discs
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2 + Math.PI / 8;
+      const p = this.spawnParticle(pos, hexColor('#FFD600'));
+      p.entity.setLocalScale(0.6, 0.06, 0.6);
+      p.initScale = { x: 0.6, y: 0.06, z: 0.6 };
+      p.vx = Math.cos(angle) * 3;
+      p.vy = 1;
+      p.vz = Math.sin(angle) * 3;
+      p.ttl = 0.5;
+      p.maxTtl = 0.5;
+    }
+  }
+
   private spawnBurst(cx: number, cy: number, cz: number, hexStr: string, count: number, ttl: number): void {
     const m = celMat(hexStr);
     for (let i = 0; i < count; i++) {
       const e = new pc.Entity('fx');
       e.addComponent('render', { type: 'box' });
-      const s = 0.05 + Math.random() * 0.08;
+      const s = 0.12 + Math.random() * 0.12;
       e.setLocalScale(s, s, s);
       e.setPosition(cx, cy, cz);
       if (e.render) e.render.meshInstances[0].material = m;
       this.app.root.addChild(e);
 
-      const spd = 2 + Math.random() * 4;
+      const spd = 3 + Math.random() * 5;
       const ang = Math.random() * Math.PI * 2;
       this.fx.push({
         entity: e,
@@ -305,6 +402,7 @@ export class PlayCanvasScene {
         vz: Math.sin(ang) * spd,
         ttl: ttl / 1000,
         maxTtl: ttl / 1000,
+        initScale: { x: s, y: s, z: s },
       });
     }
   }
@@ -327,12 +425,12 @@ export class PlayCanvasScene {
         vz: Math.sin(ang) * 0.5,
         ttl: 0.6,
         maxTtl: 0.6,
+        initScale: { x: 0.12, y: 0.6, z: 0.12 },
       });
     }
   }
 
   private spawnBolt(sx: number, sy: number, sz: number, tx: number, ty: number, tz: number): void {
-    // Tracer bolt from shooter to target — thin elongated box oriented along the shot path
     const dx = tx - sx;
     const dy = ty - sy;
     const dz = tz - sz;
@@ -341,16 +439,24 @@ export class PlayCanvasScene {
 
     const bolt = new pc.Entity('bolt');
     bolt.addComponent('render', { type: 'box' });
-    // Orient: PlayCanvas Y-up, bolt travels in XZ plane. Rotate around Y to face target.
     const angleY = Math.atan2(dx, dz) * (180 / Math.PI);
     bolt.setPosition((sx + tx) / 2, (sy + ty) / 2, (sz + tz) / 2);
     bolt.setEulerAngles(0, angleY, 0);
-    bolt.setLocalScale(0.07, 0.07, dist); // thin cylinder-like tracer
-    const m = celMat('#27D9E8'); // signal cyan
+    bolt.setLocalScale(0.07, 0.07, dist);
+    const m = celMat('#27D9E8');
     if (bolt.render) bolt.render.meshInstances[0].material = m;
     this.app.root.addChild(bolt);
 
     this.fx.push({ entity: bolt, vx: 0, vy: 0, vz: 0, ttl: 0.14, maxTtl: 0.14, noScale: true, boltLength: dist });
+  }
+
+  /* ── Camera shake ───────────────────────────────────────── */
+
+  private triggerShake(intensity: number, duration: number): void {
+    this.shake.ttl = duration;
+    this.shake.maxTtl = duration;
+    this.shake.x = (Math.random() - 0.5) * intensity;
+    this.shake.z = (Math.random() - 0.5) * intensity;
   }
 
   /* ── DOM VFX dispatcher ─────────────────────────────────── */
@@ -397,20 +503,20 @@ export class PlayCanvasScene {
             // Ranged: bolt tracer from shooter + muzzle flash + big cyan impact
             if (aid && this.bots[aid]) {
               const ap = this.bots[aid].root.getPosition();
-              // Muzzle flash at shooter
               this.spawnBurst(ap.x, 0.8, ap.z, '#27D9E8', 6, 180);
-              // Bolt tracer from shooter to target
               this.spawnBolt(ap.x, 0.8, ap.z, tp.x, 0.8, tp.z);
             }
-            // Impact burst at target — large, bright cyan
             this.spawnBurst(tp.x, 0.5, tp.z, '#27D9E8', 20, 500);
             this.spawnBurst(tp.x, 0.8, tp.z, '#ffffff', 8, 200);
-            this.dispatchVfx('ZZT!', '#27D9E8');
+            this.triggerShake(0.15, 0.15);
+            const rangedText = this.vfxCounter++ % 2 === 0 ? 'ZZT!' : 'WHIP!';
+            this.dispatchVfx(rangedText, '#27D9E8');
           } else {
-            // Melee: orange/red close-range burst
-            this.spawnBurst(tp.x, 0.5, tp.z, '#ff6b35', 18, 450);
-            this.spawnBurst(tp.x, 0.8, tp.z, '#FFD600', 6, 250);
-            this.dispatchVfx('KAPOW!', '#FF4D4D');
+            // Melee: chunky radial burst
+            this.spawnMeleeBurst(tp, aid === 'botA' ? '#00E5FF' : '#EB4D4B');
+            this.triggerShake(0.4, 0.25);
+            const meleeText = this.vfxCounter++ % 2 === 0 ? 'KAPOW!' : 'CRACK!';
+            this.dispatchVfx(meleeText, '#FF4D4D');
           }
         }
       }
@@ -428,7 +534,18 @@ export class PlayCanvasScene {
         const aid = evt.actorId as string;
         if (aid && this.bots[aid]) {
           const p = this.bots[aid].root.getPosition();
-          this.spawnBurst(p.x, 0.3, p.z, aid === 'botA' ? '#2ecc71' : '#eb4d4b', 6, 400);
+          const teamColor = aid === 'botA' ? '#00E5FF' : '#EB4D4B';
+          // Motion trail — 3 ghost-trail particles
+          for (let i = 0; i < 3; i++) {
+            const gp = this.spawnParticle(p, hexColor(teamColor));
+            gp.entity.setLocalScale(0.5, 0.8, 0.5);
+            gp.initScale = { x: 0.5, y: 0.8, z: 0.5 };
+            gp.vx = 0;
+            gp.vy = 0;
+            gp.vz = 0;
+            gp.ttl = 0.2 - i * 0.05;
+            gp.maxTtl = 0.2;
+          }
         }
       }
 
@@ -439,7 +556,9 @@ export class PlayCanvasScene {
           this.spawnBurst(p.x, 0.5, p.z, '#ffffff', 30, 1200);
           this.spawnBurst(p.x, 0.5, p.z, '#ffd600', 20, 1000);
         }
-        this.dispatchVfx('K.O.!!', '#FFD600');
+        this.hitStopUntil = Date.now() + 400;
+        this.triggerShake(1.0, 0.6);
+        this.dispatchVfx('K.O.!!!', '#FFD600');
       }
     }
   }
@@ -447,20 +566,54 @@ export class PlayCanvasScene {
   /* ── Per-frame tick ─────────────────────────────────────── */
 
   private tick(dt: number): void {
-    // Tween bots toward target
+    // Hit-stop freeze
+    if (Date.now() < this.hitStopUntil) return;
+
+    this.time += dt;
+
+    // Idle sway — gentle sin-wave Y rotation when not moving
     for (const [id, b] of Object.entries(this.bots)) {
       const t = this.target[id];
       if (!t) continue;
       const pos = b.root.getPosition();
-      const nx = pos.x + (t.x - pos.x) * Math.min(1, dt * TWEEN_SPEED);
-      const nz = pos.z + (t.z - pos.z) * Math.min(1, dt * TWEEN_SPEED);
-      b.root.setPosition(nx, 0, nz);
-
-      // Face movement direction
       const dx = t.x - pos.x;
       const dz = t.z - pos.z;
-      if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
+      const isMoving = Math.abs(dx) > 0.05 || Math.abs(dz) > 0.05;
+
+      if (isMoving) {
+        // Tween toward target
+        const nx = pos.x + dx * Math.min(1, dt * TWEEN_SPEED);
+        const nz = pos.z + dz * Math.min(1, dt * TWEEN_SPEED);
+        b.root.setPosition(nx, 0, nz);
+        // Face movement direction
         b.root.setEulerAngles(0, Math.atan2(dx, dz) * (180 / Math.PI), 0);
+      } else {
+        // Snap to target
+        b.root.setPosition(t.x, 0, t.z);
+        // Idle sway
+        const offset = id === 'botA' ? 0 : Math.PI;
+        b.root.setLocalEulerAngles(0, Math.sin(this.time * 1.2 + offset) * 8, 0);
+      }
+    }
+
+    // Objective zone pulse
+    const obj = this.app.root.findByName('objective');
+    if (obj) {
+      const pulse = 1 + Math.sin(this.time * 4.8) * 0.04;
+      obj.setLocalScale(6 * pulse, 0.12, 6 * pulse);
+    }
+
+    // Camera shake
+    if (this.shake.ttl > 0) {
+      this.shake.ttl -= dt;
+      const decay = Math.max(0, this.shake.ttl / (this.shake.maxTtl || 0.3));
+      this.cameraEntity.setLocalPosition(
+        10 + this.shake.x * decay,
+        12,
+        ARENA + 2 + this.shake.z * decay,
+      );
+      if (this.shake.ttl <= 0) {
+        this.cameraEntity.setLocalPosition(10, 12, ARENA + 2);
       }
     }
 
@@ -473,7 +626,7 @@ export class PlayCanvasScene {
         continue;
       }
       if (!p.noScale) {
-        p.vy -= 8 * dt; // gravity — skip for bolts
+        p.vy -= 8 * dt; // gravity
       }
       const pos = p.entity.getPosition();
       p.entity.setPosition(
@@ -483,10 +636,17 @@ export class PlayCanvasScene {
       );
       if (!p.noScale) {
         const frac = p.ttl / p.maxTtl;
-        const s = 0.06 * frac;
-        p.entity.setLocalScale(s, s, s);
+        if (p.initScale) {
+          p.entity.setLocalScale(
+            p.initScale.x * frac,
+            p.initScale.y * frac,
+            p.initScale.z * frac,
+          );
+        } else {
+          const s = 0.06 * frac;
+          p.entity.setLocalScale(s, s, s);
+        }
       } else if (p.boltLength !== undefined) {
-        // Bolt: fade width but keep length
         const frac = p.ttl / p.maxTtl;
         const w = 0.07 * frac;
         p.entity.setLocalScale(w, w, p.boltLength);
@@ -500,6 +660,10 @@ export class PlayCanvasScene {
 
   destroy(): void {
     this.dead = true;
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      this.resizeHandler = null;
+    }
     for (const p of this.fx) p.entity.destroy();
     this.fx = [];
     this.app.destroy();
