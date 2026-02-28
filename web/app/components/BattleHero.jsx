@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-const styles = `
+export const battleHeroStyles = `
   @keyframes bh-blink {
     0%, 90%, 100% { transform: scaleY(1); opacity: 1; }
     95%            { transform: scaleY(0.1); opacity: 0.6; }
@@ -321,10 +321,7 @@ export default function BattleHero() {
   }, []);
 
   return (
-    <>
-      {/* Styles inlined — SSR-safe, no FOUC */}
-      <style dangerouslySetInnerHTML={{ __html: styles }} />
-      <div className="bh-wrap">
+    <div className="bh-wrap">
 
       {/* Eye stalks — absolute, top-center */}
       <div className="bh-stalks">
@@ -396,6 +393,5 @@ export default function BattleHero() {
       </div>
 
     </div>
-    </>
   );
 }
