@@ -45,17 +45,20 @@ const styles = `
     50%       { opacity: 0; }
   }
 
+  /* ── Outer wrapper: card is the layout anchor, claws are absolute ── */
   .bh-wrap {
     position: relative;
-    display: inline-flex;
-    align-items: center;
+    display: inline-block;
+    /* horizontal padding carves out space for the claws */
+    padding: 60px 90px 0;
     animation: bh-idle-bounce 2.6s ease-in-out infinite, bh-molt-glow 5s ease-in-out infinite;
   }
 
-  /* Eye stalks */
+  /* ── Eye stalks: absolute, top-center of the card ── */
   .bh-stalks {
     position: absolute;
-    top: -54px;
+    /* sits above the card's top edge (card starts at padding-top=60px) */
+    top: 0px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -95,16 +98,17 @@ const styles = `
     border: 2px solid #1A1A1A;
   }
 
-  /* Claw assembly */
+  /* ── Claw assemblies: absolutely anchored to the card sides ── */
   .bh-claw {
+    position: absolute;
+    top: 120px; /* align with mid-card */
     display: flex;
     flex-direction: column;
     align-items: center;
-    position: relative;
     z-index: 2;
   }
-  .bh-claw.left  { margin-right: -28px; }
-  .bh-claw.right { margin-left: -28px; }
+  .bh-claw.left  { left: 0; align-items: flex-end; }
+  .bh-claw.right { right: 0; align-items: flex-start; }
 
   .bh-claw-arm {
     width: 28px; height: 72px;
@@ -125,40 +129,42 @@ const styles = `
     display: flex;
     flex-direction: column;
     gap: 5px;
-    align-items: flex-start;
   }
-  .bh-claw.right .bh-pincer { align-items: flex-end; }
+  .bh-claw.left  .bh-pincer { align-items: flex-end; }
+  .bh-claw.right .bh-pincer { align-items: flex-start; }
 
   .bh-pincer-top, .bh-pincer-bot {
-    width: 100px; height: 36px;
+    width: 80px; height: 34px;
     background: radial-gradient(ellipse at 30% 30%, #FF6B6B, #EB4D4B);
     border: 3px solid #1A1A1A;
     box-shadow: 3px 3px 0 #1A1A1A;
   }
-  .bh-pincer-top {
-    border-radius: 8px 30px 4px 8px;
+  /* left claw: points right */
+  .bh-claw.left .bh-pincer-top {
+    border-radius: 8px 28px 4px 8px;
     transform-origin: right center;
     animation: bh-claw-pinch-l 1.6s ease-in-out infinite;
   }
-  .bh-pincer-bot {
-    border-radius: 8px 4px 30px 8px;
+  .bh-claw.left .bh-pincer-bot {
+    border-radius: 8px 4px 28px 8px;
     transform-origin: right center;
     animation: bh-claw-pinch-r 1.6s ease-in-out infinite;
   }
+  /* right claw: points left */
   .bh-claw.right .bh-pincer-top {
-    border-radius: 30px 8px 8px 4px;
+    border-radius: 28px 8px 8px 4px;
     transform-origin: left center;
     animation: bh-claw-pinch-r 1.6s ease-in-out infinite;
   }
   .bh-claw.right .bh-pincer-bot {
-    border-radius: 4px 8px 8px 30px;
+    border-radius: 4px 8px 8px 28px;
     transform-origin: left center;
     animation: bh-claw-pinch-l 1.6s ease-in-out infinite;
   }
 
-  /* Card */
+  /* ── Card ── */
   .bh-card {
-    width: min(420px, 85vw);
+    width: min(420px, 100%);
     background: #FFFFFF;
     border: 5px solid #1A1A1A;
     border-radius: 30px;
@@ -261,9 +267,16 @@ const styles = `
     color: #FFD600;
   }
 
-  @media (max-width: 600px) {
-    .bh-wrap { flex-direction: column; }
-    .bh-claw.left, .bh-claw.right { margin: -20px 0; transform: rotate(90deg); }
+  /* ── Mobile: tighten the claw padding ── */
+  @media (max-width: 540px) {
+    .bh-wrap {
+      padding: 60px 60px 0;
+    }
+    .bh-pincer-top, .bh-pincer-bot {
+      width: 52px; height: 28px;
+    }
+    .bh-claw-arm  { width: 22px; height: 56px; }
+    .bh-claw-elbow { width: 26px; height: 26px; }
     .bh-stalks { gap: 28px; }
   }
 `;
@@ -284,7 +297,6 @@ export default function BattleHero() {
   const idxRef  = useRef(0);
 
   useEffect(() => {
-    // inject styles once
     if (!document.getElementById('bh-styles')) {
       const tag = document.createElement('style');
       tag.id = 'bh-styles';
@@ -292,7 +304,6 @@ export default function BattleHero() {
       document.head.appendChild(tag);
     }
 
-    // seed terminal
     const term = termRef.current;
     if (!term) return;
 
@@ -318,7 +329,8 @@ export default function BattleHero() {
 
   return (
     <div className="bh-wrap">
-      {/* Eye stalks */}
+
+      {/* Eye stalks — absolute, top-center */}
       <div className="bh-stalks">
         <div className="bh-stalk">
           <div className="bh-eyeball" />
@@ -332,7 +344,7 @@ export default function BattleHero() {
         </div>
       </div>
 
-      {/* Left claw */}
+      {/* Left claw — absolute */}
       <div className="bh-claw left">
         <div className="bh-claw-arm" />
         <div className="bh-claw-elbow" />
@@ -377,7 +389,7 @@ export default function BattleHero() {
         <div className="bh-badge">⚡ THE MOLT PIT ⚡</div>
       </div>
 
-      {/* Right claw */}
+      {/* Right claw — absolute */}
       <div className="bh-claw right">
         <div className="bh-claw-arm" />
         <div className="bh-claw-elbow" />
@@ -386,6 +398,7 @@ export default function BattleHero() {
           <div className="bh-pincer-bot" />
         </div>
       </div>
+
     </div>
   );
 }
