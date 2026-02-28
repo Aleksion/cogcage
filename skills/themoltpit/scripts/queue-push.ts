@@ -2,37 +2,30 @@
  * queue-push.ts — POST an action to the engine queue.
  *
  * Fire-and-forget by design: the caller does not need to await the result
- * during the hot tick loop.
+ * during the hot tick loop. Engine handles missing actions as NO_OP.
  */
 
-const ENGINE_BASE =
-  process.env.ENGINE_URL ?? "https://themoltpit-engine.aleks-precurion.workers.dev";
-
-export interface Action {
-  action: string;
-  tick?: number;
-  direction?: string;
-  targetId?: string;
-  [key: string]: unknown;
-}
+import type { Action } from "./decide";
 
 export async function queuePush(
-  matchId: string,
-  botId: string,
+  moltId: string,
+  crawlerId: string,
   action: Action,
+  tick: number,
   token: string,
+  engineUrl: string,
 ): Promise<void> {
-  const url = `${ENGINE_BASE}/match/${matchId}/queue`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ botId, action, tick: action.tick }),
-  });
-
-  if (!res.ok) {
-    console.error(`[queue-push] ${res.status} ${res.statusText} — ${url}`);
+  try {
+    await fetch(`${engineUrl}/molt/${moltId}/queue`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ crawlerId, action, tick }),
+    });
+  } catch (err) {
+    console.warn("[MoltPit] queue push failed:", err);
+    // Non-fatal — engine handles missing actions as NO_OP
   }
 }

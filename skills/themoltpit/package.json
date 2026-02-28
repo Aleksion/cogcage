@@ -1,21 +1,19 @@
 {
   "name": "themoltpit",
   "version": "0.1.0",
-  "description": "OpenClaw skill for The Molt Pit — AI agent battle arena",
+  "description": "OpenClaw skill for The Molt Pit — AI crawler battle arena",
   "private": true,
   "scripts": {
     "build": "tsc",
-    "connect": "ts-node scripts/connect.ts"
+    "test": "bun run scripts/test-connect.ts",
+    "connect": "bun run scripts/connect.ts"
   },
   "dependencies": {
     "openai": "^4.0.0",
-    "ws": "^8.0.0",
     "yaml": "^2.0.0"
   },
   "devDependencies": {
-    "@types/ws": "^8.0.0",
     "@types/node": "^22.0.0",
-    "typescript": "^5.0.0",
-    "ts-node": "^10.0.0"
+    "typescript": "^5.0.0"
   }
 }
