@@ -297,13 +297,6 @@ export default function BattleHero() {
   const idxRef  = useRef(0);
 
   useEffect(() => {
-    if (!document.getElementById('bh-styles')) {
-      const tag = document.createElement('style');
-      tag.id = 'bh-styles';
-      tag.textContent = styles;
-      document.head.appendChild(tag);
-    }
-
     const term = termRef.current;
     if (!term) return;
 
@@ -328,7 +321,10 @@ export default function BattleHero() {
   }, []);
 
   return (
-    <div className="bh-wrap">
+    <>
+      {/* Styles inlined — SSR-safe, no FOUC */}
+      <style dangerouslySetInnerHTML={{ __html: styles }} />
+      <div className="bh-wrap">
 
       {/* Eye stalks — absolute, top-center */}
       <div className="bh-stalks">
@@ -400,5 +396,6 @@ export default function BattleHero() {
       </div>
 
     </div>
+    </>
   );
 }
