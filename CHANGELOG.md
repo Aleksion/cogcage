@@ -4,6 +4,78 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-28] - feat(plugin): Phase 2 OpenClaw plugin — connect → decide → queue (PR #27)
+
+**Type:** feat | **Phase:** 2 | **Priority:** REVENUE CRITICAL
+
+### Summary
+Implements the OpenClaw skill that connects a player's OpenClaw instance to a live molt. The plugin receives game state via WebSocket from the MoltEngine Durable Object, calls the player's configured LLM per tick, and fire-and-forgets the action to the engine queue. Latency is skill — slow crawlers lose ticks.
+
+### Changes
+- `skills/themoltpit/SKILL.md` — **Rewritten.** Full player-facing config docs: `playerToken`, `engineUrl`, `model`, `maxTokens`, `parallelClaws`. Action reference table. Token budget rules (max_tokens hard-capped at 30). Install + usage instructions.
+- `skills/themoltpit/scripts/connect.ts` — **Rewritten.** WebSocket client with exponential backoff auto-reconnect (500ms → 1s → 2s → 4s → 8s cap). On each `tick` event: calls `decide()` then `queuePush()` fire-and-forget — never blocks the tick loop. Uses native WebSocket (Node 21+ / Bun built-in, no package dependency).
+- `skills/themoltpit/scripts/decide.ts` — **Rewritten.** Streams from OpenAI API. Parses SSE deltas, accumulates token buffer, extracts **first complete JSON object** and cancels the stream immediately — does not wait for the full response. Minimises LLM decision latency. Fallback: `{ action: 'NO_OP' }` on parse failure.
+- `skills/themoltpit/scripts/queue-push.ts` — **Rewritten.** Fire-and-forget `fetch` POST to `{engineUrl}/molt/{moltId}/queue`. Non-fatal on failure — engine treats missing actions as NO_OP.
+- `skills/themoltpit/scripts/test-connect.ts` — **New.** Mock tick test: injects a sample `GameState`, calls `decide()` directly, verifies output is valid JSON with an `action` field.
+- `skills/themoltpit/scripts/skills-runner.ts` — **New.** Entry point for running the plugin via OpenClaw skill invocation.
+- `skills/themoltpit/README.md` — Updated with architecture diagram, local test instructions, and deployment notes.
+- `skills/themoltpit/package.json` — Updated with correct entry point and Bun/Node engine requirements.
+- `skills/themoltpit/tsconfig.json` — Updated for ESM output.
+
+### Design Decisions
+- **Stream-cancel on first JSON**: LLM response for a claw action is always ≤30 tokens (`{ "action": "X", "targetId": "Y" }`). Waiting for `[DONE]` wastes 50–200ms. Parsing the first `{...}` pattern and immediately calling `reader.cancel()` shaves latency on every single tick.
+- **Native WebSocket**: Dropping the `ws` package saves a dep and ~50ms cold-start on Bun. Node 21+ and all modern Bun versions have native WebSocket.
+- **Fire-and-forget queue push**: `queuePush` does not await — the engine already handles late/missing actions as NO_OP. Awaiting would add 30–80ms per tick.
+- **No retry on decide failure**: If the LLM errors, we emit NO_OP and move on. Retrying burns a tick anyway.
+
+### Next Steps
+- TASK-015: Publish to ClawHub — `clawhub install themoltpit`
+- TASK-016: Plugin onboarding flow — install → connect account → enter molt
+- Wire `playerToken` to Convex auth session token
+
+---
+
+## [2026-02-28] - feat(visual): game experience overhaul — mech crawlers, cage arena, chunky VFX, HUD glow (PR #28)
+
+**Type:** feat | **Phase:** 2
+
+### Summary
+Replaced the placeholder box-geometry PlayCanvas scene with a proper cartoon mech arena. Crawlers now have distinct multi-part silhouettes, the arena has atmosphere and dramatic lighting, VFX are chunky and impactful, and the HUD reflects team identity. Goal: feel like a real game, not a prototype.
+
+### Changes
+- `web/app/lib/ws2/PlayCanvasScene.ts` — **Major rewrite** (+308/-83 lines). Full list:
+  - **Alpha crawler** (cyan): 8 parts — legs L/R, wide flat torso, shoulder plates L/R, neck, sensor head, yellow visor strip. Each part has 1.07× outline entity.
+  - **Beta crawler** (red): 8 parts — wide squat base, tall narrow torso, long arms L/R, narrow head, antenna spike, twin yellow eyes. Each part has 1.07× outline entity.
+  - **Idle sway**: root entity sin-wave Y rotation (0.4 rad amplitude, 1.2s period) — unique offset per bot.
+  - **Arena**: floor changed from cream `#F5F0E8` to dark `#1A1A1A`. Grid lines changed to faint cyan `rgba(0,229,255,0.08)`. 4 cage pillar corners + crossbeam bars added.
+  - **Lighting**: warm white point light (key, pos 5,8,5, intensity 0.8) + cyan point light (fill, pos 15,6,15, intensity 0.4). Dark ambient `#0A0A14`.
+  - **Objective zone**: pulsing scale animation (sin wave ±4%), height increased to 0.12 for visibility.
+  - **Melee VFX**: 12-particle chunky burst + 4 flat shard discs. Alternates KAPOW/CRACK text pops.
+  - **Ranged VFX**: ZZT/WHIP text pops on hit.
+  - **Camera shake**: `triggerShake()` — applies position offset with decay. Melee: 0.4 intensity; Ranged: 0.15; KO: 1.0.
+  - **Hit-stop on KO**: 400ms freeze of the tick loop (`hitStopUntil` timestamp gate in update).
+  - **Dash trail**: 3 ghost particles at crawler position on DASH event.
+  - **Tween speed**: 12 → 6 (smoother, more visible movement).
+- `web/app/components/MatchView.tsx` — HUD CSS updates: dark glass background on stat panels, HP/energy bar fills get `boxShadow` glow matching team color (`#00E5FF` for Alpha, `#EB4D4B` for Beta), faster 0.15s transitions.
+- `web/app/components/QuickDemo.tsx` — Matching glow bar effects for the demo on `/play`.
+
+### Design Decisions
+- **Back-face outline trick**: all geometry gets a 1.07× clone with `cull: FRONT` (renders only back-faces = outline). No post-processing needed, works with PlayCanvas's forward renderer.
+- **Emissive flat shading**: all materials use `emissive` color + `useLighting: false` — achieves consistent cel-shade look regardless of scene lighting. Lights affect arena atmosphere not crawler appearance.
+- **Hit-stop via timestamp gate**: simpler and more reliable than pausing `app.tick`. `Date.now() < hitStopUntil` check at top of update loop freezes all entity movement + particle simulation for the KO moment.
+- **Tween speed 6 vs 12**: speed 12 was so fast movement looked like teleportation. 6 makes every step readable at 60fps.
+
+### Regression Risk
+- Low — no game logic touched. PlayCanvas scene is purely visual, engine outputs `MoltSnapshot` objects unchanged.
+- Build passes clean.
+
+### Next Steps
+- Add idle animation variety (breathing, weapon charge glow)
+- Consider distinct crawler designs per shell loadout (armor class affecting visual weight)
+- Sound design pass (SFX on hits, ambient arena crowd noise)
+
+---
+
 ## [2026-02-27] - fix: rename lobby→tank and armory→shell API routes (PR #19)
 
 **Type:** fix | **Phase:** 1
