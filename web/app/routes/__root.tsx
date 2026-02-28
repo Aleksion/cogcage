@@ -43,17 +43,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           dangerouslySetInnerHTML={{
             __html: `
               :root {
-                color-scheme: dark;
                 font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-                background: #05050a;
               }
               * { box-sizing: border-box; }
               html, body {
                 margin: 0;
                 width: 100%;
                 min-height: 100%;
-                background: radial-gradient(circle at 20% 10%, #15152d 0%, #05050a 55%, #030306 100%);
-                color: #f6f7ff;
               }
               a { color: inherit; }
             `,
