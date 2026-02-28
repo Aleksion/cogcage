@@ -4,6 +4,54 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-27] - feat: Astro → TanStack Start migration — TASK-MIGRATE
+
+**Type:** feat | **Phase:** 1
+
+### Summary
+Replaced the Astro SSR app in `web/` with a TanStack Start app. All existing React components, API routes, and lib code ported to the new framework. Components now render server-side by default (no FOUC), API routes use TanStack Start's `createFileRoute` server handlers, and deployment targets Vercel via the Nitro `vercel` preset.
+
+### Changes
+- `web/vite.config.ts` — **New.** Vite config with `tanstackStart` plugin (srcDirectory: `app`), `@vitejs/plugin-react`, `nitro` (preset: vercel), and `vite-tsconfig-paths`.
+- `web/tsconfig.json` — **Rewritten.** Removed `astro/tsconfigs/strict` extend. Now standard strict TypeScript with `~/` path alias to `app/`.
+- `web/package.json` — **Rewritten.** Replaced Astro deps (`astro`, `@astrojs/*`) with TanStack Start deps (`@tanstack/react-start`, `@tanstack/react-router`, `@tanstack/react-router-devtools`). Build system: `vite dev`/`vite build`. Added `nitro`, `@vitejs/plugin-react`, `vite-tsconfig-paths` as devDeps.
+- `web/.gitignore` — Updated: removed `.astro/`, added `.output/`, `.vinxi/`, `.nitro/`, `app/routeTree.gen.ts`.
+- `web/app/router.tsx` — **New.** TanStack Router factory with `routeTree`, `defaultPreload: 'intent'`, `scrollRestoration: true`.
+- `web/app/routes/__root.tsx` — **New.** Root layout with `<HeadContent>`, `<Scripts>`, inline global styles (dark theme, radial gradient background), Google Fonts (Bangers, Inter, Kanit, Space Grotesk). Replaces `Layout.astro`.
+- `web/app/routes/index.tsx` — **New.** Landing page route, renders `MoltPitLanding` via `ClientOnly` wrapper.
+- `web/app/routes/play.tsx` — **New.** Play/dashboard route, renders `Dashboard` via `ClientOnly`.
+- `web/app/routes/shell.tsx` — **New.** Armory route (URL changed from `/armory` to `/shell`), renders `Armory` via `ClientOnly` with `returnTo` search param.
+- `web/app/routes/tank/$id.tsx` — **New.** Lobby route (URL changed from `/lobby/:id` to `/tank/:id`), renders `Lobby` via `ClientOnly`.
+- `web/app/routes/sign-in.tsx` — **New.** Placeholder sign-in page (TASK-020 will add auth).
+- `web/app/routes/join/$code.tsx` — **New.** FFA tournament join page, ported from inline Astro HTML+script to React component.
+- `web/app/routes/play_.session.$id.tsx` — **New.** Session page, fetches session client-side then renders `SessionRoom`.
+- `web/app/routes/success.tsx` — **New.** Checkout success page with conversion tracking (ported from Astro inline script to React `useEffect`).
+- `web/app/routes/ops-log.tsx` — **New.** Ops dashboard (ported from server-rendered Astro to client-side React fetch+render).
+- `web/app/components/ClientOnly.tsx` — **New.** Client-only rendering wrapper. Replaces Astro's `client:only="react"` pattern.
+- `web/app/components/JoinSession.tsx` — **New.** React port of `join/[code].astro`.
+- `web/app/components/SessionPageWrapper.tsx` — **New.** Client-side session fetcher for `SessionRoom`.
+- `web/app/components/SuccessPage.tsx` — **New.** React port of `success.astro` conversion tracking.
+- `web/app/components/OpsLogPage.tsx` — **New.** React port of `ops-log.astro`.
+- `web/app/lib/cookies.ts` — **New.** Cookie parser utility — replaces Astro's `cookies.get()` API.
+- `web/app/routes/api/*.ts` — **New.** All 21 API routes ported to TanStack Start `createFileRoute` + `server.handlers`. Handler logic unchanged.
+- `web/app/components/*.tsx` — **Moved.** All React components from `src/components/` to `app/components/` with zero changes.
+- `web/app/lib/*` — **Moved.** All lib modules from `src/lib/` to `app/lib/` with zero changes.
+- `web/src/` — **Deleted.** All Astro pages, layouts, middleware, `env.d.ts`.
+- `web/astro.config.mjs` — **Deleted.** Replaced by `vite.config.ts`.
+
+### Breaking Changes
+- **URL changes:** `/armory` → `/shell`, `/lobby/:id` → `/tank/:id`. Old URLs will 404.
+- **Middleware removed:** Astro's `defineMiddleware` for anonymous player ID cookie no longer runs automatically. Cookie is set client-side by components (fallback via `localStorage`/`document.cookie` was already the primary mechanism).
+- **Build system:** `astro build` → `vite build`. `astro dev` → `vite dev`.
+
+### Notes
+- `client:only="react"` pattern replaced with `ClientOnly` component — same behavior, proper SSR framework support, no FOUC.
+- No auth changes — `/sign-in` is placeholder (TASK-020).
+- Redis env vars unchanged: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
+- Engine URL unchanged: `PUBLIC_ENGINE_WS_URL`.
+- Vercel deployment: TanStack Start with Nitro vercel preset outputs to `.vercel/output/`.
+---
+
 ## [2026-02-27] - chore: TASK-022 terminology rebrand — full UI + docs vocabulary update
 
 **Type:** chore | **Phase:** 2
