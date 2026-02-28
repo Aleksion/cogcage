@@ -158,29 +158,40 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.status, isHost]);
 
-  /* ── Poll session when running (non-host spectators) ──────── */
+  /* ── SSE stream for non-host spectators ───────────────────── */
   useEffect(() => {
     if (session.status !== 'running' || isHost) return;
 
-    const poll = async () => {
+    // Use Server-Sent Events backed by Redis Streams — replaces 500ms polling
+    const es = new EventSource(`/api/sessions/${sessionId}/events`)
+
+    es.onmessage = (e) => {
       try {
-        const snapRes = await fetch(`/api/sessions/${sessionId}/snapshot`);
-        if (snapRes.ok) {
-          const { snapshot } = await snapRes.json();
-          if (snapshot?.snapshot) {
-            applyRemoteSnapshot(snapshot);
-          }
-        }
-        const sessRes = await fetch(`/api/sessions/${sessionId}`);
-        if (sessRes.ok) {
-          const data: Session = await sessRes.json();
-          setSession(data);
-          setLeaderboard(data.leaderboard);
+        const payload = JSON.parse(e.data)
+        if (payload?.snapshot) applyRemoteSnapshot(payload)
+      } catch { /* malformed frame — skip */ }
+    }
+
+    es.onerror = () => {
+      // EventSource auto-reconnects with Last-Event-ID — no action needed
+    }
+
+    // Keep session metadata fresh (status, leaderboard) at low frequency
+    const metaPoll = window.setInterval(async () => {
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}`)
+        if (res.ok) {
+          const data: Session = await res.json()
+          setSession(data)
+          setLeaderboard(data.leaderboard)
         }
       } catch { /* ignore */ }
-    };
-    const id = window.setInterval(poll, 500);
-    return () => window.clearInterval(id);
+    }, 3000)
+
+    return () => {
+      es.close()
+      window.clearInterval(metaPoll)
+    }
   }, [session.status, sessionId, isHost]);
 
   /* ── Remote snapshot handler (spectators) ─────────────────── */

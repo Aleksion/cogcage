@@ -45,7 +45,14 @@ export const Route = createFileRoute('/api/sessions/$id/snapshot')({
           const { matchId, botAName, botBName, botNames, snapshot } = body;
 
           const payload = { matchId, botAName, botBName, botNames, snapshot, updatedAt: Date.now() };
-          await redis.set(`session-snapshot:${sessionId}`, JSON.stringify(payload), { ex: SNAPSHOT_TTL });
+          const payloadStr = JSON.stringify(payload);
+
+          // Write snapshot + fan-out via Redis Stream (powers SSE /events endpoint)
+          await Promise.all([
+            redis.set(`session-snapshot:${sessionId}`, payloadStr, { ex: SNAPSHOT_TTL }),
+            redis.xadd(`session-stream:${sessionId}`, '*', { data: payloadStr })
+              .then(() => redis.expire(`session-stream:${sessionId}`, 7200)), // 2h TTL
+          ]);
 
           return new Response(JSON.stringify({ ok: true }), {
             status: 200,
