@@ -3,6 +3,14 @@ import { runMatchAsync } from '../lib/ws2/run-match';
 import { HP_MAX, TICK_RATE } from '../lib/ws2/index';
 import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-types';
 
+/* ── Arena constants ─────────────────────────────────────────── */
+
+const ARENA_SIZE_UNITS = 20;
+const UNIT_SCALE = 10; // position units per grid cell
+const ENERGY_MAX = 1000;
+const CELL_PX = 14; // pixels per grid cell
+const ARENA_PX = ARENA_SIZE_UNITS * CELL_PX; // 280px
+
 /* ── Scripted-AI reasoning fallbacks ─────────────────────────── */
 
 const SCRIPTED_REASONING: Record<string, string> = {
@@ -48,6 +56,9 @@ const TACTICIAN_BASE: BotConfig = {
 const hpColor = (hp: number) =>
   hp > 60 ? '#2ecc71' : hp > 30 ? '#f39c12' : '#eb4d4b';
 
+const energyColor = (pct: number) =>
+  pct > 60 ? '#00bcd4' : pct > 30 ? '#ff9800' : '#f44336';
+
 const ACTION_ICONS: Record<string, string> = {
   MELEE_STRIKE: '\u2694\uFE0F',
   RANGED_SHOT: '\uD83C\uDFAF',
@@ -63,6 +74,263 @@ interface FeedEntry {
   reasoning?: string;
 }
 
+interface ActorPos {
+  x: number; // grid coords (0..ARENA_SIZE_UNITS)
+  y: number;
+}
+
+/* ── Arena Map SVG ───────────────────────────────────────────── */
+
+function ArenaMap({
+  posA,
+  posB,
+  energyA,
+  energyB,
+}: {
+  posA: ActorPos | null;
+  posB: ActorPos | null;
+  energyA: number;
+  energyB: number;
+}) {
+  if (!posA && !posB) return null;
+
+  const cx = ARENA_SIZE_UNITS / 2; // 10
+  const cy = ARENA_SIZE_UNITS / 2; // 10
+  const objRadius = 2.5 * CELL_PX;
+
+  const toSvg = (pos: ActorPos) => ({
+    x: pos.x * CELL_PX + CELL_PX / 2,
+    y: pos.y * CELL_PX + CELL_PX / 2,
+  });
+
+  const svgA = posA ? toSvg(posA) : null;
+  const svgB = posB ? toSvg(posB) : null;
+
+  // Distance in grid cells
+  const distCells =
+    posA && posB
+      ? Math.sqrt(Math.pow(posA.x - posB.x, 2) + Math.pow(posA.y - posB.y, 2)).toFixed(1)
+      : null;
+
+  const energyPctA = Math.round((energyA / ENERGY_MAX) * 100);
+  const energyPctB = Math.round((energyB / ENERGY_MAX) * 100);
+
+  return (
+    <div style={{ marginBottom: '1rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.5rem',
+          marginBottom: '0.4rem',
+        }}
+      >
+        <span
+          style={{
+            fontSize: '0.7rem',
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.35)',
+            letterSpacing: '1px',
+          }}
+        >
+          Arena
+        </span>
+        {distCells && (
+          <span
+            style={{
+              fontSize: '0.68rem',
+              color: 'rgba(255,255,255,0.3)',
+              fontFamily: "'IBM Plex Mono', monospace",
+            }}
+          >
+            dist: {distCells}
+          </span>
+        )}
+      </div>
+
+      {/* SVG arena grid */}
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <svg
+          width={ARENA_PX}
+          height={ARENA_PX}
+          style={{
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: '6px',
+            background: '#0a0a0a',
+            display: 'block',
+          }}
+        >
+          {/* Grid lines */}
+          {Array.from({ length: ARENA_SIZE_UNITS + 1 }, (_, i) => (
+            <React.Fragment key={`grid-${i}`}>
+              <line
+                x1={i * CELL_PX}
+                y1={0}
+                x2={i * CELL_PX}
+                y2={ARENA_PX}
+                stroke="rgba(255,255,255,0.04)"
+                strokeWidth={0.5}
+              />
+              <line
+                x1={0}
+                y1={i * CELL_PX}
+                x2={ARENA_PX}
+                y2={i * CELL_PX}
+                stroke="rgba(255,255,255,0.04)"
+                strokeWidth={0.5}
+              />
+            </React.Fragment>
+          ))}
+
+          {/* Objective zone circle */}
+          <circle
+            cx={cx * CELL_PX}
+            cy={cy * CELL_PX}
+            r={objRadius}
+            fill="rgba(255,214,0,0.04)"
+            stroke="rgba(255,214,0,0.2)"
+            strokeWidth={1}
+            strokeDasharray="4 3"
+          />
+
+          {/* BERSERKER (cyan) */}
+          {svgA && (
+            <g>
+              <rect
+                x={svgA.x - 5}
+                y={svgA.y - 5}
+                width={10}
+                height={10}
+                rx={2}
+                fill="#00E5FF"
+                opacity={0.9}
+              />
+              <text
+                x={svgA.x}
+                y={svgA.y - 8}
+                textAnchor="middle"
+                fill="#00E5FF"
+                fontSize={7}
+                fontWeight="bold"
+              >
+                B
+              </text>
+            </g>
+          )}
+
+          {/* TACTICIAN (red) */}
+          {svgB && (
+            <g>
+              <rect
+                x={svgB.x - 5}
+                y={svgB.y - 5}
+                width={10}
+                height={10}
+                rx={2}
+                fill="#eb4d4b"
+                opacity={0.9}
+              />
+              <text
+                x={svgB.x}
+                y={svgB.y - 8}
+                textAnchor="middle"
+                fill="#eb4d4b"
+                fontSize={7}
+                fontWeight="bold"
+              >
+                T
+              </text>
+            </g>
+          )}
+        </svg>
+      </div>
+
+      {/* Energy bars */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '1rem',
+          marginTop: '0.5rem',
+        }}
+      >
+        {/* BERSERKER energy */}
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: '0.15rem',
+            }}
+          >
+            <span style={{ fontSize: '0.65rem', color: '#00E5FF', fontWeight: 800 }}>
+              ⚡ ENERGY
+            </span>
+            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>
+              {energyPctA}%
+            </span>
+          </div>
+          <div
+            style={{
+              height: '6px',
+              background: '#101010',
+              borderRadius: '999px',
+              overflow: 'hidden',
+              border: '1px solid rgba(0,229,255,0.15)',
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${energyPctA}%`,
+                background: energyColor(energyPctA),
+                transition: 'width 0.3s ease',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* TACTICIAN energy */}
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: '0.15rem',
+            }}
+          >
+            <span style={{ fontSize: '0.65rem', color: '#eb4d4b', fontWeight: 800 }}>
+              ⚡ ENERGY
+            </span>
+            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>
+              {energyPctB}%
+            </span>
+          </div>
+          <div
+            style={{
+              height: '6px',
+              background: '#101010',
+              borderRadius: '999px',
+              overflow: 'hidden',
+              border: '1px solid rgba(235,77,75,0.15)',
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${energyPctB}%`,
+                background: energyColor(energyPctB),
+                transition: 'width 0.3s ease',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Component ───────────────────────────────────────────────── */
 
 export default function QuickDemo() {
@@ -73,6 +341,10 @@ export default function QuickDemo() {
   /* Match state */
   const [botAHp, setBotAHp] = useState(HP_MAX);
   const [botBHp, setBotBHp] = useState(HP_MAX);
+  const [botAEnergy, setBotAEnergy] = useState(0);
+  const [botBEnergy, setBotBEnergy] = useState(0);
+  const [botAPos, setBotAPos] = useState<ActorPos | null>(null);
+  const [botBPos, setBotBPos] = useState<ActorPos | null>(null);
   const [tick, setTick] = useState(0);
   const [feed, setFeed] = useState<FeedEntry[]>([]);
   const [phase, setPhase] = useState<'playing' | 'ended'>('playing');
@@ -128,6 +400,24 @@ export default function QuickDemo() {
     setBotAHp(a.hp);
     setBotBHp(b.hp);
     setTick(s.tick);
+
+    // Track energy
+    if (typeof a.energy === 'number') setBotAEnergy(a.energy);
+    if (typeof b.energy === 'number') setBotBEnergy(b.energy);
+
+    // Track positions (stored as tenths → divide by UNIT_SCALE for grid coords)
+    if (a.position && typeof a.position.x === 'number' && typeof a.position.y === 'number') {
+      setBotAPos({
+        x: a.position.x / UNIT_SCALE,
+        y: a.position.y / UNIT_SCALE,
+      });
+    }
+    if (b.position && typeof b.position.x === 'number' && typeof b.position.y === 'number') {
+      setBotBPos({
+        x: b.position.x / UNIT_SCALE,
+        y: b.position.y / UNIT_SCALE,
+      });
+    }
 
     /* Process new events */
     const events: any[] = s.events || [];
@@ -195,6 +485,10 @@ export default function QuickDemo() {
   const startMatch = useCallback(() => {
     setBotAHp(HP_MAX);
     setBotBHp(HP_MAX);
+    setBotAEnergy(0);
+    setBotBEnergy(0);
+    setBotAPos(null);
+    setBotBPos(null);
     setTick(0);
     setFeed([]);
     setWinnerId(null);
@@ -436,6 +730,14 @@ export default function QuickDemo() {
           </div>
         </div>
       </div>
+
+      {/* Arena Map + Energy Bars */}
+      <ArenaMap
+        posA={botAPos}
+        posB={botBPos}
+        energyA={botAEnergy}
+        energyB={botBEnergy}
+      />
 
       {/* Tick counter */}
       <div style={{ textAlign: 'center', marginBottom: '0.8rem' }}>
