@@ -528,7 +528,7 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
           <canvas ref={playCanvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
           {!pcActive && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', background: '#0A0A0E' }}>
-              <div style={{ fontFamily: 'Bangers, display', fontSize: '2rem', color: '#1A1A1A', letterSpacing: '2px' }}>LOADING ARENA...</div>
+              <div style={{ fontFamily: 'Bangers, display', fontSize: '2rem', color: '#FFD600', letterSpacing: '2px' }}>LOADING ARENA...</div>
             </div>
           )}
           {vfxEvents.map((v) => (

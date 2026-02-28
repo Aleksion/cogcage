@@ -67,8 +67,9 @@ export class PlayCanvasScene {
   private time = 0;
   private vfxCounter = 0;
   private cameraEntity!: pc.Entity;
-  private shake = { x: 0, z: 0, ttl: 0 };
+  private shake = { x: 0, z: 0, ttl: 0, maxTtl: 0 };
   private hitStopUntil = 0;
+  private resizeHandler: (() => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     const app = new pc.Application(canvas, {});
@@ -77,12 +78,12 @@ export class PlayCanvasScene {
     app.setCanvasFillMode(pc.FILLMODE_NONE);
     app.setCanvasResolution(pc.RESOLUTION_AUTO);
 
-    const resize = () => {
+    this.resizeHandler = () => {
       const p = canvas.parentElement;
       if (p) app.resizeCanvas(p.clientWidth, p.clientHeight);
     };
-    window.addEventListener('resize', resize);
-    resize();
+    window.addEventListener('resize', this.resizeHandler);
+    this.resizeHandler();
 
     this.camera();
     this.lights();
@@ -453,6 +454,7 @@ export class PlayCanvasScene {
 
   private triggerShake(intensity: number, duration: number): void {
     this.shake.ttl = duration;
+    this.shake.maxTtl = duration;
     this.shake.x = (Math.random() - 0.5) * intensity;
     this.shake.z = (Math.random() - 0.5) * intensity;
   }
@@ -604,7 +606,7 @@ export class PlayCanvasScene {
     // Camera shake
     if (this.shake.ttl > 0) {
       this.shake.ttl -= dt;
-      const decay = Math.max(0, this.shake.ttl / 0.3);
+      const decay = Math.max(0, this.shake.ttl / (this.shake.maxTtl || 0.3));
       this.cameraEntity.setLocalPosition(
         10 + this.shake.x * decay,
         12,
@@ -658,6 +660,10 @@ export class PlayCanvasScene {
 
   destroy(): void {
     this.dead = true;
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      this.resizeHandler = null;
+    }
     for (const p of this.fx) p.entity.destroy();
     this.fx = [];
     this.app.destroy();
