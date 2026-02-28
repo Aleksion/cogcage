@@ -30,20 +30,27 @@ The plugin is already built. Auth unlocks the player token flow that makes it ac
 
 ## Phase 2 — In Progress
 
+### Auth Decision: Convex + Convex Auth (2026-02-28)
+**Decision**: Replaced Auth.js + Redis plan with Convex as the full persistent data layer.
+- Convex deployment: `https://intent-horse-742.convex.cloud`
+- Spec: `docs/tasks/task-020-convex-auth.md`
+- Reason: Real-time reactive sync built-in; Auth.js would still need DIY live state
+
 ### Blocked On Aleks
 
 | Item | What's needed |
 |---|---|
-| TASK-020 env vars | GITHUB_ID/SECRET, GOOGLE_ID/SECRET, AUTH_RESEND_KEY, AUTH_SECRET → add to Vercel |
-| Terminology: "Hardness" vs "Temper" | One word decision (hardness label) — see GTM thread |
+| CONVEX_DEPLOY_KEY | https://dashboard.convex.dev → intent-horse-742 → Settings → Deploy Keys |
+| GitHub OAuth App | https://github.com/settings/developers → New OAuth App, callback: `https://intent-horse-742.convex.cloud/api/auth/callback/github` |
+| Resend API key (optional) | https://resend.com (skip for now — GitHub OAuth is enough for MVP) |
+| Terminology: "Hardness" vs "Temper" | One word decision (hardness label) |
 | CF DNS transfer | Move themoltpit.com to Cloudflare DNS to unlock engine.themoltpit.com custom domain |
 
 ### In Progress
 
 | Task | Agent | Status |
 |---|---|---|
-| TASK-020: User accounts (Auth.js) | Spawning | 🟢 Active |
-| TASK-021: Multiplayer ownership | Spawning | 🟢 Active |
+| TASK-020+021: Convex + Auth + Ownership | Pending Aleks env vars | ⏳ Waiting |
 
 ### Up Next
 
