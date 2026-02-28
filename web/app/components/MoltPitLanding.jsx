@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 // react-router-dom removed — TanStack Router handles all routing
+import BattleHero from './BattleHero.jsx';
 
 // ─── Style injection ───────────────────────────────────────────────────────────
 // Exported so index.tsx can inject these via head() → <style> in <head>
@@ -1484,7 +1485,7 @@ const HeroSection = ({ sectionRef }) => {
       </div>
 
       <div className="hero-visual">
-        <BotCard />
+        <BattleHero />
       </div>
     </section>
   );
