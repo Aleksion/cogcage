@@ -296,11 +296,17 @@ export const Route = createFileRoute('/api/founder-intent')({
         };
 
         try {
-          insertFounderIntent(payload);
-          // Fire-and-forget Redis write — durable across Vercel Lambda invocations
-          void redisInsertFounderIntent(payload).catch((e: unknown) => {
-            appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_redis_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
-          });
+          // Redis is the primary storage on Vercel — durable across Lambda invocations
+          await redisInsertFounderIntent(payload);
+
+          // SQLite is best-effort secondary — useful locally, ephemeral on Vercel
+          try {
+            insertFounderIntent(payload);
+          } catch (sqliteError) {
+            appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_sqlite_write_failed', requestId, error: sqliteError instanceof Error ? sqliteError.message : 'unknown' });
+            // Never throw — Redis already succeeded
+          }
+
           appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'founder_intent_saved', requestId, source: payload.source, emailHash: payload.email.slice(0, 3), durationMs: Date.now() - startedAt });
           try {
             const drained = drainFallbackQueues(10);
@@ -320,15 +326,12 @@ export const Route = createFileRoute('/api/founder-intent')({
           });
           return respond({ ok: true }, 200);
         } catch (error) {
+          // Redis failed — try file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
-          appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_db_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
+          appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_redis_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
 
           try {
             appendFounderIntentFallback({ route: '/api/founder-intent', requestId, ...payload, reason: errorMessage });
-            // Even in fallback path, push to Redis for durability
-            void redisInsertFounderIntent(payload).catch((e: unknown) => {
-              appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_redis_fallback_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
-            });
             safeTrackConversion('/api/founder-intent', requestId, {
               eventName: 'founder_intent_queued_fallback',
               source: payload.source,

@@ -886,7 +886,26 @@ const Play = () => {
       return;
     }
     if (!founderCheckoutUrl) {
-      setCheckoutMessage('Checkout is temporarily unavailable. Please join the waitlist from home.');
+      // No Stripe URL configured — capture email intent instead
+      setCheckoutBusy(true);
+      setCheckoutMessage(null);
+      try {
+        const res = await fetch('/api/founder-intent', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email: normalizedEmail, source: 'play-founder-cta' }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          setCheckoutMessage('✓ Reserved! You\'ll get early access pricing when checkout opens.');
+        } else {
+          setCheckoutMessage(data.error || 'Could not reserve spot. Try again.');
+        }
+      } catch {
+        setCheckoutMessage('Network error. Please try again.');
+      } finally {
+        setCheckoutBusy(false);
+      }
       return;
     }
     if (typeof window !== 'undefined') window.localStorage.setItem(EMAIL_KEY, normalizedEmail);
@@ -1114,7 +1133,7 @@ const Play = () => {
         style={{ minHeight: 'unset', height: '48px', marginBottom: '0.8rem' }}
       />
       <button className="cta-btn" onClick={handleFounderCheckout} disabled={checkoutBusy}>
-        {checkoutBusy ? 'Opening Checkout\u2026' : 'Reserve Founder Spot'}
+        {checkoutBusy ? (founderCheckoutUrl ? 'Opening Checkout\u2026' : 'Reserving\u2026') : 'Reserve Founder Spot'}
       </button>
       {checkoutMessage && <div className="hint" style={{ marginTop: '0.7rem' }}>{checkoutMessage}</div>}
     </div>

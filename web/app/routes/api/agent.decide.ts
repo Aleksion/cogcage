@@ -432,6 +432,76 @@ function buildOpenAiTools(skillIds: string[]): any[] {
     }));
 }
 
+/* -- Scripted AI fallback ---------------------------------------------- */
+
+/**
+ * Deterministic rule-based AI used when no LLM API key is available
+ * or when the LLM call fails. Keeps bots active instead of NO_OP.
+ */
+function scriptedAiFallback(
+  gameState: any,
+  actorId: string,
+  opponentIds: string[],
+  loadout: string[],
+): { type: string; dir?: string; targetId?: string } {
+  const me: ActorState | undefined = gameState?.actors?.[actorId];
+  if (!me) return { type: 'NO_OP' };
+
+  const opponentId = opponentIds.find((id) => gameState?.actors?.[id]);
+  const opp: ActorState | undefined = opponentId ? gameState.actors[opponentId] : undefined;
+
+  const energy = me.energy ?? 0;
+  const hp = me.hp ?? 100;
+  const cooldowns = me.cooldowns ?? {};
+  const dist = opp ? distanceTenths(me.position, opp.position) : Infinity;
+
+  // Rule 1: Melee strike — close enough and ready
+  if (
+    loadout.includes('MELEE_STRIKE') &&
+    opp &&
+    dist <= MELEE_RANGE &&
+    energy >= ACTION_COST.MELEE_STRIKE &&
+    (cooldowns['MELEE_STRIKE'] ?? 0) === 0
+  ) {
+    return { type: 'MELEE_STRIKE', targetId: opponentId };
+  }
+
+  // Rule 2: Ranged shot — right distance band and ready
+  if (
+    loadout.includes('RANGED_SHOT') &&
+    opp &&
+    dist >= RANGED_MIN &&
+    dist <= RANGED_MAX &&
+    energy >= ACTION_COST.RANGED_SHOT &&
+    (cooldowns['RANGED_SHOT'] ?? 0) === 0
+  ) {
+    return { type: 'RANGED_SHOT', targetId: opponentId };
+  }
+
+  // Rule 3: Move toward opponent
+  if (loadout.includes('MOVE') && energy >= ACTION_COST.MOVE && opp) {
+    const dir = compassDir(me.position, opp.position);
+    if (dir !== '--') return { type: 'MOVE', dir };
+  }
+
+  // Rule 4: Guard to recover when low energy / low HP
+  if (
+    loadout.includes('GUARD') &&
+    energy < 300 &&
+    hp < 50
+  ) {
+    return { type: 'GUARD' };
+  }
+
+  // Rule 5: Move toward objective center if no visible opponent
+  if (loadout.includes('MOVE') && energy >= ACTION_COST.MOVE) {
+    const dir = compassDir(me.position, OBJECTIVE_CENTER);
+    if (dir !== '--') return { type: 'MOVE', dir };
+  }
+
+  return { type: 'NO_OP' };
+}
+
 /* -- POST handler ------------------------------------------------------ */
 
 export const Route = createFileRoute('/api/agent/decide')({
@@ -467,8 +537,10 @@ export const Route = createFileRoute('/api/agent/decide')({
           const apiKey = llmKey || (llmProvider === 'openai' ? serverKey : '');
 
           if (!apiKey) {
-            console.error(`[agent/decide] No API key for provider ${llmProvider}`);
-            return new Response(JSON.stringify({ action: { type: 'NO_OP' } }), {
+            console.warn(`[agent/decide] No API key for provider ${llmProvider} — using scripted AI fallback`);
+            const resolvedOpponentIdsEarly: string[] = opponentIds || [];
+            const fallbackAction = scriptedAiFallback(gameState, actorId, resolvedOpponentIdsEarly, loadout);
+            return new Response(JSON.stringify({ action: fallbackAction }), {
               status: 200,
               headers: { 'content-type': 'application/json' },
             });
@@ -571,7 +643,7 @@ export const Route = createFileRoute('/api/agent/decide')({
                   }
                 } catch {
                   clearTimeout(timeout2);
-                  action = { type: 'NO_OP' };
+                  action = scriptedAiFallback(gameState, actorId, resolvedOpponentIds, loadout);
                 }
               } else {
                 // No tool call — parse action directly
@@ -589,11 +661,11 @@ export const Route = createFileRoute('/api/agent/decide')({
           } catch (err: any) {
             clearTimeout(timeout);
             if (err?.name === 'AbortError') {
-              console.warn(`[agent/decide] ${llmProvider} timeout for ${actorId}`);
+              console.warn(`[agent/decide] ${llmProvider} timeout for ${actorId} — using scripted AI fallback`);
             } else {
-              console.error(`[agent/decide] ${llmProvider} error:`, err?.message || err);
+              console.error(`[agent/decide] ${llmProvider} error — using scripted AI fallback:`, err?.message || err);
             }
-            action = { type: 'NO_OP' };
+            action = scriptedAiFallback(gameState, actorId, resolvedOpponentIds, loadout);
           }
 
           return new Response(JSON.stringify({ action, skillUsed, skillResult }), {

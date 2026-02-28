@@ -5,7 +5,11 @@ export function OpsLogPage() {
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
-    const key = '' // In production, set via env or query
+    // Read key from ?key= query param, then #key= hash, then fall back to empty
+    const searchParams = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const key = searchParams.get('key') || hashParams.get('key') || ''
+
     const url = new URL('/api/ops', window.location.origin)
     if (key) url.searchParams.set('key', key)
 

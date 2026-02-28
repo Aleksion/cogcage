@@ -73,16 +73,16 @@ export const Route = createFileRoute('/api/ops')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!isAuthorized(request)) {
-          return unauthorized();
-        }
+        // Auth is optional for GET — ops log is diagnostic data, not sensitive.
+        // Pass ?key=... or x-ops-key header to get filesystem tails (when key is configured).
+        const authorized = isAuthorized(request);
 
-        const files = [
+        const files = authorized ? [
           readTail(path.join(LOG_DIR, 'api-events.ndjson')),
           readTail(path.join(LOG_DIR, 'waitlist-fallback.ndjson')),
           readTail(path.join(LOG_DIR, 'founder-intent-fallback.ndjson')),
           readTail(path.join(LOG_DIR, 'events-fallback.ndjson')),
-        ];
+        ] : [];
 
         let counts;
         let reliability;
