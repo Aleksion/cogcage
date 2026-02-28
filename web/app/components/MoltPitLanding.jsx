@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+// react-router-dom removed — TanStack Router handles all routing
 
 // ─── Style injection ───────────────────────────────────────────────────────────
 const globalStyles = `
@@ -1900,13 +1900,10 @@ const App = () => {
   }, []);
 
   return (
-    <Router basename="/">
+    <>
       <div className="bg-mesh" />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="*" element={<HomePage />} />
-      </Routes>
-    </Router>
+      <HomePage />
+    </>
   );
 };
 
