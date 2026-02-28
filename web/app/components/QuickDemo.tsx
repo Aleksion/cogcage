@@ -83,6 +83,15 @@ export default function QuickDemo() {
   const prevEventsLenRef = useRef(0);
   const matchKeyRef = useRef(0);
 
+  /* PlayCanvas 3D */
+  const playCanvasRef = useRef<HTMLCanvasElement>(null);
+  const sceneRef = useRef<any>(null);
+  const [pcActive, setPcActive] = useState(false);
+
+  /* VFX word overlay */
+  interface VfxWord { id: string; text: string; color: string }
+  const [vfxWords, setVfxWords] = useState<VfxWord[]>([]);
+
   /* Load stored key */
   useEffect(() => {
     const stored = localStorage.getItem('moltpit_llm_key');
@@ -110,6 +119,7 @@ export default function QuickDemo() {
 
   /* Snapshot handler */
   const handleSnapshot = useCallback((snap: MatchSnapshot) => {
+    sceneRef.current?.update?.(snap);
     const s = snap.state;
     const a = s.actors?.botA;
     const b = s.actors?.botB;
@@ -204,6 +214,46 @@ export default function QuickDemo() {
     );
   }, [buildBots, handleSnapshot]);
 
+  /* PlayCanvas lifecycle */
+  useEffect(() => {
+    if (phase !== 'playing' || !playCanvasRef.current) return;
+    let destroyed = false;
+    import('../lib/ws2/PlayCanvasScene').then(({ PlayCanvasScene }) => {
+      if (destroyed || !playCanvasRef.current) return;
+      try {
+        const scene = new PlayCanvasScene(playCanvasRef.current);
+        sceneRef.current = scene;
+        setPcActive(true);
+      } catch (e) {
+        console.warn('[PlayCanvas] Init failed:', e);
+        setPcActive(false);
+      }
+    }).catch((e) => {
+      console.warn('[PlayCanvas] Load failed:', e);
+      setPcActive(false);
+    });
+    return () => {
+      destroyed = true;
+      sceneRef.current?.destroy?.();
+      sceneRef.current = null;
+      setPcActive(false);
+    };
+  }, [phase]);
+
+  /* VFX canvas event listener */
+  useEffect(() => {
+    const canvas = playCanvasRef.current;
+    if (!canvas) return;
+    const handler = (e: Event) => {
+      const { text, color } = (e as CustomEvent).detail;
+      const id = `vfx_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+      setVfxWords(prev => [...prev, { id, text, color }]);
+      setTimeout(() => setVfxWords(prev => prev.filter(v => v.id !== id)), 800);
+    };
+    canvas.addEventListener('moltpit:vfx', handler);
+    return () => canvas.removeEventListener('moltpit:vfx', handler);
+  }, []);
+
   /* Auto-start on mount */
   useEffect(() => {
     startMatch();
@@ -225,6 +275,32 @@ export default function QuickDemo() {
 
   return (
     <div style={{ marginBottom: '2rem' }}>
+      <style>{`@keyframes vfx-bolt-in { 0% { transform: translate(-50%,-50%) scale(0.3); opacity: 0; } 25% { transform: translate(-50%,-50%) scale(1.3); opacity: 1; } 100% { transform: translate(-50%,-50%) scale(1); opacity: 0; } }`}</style>
+
+      {/* PlayCanvas 3D arena */}
+      <div style={{ position: 'relative', height: 360, marginBottom: '1rem', borderRadius: 14, overflow: 'hidden', background: '#101010', border: '3px solid #111' }}>
+        <canvas
+          ref={playCanvasRef}
+          style={{ width: '100%', height: '100%', display: 'block' }}
+        />
+        {/* VFX word overlay */}
+        {vfxWords.map(v => (
+          <div key={v.id} style={{
+            position: 'absolute', top: '40%', left: '50%',
+            transform: 'translate(-50%,-50%)',
+            fontFamily: 'Bangers, display', fontSize: '3rem',
+            color: v.color, textShadow: `3px 3px 0 #000`,
+            pointerEvents: 'none', animation: 'vfx-bolt-in 0.6s ease-out forwards',
+          }}>{v.text}</div>
+        ))}
+        {/* Fallback — show before PlayCanvas loads */}
+        {!pcActive && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.85rem' }}>
+            Loading arena...
+          </div>
+        )}
+      </div>
+
       {/* AI mode badge */}
       <div
         style={{
