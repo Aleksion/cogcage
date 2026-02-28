@@ -6,7 +6,7 @@ const ENGINE_URL =
   'https://themoltpit-engine.aleks-precurion.workers.dev'
 const ENGINE_SECRET = process.env.MOLTPIT_ENGINE_SECRET ?? ''
 
-export const Route = createFileRoute('/api/lobby/$id/start')({
+export const Route = createFileRoute('/api/tank/$id/start')({
   server: {
     handlers: {
       POST: async ({ params }) => {

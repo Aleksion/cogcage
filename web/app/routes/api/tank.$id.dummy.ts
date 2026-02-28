@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { addDummy } from '~/lib/lobby'
 
-export const Route = createFileRoute('/api/lobby/$id/dummy')({
+export const Route = createFileRoute('/api/tank/$id/dummy')({
   server: {
     handlers: {
       POST: async ({ params }) => {
