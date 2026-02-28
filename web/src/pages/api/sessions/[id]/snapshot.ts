@@ -4,6 +4,7 @@ import { redis } from '../../../../lib/redis.ts';
 export const prerender = false;
 
 const SNAPSHOT_TTL = 60;
+const STREAM_TTL = 7200;
 
 /** GET /api/sessions/:id/snapshot — Get current match snapshot */
 export const GET: APIRoute = async ({ params }) => {
@@ -46,6 +47,11 @@ export const POST: APIRoute = async ({ params, request }) => {
 
     const payload = { matchId, botAName, botBName, botNames, snapshot, updatedAt: Date.now() };
     await redis.set(`session-snapshot:${sessionId}`, JSON.stringify(payload), { ex: SNAPSHOT_TTL });
+
+    // Also push to Redis stream for SSE consumers
+    const streamKey = `session-stream:${sessionId}`;
+    await redis.xadd(streamKey, '*', { data: JSON.stringify(payload) });
+    await redis.expire(streamKey, STREAM_TTL);
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,

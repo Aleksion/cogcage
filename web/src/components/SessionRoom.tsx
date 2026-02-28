@@ -141,28 +141,43 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
     return () => window.clearInterval(id);
   }, [session.status, sessionId]);
 
-  /* ── Poll session when running (non-host spectators) ──────── */
+  /* ── SSE stream for match snapshots (non-host spectators) ─── */
+  useEffect(() => {
+    if (session.status !== 'running' || isHost) return;
+
+    const es = new EventSource(`/api/sessions/${sessionId}/events`);
+
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data?.snapshot) {
+          applyRemoteSnapshot(data);
+        }
+      } catch { /* ignore parse errors */ }
+    };
+
+    es.onerror = () => {
+      // EventSource auto-reconnects with Last-Event-ID — no manual handling needed
+    };
+
+    return () => es.close();
+  }, [session.status, sessionId, isHost, applyRemoteSnapshot]);
+
+  /* ── Poll session metadata when running (non-host) ─────────── */
   useEffect(() => {
     if (session.status !== 'running' || isHost) return;
 
     const poll = async () => {
       try {
-        const snapRes = await fetch(`/api/sessions/${sessionId}/snapshot`);
-        if (snapRes.ok) {
-          const { snapshot } = await snapRes.json();
-          if (snapshot?.snapshot) {
-            applyRemoteSnapshot(snapshot);
-          }
-        }
-        const sessRes = await fetch(`/api/sessions/${sessionId}`);
-        if (sessRes.ok) {
-          const data: Session = await sessRes.json();
+        const res = await fetch(`/api/sessions/${sessionId}`);
+        if (res.ok) {
+          const data: Session = await res.json();
           setSession(data);
           setLeaderboard(data.leaderboard);
         }
       } catch { /* ignore */ }
     };
-    const id = window.setInterval(poll, 500);
+    const id = window.setInterval(poll, 3000);
     return () => window.clearInterval(id);
   }, [session.status, sessionId, isHost]);
 
