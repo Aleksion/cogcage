@@ -58,6 +58,7 @@ export async function connect(
     ticksMissed: 0,
   };
   let attempt = 0;
+  let intentionalClose = false;
 
   const open = () => {
     console.log(`[MoltPit] connecting`);
@@ -120,11 +121,16 @@ export async function connect(
         console.log("\n[MoltPit] Molt complete!");
         if (msg.result) console.log(JSON.stringify(msg.result, null, 2));
         printStats(stats);
+        intentionalClose = true;
         ws.close();
       }
     };
 
     ws.onclose = () => {
+      if (intentionalClose) {
+        console.log("[MoltPit] connection closed.");
+        return;
+      }
       const delay = Math.min(500 * Math.pow(2, attempt), 8000);
       attempt++;
       console.log(

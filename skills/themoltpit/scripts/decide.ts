@@ -40,21 +40,34 @@ export async function decide(
 ): Promise<Action | null> {
   const context = `${config.directive}\n\nCurrent state:\n${JSON.stringify(state)}\n\nRespond with ONLY JSON: {"action":"ACTION_ID","targetId":"optional"}`;
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      messages: [{ role: "user", content: context }],
-      max_tokens: config.maxTokens,
-      stream: true,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4000);
 
-  if (!res.ok || !res.body) return null;
+  let res: Response;
+  try {
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [{ role: "user", content: context }],
+        max_tokens: config.maxTokens,
+        stream: true,
+      }),
+      signal: controller.signal,
+    });
+  } catch {
+    clearTimeout(timeout);
+    return null;
+  }
+
+  if (!res.ok || !res.body) {
+    clearTimeout(timeout);
+    return null;
+  }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -85,6 +98,7 @@ export async function decide(
           if (jsonMatch) {
             const action = JSON.parse(jsonMatch[0]) as Action;
             if (action.action) {
+              clearTimeout(timeout);
               reader.cancel(); // stop streaming — we got what we need
               return action;
             }
@@ -95,6 +109,8 @@ export async function decide(
       }
     }
   }
+
+  clearTimeout(timeout);
 
   // Fallback: try to parse whatever we accumulated
   const jsonMatch = content.match(/\{[^{}]*\}/);
