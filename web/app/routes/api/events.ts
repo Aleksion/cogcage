@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { insertConversionEvent } from '~/lib/waitlist-db'
 import { appendEventsFallback, appendOpsLog } from '~/lib/observability'
+import { redisInsertConversionEvent } from '~/lib/waitlist-redis'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EVENT_RE = /^[a-z0-9_:-]{2,64}$/i;
@@ -122,7 +123,17 @@ export const Route = createFileRoute('/api/events')({
         };
 
         try {
-          insertConversionEvent(payload);
+          // Redis is the primary storage on Vercel — durable across Lambda invocations
+          await redisInsertConversionEvent(payload);
+
+          // SQLite is best-effort secondary — useful locally, ephemeral on Vercel
+          try {
+            insertConversionEvent(payload);
+          } catch (sqliteError) {
+            appendOpsLog({ route: '/api/events', level: 'warn', event: 'conversion_event_sqlite_write_failed', requestId, eventName, source: payload.source, error: sqliteError instanceof Error ? sqliteError.message : 'unknown' });
+            // Never throw — Redis already succeeded
+          }
+
           appendOpsLog({ route: '/api/events', level: 'info', event: 'conversion_event_saved', requestId, eventName, source: payload.source, durationMs: Date.now() - startedAt });
           return new Response(JSON.stringify({ ok: true, requestId }), {
             status: 200,
@@ -132,8 +143,9 @@ export const Route = createFileRoute('/api/events')({
             },
           });
         } catch (error) {
+          // Redis failed — try file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
-          appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_db_write_failed', requestId, eventName, source: payload.source, error: errorMessage, durationMs: Date.now() - startedAt });
+          appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_redis_write_failed', requestId, eventName, source: payload.source, error: errorMessage, durationMs: Date.now() - startedAt });
 
           try {
             appendEventsFallback({ route: '/api/events', requestId, ...payload, reason: errorMessage });

@@ -81,11 +81,16 @@ function jsonResponse(body: Record<string, unknown>, status: number, requestId: 
 }
 
 function safeTrackConversion(route: string, requestId: string, event: ConversionEvent) {
+  // Try Redis first (durable on Vercel) — fire-and-forget
+  void redisInsertConversionEvent(event).catch((redisError: unknown) => {
+    appendOpsLog({ route, level: 'warn', event: 'conversion_event_redis_write_failed', requestId, conversionEventName: event.eventName, error: redisError instanceof Error ? redisError.message : 'unknown' });
+  });
+  // Try SQLite as local-dev secondary — best-effort, warn on failure (not error)
   try {
     insertConversionEvent(event);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'unknown-error';
-    appendOpsLog({ route, level: 'error', event: 'conversion_event_write_failed', requestId, conversionEventName: event.eventName, error: errorMessage });
+    appendOpsLog({ route, level: 'warn', event: 'conversion_event_sqlite_write_failed', requestId, conversionEventName: event.eventName, error: errorMessage });
     try {
       appendEventsFallback({ route, requestId, ...event, reason: errorMessage });
     } catch {
