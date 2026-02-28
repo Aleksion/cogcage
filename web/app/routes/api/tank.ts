@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { listOpenLobbies, createLobby } from '~/lib/lobby'
 import { getCookie } from '~/lib/cookies'
 
-export const Route = createFileRoute('/api/lobby')({
+export const Route = createFileRoute('/api/tank')({
   server: {
     handlers: {
       GET: async () => {

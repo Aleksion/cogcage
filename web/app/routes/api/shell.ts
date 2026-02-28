@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { getLoadouts, saveLoadout } from '~/lib/armory'
 import { getCookie } from '~/lib/cookies'
 
-export const Route = createFileRoute('/api/armory')({
+export const Route = createFileRoute('/api/shell')({
   server: {
     handlers: {
       GET: async ({ request }) => {

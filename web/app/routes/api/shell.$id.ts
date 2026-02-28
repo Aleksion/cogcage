@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { deleteLoadout } from '~/lib/armory'
 import { getCookie } from '~/lib/cookies'
 
-export const Route = createFileRoute('/api/armory/$id')({
+export const Route = createFileRoute('/api/shell/$id')({
   server: {
     handlers: {
       DELETE: async ({ request, params }) => {

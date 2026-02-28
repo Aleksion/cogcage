@@ -1,12 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { startLobbyMatch } from '~/lib/lobby'
 
-const ENGINE_URL =
-  process.env.ENGINE_URL ??
-  'https://themoltpit-engine.aleks-precurion.workers.dev'
+// ENGINE_URL: prefer explicit HTTP var, fall back to WS URL (strip wss:// → https://), then hardcoded default
+const ENGINE_URL = (() => {
+  const raw = process.env.ENGINE_URL ?? process.env.PUBLIC_ENGINE_WS_URL ?? ''
+  return raw.replace(/^wss:\/\//, 'https://').replace(/^ws:\/\//, 'http://') ||
+    'https://themoltpit-engine.aleks-precurion.workers.dev'
+})()
 const ENGINE_SECRET = process.env.MOLTPIT_ENGINE_SECRET ?? ''
 
-export const Route = createFileRoute('/api/lobby/$id/start')({
+export const Route = createFileRoute('/api/tank/$id/start')({
   server: {
     handlers: {
       POST: async ({ params }) => {

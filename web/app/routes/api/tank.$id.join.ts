@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { joinLobby } from '~/lib/lobby'
 import { getCookie } from '~/lib/cookies'
 
-export const Route = createFileRoute('/api/lobby/$id/join')({
+export const Route = createFileRoute('/api/tank/$id/join')({
   server: {
     handlers: {
       POST: async ({ params, request }) => {
