@@ -1,7 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import Database from 'better-sqlite3';
 import { resolveRuntimePath } from './runtime-paths';
+
+// Lazy-load better-sqlite3 to gracefully handle binary ABI mismatches
+// (e.g. compiled for Node 22 / NMV 137 but runtime is Node 20 / NMV 127 on Vercel).
+// The load error is caught once at module init — not per-request — so it never
+// spams the ops log.
+let Database: typeof import('better-sqlite3') | null = null;
+let sqliteLoadError: string | null = null;
+
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Database = require('better-sqlite3') as typeof import('better-sqlite3');
+} catch (err) {
+  sqliteLoadError = err instanceof Error ? err.message.split('\n')[0] : String(err);
+}
+
+function isSqliteAvailable(): boolean {
+  return Database !== null;
+}
 
 export type WaitlistLead = {
   email: string;
@@ -61,7 +78,7 @@ export type ApiRequestReceipt = {
   responseBody: string;
 };
 
-let db: Database.Database | null = null;
+let db: import('better-sqlite3').Database | null = null;
 
 export function getDbPath() {
   return process.env.MOLTPIT_DB_PATH ?? resolveRuntimePath('moltpit.db');
@@ -84,13 +101,20 @@ function runWithBusyRetry<T>(label: string, fn: () => T): T {
   throw new Error(`db_${label}_failed: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
-function getDb() {
+function getDb(): import('better-sqlite3').Database {
+  if (!isSqliteAvailable()) {
+    throw new Error(
+      `SQLite unavailable — binary load error: ${sqliteLoadError ?? 'unknown'}`,
+    );
+  }
+
   if (db) return db;
 
   const dbPath = getDbPath();
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-  db = new Database(dbPath);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  db = new Database!(dbPath);
   db.pragma('journal_mode = WAL');
   db.pragma('busy_timeout = 3000');
 
@@ -337,6 +361,11 @@ export function writeApiRequestReceipt(receipt: ApiRequestReceipt) {
 }
 
 export function getFunnelCounts(): FunnelCounts {
+  // Return zeros when SQLite unavailable; callers fall through to Redis.
+  if (!isSqliteAvailable()) {
+    return { waitlistLeads: 0, founderIntents: 0, conversionEvents: 0 };
+  }
+
   const conn = getDb();
   const waitlist = conn.prepare('SELECT COUNT(*) AS count FROM waitlist_leads').get() as { count: number };
   const founders = conn.prepare('SELECT COUNT(*) AS count FROM founder_intents').get() as { count: number };
@@ -350,6 +379,19 @@ export function getFunnelCounts(): FunnelCounts {
 }
 
 export function getStorageHealth() {
+  // When the binary can't be loaded, report degraded state instead of throwing.
+  if (!isSqliteAvailable()) {
+    return {
+      sqliteAvailable: false,
+      sqliteLoadError,
+      dbPath: getDbPath(),
+      dbExists: false,
+      dbBytes: 0,
+      writableDir: false,
+      dbProbeOk: false,
+    };
+  }
+
   const dbPath = getDbPath();
   const conn = getDb();
   const probe = conn.prepare('SELECT 1 AS ok').get() as { ok: number };
@@ -357,6 +399,8 @@ export function getStorageHealth() {
   const dbBytes = dbExists ? fs.statSync(dbPath).size : 0;
 
   return {
+    sqliteAvailable: true,
+    sqliteLoadError: null,
     dbPath,
     dbExists,
     dbBytes,
@@ -366,8 +410,22 @@ export function getStorageHealth() {
 }
 
 export function getReliabilitySnapshot(windowHours = 24): ReliabilitySnapshot {
-  const conn = getDb();
   const hours = Math.max(1, Math.min(168, Math.floor(windowHours)));
+
+  // Return zero-counts when SQLite unavailable; callers already fall through to Redis.
+  if (!isSqliteAvailable()) {
+    return {
+      windowHours: hours,
+      waitlistSubmitted: 0,
+      waitlistQueuedFallback: 0,
+      waitlistFailed: 0,
+      founderIntentSubmitted: 0,
+      founderIntentQueuedFallback: 0,
+      founderIntentFailed: 0,
+    };
+  }
+
+  const conn = getDb();
 
   const query = conn.prepare(`
     SELECT event_name AS eventName, COUNT(*) AS count
