@@ -4,6 +4,136 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-27] - feat: Astro → TanStack Start migration — TASK-MIGRATE
+
+**Type:** feat | **Phase:** 1
+
+### Summary
+Replaced the Astro SSR app in `web/` with a TanStack Start app. All existing React components, API routes, and lib code ported to the new framework. Components now render server-side by default (no FOUC), API routes use TanStack Start's `createFileRoute` server handlers, and deployment targets Vercel via the Nitro `vercel` preset.
+
+### Changes
+- `web/vite.config.ts` — **New.** Vite config with `tanstackStart` plugin (srcDirectory: `app`), `@vitejs/plugin-react`, `nitro` (preset: vercel), and `vite-tsconfig-paths`.
+- `web/tsconfig.json` — **Rewritten.** Removed `astro/tsconfigs/strict` extend. Now standard strict TypeScript with `~/` path alias to `app/`.
+- `web/package.json` — **Rewritten.** Replaced Astro deps (`astro`, `@astrojs/*`) with TanStack Start deps (`@tanstack/react-start`, `@tanstack/react-router`, `@tanstack/react-router-devtools`). Build system: `vite dev`/`vite build`. Added `nitro`, `@vitejs/plugin-react`, `vite-tsconfig-paths` as devDeps.
+- `web/.gitignore` — Updated: removed `.astro/`, added `.output/`, `.vinxi/`, `.nitro/`, `app/routeTree.gen.ts`.
+- `web/app/router.tsx` — **New.** TanStack Router factory with `routeTree`, `defaultPreload: 'intent'`, `scrollRestoration: true`.
+- `web/app/routes/__root.tsx` — **New.** Root layout with `<HeadContent>`, `<Scripts>`, inline global styles (dark theme, radial gradient background), Google Fonts (Bangers, Inter, Kanit, Space Grotesk). Replaces `Layout.astro`.
+- `web/app/routes/index.tsx` — **New.** Landing page route, renders `MoltPitLanding` via `ClientOnly` wrapper.
+- `web/app/routes/play.tsx` — **New.** Play/dashboard route, renders `Dashboard` via `ClientOnly`.
+- `web/app/routes/shell.tsx` — **New.** Armory route (URL changed from `/armory` to `/shell`), renders `Armory` via `ClientOnly` with `returnTo` search param.
+- `web/app/routes/tank/$id.tsx` — **New.** Lobby route (URL changed from `/lobby/:id` to `/tank/:id`), renders `Lobby` via `ClientOnly`.
+- `web/app/routes/sign-in.tsx` — **New.** Placeholder sign-in page (TASK-020 will add auth).
+- `web/app/routes/join/$code.tsx` — **New.** FFA tournament join page, ported from inline Astro HTML+script to React component.
+- `web/app/routes/play_.session.$id.tsx` — **New.** Session page, fetches session client-side then renders `SessionRoom`.
+- `web/app/routes/success.tsx` — **New.** Checkout success page with conversion tracking (ported from Astro inline script to React `useEffect`).
+- `web/app/routes/ops-log.tsx` — **New.** Ops dashboard (ported from server-rendered Astro to client-side React fetch+render).
+- `web/app/components/ClientOnly.tsx` — **New.** Client-only rendering wrapper. Replaces Astro's `client:only="react"` pattern.
+- `web/app/components/JoinSession.tsx` — **New.** React port of `join/[code].astro`.
+- `web/app/components/SessionPageWrapper.tsx` — **New.** Client-side session fetcher for `SessionRoom`.
+- `web/app/components/SuccessPage.tsx` — **New.** React port of `success.astro` conversion tracking.
+- `web/app/components/OpsLogPage.tsx` — **New.** React port of `ops-log.astro`.
+- `web/app/lib/cookies.ts` — **New.** Cookie parser utility — replaces Astro's `cookies.get()` API.
+- `web/app/routes/api/*.ts` — **New.** All 21 API routes ported to TanStack Start `createFileRoute` + `server.handlers`. Handler logic unchanged.
+- `web/app/components/*.tsx` — **Moved.** All React components from `src/components/` to `app/components/` with zero changes.
+- `web/app/lib/*` — **Moved.** All lib modules from `src/lib/` to `app/lib/` with zero changes.
+- `web/src/` — **Deleted.** All Astro pages, layouts, middleware, `env.d.ts`.
+- `web/astro.config.mjs` — **Deleted.** Replaced by `vite.config.ts`.
+
+### Breaking Changes
+- **URL changes:** `/armory` → `/shell`, `/lobby/:id` → `/tank/:id`. Old URLs will 404.
+- **Middleware removed:** Astro's `defineMiddleware` for anonymous player ID cookie no longer runs automatically. Cookie is set client-side by components (fallback via `localStorage`/`document.cookie` was already the primary mechanism).
+- **Build system:** `astro build` → `vite build`. `astro dev` → `vite dev`.
+
+### Notes
+- `client:only="react"` pattern replaced with `ClientOnly` component — same behavior, proper SSR framework support, no FOUC.
+- No auth changes — `/sign-in` is placeholder (TASK-020).
+- Redis env vars unchanged: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
+- Engine URL unchanged: `PUBLIC_ENGINE_WS_URL`.
+- Vercel deployment: TanStack Start with Nitro vercel preset outputs to `.vercel/output/`.
+---
+
+## [2026-02-27] - chore: TASK-022 terminology rebrand — full UI + docs vocabulary update
+
+**Type:** chore | **Phase:** 2
+
+### Summary
+Applied the locked terminology map across all user-facing copy, route paths, comments, and documentation. No TypeScript identifiers, Redis keys, or internal API contracts were changed — this is a pure vocabulary rebrand.
+
+### Terminology Map
+| Old | New |
+|-----|-----|
+| Armory | The Shell |
+| loadout | shell |
+| skills / actions (combat moves) | claws |
+| system prompt (game context) | directive |
+| match (game) | molt |
+| lobby / Lobby | tank / The Tank |
+| ELO / elo / rank (player rating) | hardness |
+| dashboard / Dashboard | den / The Den |
+| leaderboard | The Ladder |
+| bot / agent (player's AI) | crawler |
+
+### Changes — UI Components
+- `web/src/components/Armory.tsx` — Nav label "Armory" → "The Shell", href `/shell`, "Loadout" → "Shell", "Skills" → "Claws", "Brain (System Prompt)" → "Brain (Directive)", "Saved Loadouts" → "Saved Shells", all fetch URLs `/api/armory` → `/api/shell`
+- `web/src/components/Dashboard.tsx` — "Your Bot" → "Your Crawler", "Build Your Bot" → "Build Your Crawler", "Start Lobby" → "Start Tank", "Open Games" → "Open Molts", nav "Armory" → "The Shell" href `/shell`, fetch URLs `/api/lobby` → `/api/tank`, `window.location` `/lobby/` → `/tank/`
+- `web/src/components/Lobby.tsx` — "Lobby" → "The Tank", "Back to Dashboard" → "Back to The Den", "Configure Bot" → "Configure Crawler", "Start Match" → "Start Molt", "Actions:" → "Claws:", fetch URLs updated
+- `web/src/components/MatchView.tsx` — "Back to Dashboard" → "Back to The Den", "Tweak Bot" → "Tweak Crawler", "MATCH END/OVER/ABORTED" → "MOLT END/OVER/ABORTED"
+- `web/src/components/SessionRoom.tsx` — "FFA Tournament Lobby" → "FFA Tournament Tank", "System Prompt" → "Directive", "Loadout" → "Shell", "Leaderboard" → "The Ladder", "bots" → "crawlers", "abilities" → "claws", all match→molt transitions
+- `web/src/components/Play.tsx` — "Configure Your Agents" → "Configure Your Crawlers", "Bot A/B" → "Crawler A/B", "System Prompt (Brain)" → "Directive (Brain)", "Loadout" → "Shell", "Lobby Rooms" → "Tank Rooms", match→molt transitions
+- `web/src/components/MoltPitLanding.jsx` — "Bot Name" → "Crawler Name", "Rank" → "Hardness", "LIVE RANKINGS" → "THE LADDER", "loadout" → "shell"
+
+### Changes — Astro Pages
+- `web/src/pages/armory.astro` → `web/src/pages/shell.astro` — **Renamed.** Title "The Molt Pit — The Shell"
+- `web/src/pages/lobby/[id].astro` → `web/src/pages/tank/[id].astro` — **Renamed.** Title "The Molt Pit — The Tank"
+- `web/src/pages/play.astro` — Meta description updated (crawlers, hardness)
+- `web/src/pages/index.astro` — Meta description updated
+- `web/src/pages/success.astro` — "rank-season" → "hardness-season"
+- `web/src/pages/join/[code].astro` — "Bot Name" → "Crawler Name", "System Prompt" → "Directive", "Loadout" → "Shell"
+- `web/src/layouts/Layout.astro` — Default description updated
+
+### Changes — API Routes
+- `web/src/pages/api/armory/index.ts` → `web/src/pages/api/shell/index.ts` — **Renamed.** Comments updated
+- `web/src/pages/api/armory/[id].ts` → `web/src/pages/api/shell/[id].ts` — **Renamed.** Comments updated
+- `web/src/pages/api/lobby/index.ts` → `web/src/pages/api/tank/index.ts` — **Renamed.** Comments updated
+- `web/src/pages/api/lobby/[id].ts` → `web/src/pages/api/tank/[id].ts` — **Renamed.** Comments updated
+- `web/src/pages/api/lobby/[id]/start.ts` → `web/src/pages/api/tank/[id]/start.ts` — **Renamed.** Comments updated
+- `web/src/pages/api/lobby/[id]/join.ts` → `web/src/pages/api/tank/[id]/join.ts` — **Renamed.** Comments updated
+- `web/src/pages/api/lobby/[id]/dummy.ts` → `web/src/pages/api/tank/[id]/dummy.ts` — **Renamed.** Comments updated
+
+### Changes — Lib Files
+- `web/src/lib/armory.ts` — "Unnamed Loadout" → "Unnamed Shell", "Max 10 saved loadouts" → "Max 10 saved shells"
+- `web/src/lib/lobby.ts` — Comments: "Resolve loadout" → "Resolve shell", "tactical combat agent" → "tactical combat crawler"
+- `web/src/lib/cards.ts` — Comment: "Card → match config" → "Card → molt config"
+- `web/src/lib/game-styles.ts` — CSS comment "Lobby" → "Tank"
+- `web/src/lib/ws2/match-types.ts` — Comment: "system prompt for the LLM" → "directive for the LLM"
+- `web/src/lib/ws2/run-match.ts` — Comments: "match runner" → "molt runner", "lobby flow" → "tank flow", "bots" → "crawlers"
+- `web/src/lib/ws2/README.md` — "bots" → "crawlers"
+
+### Changes — Docs & Roadmap
+- `docs/core-thesis.md` — bot→crawler, action→claw, match→molt, agent→crawler throughout
+- `docs/architecture-game-engine.md` — lobby→tank, armory→shell, match→molt, bot→crawler, ELO→hardness
+- `ROADMAP.md` — All terminology updated per map
+- `docs/tasks/*.md` — All task specs updated per map
+- `docs/sprints/current.md` — Updated per map
+
+### What Was NOT Changed (by design)
+- TypeScript identifiers: `LobbyRecord`, `SavedLoadout`, `createLobby()`, `getLoadouts()`, etc.
+- Redis keys: `armory:*`, `lobby:*`, `lobbies:open`
+- Session status enum: `'lobby'`
+- CSS class names: `.armory-root`, `.lby-root`, `.dash-root`
+- Internal API route `/api/agent/decide`
+- Component file names (Armory.tsx, Lobby.tsx, Dashboard.tsx kept as-is)
+
+### Breaking Changes
+- Route paths changed: `/armory` → `/shell`, `/lobby/:id` → `/tank/:id`, `/api/armory/*` → `/api/shell/*`, `/api/lobby/*` → `/api/tank/*`
+- Any external links or bookmarks to old routes will 404
+
+### Notes
+- This is a vocabulary-only change. No logic, no data model, no Redis migration.
+- Old Astro page files and API route directories were deleted after moving to new paths.
+
+---
+
 ## [2026-02-27] - cleanup+feat: Remove client-side match-runner, add connection stats to result screen — TASK-005+006
 
 **Type:** cleanup + feat | **Phase:** 1

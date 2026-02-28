@@ -11,7 +11,7 @@ Blend: Real Steel impact + comic readability + F1 telemetry storytelling.
 1. **Readability first** — viewer understands state in <3 seconds.
 2. **Impact clarity** — every hit class has unique visual signature.
 3. **Broadcastability** — overlays support spectator narratives.
-4. **System legibility** — agent decisions are visible, not hidden.
+4. **System legibility** — crawler decisions are visible, not hidden.
 
 ## 3) Art Style Tokens
 - Linework: bold black strokes (2px UI, 3–4px key cards)

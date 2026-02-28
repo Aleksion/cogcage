@@ -1,9 +1,9 @@
-# CogCage FFA Session Architecture
+# The Molt Pit FFA Session Architecture
 *Designed: 2026-02-26 21:48 ET — Daedalus*
 
 ## Constraints
 - Vercel Hobby: serverless functions, 60s max execution, no persistent WebSockets
-- Matches run 3-5 min → can't run server-side in a single function invocation
+- Molts run 3-5 min → can't run server-side in a single function invocation
 - Need: durable sessions, sub-500ms state reads, N-player FFA for Friday demo
 
 ---
@@ -40,9 +40,9 @@ Why:
 
 ---
 
-## Decision 3: Match Execution → Client-Side Relay
+## Decision 3: Molt Execution → Client-Side Relay
 
-**Pattern:** Host browser runs the match, pushes snapshots to Redis. Spectators poll.
+**Pattern:** Host browser runs the molt, pushes snapshots to Redis. Spectators poll.
 
 ```
 Host Browser
@@ -54,7 +54,7 @@ Spectator Browser
 ```
 
 Why:
-- Zero Vercel timeout issues (match runs in browser, no time limit)
+- Zero Vercel timeout issues (molt runs in browser, no time limit)
 - Engine is already in the browser (Play.tsx)
 - Snapshot relay adds ~50ms latency — imperceptible
 
@@ -64,10 +64,10 @@ Why:
 
 **No engine rewrite needed.**
 
-- N bots → N×(N-1)/2 matchups (e.g., 5 bots = 10 fights)
-- Matches run sequentially (one at a time, host browser runs each)
-- Leaderboard: 3 pts win, 1 pt draw, 0 pt loss + HP-remaining tiebreaker
-- All spectators see the SAME current fight + live leaderboard
+- N crawlers → N×(N-1)/2 matchups (e.g., 5 crawlers = 10 fights)
+- Molts run sequentially (one at a time, host browser runs each)
+- The Ladder: 3 pts win, 1 pt draw, 0 pt loss + HP-remaining tiebreaker
+- All spectators see the SAME current fight + live ladder
 
 ---
 
@@ -79,14 +79,14 @@ sessions:{id}  →  JSON (TTL 2h)
 {
   id: string,
   code: string,            // 6-char join code e.g. "ALPHA7"
-  status: "lobby" | "running" | "done",
+  status: "tank" | "running" | "done",
   hostId: string,          // participant id who created
   participants: [{
     id: string,
     name: string,          // display name
-    bot: {
-      systemPrompt: string,
-      loadout: string[],
+    crawler: {
+      directive: string,
+      shell: string[],
       armor: "light" | "medium" | "heavy",
       temperature: number
     }
@@ -100,7 +100,7 @@ sessions:{id}  →  JSON (TTL 2h)
     scoreA: number,        // HP remaining
     scoreB: number
   }],
-  leaderboard: [{
+  ladder: [{
     participantId: string,
     name: string,
     wins: number,
@@ -112,7 +112,7 @@ sessions:{id}  →  JSON (TTL 2h)
   createdAt: number
 }
 
-# Current match snapshot (host writes, spectators read)
+# Current molt snapshot (host writes, spectators read)
 sessions:{id}:snapshot  →  JSON (TTL 60s, refreshed every 300ms)
 {
   matchId: string,
@@ -133,18 +133,18 @@ session-code:{code}  →  sessionId (TTL 2h)
 
 ```
 POST /api/sessions
-  body: { hostName, bot: BotConfig }
+  body: { hostName, crawler: CrawlerConfig }
   → { sessionId, code, participantId }
 
 POST /api/sessions/:id/join
-  body: { name, bot: BotConfig }
+  body: { name, crawler: CrawlerConfig }
   → { participantId }
 
 GET /api/sessions/:id
   → { session }  (full session object)
 
 POST /api/sessions/join-by-code
-  body: { code, name, bot: BotConfig }
+  body: { code, name, crawler: CrawlerConfig }
   → { sessionId, participantId }
 
 POST /api/sessions/:id/start
@@ -155,19 +155,19 @@ DELETE /api/sessions/:id/participants/:pid
   → { ok }
 ```
 
-### Match Relay
+### Molt Relay
 
 ```
 POST /api/sessions/:id/snapshot
-  body: { matchId, botAName, botBName, snapshot: MatchSnapshot }
+  body: { moltId, crawlerAName, crawlerBName, snapshot: MoltSnapshot }
   → { ok }
 
 GET /api/sessions/:id/snapshot
-  → { matchId, botAName, botBName, snapshot }
+  → { moltId, crawlerAName, crawlerBName, snapshot }
 
-POST /api/sessions/:id/match/:matchId/complete
+POST /api/sessions/:id/molt/:moltId/complete
   body: { winnerId, scoreA, scoreB, hostParticipantId }
-  → { nextMatchId, leaderboard, done: boolean }
+  → { nextMoltId, ladder, done: boolean }
 ```
 
 ---
@@ -177,14 +177,14 @@ POST /api/sessions/:id/match/:matchId/complete
 ### `/play/session/[id]` — Session Room
 
 **Phases:**
-1. **Lobby** — shows participant list + bot previews, join link/code, "Start Tournament" button (host only)
-2. **Match Running** — shows current fight (live snapshot), leaderboard sidebar, "You are spectating: BotA vs BotB"
-3. **Done** — final leaderboard, replay links
+1. **Tank** — shows participant list + crawler previews, join link/code, "Start Tournament" button (host only)
+2. **Molt Running** — shows current fight (live snapshot), ladder sidebar, "You are spectating: CrawlerA vs CrawlerB"
+3. **Done** — final ladder, replay links
 
 ### Components
-- `SessionLobby` — join code display, participant list, bot config, start button
-- `SessionMatch` — renders current snapshot using existing arena grid, shows matchup header
-- `SessionLeaderboard` — W/L table, live rank updates
+- `SessionTank` — join code display, participant list, crawler config, start button
+- `SessionMolt` — renders current snapshot using existing arena grid, shows matchup header
+- `SessionLadder` — W/L table, live hardness updates
 - `JoinSession` — enter code → redirect to session room
 
 ### `/play` — Add "Create Tournament" button
@@ -200,26 +200,26 @@ POST /api/sessions/:id/match/:matchId/complete
 - Implement all /api/sessions/* routes
 - Test: create → join → get → start → bracket generated
 
-### Phase 2: Match Relay (1h)
+### Phase 2: Molt Relay (1h)
 - POST /api/sessions/:id/snapshot — host writes
 - GET /api/sessions/:id/snapshot — spectators read
-- POST /api/sessions/:id/match/:id/complete — advance bracket
+- POST /api/sessions/:id/molt/:id/complete — advance bracket
 
-### Phase 3: Host Match Runner (2h)
-- Modify Play.tsx or new SessionMatch component
-- Host runs each bracket match using existing runMatchAsync
-- On match complete: POST complete → get nextMatchId → start next match
+### Phase 3: Host Molt Runner (2h)
+- Modify Play.tsx or new SessionMolt component
+- Host runs each bracket molt using existing runMoltAsync
+- On molt complete: POST complete → get nextMatchId → start next molt
 - Snapshot relay in handleSnapshot callback
 
 ### Phase 4: Spectator View (1h)
 - /play/session/[id] page
 - Poll /snapshot every 500ms
-- Render arena + leaderboard
+- Render arena + ladder
 
 ### Phase 5: Join Flow (1h)
 - Join by code UI
-- Bot config for joining participants
-- Lobby page with participant list
+- Crawler config for joining participants
+- Tank page with participant list
 
 ---
 

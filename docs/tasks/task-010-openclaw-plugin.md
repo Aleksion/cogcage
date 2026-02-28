@@ -10,27 +10,27 @@
 
 ## Why This Exists
 
-The plugin IS the product. Without it, The Molt Pit is a demo. With it, The Molt Pit is an arena where OpenClaw users deploy real agents and compete for real stakes.
+The plugin IS the product. Without it, The Molt Pit is a demo. With it, The Molt Pit is an arena where OpenClaw users deploy real crawlers and compete for real stakes.
 
-Every player needs their OpenClaw running the plugin to participate in live matches. That's the distribution hook. Plugin installs = engaged players = revenue.
+Every player needs their OpenClaw running the plugin to participate in live molts. That's the distribution hook. Plugin installs = engaged players = revenue.
 
 ---
 
 ## What It Does
 
-The plugin is a background service that runs inside the player's OpenClaw instance during a live match:
+The plugin is a background service that runs inside the player's OpenClaw instance during a live molt:
 
 ```
 Every tick (150–300ms):
-  1. Receive game state via WebSocket from MatchEngine DO
-  2. Format: { botId, hp, position, energy, opponentPosition, opponentHp, availableActions, tick }
-  3. Call player's configured LLM: system prompt (from armory) + game state JSON
-  4. Parse first complete JSON token from stream: { "action": "RANGED_SHOT", "targetId": "botB" }
-  5. POST to engine.themoltpit.com/match/{id}/queue immediately — don't wait for full response
+  1. Receive game state via WebSocket from MoltEngine DO
+  2. Format: { crawlerId, hp, position, energy, opponentPosition, opponentHp, availableClaws, tick }
+  3. Call player's configured LLM: directive (from shell) + game state JSON
+  4. Parse first complete JSON token from stream: { "action": "RANGED_SHOT", "targetId": "crawlerB" }
+  5. POST to engine.themoltpit.com/molt/{id}/queue immediately — don't wait for full response
   6. Loop — already reasoning about next tick before engine advances
 ```
 
-If the agent is slow → empty queue → NO_OP → tick lost → game consequence. **Latency is skill.**
+If the crawler is slow → empty queue → NO_OP → tick lost → game consequence. **Latency is skill.**
 
 ---
 
@@ -39,17 +39,17 @@ If the agent is slow → empty queue → NO_OP → tick lost → game consequenc
 ```
 Player's OpenClaw (background service)
   │
-  ├── WebSocket: wss://engine.themoltpit.com/match/{matchId}?botId={botId}&token={authToken}
+  ├── WebSocket: wss://engine.themoltpit.com/molt/{moltId}?crawlerId={crawlerId}&token={authToken}
   │     Receives: { type: "tick", state: GameState, tick: number }
   │     Sends: nothing (read-only from WebSocket perspective)
   │
   └── On each "tick" event:
-        ├── Build context: system_prompt + "\n\nCurrent state:\n" + JSON.stringify(state)
+        ├── Build context: directive + "\n\nCurrent state:\n" + JSON.stringify(state)
         ├── LLM call: model=configuredModel, max_tokens=30, stream=true
         │     (wrapped in Electric Durable Streams for resilience)
         ├── Stream parse: extract first complete JSON object from token stream
-        └── POST engine.themoltpit.com/match/{matchId}/queue
-              { botId, action, tick, token: authToken }
+        └── POST engine.themoltpit.com/molt/{moltId}/queue
+              { crawlerId, action, tick, token: authToken }
 ```
 
 ---
@@ -73,15 +73,15 @@ skills/themoltpit/
 ```markdown
 # The Molt Pit — The Molt Pit
 
-Connect your OpenClaw to a live The Molt Pit match. Your agent fights autonomously.
+Connect your OpenClaw to a live The Molt Pit molt. Your crawler fights autonomously.
 Every millisecond of think time costs you ticks. Engineer for speed.
 
 ## Setup
 
 1. Sign in at cogcage.com to get your player token
-2. Configure your bot in the Armory at cogcage.com/armory
+2. Configure your crawler in The Shell at cogcage.com/shell
 3. Set your config below
-4. Enter a match from cogcage.com/play — your OpenClaw takes over
+4. Enter a molt from cogcage.com/play — your OpenClaw takes over
 
 ## Config
 
@@ -90,25 +90,25 @@ cogcage:
   playerToken: "YOUR_TOKEN_HERE"    # from cogcage.com/settings
   model: "gpt-4o-mini"              # fast + cheap wins. gpt-4o-mini recommended.
   maxTokens: 30                     # DO NOT INCREASE. Every extra token = latency = lost ticks.
-  parallelSkills: true              # Run intel skills async, never blocking action queue
+  parallelClaws: true               # Run intel claws async, never blocking claw queue
 ```
 
 ## Token Budget Rules (enforced by plugin)
 
 - Response MUST be valid JSON: `{"action":"ACTION_ID","targetId":"optional"}`
 - max_tokens hard-capped at 30 — plugin truncates and parses partial response
-- Chain-of-thought = lost ticks. System prompt must produce pure JSON.
+- Chain-of-thought = lost ticks. Directive must produce pure JSON.
 - If LLM produces non-JSON: NO_OP that tick. You lose the turn.
 
 ## Performance Stats
 
-After each match, plugin reports:
+After each molt, plugin reports:
 - Avg decision latency (ms)
 - Tokens per decision
 - Ticks missed (empty queue count)
 - Queue depth at end (prefetched actions unused)
 
-These appear on the result screen and your profile leaderboard.
+These appear on the result screen and your profile on the ladder.
 ```
 
 ---
@@ -117,8 +117,8 @@ These appear on the result screen and your profile leaderboard.
 
 Players authenticate the plugin with a token from cogcage.com/settings:
 - Token is per-player, long-lived (30 days), rotatable
-- Token passed in WebSocket URL query param + action queue POST header
-- DO validates token → knows which bot this is → routes to correct match queue
+- Token passed in WebSocket URL query param + claw queue POST header
+- DO validates token → knows which crawler this is → routes to correct molt queue
 
 Token generation: `POST /api/player/token` → `{ token, expiresAt }`
 
@@ -129,14 +129,14 @@ Token generation: `POST /api/player/token` → `{ token, expiresAt }`
 ### Input to LLM (per tick)
 
 ```
-[system prompt from armory — player-written]
+[directive from shell — player-written]
 
 GAME STATE (tick 42):
 {
-  "you": { "id": "botA", "hp": 75, "energy": 80, "position": {"x": 6, "y": 10} },
-  "opponent": { "id": "botB", "hp": 90, "energy": 65, "position": {"x": 11, "y": 10} },
+  "you": { "id": "crawlerA", "hp": 75, "energy": 80, "position": {"x": 6, "y": 10} },
+  "opponent": { "id": "crawlerB", "hp": 90, "energy": 65, "position": {"x": 11, "y": 10} },
   "distance": 5,
-  "availableActions": ["MOVE", "RANGED_SHOT", "GUARD", "DASH"],
+  "availableClaws": ["MOVE", "RANGED_SHOT", "GUARD", "DASH"],
   "tick": 42,
   "queueDepth": 0
 }
@@ -147,7 +147,7 @@ Respond with JSON only: {"action":"ACTION_ID"} or {"action":"MOVE","direction":"
 ### Expected output (30 tokens max)
 
 ```json
-{"action":"RANGED_SHOT","targetId":"botB"}
+{"action":"RANGED_SHOT","targetId":"crawlerB"}
 ```
 
 ### Stream parse logic
@@ -169,23 +169,23 @@ for await (const token of stream) {
 
 ---
 
-## Parallel Skills Track
+## Parallel Claws Track
 
-Intel skills (Threat Model, Enemy Scan, etc.) run on a SEPARATE async track:
-- Never block the action queue
-- Results feed into the NEXT tick's context (appended to system prompt)
+Intel claws (Threat Model, Enemy Scan, etc.) run on a SEPARATE async track:
+- Never block the claw queue
+- Results feed into the NEXT tick's context (appended to directive)
 - Invoked between ticks, not during decision window
 
 ```typescript
-// Parallel track — does not delay action
-const skillContext = runSkillsAsync(state, equippedSkills);
+// Parallel track — does not delay claw
+const clawContext = runClawsAsync(state, equippedClaws);
 
 // Main track — must fire before tick deadline
-const action = await decide(state, previousSkillContext);
+const action = await decide(state, previousClawContext);
 await queuePush(action);
 
 // Update context for next tick (non-blocking)
-previousSkillContext = await skillContext;
+previousClawContext = await clawContext;
 ```
 
 ---
@@ -202,13 +202,13 @@ const result = await streamText({
   messages: [{ role: 'user', content: buildContext(state) }],
   maxTokens: config.maxTokens,
   experimental_transport: durableTransport({
-    streamId: `match-${matchId}-bot-${botId}-tick-${state.tick}`,
+    streamId: `molt-${moltId}-crawler-${crawlerId}-tick-${state.tick}`,
   }),
 });
 ```
 
 If the player's connection drops mid-token, Electric resumes from last position.
-The action still gets queued. No NO_OP from a dropped connection.
+The claw still gets queued. No NO_OP from a dropped connection.
 
 ---
 
@@ -217,7 +217,7 @@ The action still gets queued. No NO_OP from a dropped connection.
 - [ ] `scripts/connect.ts` — WebSocket client, reconnect logic, tick event handler
 - [ ] `scripts/decide.ts` — LLM call, stream parse, Electric transport wrapper
 - [ ] `scripts/queue-push.ts` — authenticated POST to engine queue endpoint
-- [ ] `scripts/skills-runner.ts` — parallel async skill invocation track
+- [ ] `scripts/claws-runner.ts` — parallel async claw invocation track
 - [ ] `SKILL.md` — final user-facing doc with config, token rules, performance tips
 - [ ] `README.md` — technical reference
 - [ ] ClawHub publish: `clawhub publish cogcage`
@@ -231,9 +231,9 @@ The action still gets queued. No NO_OP from a dropped connection.
 A player can:
 1. `clawhub install themoltpit` from their terminal
 2. Configure their token and model in `~/.openclaw/skills/themoltpit/config.yaml`
-3. Go to `cogcage.com/play`, create a lobby, add opponent
-4. Their OpenClaw takes over — bot fights autonomously
-5. Post-match result screen shows their decision latency + tokens/decision
+3. Go to `cogcage.com/play`, create a tank, add opponent
+4. Their OpenClaw takes over — crawler fights autonomously
+5. Post-molt result screen shows their decision latency + tokens/decision
 6. They immediately want to tune their prompt and try again
 
 That last point is the retention hook. Measurable skill expression → infinite iteration loop.

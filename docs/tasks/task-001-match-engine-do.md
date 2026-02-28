@@ -1,4 +1,4 @@
-# TASK-001 — MatchEngine Durable Object
+# TASK-001 — MoltEngine Durable Object
 
 **Priority:** High (Phase 1 — unblocks Phase 2 plugin)  
 **Depends on:** Cloudflare account + `wrangler login`  
@@ -9,7 +9,7 @@
 
 ## What
 
-A Cloudflare Workers Durable Object that IS the game engine. One instance per live match. Owns the tick clock, game state, action queues, and WebSocket connections.
+A Cloudflare Workers Durable Object that IS the game engine. One instance per live molt. Owns the tick clock, game state, claw queues, and WebSocket connections.
 
 Deployed to `engine.themoltpit.com`.
 
@@ -34,9 +34,9 @@ engine/                          ← new top-level dir in repo
 ├── wrangler.toml
 ├── src/
 │   ├── index.ts                 ← Worker entrypoint (routes to DO)
-│   ├── MatchEngine.ts           ← Durable Object class
+│   ├── MoltEngine.ts            ← Durable Object class
 │   ├── game/
-│   │   ├── engine.ts            ← deterministic tick logic (port from match-runner.ts)
+│   │   ├── engine.ts            ← deterministic tick logic (port from molt-runner.ts)
 │   │   ├── types.ts             ← GameState, Action, BotConfig
 │   │   └── constants.ts         ← TICK_MS, MAX_QUEUE_DEPTH, etc.
 │   └── auth.ts                  ← token validation
@@ -44,60 +44,60 @@ engine/                          ← new top-level dir in repo
 └── tsconfig.json
 ```
 
-### MatchEngine DO (core logic)
+### MoltEngine DO (core logic)
 
 ```typescript
-export class MatchEngine implements DurableObject {
+export class MoltEngine implements DurableObject {
   private state: DurableObjectState;
-  private matchState: GameState | null = null;
-  private queues: Map<string, Action[]> = new Map();  // botId → pending actions
+  private moltState: GameState | null = null;
+  private queues: Map<string, Action[]> = new Map();  // crawlerId → pending claws
   private connections: Set<WebSocket> = new Set();
-  private botTokens: Map<string, string> = new Map(); // token → botId
+  private crawlerTokens: Map<string, string> = new Map(); // token → crawlerId
 
   // Called by alarm — this IS the tick
   async alarm() {
-    if (!this.matchState || this.matchState.over) return;
+    if (!this.moltState || this.moltState.over) return;
 
     const actions: Record<string, Action> = {};
-    for (const [botId, queue] of this.queues) {
-      actions[botId] = queue.shift() ?? { type: 'NO_OP' };
+    for (const [crawlerId, queue] of this.queues) {
+      actions[crawlerId] = queue.shift() ?? { type: 'NO_OP' };
     }
 
-    this.matchState = advanceTick(this.matchState, actions);
+    this.moltState = advanceTick(this.moltState, actions);
 
     // Log tick to SQLite for replay
     await this.state.storage.put(
-      `tick:${this.matchState.tick}`,
-      JSON.stringify({ actions, state: this.matchState })
+      `tick:${this.moltState.tick}`,
+      JSON.stringify({ actions, state: this.moltState })
     );
 
     // Fan-out to all connections
-    const payload = JSON.stringify({ type: 'tick', state: this.matchState });
+    const payload = JSON.stringify({ type: 'tick', state: this.moltState });
     for (const ws of this.connections) {
       try { ws.send(payload); } catch { this.connections.delete(ws); }
     }
 
-    if (!this.matchState.over) {
+    if (!this.moltState.over) {
       await this.state.storage.setAlarm(Date.now() + TICK_MS);
     } else {
-      await this.handleMatchComplete();
+      await this.handleMoltComplete();
     }
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
-    // WebSocket upgrade — agent plugin or spectator
+    // WebSocket upgrade — crawler plugin or spectator
     if (request.headers.get('Upgrade') === 'websocket') {
       return this.handleWebSocket(request);
     }
 
-    // Action queue push from agent plugin
+    // Claw queue push from crawler plugin
     if (url.pathname.endsWith('/queue') && request.method === 'POST') {
       return this.handleQueuePush(request);
     }
 
-    // Match start (called from Vercel lobby API)
+    // Molt start (called from Vercel tank API)
     if (url.pathname.endsWith('/start') && request.method === 'POST') {
       return this.handleStart(request);
     }
@@ -131,36 +131,36 @@ zone_name = "cogcage.com"
 
 ## Integration Points
 
-### Vercel → DO (match start)
-When the lobby's `/start` endpoint fires, it calls `engine.themoltpit.com/match/{id}/start` instead of running the client-side engine:
+### Vercel → DO (molt start)
+When the tank's `/start` endpoint fires, it calls `engine.themoltpit.com/molt/{id}/start` instead of running the client-side engine:
 
 ```typescript
-// web/src/pages/api/lobby/[id]/start.ts — updated
-const doUrl = `https://engine.themoltpit.com/match/${matchId}/start`;
+// web/src/pages/api/tank/[id]/start.ts — updated
+const doUrl = `https://engine.themoltpit.com/molt/${moltId}/start`;
 const res = await fetch(doUrl, {
   method: 'POST',
-  body: JSON.stringify({ botA, botB, seed }),
+  body: JSON.stringify({ crawlerA, crawlerB, seed }),
   headers: { 'Authorization': `Bearer ${COGCAGE_ENGINE_SECRET}` }
 });
 ```
 
-### MatchView.tsx → DO (spectator)
+### MoltView.tsx → DO (spectator)
 Replace client-side engine with WebSocket subscription:
 
 ```typescript
-// Instead of running match-runner.ts
-const ws = new WebSocket(`wss://engine.themoltpit.com/match/${matchId}`);
+// Instead of running molt-runner.ts
+const ws = new WebSocket(`wss://engine.themoltpit.com/molt/${moltId}`);
 ws.onmessage = (e) => {
   const { type, state } = JSON.parse(e.data);
   if (type === 'tick') setGameState(state);
 };
 ```
 
-### Plugin → DO (action push)
+### Plugin → DO (claw push)
 ```typescript
-await fetch(`https://engine.themoltpit.com/match/${matchId}/queue`, {
+await fetch(`https://engine.themoltpit.com/molt/${moltId}/queue`, {
   method: 'POST',
-  body: JSON.stringify({ botId, action, tick }),
+  body: JSON.stringify({ crawlerId, action, tick }),
   headers: { 'Authorization': `Bearer ${playerToken}` }
 });
 ```
@@ -184,8 +184,8 @@ wrangler deploy
 ## Success Criteria
 
 1. `curl https://engine.themoltpit.com/health` → `{ ok: true }`
-2. Two WebSocket clients connect to a match DO
+2. Two WebSocket clients connect to a molt DO
 3. Alarm fires every 200ms — both clients receive tick events
-4. Action pushed to queue before tick → applied; pushed after tick → queued for next
+4. Claw pushed to queue before tick → applied; pushed after tick → queued for next
 5. Empty queue → NO_OP logged
-6. Match ends → `match.complete` event fires → Vercel Workflow triggered
+6. Molt ends → `molt.complete` event fires → Vercel Workflow triggered

@@ -59,7 +59,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 ```
 
 ### 4. Session middleware for protected routes
-`web/src/middleware.ts` — protect `/shell` (armory), `/tank` (lobby) with redirect to `/sign-in` if no session
+`web/src/middleware.ts` — protect `/shell` (The Shell), `/tank` (The Tank) with redirect to `/sign-in` if no session
 
 ### 5. Sign-in page
 `web/src/pages/sign-in.astro` — minimal, matches game aesthetic (dark, cyan accents)
@@ -91,12 +91,12 @@ player:profile:{userId} →  JSON { username, createdAt, hardness: 1000 }
 - [ ] Can sign in via GitHub and Google
 - [ ] Session persists across page loads
 - [ ] `GET /api/player/token` returns a stable token for authenticated users
-- [ ] `/shell` (armory) requires auth — redirects to `/sign-in` if not
+- [ ] `/shell` (The Shell) requires auth — redirects to `/sign-in` if not
 - [ ] Sign-in page matches game aesthetic
 - [ ] Build passes: `npm --prefix web run build`
 - [ ] PR opened with CHANGELOG entry
 
 ## Notes
 - Don't build username customization yet — use GitHub/Google display name as default
-- Don't build `/den` (dashboard) yet — that's TASK-023
+- Don't build `/den` (The Den) yet — that's TASK-023
 - Player token is the auth mechanism for the OpenClaw plugin (TASK-024)

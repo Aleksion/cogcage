@@ -8,12 +8,12 @@ DoD: Core visual pack integrated into playable Friday demo.
 
 ---
 
-## 1) Bot Sprites
+## 1) Crawler Sprites
 
 | Asset | Status | Notes |
 |-------|--------|-------|
-| Player bot SVG (green, inline) | ⬜ | Replaces colored cell — robot/mech silhouette |
-| Enemy bot SVG (red, inline) | ⬜ | Distinct silhouette from player bot |
+| Player crawler SVG (green, inline) | ⬜ | Replaces colored cell — crawler silhouette |
+| Enemy crawler SVG (red, inline) | ⬜ | Distinct silhouette from player crawler |
 | Obstacle tile texture | ⬜ | Dark crosshatch / crate pattern |
 | Zone tile indicator | ⬜ | Objective zone highlight ring |
 
@@ -28,7 +28,7 @@ DoD: Core visual pack integrated into playable Friday demo.
 | CLANG ring (guard) | `guard` action fires | ⬜ |
 | PARRY arc shimmer | guard absorbs hit | ⬜ |
 | KO freeze frame | HP = 0 | ⬜ |
-| KO winner banner | match end | ⬜ |
+| KO winner banner | molt end | ⬜ |
 
 ## 3) HUD Elements
 
@@ -51,8 +51,8 @@ DoD: Core visual pack integrated into playable Friday demo.
 |---------|--------|-------|
 | Halftone paper background | ⬜ | Behind grid |
 | Bold black grid outline | ⬜ | 3px stroke |
-| Player cell → sprite | ⬜ | SVG bot replaces letter |
-| Enemy cell → sprite | ⬜ | SVG bot replaces letter |
+| Player cell → sprite | ⬜ | SVG crawler replaces letter |
+| Enemy cell → sprite | ⬜ | SVG crawler replaces letter |
 | In-range highlight | ✅ | Yellow ring — exists |
 | Obstacle cell texture | ⬜ | Visual upgrade |
 
@@ -89,7 +89,7 @@ DoD: Core visual pack integrated into playable Friday demo.
 
 - All sprites: inline SVG in TSX — no external asset files required for Friday demo
 - All VFX: CSS keyframe animations + React state triggers
-- Bot sprites must be `<svg viewBox="0 0 40 40">` so they scale with grid cell size
+- Crawler sprites must be `<svg viewBox="0 0 40 40">` so they scale with grid cell size
 - Comic burst text (KAPOW etc.) absolute-positioned over arena cell, auto-dismiss after 600ms
 - Fonts already loaded: `Bangers` (display), `Kanit` (body) — use for all VFX text
 

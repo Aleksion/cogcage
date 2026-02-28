@@ -1,127 +1,88 @@
-# TASK-001: MatchEngine Durable Object
+# Task: Real LLM Quick-Demo Battle on /play
 
 ## Context
-The Molt Pit (themoltpit.com) is an AI agent battle arena. Players configure LLM agents and fight in real-time matches.
+The Molt Pit (cogcage.com) — AI agent battle game. Framework: TanStack Start (Vite + Nitro).
+Repo: `~/clawd-engineer/projects/cogcage/repo` — work in worktree (current dir).
+Web app: `web/` subdirectory. Run `cd web && bun install` first.
 
-The core thesis: engine ticks at fixed rate (200ms), agents push actions to a queue, latency IS the skill expression.
-See: docs/architecture-game-engine.md and docs/tasks/task-001-match-engine-do.md
+## What Exists (DO NOT REWRITE)
+- `web/app/routes/api/agent.decide.ts` — POST endpoint, real LLM calls (OpenAI/Anthropic/Groq/OpenRouter), scripted AI fallback
+- `web/app/lib/ws2/run-match.ts` — client-side match runner, calls /api/agent/decide per tick
+- `web/app/components/Play.tsx` — full battle view UI (grid, HP bars, action feed) — uses DO WebSocket
+- `web/app/components/MatchView.tsx` — another battle view using run-match.ts
+- `web/app/components/Dashboard.tsx` — what /play renders now (bot management)
+- `web/app/lib/ws2/match-types.ts` — BotConfig, MatchSnapshot types
 
-## Cloudflare Account
-- Account ID: b83dbb4965b4cead1bfdba697e1a137b
-- Email: aleks@precurion.com
-- wrangler is logged in and ready
+## What to Build
 
-## Your Job
-Build the `engine/` directory in this repo — a Cloudflare Workers Durable Object that IS the game engine.
+### 1. QuickDemo component (`web/app/components/QuickDemo.tsx`)
+A self-contained battle demo component that:
+- Auto-starts a match on mount between two pre-configured bots (no lobby needed)
+- Uses `runMatch()` from `run-match.ts` 
+- Shows: grid map, HP bars for both bots, scrolling action feed with reasoning
+- Bot configs with cool names + distinct strategies:
+  - Bot A: "BERSERKER" — aggro, melee-focused, "Rush the enemy. Attack at every opportunity. Never retreat."
+  - Bot B: "TACTICIAN" — defensive, ranged, "Maintain optimal range. Use GUARD when low energy. Snipe from distance."
+- Action feed shows each decision with reasoning: e.g. "⚔️ BERSERKER: MELEE_STRIKE — 'Enemy in range, press the advantage'"
+- At match end: show winner banner + "Rematch" button + Founder Pack CTA
+- If OPENAI_API_KEY not set server-side → scripted AI (still shows reasoning from pattern matching)
 
-## File Structure to Create
-```
-engine/
-├── wrangler.toml
-├── package.json
-├── tsconfig.json
-└── src/
-    ├── index.ts          ← Worker entrypoint, routes /match/:id/* to DO
-    ├── MatchEngine.ts    ← The Durable Object
-    ├── game/
-    │   ├── engine.ts     ← Deterministic tick logic (port relevant parts from web/src/lib/ws2/)
-    │   ├── types.ts      ← GameState, Action, BotConfig types
-    │   └── constants.ts  ← TICK_MS=200, MAX_QUEUE_DEPTH=5, MATCH_TIMEOUT_MS
-    └── auth.ts           ← Token validation helper
-```
+### 2. BYO API Key input
+- Small collapsible section: "🔑 Use your own AI key"
+- Single text input for OpenAI API key, stored to localStorage as `moltpit_llm_key`
+- When set, passes `x-llm-key` + `x-llm-provider: openai` headers to /api/agent/decide calls
+- Shows green badge "AI-powered" when key is active, gray "Scripted AI" when not
 
-## MatchEngine DO Requirements
+### 3. Wire into Dashboard.tsx
+- Add `<QuickDemo />` as the FIRST section in Dashboard, above "Your Crawler"
+- Put a divider between QuickDemo and the "Your Crawler" management section
+- Section title: "WATCH A LIVE MOLT"
 
-### Routes (handled in fetch())
-- `GET /match/:id` — WebSocket upgrade for spectators/agent plugins
-- `POST /match/:id/start` — Start match (called from Vercel lobby API)
-- `POST /match/:id/queue` — Push action from agent plugin
-- `GET /match/:id/state` — Snapshot of current game state (HTTP polling fallback)
-- `GET /health` — Health check
+### 4. Reasoning display
+In run-match.ts (or in QuickDemo), capture the `reasoning` field from each /api/agent/decide response.
+The response is: `{ action: { type, dir, targetId, reasoning }, skillUsed, skillResult }`
+Show reasoning in the action feed as quoted text under each action.
 
-### WebSocket protocol
-- On connect: send `{ type: "connected", botId, matchId, tick: currentTick }`
-- On each alarm: broadcast `{ type: "tick", state: GameState, tick: number }`
-- On match end: broadcast `{ type: "match_complete", result: MatchResult }`
-
-### Tick loop (alarm())
-```typescript
-async alarm() {
-  if (!this.matchState || this.matchState.over) return;
-  
-  // 1. Pop one action per bot (or NO_OP if empty)
-  // 2. advanceTick(state, actions) → new state
-  // 3. Persist tick to SQLite: key=`tick:${n}`, value=JSON
-  // 4. Broadcast to all WebSocket connections
-  // 5. Schedule next alarm: Date.now() + TICK_MS
-  // 6. If match over: emit complete event, stop
+## Key Types (for reference)
+```ts
+interface BotConfig {
+  id: string;
+  name: string;
+  systemPrompt: string;
+  loadout: string[];
+  armor: 'light' | 'medium' | 'heavy';
+  position: { x: number; y: number };
+  temperature?: number;
+  llmHeaders?: Record<string, string>;
+  brainPrompt?: string;
+  skills?: string[];
 }
 ```
 
-### start() handler
-- Accepts: `{ botA: BotConfig, botB: BotConfig, seed: number }`
-- Initializes game state with spawn positions (6,10) and (14,10)
-- Sets alarm for first tick: `this.state.storage.setAlarm(Date.now() + TICK_MS)`
-- Returns: `{ matchId, ok: true }`
+Valid loadout actions: `MOVE`, `MELEE_STRIKE`, `RANGED_SHOT`, `GUARD`, `DASH`, `UTILITY`
 
-### queue() handler  
-- Validates auth token → gets botId
-- Pushes action to `this.queues.get(botId)` array
-- Rejects if queue depth > MAX_QUEUE_DEPTH (anti-spam)
-- Returns: `{ ok: true, queueDepth: number }`
+## Implementation Notes
+- Client-side only (use ClientOnly wrapper if needed for SSR)
+- Don't touch landing page, API routes, or existing battle views
+- Keep styles consistent: Bangers/Kanit fonts, #FFD600 yellow, #EB4D4B red, #00E5FF cyan, #1A1A1A dark
+- Mobile-first
+- The grid in Play.tsx is complex — for QuickDemo, a simple text-based feed + HP bars is fine (no need to reimplement the full grid). Use existing MatchView.tsx if it's simpler.
 
-### Auth
-- Simple shared secret for Vercel→DO calls: check `Authorization: Bearer ${COGCAGE_ENGINE_SECRET}` header
-- Per-player tokens for plugin connections: stored in DO state, generated by Vercel `/api/player/token`
-- For now: accept any non-empty token (we'll tighten auth in Phase 3)
+## Check MatchView.tsx first
+Read `web/app/components/MatchView.tsx` — it may already have everything needed. If it's close to what we want, just wire it into Dashboard instead of building QuickDemo from scratch.
 
-## Game Logic (port from web/src/lib/ws2/)
-Look at: `web/src/lib/ws2/engine.js` and `web/src/lib/ws2/match-runner.ts`
-Port the core advanceTick logic into `engine/src/game/engine.ts` as TypeScript.
-Key mechanics: HP, energy, positions, action resolution, win condition (HP <= 0).
+## Success Criteria
+- `/play` shows a live battle auto-starting between two bots
+- Action feed shows each bot's reasoning text
+- "Rematch" button works
+- BYO API key input → battles use real LLM
+- No TypeScript errors (`cd web && bun run build` passes)
+- Commit to current branch
 
-## wrangler.toml
-```toml
-name = "themoltpit-engine"
-main = "src/index.ts"
-compatibility_date = "2026-02-27"
-account_id = "b83dbb4965b4cead1bfdba697e1a137b"
-
-[[durable_objects.bindings]]
-name = "MATCH"
-class_name = "MatchEngine"
-
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["MatchEngine"]
-```
-
-## Deploy
-After building and verifying types compile:
-```bash
-cd engine/
-npm install
-wrangler deploy
-```
-
-Then test:
-```bash
-curl https://themoltpit-engine.aleks-precurion.workers.dev/health
-```
-
-Note: DNS route for engine.themoltpit.com is a follow-up — deploy to workers.dev subdomain first.
-
-## Definition of Done
-1. `wrangler deploy` succeeds
-2. `curl .../health` → `{ ok: true }`
-3. TypeScript compiles clean (no errors)
-4. MatchEngine DO class has: alarm(), fetch(), handleWebSocket(), handleStart(), handleQueuePush()
-5. advanceTick() function ported and working
-6. Commit everything to feat/engine-do branch
-7. Open PR against main
-
-## Notes
-- Use `new_sqlite_classes` (not `new_classes`) — SQLite-backed DOs are GA
-- WebSocket hibernation: use `this.state.acceptWebSocket(server)` not just `new WebSocketPair()`
-- Don't worry about Vercel Queues integration yet — that's TASK-002. DO operates standalone first.
-- No Electric Durable Streams in this task — that's plugin side.
+## Finish
+When done:
+1. `cd web && bun run build` — must pass cleanly
+2. `git add -A && git commit -m "feat: real LLM quick-demo battles on /play"`
+3. `git push origin feat/llm-quick-battles`
+4. `gh pr create --title "feat: real LLM quick-demo battles on /play" --body "Adds auto-starting battle demo with LLM reasoning display. BYO API key support. Closes the gameday demo gap." --base main`
+5. Run: `openclaw system event --text "Done: LLM quick-demo battles built — PR open for review" --mode now`

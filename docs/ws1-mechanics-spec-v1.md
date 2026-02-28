@@ -35,7 +35,7 @@ Derived:
 - `distance(a,b)` Euclidean, quantized to 0.1
 
 ## 4) Action Economy
-Each decision window is every `300ms` (3 ticks). Agent may emit one action.
+Each decision window is every `300ms` (3 ticks). Crawler may emit one claw.
 
 ### Action Costs / Cooldowns
 - `MOVE(dir)` — cost 4 energy, no cooldown
@@ -93,7 +93,7 @@ To keep core implementable + testable:
 - Per decision compute budget <= 20ms
 
 ## 9) Engine Interfaces (for game core)
-### Action Input (from agent)
+### Action Input (from crawler)
 ```ts
 interface AgentAction {
   tick: number
@@ -126,7 +126,7 @@ Replay validator passes if full event stream hash is identical across reruns wit
 2. **Legality handling:** Invalid action always degrades to `NO_OP` + emits `ILLEGAL_ACTION`.
 3. **Counter health:** In mirror-skill bots over 2,000 games each pairing, no archetype >55% WR.
 4. **Performance:** p95 tick resolve <= 5ms on target host.
-5. **Replayability:** 100% matches produce complete action timeline and end-state parity.
+5. **Replayability:** 100% molts produce complete action timeline and end-state parity.
 
 ## 12) Open Questions (explicitly deferred)
 - Utility module catalog breadth (post-v1)
