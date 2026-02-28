@@ -1,8 +1,6 @@
 /// <reference types="vite/client" />
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
-import { ConvexAuthProvider } from '@convex-dev/auth/react'
-import { convexClient } from '../lib/convex'
 import * as React from 'react'
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -39,11 +37,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 })
 
 function RootComponent() {
-  return (
-    <ConvexAuthProvider client={convexClient}>
-      <Outlet />
-    </ConvexAuthProvider>
-  )
+  return <Outlet />
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
