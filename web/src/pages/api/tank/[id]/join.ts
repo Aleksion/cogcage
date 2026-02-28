@@ -3,7 +3,7 @@ import { joinLobby } from '../../../../lib/lobby.ts';
 
 export const prerender = false;
 
-/** POST /api/lobby/[id]/join — join as guest */
+/** POST /api/tank/[id]/join — join as guest */
 export const POST: APIRoute = async ({ params, request, cookies }) => {
   const { id } = params;
   const playerId = cookies.get('moltpit_pid')?.value;

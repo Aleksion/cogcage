@@ -5,7 +5,7 @@ This folder implements the WS2 deterministic combat core based on `docs/ws1-mech
 ## Overview
 - Fixed 10Hz tick loop, decision window every 3 ticks.
 - Deterministic ordering: actor IDs sorted for resolution.
-- Seeded RNG isolated to bots/utility harnesses.
+- Seeded RNG isolated to crawlers/utility harnesses.
 - Telemetry event stream with replay hash.
 
 ## Core Concepts

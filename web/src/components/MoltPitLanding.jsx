@@ -1135,7 +1135,7 @@ const PartCard = ({ emoji, bgColor, emojiColor, tag, title, desc, stat, price, o
         </div>
         {added && (
           <div style={{ marginTop: '0.5rem', color: '#00E676', fontWeight: 900, fontSize: '0.9rem' }}>
-            ✓ Added to loadout!
+            ✓ Added to shell!
           </div>
         )}
       </div>
@@ -1515,7 +1515,7 @@ const BuildSection = ({ sectionRef }) => {
   const [toast, setToast] = useState(null);
 
   const showToast = (name) => {
-    setToast(`${name} added to your loadout!`);
+    setToast(`${name} added to your shell!`);
     setTimeout(() => setToast(null), 2000);
   };
 
@@ -1564,13 +1564,13 @@ const ArenaSection = ({ sectionRef }) => {
   return (
     <section className="section-arena" ref={sectionRef} id="arena">
       <div className="section-header" style={{ marginBottom: '2rem' }}>
-        <h2 className="text-stroke" style={{ color: 'var(--c-white)', textShadow: '4px 4px 0 var(--c-dark)' }}>LIVE RANKINGS</h2>
+        <h2 className="text-stroke" style={{ color: 'var(--c-white)', textShadow: '4px 4px 0 var(--c-dark)' }}>THE LADDER</h2>
       </div>
 
       <div className="leaderboard-container">
         <div className="rank-row">
-          <div className="rank-head">Rank</div>
-          <div className="rank-head">Bot Name</div>
+          <div className="rank-head">Hardness</div>
+          <div className="rank-head">Crawler Name</div>
           <div className="rank-head">Win Rate</div>
           <div className="rank-head">Status</div>
         </div>
@@ -1848,7 +1848,7 @@ const FooterSection = () => {
       )}
 
       <div style={{ marginTop: '4rem', fontSize: '0.8rem', opacity: 0.5 }}>
-        © 2023 The Molt Pit. All bots are simulated.. All bots are simulated.
+        © 2023 The Molt Pit. All crawlers are simulated.. All crawlers are simulated.
       </div>
     </footer>
   );

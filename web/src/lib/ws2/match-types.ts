@@ -16,7 +16,7 @@ export interface BotConfig {
   llmHeaders?: Record<string, string>;
   /** Energy cost per MOVE action (default 4, increases with loadout weight) */
   moveCost?: number;
-  /** Custom brain prompt (system prompt for the LLM) */
+  /** Custom brain prompt (directive for the LLM) */
   brainPrompt?: string;
   /** Equipped skill IDs (max 3) */
   skills?: string[];

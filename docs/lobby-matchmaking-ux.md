@@ -1,39 +1,39 @@
-# CogCage — Lobby & Matchmaking UX Design
+# The Molt Pit — Tank & Molt-Matching UX Design
 *Documented Feb 27, 2026 from Aleks direction*
 
 ---
 
 ## Core Principle
 
-**This is a 1v1 competitive experience.** You configure YOUR bot. You find a match. You fight someone else's bot. 
+**This is a 1v1 competitive experience.** You configure YOUR crawler. You find a molt. You fight someone else's crawler.
 
-The current "configure both bots yourself" screen is wrong. It was a single-player prototype. Do not ship it as the real lobby.
+The current "configure both crawlers yourself" screen is wrong. It was a single-player prototype. Do not ship it as the real tank.
 
 ---
 
 ## Screen Architecture
 
-### Screen 1: Match Browser ("The Cage")
+### Screen 1: Molt Browser ("The Cage")
 
 The entry point. Not a config screen — a live arena browser.
 
 **What you see:**
-- **Open Matches** — live or recent matches you can spectate (read-only viewer)
-- **Open Lobbies** — lobbies waiting for a second player to join
-- **Search by Code** — text input to find a specific lobby by invite code
+- **Open Molts** — live or recent molts you can spectate (read-only viewer)
+- **Open Tanks** — tanks waiting for a second player to join
+- **Search by Code** — text input to find a specific tank by invite code
 
 **How sharing works:**
-- Lobby codes are the share primitive (not URLs, not usernames)
+- Tank codes are the share primitive (not URLs, not usernames)
 - "Got a code? Enter it here" — simple, fast, direct
 - Codes are short (~6 chars), human-readable
 
 **Layout:**
 ```
-[ FIND A MATCH ]
-  
-  [🔍 Enter lobby code ___________] [Join]
+[ FIND A MOLT ]
 
-  OPEN LOBBIES                    LIVE MATCHES
+  [🔍 Enter tank code ___________] [Join]
+
+  OPEN TANKS                      LIVE MOLTS
   ┌──────────────────┐            ┌──────────────────┐
   │ Iron Vanguard vs ?│            │ Iron V vs Null P  │
   │ by thealeks       │            │ Tick 42 / 120     │
@@ -43,23 +43,23 @@ The entry point. Not a config screen — a live arena browser.
 
 ---
 
-### Screen 2: Bot Workshop ("The Workshop")
+### Screen 2: Crawler Workshop ("The Workshop")
 
-Where you design and save your fighter configuration. Persistent — you build your roster here, not every match.
+Where you design and save your fighter configuration. Persistent — you build your roster here, not every molt.
 
 #### Section A: Identity
-- Bot name (e.g. "Iron Vanguard")
+- Crawler name (e.g. "Iron Vanguard")
 - Avatar / icon (future — for now just name + color)
 
-#### Section B: Brain (System Prompt)
+#### Section B: Brain (Directive)
 - Large textarea — needs to afford multi-paragraph strategy writing
 - Minimum 400px height, expandable
 - Placeholder examples: "You are an aggressive melee fighter. Close distance and MELEE_STRIKE. Guard when opponent charges ranged attacks."
 - Character counter (e.g. up to 2000 chars)
-- Tabs or sections for: Primary Directive / Situational Rules / Win Condition
+- Tabs or sections for: Primary Strategy / Situational Rules / Win Condition
 
-#### Section C: Armory (Loadout)
-Full armory picker — not a checkbox list. Visual cards with icons, names, flavor text, stats.
+#### Section C: The Shell
+Full shell picker — not a checkbox list. Visual cards with icons, names, flavor text, stats.
 
 **Design:**
 ```
@@ -73,16 +73,16 @@ Full armory picker — not a checkbox list. Visual cards with icons, names, flav
 ```
 
 **Rules:**
-- Can equip as many weapons as desired
-- More weapons = harder decisions for the LLM = complexity penalty (show complexity score)
+- Can equip as many claws as desired
+- More claws = harder decisions for the LLM = complexity penalty (show complexity score)
 - MOVE is always equipped (cannot remove)
 - Armor is mutually exclusive (pick one):
   - **Light** — 1.0x damage taken. Fast, risky.
   - **Medium** — 0.9x damage taken. Balanced.
   - **Heavy** — 0.82x damage taken. Slow, durable.
-- Show "Complexity Score" updating live as weapons are added (e.g. "3 weapons — High complexity")
+- Show "Complexity Score" updating live as claws are added (e.g. "3 claws — High complexity")
 
-**Weapon roster (with icons + flavor names):**
+**Claw roster (with icons + flavor names):**
 | ID | Display Name | Icon | Cost | Stat |
 |----|-------------|------|------|------|
 | MOVE | Quick Step | 👟 | 4e | Move 1 cell |
@@ -92,10 +92,10 @@ Full armory picker — not a checkbox list. Visual cards with icons, names, flav
 | GUARD | Iron Shell | 🛡️ | 10e | Block 35% frontal dmg for 0.8s |
 | UTILITY | Ghost Pulse | 🌀 | 20e | Special ability, 1.2s effect |
 
-*(More weapons to be added — this is the base armory)*
+*(More claws to be added — this is the base shell)*
 
 #### Section D: LLM Selection
-Pick the brain powering your bot's decisions.
+Pick the brain powering your crawler's decisions.
 
 **Providers + models to support (MVP):**
 - **OpenAI**: GPT-4o, GPT-4o-mini, GPT-4.1, GPT-4.1-mini
@@ -107,7 +107,7 @@ Pick the brain powering your bot's decisions.
 **UX pattern:**
 - Provider selector (logo + name tabs)
 - Model picker within provider (name + speed/cost indicator)
-- Keys are from your saved Profile (see below) — not entered per-bot
+- Keys are from your saved Profile (see below) — not entered per-crawler
 
 ---
 
@@ -121,33 +121,33 @@ Where API keys and account preferences live. Accessed via nav/settings.
   - Anthropic key
   - Google key
   - etc.
-- **Display name** — shown in lobbies and match history
-- **My Bots** — saved bot configurations (roster, not just one bot)
+- **Display name** — shown in tanks and molt history
+- **My Crawlers** — saved crawler configurations (roster, not just one crawler)
 - (Future) Wallet / credits balance
 
 ---
 
-### Screen 4: Create Lobby
+### Screen 4: Create Tank
 
-Launched from Match Browser or a "New Match" CTA.
+Launched from Molt Browser or a "New Molt" CTA.
 
 **Fields:**
-- Select bot from your saved roster (or quick-create)
-- Public or Private toggle (private = invite-code only, not listed in lobby browser)
-- Lobby name (optional, defaults to "{your bot name}'s Lobby")
+- Select crawler from your saved roster (or quick-create)
+- Public or Private toggle (private = invite-code only, not listed in tank browser)
+- Tank name (optional, defaults to "{your crawler name}'s Tank")
 - Invite code (auto-generated, copyable)
 
 **State:**
 - Waiting for opponent — show "Waiting for challenger..." + invite code prominently
-- When opponent joins — both players see each other's bot names (not configs) → "FIGHT" countdown
+- When opponent joins — both players see each other's crawler names (not configs) → "FIGHT" countdown
 
 ---
 
-### Screen 5: Match View (Spectator + Player)
+### Screen 5: Molt View (Spectator + Player)
 
 Already mostly designed. Key additions:
-- Both bots shown by their configured names (not "Bot A / Bot B")
-- Post-match: show winner + prompt to rematch or find new opponent
+- Both crawlers shown by their configured names (not "Crawler A / Crawler B")
+- Post-molt: show winner + prompt to remolt or find new opponent
 
 ---
 
@@ -157,24 +157,24 @@ Already mostly designed. Key additions:
 Landing Page
     │
     ▼
-[PLAY] CTA ──────────────────────────────► Match Browser (Screen 1)
+[PLAY] CTA ──────────────────────────────► Molt Browser (Screen 1)
                                                 │           │
-                                    [Search/Join lobby]  [Spectate match]
+                                    [Search/Join tank]  [Spectate molt]
                                                 │
                                     ┌───────────┴──────────┐
                                     │                      │
-                              [Create Lobby]         [Join Lobby]
+                              [Create Tank]          [Join Tank]
                                     │                      │
-                              Screen 4: Create       → Match View
+                              Screen 4: Create       → Molt View
                                     │
                                waiting room
                                     │
                             opponent joins
                                     │
-                               Match View (Screen 5)
+                               Molt View (Screen 5)
 
 Profile ◄── always accessible via nav
-Workshop ◄── "My Bots" in nav or pre-match if no saved bot
+Workshop ◄── "My Crawlers" in nav or pre-molt if no saved crawler
 ```
 
 ---
@@ -182,13 +182,13 @@ Workshop ◄── "My Bots" in nav or pre-match if no saved bot
 ## What to Gut / Rebuild
 
 ### Current `/play` screen (Play.tsx) — WRONG MENTAL MODEL
-- ❌ "Configure Your Agents" heading — implies you own both bots
-- ❌ Side-by-side Bot A / Bot B config — solo player cosplay
+- ❌ "Configure Your Crawlers" heading — implies you own both crawlers
+- ❌ Side-by-side Crawler A / Crawler B config — solo player cosplay
 - ❌ "Multiplayer Rooms" hidden behind a toggle — rooms should be first-class
 
 ### What to keep:
-- ✅ Bot config panel design (name, prompt, loadout, armor, temperature) — just repurpose for YOUR bot only
-- ✅ Match view (arena, HP bars, event log, PlayCanvas renderer)
+- ✅ Crawler config panel design (name, directive, shell, armor, temperature) — just repurpose for YOUR crawler only
+- ✅ Molt view (arena, HP bars, event log, PlayCanvas renderer)
 - ✅ Room creation / invite code logic (just surface it better)
 - ✅ BYO LLM key flow
 
@@ -196,26 +196,26 @@ Workshop ◄── "My Bots" in nav or pre-match if no saved bot
 
 ## Priority Build Order
 
-1. **Match Browser** — the entry point. Even with no real matches, an empty state with "Create Lobby" CTA is correct.
-2. **Bot Workshop** — armory with icons, brain prompt, LLM picker
+1. **Molt Browser** — the entry point. Even with no real molts, an empty state with "Create Tank" CTA is correct.
+2. **Crawler Workshop** — shell with icons, brain directive, LLM picker
 3. **Profile** — key storage (can start as localStorage, move to server)
-4. **Create/Join Lobby** — wire room creation to proper waiting room UX
-5. **Match View polish** — bot names, post-match rematch flow
+4. **Create/Join Tank** — wire room creation to proper waiting room UX
+5. **Molt View polish** — crawler names, post-molt remolt flow
 
 ---
 
 ## Open Questions
 
 1. **LLM keys: client-side proxy or server relay?**
-   - Client-side: keys never leave browser, CogCage has no liability
-   - Server relay: better for rate limiting, abuse prevention, future CogCage-hosted credits
+   - Client-side: keys never leave browser, The Molt Pit has no liability
+   - Server relay: better for rate limiting, abuse prevention, future The Molt Pit-hosted credits
    - Recommendation: start client-side, add server relay when credits model exists
 
-2. **Saved bots: localStorage or server?**
+2. **Saved crawlers: localStorage or server?**
    - Start localStorage (fast, no auth needed)
    - Move to server when auth exists
 
-3. **Matchmaking: manual lobby codes only, or ranked queue?**
+3. **Molt-matching: manual tank codes only, or ranked queue?**
    - Codes-only for MVP (gameday)
    - Ranked queue post-launch
 

@@ -1,7 +1,7 @@
 /**
- * Legacy client-side match runner.
+ * Legacy client-side molt runner.
  *
- * Still used by MatchView.tsx (lobby flow) and SessionRoom.tsx (session flow).
+ * Still used by MatchView.tsx (tank flow) and SessionRoom.tsx (session flow).
  * Play.tsx was migrated to the DO WebSocket in TASK-004 and no longer uses this.
  * TODO: Migrate remaining consumers to DO WebSocket and remove this file.
  */
@@ -187,7 +187,7 @@ export async function runMatchAsync(
   apiBase: string = '/api/agent/decide',
   signal?: AbortSignal,
 ): Promise<MatchSnapshot> {
-  if (bots.length < 2) throw new Error('Need at least 2 bots');
+  if (bots.length < 2) throw new Error('Need at least 2 crawlers');
 
   const positions = getSpawnPositions(bots.length);
 

@@ -3,7 +3,7 @@ import { getLobby, closeLobby, resolveSnapshot } from '../../../lib/lobby.ts';
 
 export const prerender = false;
 
-/** GET /api/lobby/[id] — get lobby state */
+/** GET /api/tank/[id] — get tank state */
 export const GET: APIRoute = async ({ params }) => {
   const { id } = params;
   if (!id) {
@@ -47,7 +47,7 @@ export const GET: APIRoute = async ({ params }) => {
   }
 };
 
-/** DELETE /api/lobby/[id] — leave/close lobby */
+/** DELETE /api/tank/[id] — leave/close tank */
 export const DELETE: APIRoute = async ({ params, cookies }) => {
   const { id } = params;
   const playerId = cookies.get('moltpit_pid')?.value;

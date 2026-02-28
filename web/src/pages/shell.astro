@@ -1,6 +1,6 @@
 ---
-import Lobby from '../../components/Lobby.tsx';
-const { id } = Astro.params;
+import Armory from '../components/Armory.tsx';
+const returnTo = Astro.url.searchParams.get('returnTo') || '';
 ---
 
 <!doctype html>
@@ -10,11 +10,11 @@ const { id } = Astro.params;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
-    <title>The Molt Pit — Lobby</title>
-    <meta name="description" content="Waiting in the lobby. Configure your bot and start the match." />
+    <title>The Molt Pit — The Shell</title>
+    <meta name="description" content="Build your shell. Choose weapons, armor, and tools for the arena." />
     <style>*, *::before, *::after { box-sizing: border-box; } body { margin: 0; }</style>
   </head>
   <body>
-    <Lobby client:only="react" lobbyId={id!} />
+    <Armory client:only="react" returnTo={returnTo} />
   </body>
 </html>

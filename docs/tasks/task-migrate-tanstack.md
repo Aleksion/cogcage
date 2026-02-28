@@ -22,8 +22,8 @@ web/
 │   │   ├── index.tsx           ← / (landing page — port CogCageLanding / MoltPitLanding)
 │   │   ├── play.tsx            ← /play (game demo — port Play.tsx)
 │   │   ├── tank/
-│   │   │   └── $id.tsx         ← /tank/:id (lobby — port Lobby.tsx)
-│   │   ├── shell.tsx           ← /shell (armory — port existing Armory)
+│   │   │   └── $id.tsx         ← /tank/:id (The Tank — port Tank.tsx)
+│   │   ├── shell.tsx           ← /shell (The Shell — port existing Shell)
 │   │   ├── sign-in.tsx         ← /sign-in (placeholder for TASK-020)
 │   │   └── api/
 │   │       ├── waitlist.ts     ← POST /api/waitlist
@@ -31,8 +31,8 @@ web/
 │   │       ├── founder-intent.ts
 │   │       ├── postback.ts
 │   │       ├── ops.ts
-│   │       └── match/
-│   │           └── start.ts    ← POST /api/match/start (calls DO)
+│   │       └── molt/
+│   │           └── start.ts    ← POST /api/molt/start (calls DO)
 ├── app.config.ts               ← TanStack Start config
 ├── package.json
 └── vite.config.ts
@@ -64,12 +64,12 @@ export default defineConfig({
 ### Port existing React components
 These files move with ZERO or minimal changes:
 - `web/src/components/Play.tsx` → `web/app/components/Play.tsx`
-- `web/src/components/Lobby.tsx` → `web/app/components/Lobby.tsx`
+- `web/src/components/Tank.tsx` → `web/app/components/Tank.tsx`
 - `web/src/components/MoltPitLanding.jsx` → `web/app/components/MoltPitLanding.jsx`
-- `web/src/components/Dashboard.tsx` → `web/app/components/Dashboard.tsx`
+- `web/src/components/Den.tsx` → `web/app/components/Den.tsx`
 - `web/src/lib/ws2/` → `web/app/lib/ws2/` (unchanged)
 - `web/src/lib/auth.ts` → `web/app/lib/auth.ts`
-- `web/src/lib/lobby.ts` → `web/app/lib/lobby.ts`
+- `web/src/lib/tank.ts` → `web/app/lib/tank.ts`
 
 Remove: `client:only="react"` wrapper pattern — no longer needed. Components render
 server-side by default.
@@ -134,8 +134,8 @@ Update `web/package.json` build script if needed.
 - [ ] `npm --prefix web run build` passes
 - [ ] `npm --prefix web run dev` starts a local server
 - [ ] `/` landing page loads with no FOUC (styles present on first paint)
-- [ ] `/play` game demo works (WebSocket to DO, match runs)
-- [ ] `/tank/:id` lobby page loads
+- [ ] `/play` game demo works (WebSocket to DO, molt runs)
+- [ ] `/tank/:id` tank page loads
 - [ ] `/shell` shell config page loads
 - [ ] All existing API routes respond correctly
 - [ ] Vercel deployment succeeds (check preview URL)

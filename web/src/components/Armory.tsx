@@ -12,7 +12,7 @@ import type { Card as CardData, CardType, LoadoutStats, ComplexityTier } from '.
 import { SKILL_POOL, getSkill } from '../lib/skills';
 import type { SkillDefinition } from '../lib/skills';
 
-/* ── Saved loadout type (matches Redis schema) ───────────────── */
+/* ── Saved shell type (matches Redis schema) ───────────────── */
 
 interface SavedLoadout {
   id: string;
@@ -219,7 +219,7 @@ const armoryStyles = `
   }
   .save-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-  /* Saved loadouts strip */
+  /* Saved shells strip */
   .saved-strip {
     display: flex; gap: 12px; overflow-x: auto; padding: 0.5rem 0;
   }
@@ -410,10 +410,10 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
     }
   }, [returnTo]);
 
-  // Fetch saved loadouts
+  // Fetch saved shells
   const fetchLoadouts = useCallback(async () => {
     try {
-      const res = await fetch('/api/armory');
+      const res = await fetch('/api/shell');
       const data = await res.json();
       setSavedLoadouts(data.loadouts ?? []);
     } catch { /* ignore */ }
@@ -452,7 +452,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
       const card = getCard(cardId);
       if (!card) return;
       if (!canAdd(card)) {
-        if (loadout.length >= MAX_LOADOUT_SLOTS) setError('Loadout full (6 cards max)');
+        if (loadout.length >= MAX_LOADOUT_SLOTS) setError('Shell full (6 cards max)');
         else setError('Only 1 armor card allowed');
         return;
       }
@@ -470,7 +470,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
     setSaving(true);
     setError('');
     try {
-      const res = await fetch('/api/armory', {
+      const res = await fetch('/api/shell', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -498,7 +498,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
 
   const handleDelete = async (loadoutId: string) => {
     try {
-      const res = await fetch(`/api/armory/${loadoutId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/shell/${loadoutId}`, { method: 'DELETE' });
       const data = await res.json();
       setSavedLoadouts(data.loadouts ?? []);
     } catch { /* ignore */ }
@@ -529,12 +529,12 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
         <nav className="armory-nav">
           {resolvedReturnTo ? (
             <a href={resolvedReturnTo} style={{ color: '#FFD600', fontFamily: "'Bangers', display", fontSize: '1rem' }}>
-              Back to Lobby
+              Back to The Tank
             </a>
           ) : (
             <>
               <a href="/play">Play</a>
-              <a href="/armory" className="active">Armory</a>
+              <a href="/shell" className="active">The Shell</a>
             </>
           )}
         </nav>
@@ -579,7 +579,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
           {/* Right: Loadout Builder */}
           <div className="builder-panel" style={{ position: 'sticky', top: 70 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.6rem' }}>
-              <div className="panel-title" style={{ marginBottom: 0 }}>Loadout</div>
+              <div className="panel-title" style={{ marginBottom: 0 }}>Shell</div>
               {loadout.length > 0 && (
                 <button className="clear-btn" onClick={() => { setLoadout([]); setError(''); }}>
                   Clear all
@@ -668,7 +668,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
               <input
                 className="save-input"
                 type="text"
-                placeholder="Loadout name..."
+                placeholder="Shell name..."
                 value={loadoutName}
                 onChange={(e) => setLoadoutName(e.target.value)}
                 maxLength={30}
@@ -692,7 +692,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
                   borderRadius: '8px', textDecoration: 'none',
                 }}
               >
-                Back to Lobby
+                Back to The Tank
               </a>
             )}
           </div>
@@ -700,7 +700,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
 
         {/* Skills Panel */}
         <div className="skills-panel">
-          <div className="panel-title">Skills (max {MAX_SKILLS})</div>
+          <div className="panel-title">Claws (max {MAX_SKILLS})</div>
 
           {/* Equipped skill slots */}
           <div className="skill-slots">
@@ -725,7 +725,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
 
           {/* Available skills */}
           <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem' }}>
-            Available Skills (click to equip)
+            Available Claws (click to equip)
           </div>
           <div className="skill-grid">
             {SKILL_POOL.map((skill) => {
@@ -760,7 +760,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
 
         {/* Brain Panel */}
         <div className="brain-panel">
-          <div className="panel-title">Brain (System Prompt)</div>
+          <div className="panel-title">Brain (Directive)</div>
 
           <div className="preset-row">
             {Object.entries(BRAIN_PRESETS).map(([key, { label }]) => (
@@ -776,7 +776,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
 
           <textarea
             className="brain-textarea"
-            placeholder="Write your agent's system prompt... (or click a preset above)"
+            placeholder="Write your crawler's directive... (or click a preset above)"
             value={brainPrompt}
             onChange={(e) => setBrainPrompt(e.target.value.slice(0, MAX_BRAIN_CHARS))}
             maxLength={MAX_BRAIN_CHARS}
@@ -784,10 +784,10 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
           <div className="char-count">{brainPrompt.length} / {MAX_BRAIN_CHARS} chars</div>
         </div>
 
-        {/* Bottom: Saved Loadouts */}
+        {/* Bottom: Saved Shells */}
         {savedLoadouts.length > 0 && (
           <div className="saved-panel" style={{ marginTop: '1.5rem' }}>
-            <div className="panel-title">Saved Loadouts</div>
+            <div className="panel-title">Saved Shells</div>
             <div className="saved-strip">
               {savedLoadouts.map((saved) => (
                 <div key={saved.id} className="saved-card">

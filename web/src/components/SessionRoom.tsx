@@ -72,7 +72,7 @@ const hashString = (input: string) => {
   return hash >>> 0;
 };
 
-/* ── Player Bot SVG ─────────────────────────────────────────── */
+/* ── Player Crawler SVG ─────────────────────────────────────────── */
 
 const BotSvg = ({ color }: { color: string }) => {
   const dark = '#111';
@@ -101,13 +101,13 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
   const isHost = session.hostParticipantId === participantId;
   const sessionId = session.id;
 
-  /* ── Lobby state ──────────────────────────────────────────── */
+  /* ── Tank state ──────────────────────────────────────────── */
   const [editBot, setEditBot] = useState<SessionBot | null>(() => {
     const me = initialSession.participants.find((p) => p.id === participantId);
     return me?.bot ?? null;
   });
 
-  /* ── Match state (N-actor) ─────────────────────────────────── */
+  /* ── Molt state (N-actor) ─────────────────────────────────── */
   const [ffaActors, setFfaActors] = useState<FfaActorDisplay[]>([]);
   const [tick, setTick] = useState(0);
   const [feed, setFeed] = useState<string[]>([]);
@@ -120,7 +120,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
   const abortRef = useRef<AbortController | null>(null);
   const prevEventsLenRef = useRef(0);
   const pollRef = useRef<number | null>(null);
-  /** Maps bot IDs → participant bot names (set when match starts) */
+  /** Maps crawler IDs → participant crawler names (set when match starts) */
   const actorNameMapRef = useRef<Map<string, string>>(new Map());
 
   /* ── Inject global styles ────────────────────────────────── */
@@ -131,7 +131,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
     return () => { document.head.removeChild(style); };
   }, []);
 
-  /* ── Poll session in lobby ────────────────────────────────── */
+  /* ── Poll session in tank ────────────────────────────────── */
   useEffect(() => {
     if (session.status !== 'lobby') return;
     const poll = async () => {
@@ -247,7 +247,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
     }
   };
 
-  /* ── Host: run FFA match with ALL participants ──────────────── */
+  /* ── Host: run FFA molt with ALL participants ──────────────── */
   const runHostFfa = useCallback(async (sess: Session) => {
     const participants = sess.participants;
     if (participants.length < 2) return;
@@ -263,7 +263,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
     const seed = hashString(`${sess.id}-ffa-${Date.now()}`);
     const positions = getSpawnPositions(participants.length);
 
-    // Build bot configs — use participant IDs as bot IDs for easy mapping
+    // Build crawler configs — use participant IDs as crawler IDs for easy mapping
     const bots: BotConfig[] = participants.map((p, i) => ({
       id: p.id,
       name: p.bot.name,
@@ -296,7 +296,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
     for (const bot of bots) botNamesRecord[bot.id] = bot.name;
 
     const matchLabel = participants.map((p) => p.bot.name).join(' vs ');
-    setFeed([`FFA Match: ${matchLabel}`, `Seed: ${seed}`, `${participants.length} bots enter the arena`].reverse());
+    setFeed([`FFA Molt: ${matchLabel}`, `Seed: ${seed}`, `${participants.length} crawlers enter the arena`].reverse());
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -341,7 +341,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
           logEntries.push(`[${evt.tick}] ${who} uses ${evt.data.type}`);
         } else if (evt.type === 'MATCH_END') {
           const winnerName = snap.winnerId ? (nameMap.get(snap.winnerId) || snap.winnerId) : 'Nobody';
-          logEntries.push(`[${evt.tick}] MATCH END - ${winnerName} wins!`);
+          logEntries.push(`[${evt.tick}] MOLT END - ${winnerName} wins!`);
         }
       }
       if (logEntries.length) {
@@ -509,10 +509,10 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
     </div>
   );
 
-  /* ── Render: Leaderboard ──────────────────────────────────── */
+  /* ── Render: The Ladder ──────────────────────────────────── */
   const renderLeaderboard = () => (
     <div style={{ marginTop: '1rem' }}>
-      <div className="section-label">Leaderboard</div>
+      <div className="section-label">The Ladder</div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
         <thead>
           <tr style={{ borderBottom: '2px solid var(--c-dark)', fontWeight: 900, textTransform: 'uppercase', fontSize: '0.8rem' }}>
@@ -554,15 +554,15 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
         </div>
       </header>
 
-      {/* ======================== LOBBY ======================== */}
+      {/* ======================== TANK ======================== */}
       {session.status === 'lobby' && (
         <main className="play-shell">
           <div className="lobby-container">
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ fontFamily: 'var(--f-display)', fontSize: '2.2rem', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                FFA Tournament Lobby
+                FFA Tournament Tank
               </h2>
-              <p className="hint">Share the code below so others can join. Configure your bot, then the host starts the tournament.</p>
+              <p className="hint">Share the code below so others can join. Configure your crawler, then the host starts the tournament.</p>
             </div>
 
             {/* Join code */}
@@ -605,7 +605,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: BOT_COLORS[i % BOT_COLORS.length] }} />
                     <strong>{p.bot.name}</strong>
                     <span className="hint">
-                      ({p.bot.armor} armor, {p.bot.loadout.length} abilities)
+                      ({p.bot.armor} armor, {p.bot.loadout.length} claws)
                     </span>
                     {p.id === session.hostParticipantId && (
                       <span className="tactic-chip">HOST</span>
@@ -616,10 +616,10 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
               ))}
             </div>
 
-            {/* Edit my bot */}
+            {/* Edit my crawler */}
             {editBot && (
               <div className="panel" style={{ maxWidth: '700px', margin: '0 auto 1.5rem' }}>
-                <h2 style={{ fontSize: '1.3rem' }}>Your Bot Config</h2>
+                <h2 style={{ fontSize: '1.3rem' }}>Your Crawler Config</h2>
                 <div className="bot-config-card">
                   <h3>Identity</h3>
                   <input
@@ -629,14 +629,14 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
                     value={editBot.name}
                     onChange={(e) => setEditBot({ ...editBot, name: e.target.value })}
                   />
-                  <div className="section-label" style={{ marginTop: '0.6rem' }}>System Prompt</div>
+                  <div className="section-label" style={{ marginTop: '0.6rem' }}>Directive</div>
                   <textarea
                     className="prompt-box"
                     style={{ minHeight: '80px', marginBottom: '0.6rem', fontSize: '0.85rem' }}
                     value={editBot.systemPrompt}
                     onChange={(e) => setEditBot({ ...editBot, systemPrompt: e.target.value })}
                   />
-                  <div className="section-label">Loadout</div>
+                  <div className="section-label">Shell</div>
                   <div className="loadout-grid">
                     {ACTION_TYPES.map((action: string) => {
                       const info = ACTION_INFO[action];
@@ -703,14 +703,14 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
         </main>
       )}
 
-      {/* ======================== MATCH ======================== */}
+      {/* ======================== MOLT ======================== */}
       {session.status === 'running' && (
         <main className="play-shell">
           <div className="lobby-container">
-            {/* Match header */}
+            {/* Molt header */}
             <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
               <h2 style={{ fontFamily: 'var(--f-display)', fontSize: '1.8rem', textTransform: 'uppercase' }}>
-                FFA Arena — {ffaActors.length} Bots ({aliveCount} alive)
+                FFA Molt Arena — {ffaActors.length} Crawlers ({aliveCount} alive)
               </h2>
               <div className="hint">
                 {!isHost && '(spectating) '}Last bot standing wins
@@ -772,7 +772,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
                 <div className="section-label" style={{ marginTop: '1rem' }}>Combat Log</div>
                 <div className="feed" style={{ maxHeight: '300px' }}>
                   {feed.length === 0 && (
-                    <div className="feed-item">Waiting for match to start...</div>
+                    <div className="feed-item">Waiting for molt to start...</div>
                   )}
                   {feed.map((entry, index) => (
                     <div key={`${index}-${entry.slice(0, 20)}`} className="feed-item">{entry}</div>

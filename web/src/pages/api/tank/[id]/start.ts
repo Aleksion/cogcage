@@ -7,7 +7,7 @@ const ENGINE_URL =
   process.env.ENGINE_URL ?? 'https://themoltpit-engine.aleks-precurion.workers.dev';
 const ENGINE_SECRET = process.env.MOLTPIT_ENGINE_SECRET ?? '';
 
-/** POST /api/lobby/[id]/start — start match on the MatchEngine DO */
+/** POST /api/tank/[id]/start — start molt on the MatchEngine DO */
 export const POST: APIRoute = async ({ params }) => {
   const { id } = params;
   if (!id) {

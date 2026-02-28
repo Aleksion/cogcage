@@ -85,7 +85,7 @@ Status: Ready for engineering handoff
 ## 10) Operational Readiness
 - [ ] Match audit payload includes seed + hashes
 - [ ] Failure modes log explicit reason codes
-- [ ] Version stamp for ruleset in every match record
+- [ ] Version stamp for ruleset in every molt record
 - [ ] Backward compatibility strategy for future ruleset revisions
 
 ## 11) Handoff Artifacts

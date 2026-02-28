@@ -4,6 +4,88 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-27] - chore: TASK-022 terminology rebrand — full UI + docs vocabulary update
+
+**Type:** chore | **Phase:** 2
+
+### Summary
+Applied the locked terminology map across all user-facing copy, route paths, comments, and documentation. No TypeScript identifiers, Redis keys, or internal API contracts were changed — this is a pure vocabulary rebrand.
+
+### Terminology Map
+| Old | New |
+|-----|-----|
+| Armory | The Shell |
+| loadout | shell |
+| skills / actions (combat moves) | claws |
+| system prompt (game context) | directive |
+| match (game) | molt |
+| lobby / Lobby | tank / The Tank |
+| ELO / elo / rank (player rating) | hardness |
+| dashboard / Dashboard | den / The Den |
+| leaderboard | The Ladder |
+| bot / agent (player's AI) | crawler |
+
+### Changes — UI Components
+- `web/src/components/Armory.tsx` — Nav label "Armory" → "The Shell", href `/shell`, "Loadout" → "Shell", "Skills" → "Claws", "Brain (System Prompt)" → "Brain (Directive)", "Saved Loadouts" → "Saved Shells", all fetch URLs `/api/armory` → `/api/shell`
+- `web/src/components/Dashboard.tsx` — "Your Bot" → "Your Crawler", "Build Your Bot" → "Build Your Crawler", "Start Lobby" → "Start Tank", "Open Games" → "Open Molts", nav "Armory" → "The Shell" href `/shell`, fetch URLs `/api/lobby` → `/api/tank`, `window.location` `/lobby/` → `/tank/`
+- `web/src/components/Lobby.tsx` — "Lobby" → "The Tank", "Back to Dashboard" → "Back to The Den", "Configure Bot" → "Configure Crawler", "Start Match" → "Start Molt", "Actions:" → "Claws:", fetch URLs updated
+- `web/src/components/MatchView.tsx` — "Back to Dashboard" → "Back to The Den", "Tweak Bot" → "Tweak Crawler", "MATCH END/OVER/ABORTED" → "MOLT END/OVER/ABORTED"
+- `web/src/components/SessionRoom.tsx` — "FFA Tournament Lobby" → "FFA Tournament Tank", "System Prompt" → "Directive", "Loadout" → "Shell", "Leaderboard" → "The Ladder", "bots" → "crawlers", "abilities" → "claws", all match→molt transitions
+- `web/src/components/Play.tsx` — "Configure Your Agents" → "Configure Your Crawlers", "Bot A/B" → "Crawler A/B", "System Prompt (Brain)" → "Directive (Brain)", "Loadout" → "Shell", "Lobby Rooms" → "Tank Rooms", match→molt transitions
+- `web/src/components/MoltPitLanding.jsx` — "Bot Name" → "Crawler Name", "Rank" → "Hardness", "LIVE RANKINGS" → "THE LADDER", "loadout" → "shell"
+
+### Changes — Astro Pages
+- `web/src/pages/armory.astro` → `web/src/pages/shell.astro` — **Renamed.** Title "The Molt Pit — The Shell"
+- `web/src/pages/lobby/[id].astro` → `web/src/pages/tank/[id].astro` — **Renamed.** Title "The Molt Pit — The Tank"
+- `web/src/pages/play.astro` — Meta description updated (crawlers, hardness)
+- `web/src/pages/index.astro` — Meta description updated
+- `web/src/pages/success.astro` — "rank-season" → "hardness-season"
+- `web/src/pages/join/[code].astro` — "Bot Name" → "Crawler Name", "System Prompt" → "Directive", "Loadout" → "Shell"
+- `web/src/layouts/Layout.astro` — Default description updated
+
+### Changes — API Routes
+- `web/src/pages/api/armory/index.ts` → `web/src/pages/api/shell/index.ts` — **Renamed.** Comments updated
+- `web/src/pages/api/armory/[id].ts` → `web/src/pages/api/shell/[id].ts` — **Renamed.** Comments updated
+- `web/src/pages/api/lobby/index.ts` → `web/src/pages/api/tank/index.ts` — **Renamed.** Comments updated
+- `web/src/pages/api/lobby/[id].ts` → `web/src/pages/api/tank/[id].ts` — **Renamed.** Comments updated
+- `web/src/pages/api/lobby/[id]/start.ts` → `web/src/pages/api/tank/[id]/start.ts` — **Renamed.** Comments updated
+- `web/src/pages/api/lobby/[id]/join.ts` → `web/src/pages/api/tank/[id]/join.ts` — **Renamed.** Comments updated
+- `web/src/pages/api/lobby/[id]/dummy.ts` → `web/src/pages/api/tank/[id]/dummy.ts` — **Renamed.** Comments updated
+
+### Changes — Lib Files
+- `web/src/lib/armory.ts` — "Unnamed Loadout" → "Unnamed Shell", "Max 10 saved loadouts" → "Max 10 saved shells"
+- `web/src/lib/lobby.ts` — Comments: "Resolve loadout" → "Resolve shell", "tactical combat agent" → "tactical combat crawler"
+- `web/src/lib/cards.ts` — Comment: "Card → match config" → "Card → molt config"
+- `web/src/lib/game-styles.ts` — CSS comment "Lobby" → "Tank"
+- `web/src/lib/ws2/match-types.ts` — Comment: "system prompt for the LLM" → "directive for the LLM"
+- `web/src/lib/ws2/run-match.ts` — Comments: "match runner" → "molt runner", "lobby flow" → "tank flow", "bots" → "crawlers"
+- `web/src/lib/ws2/README.md` — "bots" → "crawlers"
+
+### Changes — Docs & Roadmap
+- `docs/core-thesis.md` — bot→crawler, action→claw, match→molt, agent→crawler throughout
+- `docs/architecture-game-engine.md` — lobby→tank, armory→shell, match→molt, bot→crawler, ELO→hardness
+- `ROADMAP.md` — All terminology updated per map
+- `docs/tasks/*.md` — All task specs updated per map
+- `docs/sprints/current.md` — Updated per map
+
+### What Was NOT Changed (by design)
+- TypeScript identifiers: `LobbyRecord`, `SavedLoadout`, `createLobby()`, `getLoadouts()`, etc.
+- Redis keys: `armory:*`, `lobby:*`, `lobbies:open`
+- Session status enum: `'lobby'`
+- CSS class names: `.armory-root`, `.lby-root`, `.dash-root`
+- Internal API route `/api/agent/decide`
+- Component file names (Armory.tsx, Lobby.tsx, Dashboard.tsx kept as-is)
+
+### Breaking Changes
+- Route paths changed: `/armory` → `/shell`, `/lobby/:id` → `/tank/:id`, `/api/armory/*` → `/api/shell/*`, `/api/lobby/*` → `/api/tank/*`
+- Any external links or bookmarks to old routes will 404
+
+### Notes
+- This is a vocabulary-only change. No logic, no data model, no Redis migration.
+- Old Astro page files and API route directories were deleted after moving to new paths.
+
+---
+
 ## [2026-02-27] - cleanup+feat: Remove client-side match-runner, add connection stats to result screen — TASK-005+006
 
 **Type:** cleanup + feat | **Phase:** 1

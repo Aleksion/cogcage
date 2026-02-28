@@ -50,13 +50,13 @@ export async function saveLoadout(
 
   const existing = await getLoadouts(playerId);
   if (existing.length >= 10) {
-    return { loadouts: existing, error: 'Max 10 saved loadouts' };
+    return { loadouts: existing, error: 'Max 10 saved shells' };
   }
 
   const stats = calculateLoadoutStats(cards);
   const loadout: SavedLoadout = {
     id: crypto.randomUUID(),
-    name: name.trim() || 'Unnamed Loadout',
+    name: name.trim() || 'Unnamed Shell',
     cards,
     brainPrompt,
     skills: skills.slice(0, 3),

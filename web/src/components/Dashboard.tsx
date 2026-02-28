@@ -206,7 +206,7 @@ export default function Dashboard() {
   // Fetch loadouts
   const fetchLoadouts = useCallback(async () => {
     try {
-      const res = await fetch('/api/armory');
+      const res = await fetch('/api/shell');
       const data = await res.json();
       setLoadouts(data.loadouts ?? []);
     } catch { /* ignore */ }
@@ -215,7 +215,7 @@ export default function Dashboard() {
   // Fetch open lobbies
   const fetchLobbies = useCallback(async () => {
     try {
-      const res = await fetch('/api/lobby');
+      const res = await fetch('/api/tank');
       const data = await res.json();
       setLobbies(data.lobbies ?? []);
     } catch { /* ignore */ }
@@ -235,16 +235,16 @@ export default function Dashboard() {
     setCreating(true);
     setError('');
     try {
-      const res = await fetch('/api/lobby', {
+      const res = await fetch('/api/tank', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ loadoutId: myBot.id }),
       });
       const data = await res.json();
       if (data.lobbyId) {
-        window.location.href = `/lobby/${data.lobbyId}`;
+        window.location.href = `/tank/${data.lobbyId}`;
       } else {
-        setError(data.error || 'Failed to create lobby');
+        setError(data.error || 'Failed to create tank');
         setCreating(false);
       }
     } catch {
@@ -255,20 +255,20 @@ export default function Dashboard() {
 
   const handleJoin = async (lobbyId: string) => {
     if (!myBot) {
-      setError('Build a bot first!');
+      setError('Build a crawler first!');
       return;
     }
     setJoining(lobbyId);
     setError('');
     try {
-      const res = await fetch(`/api/lobby/${lobbyId}/join`, {
+      const res = await fetch(`/api/tank/${lobbyId}/join`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ loadoutId: myBot.id }),
       });
       const data = await res.json();
       if (data.ok) {
-        window.location.href = `/lobby/${lobbyId}`;
+        window.location.href = `/tank/${lobbyId}`;
       } else {
         setError(data.error || 'Failed to join');
         setJoining(null);
@@ -290,18 +290,18 @@ export default function Dashboard() {
         <nav className="dash-nav">
           <a href="/">Home</a>
           <a href="/play" className="active">Play</a>
-          <a href="/armory">Armory</a>
+          <a href="/shell">The Shell</a>
         </nav>
       </header>
 
       <main className="dash-shell">
-        {/* YOUR BOT */}
-        <div className="dash-section-title">Your Bot</div>
+        {/* YOUR CRAWLER */}
+        <div className="dash-section-title">Your Crawler</div>
         {myBot ? (
           <div className="dash-bot-card">
             <div className="dash-bot-header">
               <span className="dash-bot-name">{myBot.name}</span>
-              <a href="/armory" className="dash-btn configure">Configure</a>
+              <a href="/shell" className="dash-btn configure">Configure</a>
             </div>
             <div className="dash-bot-icons">
               {myBot.cards.map((cid, i) => {
@@ -324,18 +324,18 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="dash-bot-card empty">
-            <div className="dash-bot-info">No bot configured yet</div>
-            <a href="/armory" className="dash-btn build">Build Your Bot</a>
+            <div className="dash-bot-info">No crawler configured yet</div>
+            <a href="/shell" className="dash-btn build">Build Your Crawler</a>
           </div>
         )}
 
-        {/* START LOBBY */}
+        {/* START TANK */}
         <button
           className="dash-btn cta"
           onClick={handleStartLobby}
           disabled={creating || !myBot}
         >
-          {creating ? 'Creating...' : 'Start Lobby'}
+          {creating ? 'Creating...' : 'Start Tank'}
         </button>
 
         {error && (
@@ -344,14 +344,14 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* OPEN GAMES */}
-        <div className="dash-section-title">Open Games</div>
+        {/* OPEN MOLTS */}
+        <div className="dash-section-title">Open Molts</div>
         {otherLobbies.length > 0 ? (
           <div className="dash-lobby-list">
             {otherLobbies.map((lobby) => (
               <div key={lobby.id} className="dash-lobby-row">
                 <div>
-                  <span className="dash-lobby-host">Lobby</span>
+                  <span className="dash-lobby-host">Tank</span>
                   <span className="dash-lobby-vs"> vs ???</span>
                 </div>
                 <button
@@ -365,7 +365,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <div className="dash-empty-text">No open games. Be first!</div>
+          <div className="dash-empty-text">No open molts. Be first!</div>
         )}
       </main>
     </div>

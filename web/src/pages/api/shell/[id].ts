@@ -3,7 +3,7 @@ import { deleteLoadout } from '../../../lib/armory.ts';
 
 export const prerender = false;
 
-/** DELETE /api/armory/:id — Remove a saved loadout */
+/** DELETE /api/shell/:id — Remove a saved shell */
 export const DELETE: APIRoute = async ({ params, cookies }) => {
   const playerId = cookies.get('moltpit_pid')?.value;
   if (!playerId) {
