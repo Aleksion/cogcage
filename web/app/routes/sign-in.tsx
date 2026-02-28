@@ -22,12 +22,29 @@ function SignInPage() {
   }
 
   if (isAuthenticated) {
+    // Redirect to shell (build your crawler) after sign-in
     return (
       <div style={{ maxWidth: 480, margin: '4rem auto', padding: '2rem', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>You're signed in</h1>
-        <Link to="/" style={{ color: '#8a8fff', textDecoration: 'underline' }}>
-          Back to homepage
+        <h1 style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>You're in. 🔥</h1>
+        <p style={{ color: '#888', marginBottom: '1.5rem' }}>Ready to build your crawler.</p>
+        <Link
+          to="/shell"
+          style={{
+            display: 'inline-block',
+            padding: '0.75rem 1.75rem',
+            background: '#4a4aff',
+            color: '#fff',
+            borderRadius: '8px',
+            fontWeight: 700,
+            textDecoration: 'none',
+            fontSize: '1rem',
+          }}
+        >
+          Build Your Crawler →
         </Link>
+        <div style={{ marginTop: '1rem' }}>
+          <Link to="/" style={{ color: '#666', fontSize: '0.85rem' }}>Back to homepage</Link>
+        </div>
       </div>
     )
   }

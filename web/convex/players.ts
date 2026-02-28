@@ -2,6 +2,19 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
+// Alias used by AuthButton component
+export const getCurrent = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    return await ctx.db
+      .query("players")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+  },
+});
+
 export const getPlayer = query({
   args: {},
   handler: async (ctx) => {

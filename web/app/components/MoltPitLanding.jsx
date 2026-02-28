@@ -1184,6 +1184,23 @@ const NavBar = ({ onNavClick }) => {
         ))}
       </div>
       <div className="nav-controls">
+        <a
+          href="/sign-in"
+          style={{
+            display: 'inline-block',
+            padding: '0.4rem 1rem',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.75)',
+            border: '1px solid rgba(255,255,255,0.25)',
+            borderRadius: '6px',
+            textDecoration: 'none',
+            marginRight: '0.5rem',
+            letterSpacing: '0.02em',
+          }}
+        >
+          Sign In
+        </a>
         <button
           className={`btn-arcade nav-cta${playPressed ? ' pressed' : ''}`}
           onClick={handlePlay}
