@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import BattleHero from './BattleHero.jsx';
 
 // ─── Style injection ───────────────────────────────────────────────────────────
 const globalStyles = `
@@ -1482,7 +1483,7 @@ const HeroSection = ({ sectionRef }) => {
       </div>
 
       <div className="hero-visual">
-        <BotCard />
+        <BattleHero />
       </div>
     </section>
   );
