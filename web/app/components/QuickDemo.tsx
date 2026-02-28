@@ -56,6 +56,9 @@ const TACTICIAN_BASE: BotConfig = {
 const hpColor = (hp: number) =>
   hp > 60 ? '#2ecc71' : hp > 30 ? '#f39c12' : '#eb4d4b';
 
+const hpGlowColor = (hp: number) =>
+  hp > 60 ? '#2ecc71' : hp > 30 ? '#f39c12' : '#FF4D4D';
+
 const energyColor = (pct: number) =>
   pct > 60 ? '#00bcd4' : pct > 30 ? '#ff9800' : '#f44336';
 
@@ -286,6 +289,7 @@ function ArenaMap({
                 width: `${energyPctA}%`,
                 background: energyColor(energyPctA),
                 transition: 'width 0.3s ease',
+                boxShadow: '0 0 6px #00e5ff',
               }}
             />
           </div>
@@ -322,6 +326,7 @@ function ArenaMap({
                 width: `${energyPctB}%`,
                 background: energyColor(energyPctB),
                 transition: 'width 0.3s ease',
+                boxShadow: '0 0 6px #ff6b6b',
               }}
             />
           </div>
@@ -672,6 +677,8 @@ export default function QuickDemo() {
                 width: `${botAHp}%`,
                 background: hpColor(botAHp),
                 transition: 'width 0.3s ease',
+                boxShadow: `0 0 8px ${hpGlowColor(botAHp)}`,
+                borderRadius: '3px',
               }}
             />
           </div>
@@ -725,6 +732,8 @@ export default function QuickDemo() {
                 width: `${botBHp}%`,
                 background: hpColor(botBHp),
                 transition: 'width 0.3s ease',
+                boxShadow: `0 0 8px ${hpGlowColor(botBHp)}`,
+                borderRadius: '3px',
               }}
             />
           </div>
