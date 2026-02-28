@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import MoltPitLanding, { globalStyles } from '~/components/MoltPitLanding'
+import { battleHeroStyles } from '~/components/BattleHero'
 
 /**
  * Landing page body + bg-mesh override styles.
@@ -30,7 +31,7 @@ const LANDING_OVERRIDE_CSS = `
 `
 
 // Merge into one <style> block so @import stays at the very top (required by CSS spec)
-const ALL_LANDING_STYLES = globalStyles + '\n' + LANDING_OVERRIDE_CSS
+const ALL_LANDING_STYLES = globalStyles + '\n' + LANDING_OVERRIDE_CSS + '\n' + battleHeroStyles
 
 export const Route = createFileRoute('/')({
   head: () => ({
