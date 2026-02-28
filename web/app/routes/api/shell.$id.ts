@@ -1,36 +1,47 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { deleteLoadout } from '~/lib/armory'
+import { ConvexHttpClient } from 'convex/browser'
+import { api } from '../../../convex/_generated/api'
 import { getCookie } from '~/lib/cookies'
+import type { Id } from '../../../convex/_generated/dataModel'
+
+const convex = new ConvexHttpClient(process.env.CONVEX_URL || 'https://intent-horse-742.convex.cloud')
 
 export const Route = createFileRoute('/api/shell/$id')({
   server: {
     handlers: {
       DELETE: async ({ request, params }) => {
-        const playerId = getCookie(request, 'moltpit_pid')
-        if (!playerId) {
-          return new Response(JSON.stringify({ error: 'No player ID' }), {
+        const token =
+          request.headers.get('Authorization')?.replace('Bearer ', '') ??
+          getCookie(request, '__convexAuthJWT')
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Not authenticated' }), {
             status: 401,
             headers: { 'content-type': 'application/json' },
           })
         }
 
-        const loadoutId = params.id
-        if (!loadoutId) {
+        const shellId = params.id
+        if (!shellId) {
           return new Response(
-            JSON.stringify({ error: 'Loadout ID required' }),
+            JSON.stringify({ error: 'Shell ID required' }),
             { status: 400, headers: { 'content-type': 'application/json' } },
           )
         }
 
         try {
-          const result = await deleteLoadout(playerId, loadoutId)
-          return new Response(JSON.stringify({ loadouts: result.loadouts }), {
+          convex.setAuth(token)
+          await convex.mutation(api.shells.remove, {
+            shellId: shellId as Id<'shells'>,
+          })
+          const shells = await convex.query(api.shells.list)
+          return new Response(JSON.stringify({ loadouts: shells }), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           })
         } catch (err: any) {
+          const status = err.message?.includes('Unauthorized') ? 403 : 500
           return new Response(JSON.stringify({ error: err.message }), {
-            status: 500,
+            status,
             headers: { 'content-type': 'application/json' },
           })
         }

@@ -1,13 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getLoadouts, saveLoadout } from '~/lib/armory'
+import { ConvexHttpClient } from 'convex/browser'
+import { api } from '../../../convex/_generated/api'
 import { getCookie } from '~/lib/cookies'
+
+const convex = new ConvexHttpClient(process.env.CONVEX_URL || 'https://intent-horse-742.convex.cloud')
 
 export const Route = createFileRoute('/api/shell')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const playerId = getCookie(request, 'moltpit_pid')
-        if (!playerId) {
+        const token =
+          request.headers.get('Authorization')?.replace('Bearer ', '') ??
+          getCookie(request, '__convexAuthJWT')
+        if (!token) {
           return new Response(JSON.stringify({ loadouts: [] }), {
             status: 200,
             headers: { 'content-type': 'application/json' },
@@ -15,8 +20,9 @@ export const Route = createFileRoute('/api/shell')({
         }
 
         try {
-          const loadouts = await getLoadouts(playerId)
-          return new Response(JSON.stringify({ loadouts }), {
+          convex.setAuth(token)
+          const shells = await convex.query(api.shells.list)
+          return new Response(JSON.stringify({ loadouts: shells }), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           })
@@ -28,9 +34,11 @@ export const Route = createFileRoute('/api/shell')({
         }
       },
       POST: async ({ request }) => {
-        const playerId = getCookie(request, 'moltpit_pid')
-        if (!playerId) {
-          return new Response(JSON.stringify({ error: 'No player ID' }), {
+        const token =
+          request.headers.get('Authorization')?.replace('Bearer ', '') ??
+          getCookie(request, '__convexAuthJWT')
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Not authenticated' }), {
             status: 401,
             headers: { 'content-type': 'application/json' },
           })
@@ -38,7 +46,7 @@ export const Route = createFileRoute('/api/shell')({
 
         try {
           const body = await request.json()
-          const { name, cards, brainPrompt, skills } = body
+          const { name, cards, brainPrompt, skills, stats } = body
 
           if (!name || !Array.isArray(cards)) {
             return new Response(
@@ -47,29 +55,26 @@ export const Route = createFileRoute('/api/shell')({
             )
           }
 
-          const result = await saveLoadout(
-            playerId,
+          convex.setAuth(token)
+          await convex.mutation(api.shells.create, {
             name,
             cards,
-            brainPrompt || '',
-            Array.isArray(skills) ? skills : [],
-          )
-          if (result.error) {
-            return new Response(
-              JSON.stringify({ error: result.error, loadouts: result.loadouts }),
-              { status: 400, headers: { 'content-type': 'application/json' } },
-            )
-          }
+            directive: brainPrompt || '',
+            skills: Array.isArray(skills) ? skills : [],
+            stats: stats || { totalWeight: 0, totalOverhead: 0, armorValue: 0 },
+          })
 
-          return new Response(JSON.stringify({ loadouts: result.loadouts }), {
+          const shells = await convex.query(api.shells.list)
+          return new Response(JSON.stringify({ loadouts: shells }), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           })
         } catch (err: any) {
-          return new Response(JSON.stringify({ error: err.message }), {
-            status: 500,
-            headers: { 'content-type': 'application/json' },
-          })
+          const status = err.message?.includes('Max 10') ? 400 : 500
+          return new Response(
+            JSON.stringify({ error: err.message }),
+            { status, headers: { 'content-type': 'application/json' } },
+          )
         }
       },
     },
