@@ -8,6 +8,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { name: 'color-scheme', content: 'dark' },
       {
         name: 'description',
         content:
@@ -50,12 +51,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             __html: `
               :root {
                 font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+                color-scheme: dark;
               }
               * { box-sizing: border-box; }
               html, body {
                 margin: 0;
                 width: 100%;
                 min-height: 100%;
+                background: #1A1A1A;
+                color: #f0f0f5;
               }
               a { color: inherit; }
             `,
