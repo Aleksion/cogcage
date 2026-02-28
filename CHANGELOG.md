@@ -4,6 +4,49 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-27] - fix: rename lobby→tank and armory→shell API routes (PR #19)
+
+**Type:** fix | **Phase:** 1
+
+### Problem
+TASK-022 rebrand renamed UI copy (lobby→tank, armory→shell) but the route *files* still served `/api/lobby/*` and `/api/armory`. Every Dashboard and Lobby API call was 404ing, making the entire Shell→Tank→Match flow broken.
+
+### Changes
+- `lobby.ts` → `tank.ts` — route path `/api/lobby` → `/api/tank`
+- `lobby.$id.ts` → `tank.$id.ts`
+- `lobby.$id.start.ts` → `tank.$id.start.ts`
+- `lobby.$id.dummy.ts` → `tank.$id.dummy.ts`
+- `lobby.$id.join.ts` → `tank.$id.join.ts`
+- `armory.ts` → `shell.ts` — route path `/api/armory` → `/api/shell`
+- `armory.$id.ts` → `shell.$id.ts`
+
+### Next Steps
+- Merge PR #19 → full Shell→Tank→Match flow unblocked
+- Smoke test end-to-end
+
+---
+
+## [2026-02-27] - feat: real LLM quick-demo battles on /play (PR #18)
+
+**Type:** feat | **Phase:** 1
+
+### Summary
+Added `QuickDemo` component to `/play` that auto-starts a match between BERSERKER and TACTICIAN using the existing `/api/agent/decide` LLM endpoint. `OPENAI_API_KEY` in Vercel env → real GPT-4o-mini battles for all visitors, zero setup required. Scripted AI fallback when key unavailable.
+
+### Changes
+- `web/app/components/QuickDemo.tsx` — **New.** Auto-starting battle demo: BERSERKER (aggressive melee) vs TACTICIAN (defensive ranged). HP bars, action feed with LLM reasoning text per decision, winner banner + Founder CTA. BYO API key input (collapsed, stores to localStorage). Rematch button.
+- `web/app/components/Dashboard.tsx` — Added `<QuickDemo />` as first section ("WATCH A LIVE MOLT").
+- `web/app/lib/ws2/run-match.ts` — Minor: expose reasoning field from decide response in snapshot.
+
+### Design Decisions
+- QuickDemo uses client-side `runMatch.ts` (not DO WebSocket) — allows solo play without a lobby
+- Server OPENAI_API_KEY = default path; BYO key = advanced escape hatch via `x-llm-key` header
+
+### Known Gap
+- QuickDemo renders text-only (HP bars + feed). PlayCanvas 3D arena not yet wired in. Fix in PR #19.
+
+---
+
 ## [2026-02-27] - feat: Astro → TanStack Start migration — TASK-MIGRATE
 
 **Type:** feat | **Phase:** 1
