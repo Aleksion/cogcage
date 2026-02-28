@@ -15,6 +15,10 @@ import {
   redisConsumeRateLimit,
   redisAppendOpsLog,
 } from '~/lib/waitlist-redis'
+import { ConvexHttpClient } from 'convex/browser'
+import { api } from '../../../convex/_generated/api'
+
+const convexClient = new ConvexHttpClient(process.env.CONVEX_URL || 'https://intent-horse-742.convex.cloud')
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
@@ -288,7 +292,18 @@ export const Route = createFileRoute('/api/waitlist')({
           // Redis is the primary storage on Vercel — durable across Lambda invocations
           await redisInsertWaitlistLead(payload);
 
-          // SQLite is best-effort secondary — useful locally, ephemeral on Vercel
+          // Convex is best-effort secondary — durable, queryable
+          try {
+            await convexClient.mutation(api.waitlist.addToWaitlist, {
+              email: normalizedEmail,
+              source: eventSource,
+            });
+          } catch (convexError) {
+            appendOpsLog({ route, level: 'warn', event: 'waitlist_convex_write_failed', requestId, error: convexError instanceof Error ? convexError.message : 'unknown' });
+            // Never throw — Redis already succeeded
+          }
+
+          // SQLite is best-effort tertiary — useful locally, ephemeral on Vercel
           try {
             insertWaitlistLead(payload);
           } catch (sqliteError) {
