@@ -288,6 +288,23 @@ export async function runMatchAsync(
         }
       }
 
+      // Inject reasoning events so snapshots include LLM reasoning text
+      for (const bot of aliveBots) {
+        const action = actions.get(bot.id);
+        if (action && action.type !== 'NO_OP') {
+          state.events.push({
+            tick: state.tick,
+            type: 'BOT_REASONING',
+            actorId: bot.id,
+            targetId: null,
+            data: {
+              reasoning: action.reasoning || null,
+              actionType: action.type,
+            },
+          });
+        }
+      }
+
       for (let i = 0; i < DECISION_WINDOW_TICKS && !state.ended; i++) {
         const actionsByActor = new Map<string, any>();
         if (i === 0) {

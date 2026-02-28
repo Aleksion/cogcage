@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getCard } from '../lib/cards';
+import QuickDemo from './QuickDemo';
 
 /* ── Types ──────────────────────────────────────────────────── */
 
@@ -295,6 +296,11 @@ export default function Dashboard() {
       </header>
 
       <main className="dash-shell">
+        {/* WATCH A LIVE MOLT */}
+        <div className="dash-section-title">Watch a Live Molt</div>
+        <QuickDemo />
+        <hr style={{ border: 'none', borderTop: '2px solid rgba(255,255,255,0.08)', margin: '1.5rem 0' }} />
+
         {/* YOUR CRAWLER */}
         <div className="dash-section-title">Your Crawler</div>
         {myBot ? (
