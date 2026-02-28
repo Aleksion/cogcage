@@ -1,10 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ClientOnly } from '~/components/ClientOnly'
-import MoltPitLanding from '~/components/MoltPitLanding'
+import MoltPitLanding, { globalStyles } from '~/components/MoltPitLanding'
 
-// Hoisted out of ClientOnly so it SSRs immediately — prevents flash of dark
-// root background and ensures the diagonal stripe is visible on first paint.
-const LANDING_BG_CSS = `
+/**
+ * Landing page body + bg-mesh override styles.
+ * These come AFTER globalStyles in the same <style> block.
+ * We use !important to beat the dark __root.tsx body rule.
+ */
+const LANDING_OVERRIDE_CSS = `
   body {
     background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%) !important;
     background-color: #F8F9FA !important;
@@ -15,6 +17,7 @@ const LANDING_BG_CSS = `
     top: 0; left: 0;
     width: 100%; height: 100%;
     z-index: -1;
+    pointer-events: none;
     background:
       radial-gradient(circle at 10% 20%, rgba(255,214,0,0.15) 0%, transparent 40%),
       radial-gradient(circle at 90% 80%, rgba(235,77,75,0.1) 0%, transparent 40%),
@@ -26,6 +29,9 @@ const LANDING_BG_CSS = `
   }
 `
 
+// Merge into one <style> block so @import stays at the very top (required by CSS spec)
+const ALL_LANDING_STYLES = globalStyles + '\n' + LANDING_OVERRIDE_CSS
+
 export const Route = createFileRoute('/')({
   head: () => ({
     meta: [
@@ -36,6 +42,10 @@ export const Route = createFileRoute('/')({
           'Build bots, battle agents, climb the ladder. The Molt Pit is the competitive AI arena for builders.',
       },
     ],
+    // TanStack Start renders these as <style> tags inside <head> via HeadContent.
+    // SSR'd on first paint → zero FOUC. The @import for Google Fonts comes from
+    // globalStyles and must stay at the top of the CSS string.
+    styles: [{ children: ALL_LANDING_STYLES }],
   }),
   component: IndexPage,
 })
@@ -43,11 +53,11 @@ export const Route = createFileRoute('/')({
 function IndexPage() {
   return (
     <>
-      {/* Inline styles SSR'd in the React tree — body bg + stripe visible on first paint */}
-      <style dangerouslySetInnerHTML={{ __html: LANDING_BG_CSS }} />
-      {/* bg-mesh div also SSRs so the fixed overlay is in the DOM immediately */}
+      {/* bg-mesh renders server-side — diagonal stripe is visible before JS hydrates */}
       <div className="bg-mesh" />
-      <ClientOnly>{() => <MoltPitLanding />}</ClientOnly>
+      {/* MoltPitLanding is SSR-safe: all localStorage/window calls are in useEffect.
+          No ClientOnly wrapper needed — removing it eliminates the content-load FOUC. */}
+      <MoltPitLanding />
     </>
   )
 }

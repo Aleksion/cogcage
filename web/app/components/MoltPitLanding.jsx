@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 // react-router-dom removed — TanStack Router handles all routing
 
 // ─── Style injection ───────────────────────────────────────────────────────────
-const globalStyles = `
+// Exported so index.tsx can inject these via head() → <style> in <head>
+// This eliminates FOUC — styles are present on first paint, not injected via useEffect
+export const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:ital,wght@0,400;0,800;1,900&display=swap');
 
   :root {
@@ -1880,14 +1882,9 @@ const HomePage = () => {
 
 // ─── App ───────────────────────────────────────────────────────────────────────
 
+// Styles are injected by the parent route via head() → TanStack's HeadContent.
+// No useEffect style injection needed here — that caused FOUC.
 const App = () => {
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = globalStyles;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
-
   useEffect(() => {
     void replayWaitlistQueue();
     void replayFounderIntentQueue();
@@ -1901,7 +1898,7 @@ const App = () => {
 
   return (
     <>
-      <div className="bg-mesh" />
+      {/* bg-mesh is rendered by the parent route (index.tsx) so it SSRs on first paint */}
       <HomePage />
     </>
   );
