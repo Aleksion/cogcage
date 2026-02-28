@@ -30,7 +30,7 @@ const LANDING_OVERRIDE_CSS = `
   }
 `
 
-// Merge into one <style> block so @import stays at the very top (required by CSS spec)
+// Merged into one <style> block — @import removed (fonts are in __root.tsx <link> tags)
 const ALL_LANDING_STYLES = globalStyles + '\n' + LANDING_OVERRIDE_CSS + '\n' + battleHeroStyles
 
 export const Route = createFileRoute('/')({

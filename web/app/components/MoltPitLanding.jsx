@@ -6,8 +6,7 @@ import BattleHero from './BattleHero.jsx';
 // Exported so index.tsx can inject these via head() → <style> in <head>
 // This eliminates FOUC — styles are present on first paint, not injected via useEffect
 export const globalStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:ital,wght@0,400;0,800;1,900&display=swap');
-
+  /* Fonts loaded via <link> in __root.tsx — no @import needed here */
   :root {
     --c-yellow: #FFD600;
     --c-orange: #FF9F1C;
