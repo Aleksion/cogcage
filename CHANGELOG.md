@@ -557,5 +557,5 @@ Project renamed from CogCage to The Molt Pit throughout docs, task specs, and ar
 ### Notes
 - `cogcage.com` domain: keep for now, evaluate `themoltpit.com` separately
 - Redis key prefixes (`cogcage_pid`, `armory:*`, `lobby:*`) — follow-up rename PR
-- GitHub repo URL: `Aleksion/cogcage` — can rename repo in GitHub settings when ready
+- GitHub repo URL: `Aleksion/themoltpit` — can rename repo in GitHub settings when ready
 
