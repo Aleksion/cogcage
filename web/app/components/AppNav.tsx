@@ -11,8 +11,14 @@ const NAV_STYLES = `
     position: sticky;
     top: 0;
     z-index: 50;
-    background: #000;
-    border-bottom: 3px solid #FFD600;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 3px,
+      rgba(255,255,255,0.03) 3px,
+      rgba(255,255,255,0.03) 4px
+    ), #000;
+    border-bottom: 1px solid rgba(0,229,255,0.25);
     font-family: 'Kanit', sans-serif;
     padding: 0 2rem;
     display: flex;
@@ -50,18 +56,21 @@ const NAV_STYLES = `
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: rgba(255,255,255,0.6);
+    color: rgba(255,255,255,0.5);
     text-decoration: none;
-    padding: 0.5rem 0.85rem;
-    transition: color 0.15s;
-    border-bottom: 3px solid transparent;
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    background: transparent;
+    transition: color 0.15s, background 0.15s;
   }
   .appnav-link:hover {
     color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.07);
   }
   .appnav-link.active {
-    color: #FFD600;
-    border-bottom: 3px solid #FFD600;
+    color: #000;
+    background: #00E5FF;
+    font-weight: 800;
   }
 
   .appnav-right {
@@ -83,21 +92,20 @@ const NAV_STYLES = `
   }
 
   .appnav-signout {
-    font-family: 'Kanit', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.35);
+    color: rgba(255,255,255,0.3);
     background: none;
-    border: 2px solid rgba(255,255,255,0.15);
-    border-radius: 6px;
-    padding: 0.3rem 0.7rem;
+    border: none;
+    width: 24px;
+    height: 24px;
+    padding: 0;
     cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
   }
   .appnav-signout:hover {
     color: rgba(255,255,255,0.7);
-    border-color: rgba(255,255,255,0.3);
   }
 
   .appnav-hamburger {
@@ -118,7 +126,7 @@ const NAV_STYLES = `
       left: 0;
       right: 0;
       background: #000;
-      border-bottom: 3px solid #FFD600;
+      border-bottom: 1px solid rgba(0,229,255,0.25);
       flex-direction: column;
       padding: 0.5rem 1rem;
       gap: 0;
@@ -222,8 +230,8 @@ export function AppNav() {
           {player?.username && (
             <span className="appnav-user">{player.username}</span>
           )}
-          <button className="appnav-signout" onClick={() => void signOut()}>
-            Sign Out
+          <button className="appnav-signout" onClick={() => void signOut()} aria-label="Sign out">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
         </div>
       </nav>
