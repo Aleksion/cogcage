@@ -12,6 +12,8 @@ interface BattleHUDProps {
   phase: 'playing' | 'ended'
   muted: boolean
   onToggleMute: () => void
+  botAName?: string
+  botBName?: string
 }
 
 const HP_MAX = 100
@@ -32,6 +34,8 @@ export default function BattleHUD({
   phase,
   muted,
   onToggleMute,
+  botAName = 'BERSERKER',
+  botBName = 'TACTICIAN',
 }: BattleHUDProps) {
   const hpPctA = Math.max(0, Math.round((botAHp / HP_MAX) * 100))
   const hpPctB = Math.max(0, Math.round((botBHp / HP_MAX) * 100))
@@ -61,7 +65,7 @@ export default function BattleHUD({
           background: 'linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 80%, transparent 100%)',
         }}
       >
-        {/* BERSERKER side */}
+        {/* Bot A side */}
         <div style={{ flex: 1, maxWidth: 400 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
             <span
@@ -73,7 +77,7 @@ export default function BattleHUD({
                 letterSpacing: 1,
               }}
             >
-              BERSERKER
+              {botAName}
             </span>
             <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: '#fff', fontWeight: 700 }}>
               {botAHp} HP
@@ -148,7 +152,7 @@ export default function BattleHUD({
           </div>
         </div>
 
-        {/* TACTICIAN side */}
+        {/* Bot B side */}
         <div style={{ flex: 1, maxWidth: 400 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
             <span
@@ -160,7 +164,7 @@ export default function BattleHUD({
                 letterSpacing: 1,
               }}
             >
-              TACTICIAN
+              {botBName}
             </span>
             <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: '#fff', fontWeight: 700 }}>
               {botBHp} HP
