@@ -1,127 +1,120 @@
-# Task: Wire PlayCanvas 3D scene into QuickDemo
+# Task: The Forge + Persistent Nav + Bot Fix
 
-## Context
-The Molt Pit — AI agent battle game. TanStack Start app in `web/`.
-Run `cd web && bun install` first.
+Branch: `feat/forge-nav` off `main`
+Repo: https://github.com/Aleksion/themoltpit.git
+Stack: TanStack Start + TanStack Router + Convex + Nitro (Vercel preset)
+Working dir: this repo (web/ subdirectory has the app)
 
-## The Problem
-`QuickDemo.tsx` shows a text feed + HP bars. The 3D PlayCanvas arena already exists in
-`PlayCanvasScene.ts` and is wired into `Play.tsx`. Need to wire it into QuickDemo too.
+Read `docs/app-ux-spec-v1.md` first — this is the design spec. Follow it precisely.
 
-## What to Copy From Play.tsx (lines ~432–520, ~561)
+---
 
-### 1. Add refs (after existing useState lines)
-```tsx
-const playCanvasRef = useRef<HTMLCanvasElement>(null);
-const sceneRef = useRef<any>(null);
-const [pcActive, setPcActive] = useState(false);
+## P0 — Persistent Top Nav (do this FIRST)
+
+Add a persistent authenticated nav bar to all authed routes. It should appear on `/forge`, `/shell`, `/play`, `/molds` (new), `/cage` (new), `/ladder` (new).
+
+Nav spec from `docs/app-ux-spec-v1.md`:
+```
+[⚡ THE MOLT PIT]   FORGE    MOLDS    CAGE    LADDER    GUIDE    [avatar / credits 420 CR]
 ```
 
-### 2. Add VFX word overlay state
-```tsx
-interface VfxWord { id: string; text: string; color: string }
-const [vfxWords, setVfxWords] = useState<VfxWord[]>([]);
+Implementation:
+- Create `web/app/components/AppNav.tsx` — the persistent nav component
+- Style: dark #1A1A1A background, yellow `#FFD600` active item, Kanit font, sticky top-0 z-50
+- Logo links to `/forge` (or `/` if not logged in)
+- Show avatar/sign-out if authenticated (use `useConvexAuth` + `useCurrentUser` from Convex)
+- On mobile: hamburger menu or condensed icon-only nav
+- Add `<AppNav />` to `__root.tsx` or create a layout route for authed pages
+
+## P0 — The Forge Route (`/forge`)
+
+Create `web/app/routes/forge.tsx` — the home dashboard for authenticated users.
+
+Spec from `docs/app-ux-spec-v1.md` Screen 1. Key elements:
+1. **Welcome header**: "WELCOME BACK, [username]" + CR balance
+2. **Crawler preview panel** (left): Placeholder bot art (can be CSS/emoji for now), crawler name, active mold name, 3 stat bars (AGGRESSION, ARMOR, COMPUTE SPEED)
+3. Two CTAs: `⚡ FIND A MOLT` (red, goes to `/cage`) + `✏️ EDIT MOLD` (goes to `/shell`)
+4. **Quick Stats** (top right): Total Molts, Win%, Rank — pull from Convex `players` table
+5. **Recent Molts feed**: Last 5 molts from Convex — can be empty/placeholder if no data
+6. **Active Tanks strip**: Query Convex `tanks` table for open/waiting tanks, show [JOIN] buttons
+
+Auth gate: if not authenticated → redirect to `/sign-in?returnTo=/forge`
+
+After login, redirect user to `/forge` (not `/shell`). Update `sign-in.tsx`: change `navigate({ to: '/shell' })` → `navigate({ to: '/forge' })`. Also update `shell.tsx` auth gate to link to `/forge` on success.
+
+## P1 — Bot Convergence Fix
+
+File: `web/app/lib/ws2/bots.ts`
+
+The scripted AI fallback currently idles when LLM is slow. Fix it to pathfind toward the opponent.
+
+Find the `getScriptedAction` (or equivalent) function. Replace the fallback with:
+```typescript
+// If no LLM decision available, pathfind toward opponent
+function getConvergenceAction(myPos: Position, enemyPos: Position, myEnergy: number): AgentAction {
+  if (myEnergy < 4) return { type: 'WAIT' }
+  const dx = enemyPos.x - myPos.x
+  const dy = enemyPos.y - myPos.y
+  const absDx = Math.abs(dx)
+  const absDy = Math.abs(dy)
+  // Move toward enemy
+  if (absDx >= absDy) {
+    return { type: 'MOVE', dir: dx > 0 ? 'E' : 'W' }
+  } else {
+    return { type: 'MOVE', dir: dy > 0 ? 'S' : 'N' }
+  }
+}
 ```
 
-### 3. PlayCanvas lifecycle effect
-Copy the effect from Play.tsx (~line 491). Key changes vs Play.tsx:
-- Trigger on `phase === 'playing'` (QuickDemo uses 'playing'/'ended', not 'match')
-- The init/destroy pattern is identical
+Integrate this into the fallback path in the match runner / bot decision loop.
 
-```tsx
-useEffect(() => {
-  if (phase !== 'playing' || !playCanvasRef.current) return;
-  let destroyed = false;
-  import('../lib/ws2/PlayCanvasScene').then(({ PlayCanvasScene }) => {
-    if (destroyed || !playCanvasRef.current) return;
-    try {
-      const scene = new PlayCanvasScene(playCanvasRef.current);
-      sceneRef.current = scene;
-      setPcActive(true);
-    } catch (e) {
-      console.warn('[PlayCanvas] Init failed:', e);
-      setPcActive(false);
-    }
-  }).catch((e) => {
-    console.warn('[PlayCanvas] Load failed:', e);
-    setPcActive(false);
-  });
-  return () => {
-    destroyed = true;
-    sceneRef.current?.destroy?.();
-    sceneRef.current = null;
-    setPcActive(false);
-  };
-}, [phase]);
+## P1 — Engineering Telemetry on Post-Molt
+
+File: `web/app/components/MatchView.tsx` (or wherever the post-match result is shown)
+
+After a match ends, show the engineering telemetry panel (per spec Screen 7):
+
+```
+ENGINEERING TELEMETRY
+Bot A                           Bot B
+Avg latency:  89ms              Avg latency:  312ms
+Tokens/dec:   22                Tokens/dec:   187
+Ticks missed: 0                 Ticks missed: 8
 ```
 
-### 4. VFX canvas event listener
-Copy from Play.tsx (~line 476):
-```tsx
-useEffect(() => {
-  const canvas = playCanvasRef.current;
-  if (!canvas) return;
-  const handler = (e: Event) => {
-    const { text, color } = (e as CustomEvent).detail;
-    const id = `vfx_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
-    setVfxWords(prev => [...prev, { id, text, color }]);
-    setTimeout(() => setVfxWords(prev => prev.filter(v => v.id !== id)), 800);
-  };
-  canvas.addEventListener('moltpit:vfx', handler);
-  return () => canvas.removeEventListener('moltpit:vfx', handler);
-}, []);
+The match runner already collects events. Calculate:
+- **Avg latency**: average ms between LLM request and response per decision
+- **Tokens/decision**: average tokens used per LLM call (from API response)
+- **Ticks missed**: number of ticks where no valid action was received in time
+
+Add these to the match result object and display in the result overlay.
+
+---
+
+## Build & Test
+
+```bash
+cd web
+npm run build
 ```
 
-### 5. Update the snapshot callback
-In the existing snapshot handler (where setBotAHp/setBotBHp are called), add ONE line at the top:
-```tsx
-sceneRef.current?.update?.(snap);
+Build must pass clean. No TypeScript errors.
+
+## Commit & Push
+
+```bash
+git add -A
+git commit -m "feat(forge): Forge home + persistent nav + bot convergence + telemetry"
+git push origin feat/forge-nav
 ```
 
-### 6. Add canvas to JSX
-Find the section in JSX that shows the arena/map and REPLACE the CSS grid or empty div with:
-```tsx
-{/* PlayCanvas 3D arena */}
-<div style={{ position: 'relative', height: 360, marginBottom: '1rem', borderRadius: 14, overflow: 'hidden', background: '#101010', border: '3px solid #111' }}>
-  <canvas
-    ref={playCanvasRef}
-    style={{ width: '100%', height: '100%', display: 'block' }}
-  />
-  {/* VFX word overlay */}
-  {vfxWords.map(v => (
-    <div key={v.id} style={{
-      position: 'absolute', top: '40%', left: '50%',
-      transform: 'translate(-50%,-50%)',
-      fontFamily: 'Bangers, display', fontSize: '3rem',
-      color: v.color, textShadow: `3px 3px 0 #000`,
-      pointerEvents: 'none', animation: 'vfx-bolt-in 0.6s ease-out forwards',
-    }}>{v.text}</div>
-  ))}
-  {/* Fallback — show before PlayCanvas loads */}
-  {!pcActive && (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.85rem' }}>
-      Loading arena...
-    </div>
-  )}
-</div>
-```
+Then create PR to main.
 
-Add the VFX keyframe animation to the `<style>` tag already in QuickDemo:
-```css
-@keyframes vfx-bolt-in { 0% { transform: translate(-50%,-50%) scale(0.3); opacity: 0; } 25% { transform: translate(-50%,-50%) scale(1.3); opacity: 1; } 100% { transform: translate(-50%,-50%) scale(1); opacity: 0; } }
-```
+---
 
-## What NOT to change
-- All the HP bars, action feed with reasoning, BYO key input, winner banner, rematch button
-- The bot configs (BERSERKER/TACTICIAN)
-- The match runner logic (`runMatchAsync`)
-- Any other files
-
-## Success Criteria
-1. `/play` shows the PlayCanvas 3D arena with bots moving around
-2. HP bars + reasoning feed still visible alongside/below the arena
-3. `cd web && bun run build` passes clean
-4. Commit: `feat: wire PlayCanvas 3D scene into QuickDemo`
-5. Push to `feat/quickdemo-3d`
-6. `gh pr create --title "feat: wire PlayCanvas 3D scene into QuickDemo" --body "QuickDemo now uses the existing PlayCanvasScene — bots move in 3D arena with VFX. HP bars and reasoning feed kept alongside." --base main`
-7. `openclaw system event --text "Done: PlayCanvas 3D wired into QuickDemo — PR open" --mode now`
+## Style Rules (non-negotiable)
+- Colors: `#FFD600` yellow, `#EB4D4B` red, `#00E5FF` cyan, `#1A1A1A` dark
+- Fonts: Bangers (headers), Kanit (body), IBM Plex Mono (stats/mono)
+- Fonts are loaded in `__root.tsx` via `<link>` tags — do NOT add `@import` in CSS strings
+- Thick black borders (2-3px solid #000), hard drop shadows (`6px 6px 0 #000`), neo-brutalist feel
+- All interactive elements feel tactile (box-shadow gives 3D depth)

@@ -81,6 +81,53 @@ const matchStyles = `
   @keyframes mv-slam { 0% { transform: scale(4); opacity: 0; } 30% { transform: scale(0.85); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
   @keyframes mv-flash { 0% { box-shadow: inset 0 0 0 50px rgba(255,255,255,0.6); } 100% { box-shadow: inset 0 0 0 50px rgba(255,255,255,0); } }
 
+  /* Telemetry */
+  .mv-telemetry {
+    width: 100%;
+    max-width: 580px;
+    margin: 0.75rem auto 0;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    background: rgba(255,255,255,0.04);
+  }
+  .mv-telemetry-title {
+    font-family: var(--f-display);
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--c-cyan);
+    text-shadow: 1px 1px 0 #000;
+    margin-bottom: 0.6rem;
+    text-align: center;
+  }
+  .mv-telemetry-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3rem 2rem;
+  }
+  .mv-telemetry-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .mv-telemetry-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.75);
+  }
+  .mv-telemetry-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.2rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .mv-telemetry-row:last-child { border-bottom: none; }
+
   /* KO Overlay */
   .mv-ko-overlay { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.92); overflow: hidden; }
   .mv-ko-radial-bg { position: absolute; width: 250%; height: 250%; top: -75%; left: -75%; background: repeating-conic-gradient(from 0deg, #FFD233 0deg 5deg, #111 5deg 10deg); animation: mv-spin 20s linear infinite; opacity: 0.15; pointer-events: none; }
@@ -206,6 +253,21 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
   const [pcActive, setPcActive] = useState(false);
   const [vfxWord, setVfxWord] = useState<{ text: string; color: string; id: number } | null>(null);
 
+  // Engineering telemetry tracking
+  const telemetryRef = useRef<{
+    botA: { decisions: number; noOps: number; illegals: number; latencySum: number; latencyCount: number };
+    botB: { decisions: number; noOps: number; illegals: number; latencySum: number; latencyCount: number };
+    lastSnapshotTime: number;
+  }>({
+    botA: { decisions: 0, noOps: 0, illegals: 0, latencySum: 0, latencyCount: 0 },
+    botB: { decisions: 0, noOps: 0, illegals: 0, latencySum: 0, latencyCount: 0 },
+    lastSnapshotTime: Date.now(),
+  });
+  const [telemetry, setTelemetry] = useState<{
+    botA: { avgLatency: number; ticksMissed: number; decisionsCount: number };
+    botB: { avgLatency: number; ticksMissed: number; decisionsCount: number };
+  } | null>(null);
+
   // Inject styles
   useEffect(() => {
     const id = 'matchview-styles';
@@ -297,6 +359,28 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
       }
     }
 
+    // Track telemetry from events
+    const tel = telemetryRef.current;
+    const now = Date.now();
+    const elapsed = now - tel.lastSnapshotTime;
+    tel.lastSnapshotTime = now;
+    for (const evt of newEvents) {
+      const bot = evt.actorId === 'botA' ? tel.botA : evt.actorId === 'botB' ? tel.botB : null;
+      if (!bot) continue;
+      if (evt.type === 'ACTION_ACCEPTED') {
+        bot.decisions++;
+        if (evt.data?.type === 'NO_OP') {
+          bot.noOps++;
+        } else {
+          bot.latencySum += elapsed;
+          bot.latencyCount++;
+        }
+      }
+      if (evt.type === 'ILLEGAL_ACTION') {
+        bot.illegals++;
+      }
+    }
+
     for (const evt of newEvents) {
       if (evt.type === 'DAMAGE_APPLIED') {
         const targetPos = evt.targetId === 'botA' ? aPosGrid : bPosGrid;
@@ -316,6 +400,21 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
         botAIllegal: actorA.stats?.illegalActions ?? 0,
         botBIllegal: actorB.stats?.illegalActions ?? 0,
       });
+      // Compute telemetry
+      const tel = telemetryRef.current;
+      setTelemetry({
+        botA: {
+          avgLatency: tel.botA.latencyCount > 0 ? Math.round(tel.botA.latencySum / tel.botA.latencyCount) : 0,
+          ticksMissed: tel.botA.noOps + tel.botA.illegals,
+          decisionsCount: tel.botA.decisions,
+        },
+        botB: {
+          avgLatency: tel.botB.latencyCount > 0 ? Math.round(tel.botB.latencySum / tel.botB.latencyCount) : 0,
+          ticksMissed: tel.botB.noOps + tel.botB.illegals,
+          decisionsCount: tel.botB.decisions,
+        },
+      });
+
       setRunning(false);
       setPhase('result');
     }
@@ -435,6 +534,12 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
     setBotALastAction('');
     setBotBLastAction('');
     setPcActive(false);
+    setTelemetry(null);
+    telemetryRef.current = {
+      botA: { decisions: 0, noOps: 0, illegals: 0, latencySum: 0, latencyCount: 0 },
+      botB: { decisions: 0, noOps: 0, illegals: 0, latencySum: 0, latencyCount: 0 },
+      lastSnapshotTime: Date.now(),
+    };
     prevEventsLenRef.current = 0;
 
     const seed = hashString(`${Date.now()}`) || 1;
@@ -630,6 +735,45 @@ export default function MatchView({ botA, botB, seed: seedProp, onBack, backLabe
             <span style={{ color: '#eb4d4b' }}>Damage dealt: {finalStats.botBDmg}</span>
             <span style={{ color: '#2ecc71' }}>Illegal actions: {finalStats.botAIllegal}</span>
             <span style={{ color: '#eb4d4b' }}>Illegal actions: {finalStats.botBIllegal}</span>
+          </div>
+        )}
+
+        {/* Engineering Telemetry */}
+        {telemetry && (
+          <div className="mv-telemetry">
+            <div className="mv-telemetry-title">Engineering Telemetry</div>
+            <div className="mv-telemetry-grid">
+              <div>
+                <div style={{ fontFamily: "'Bangers', display", fontSize: '1rem', color: '#2ecc71', letterSpacing: 1, marginBottom: '0.3rem' }}>{aName}</div>
+                <div className="mv-telemetry-row">
+                  <span className="mv-telemetry-label">Avg latency</span>
+                  <span className="mv-telemetry-val">{telemetry.botA.avgLatency}ms</span>
+                </div>
+                <div className="mv-telemetry-row">
+                  <span className="mv-telemetry-label">Decisions</span>
+                  <span className="mv-telemetry-val">{telemetry.botA.decisionsCount}</span>
+                </div>
+                <div className="mv-telemetry-row">
+                  <span className="mv-telemetry-label">Ticks missed</span>
+                  <span className="mv-telemetry-val">{telemetry.botA.ticksMissed}</span>
+                </div>
+              </div>
+              <div>
+                <div style={{ fontFamily: "'Bangers', display", fontSize: '1rem', color: '#eb4d4b', letterSpacing: 1, marginBottom: '0.3rem' }}>{bName}</div>
+                <div className="mv-telemetry-row">
+                  <span className="mv-telemetry-label">Avg latency</span>
+                  <span className="mv-telemetry-val">{telemetry.botB.avgLatency}ms</span>
+                </div>
+                <div className="mv-telemetry-row">
+                  <span className="mv-telemetry-label">Decisions</span>
+                  <span className="mv-telemetry-val">{telemetry.botB.decisionsCount}</span>
+                </div>
+                <div className="mv-telemetry-row">
+                  <span className="mv-telemetry-label">Ticks missed</span>
+                  <span className="mv-telemetry-val">{telemetry.botB.ticksMissed}</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
