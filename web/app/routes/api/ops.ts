@@ -117,11 +117,11 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
+          { sha: '2625b59', msg: 'feat(p3): founder checkout fallback + postback hardening + env docs' },
+          { sha: '11df489', msg: 'feat(p2): public /demo route + landing demo link + QuickDemo scripted fallback' },
+          { sha: '70e3932', msg: 'fix(p1): signup form reliability + ops log auto-refresh + recent commits' },
           { sha: 'e286c12', msg: 'feat: guest/anonymous auth for frictionless onboarding (#35)' },
           { sha: '691421d', msg: 'fix(ws10): kill duplicate navbars + landing-page card aesthetic (#33)' },
-          { sha: 'ddff6e1', msg: 'feat(ws9): The Pit arena lobby + fix forge real crawler data (#32)' },
-          { sha: '7ffdfff', msg: 'feat(ws8): arcade visual overhaul — bring in-game UI to landing page energy (#31)' },
-          { sha: '9299438', msg: 'fix(auth): auto-upsert player profile on sign-in via AppNav' },
         ];
 
         return new Response(JSON.stringify({
