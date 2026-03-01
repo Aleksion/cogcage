@@ -283,9 +283,13 @@ function SignInPage() {
 
               <EmailOTPForm />
 
-              <div className="signin-divider">or</div>
-
-              <GuestSignIn />
+              {/* Guest auth is dev-only — only shown when VITE_ENABLE_GUEST_AUTH=true */}
+              {import.meta.env.VITE_ENABLE_GUEST_AUTH === "true" && (
+                <>
+                  <div className="signin-divider">or</div>
+                  <GuestSignIn />
+                </>
+              )}
             </div>
           )}
         </div>
