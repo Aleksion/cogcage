@@ -1472,6 +1472,20 @@ const HeroSection = ({ sectionRef }) => {
             Play Demo
           </button>
         </div>
+        <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
+          <a
+            href="/demo"
+            style={{
+              color: 'rgba(255,255,255,0.65)',
+              fontSize: '0.9rem',
+              textDecoration: 'underline',
+              textUnderlineOffset: '3px',
+              fontFamily: 'var(--f-body)',
+            }}
+          >
+            → Watch a live battle
+          </a>
+        </div>
         {status === 'success' && lastSubmittedEmail && (
           <div style={{ marginTop: '0.5rem', fontWeight: 800 }}>
             Want founder perks now?{' '}

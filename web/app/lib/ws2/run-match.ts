@@ -98,6 +98,24 @@ function nearestAliveEnemy(actors: Record<string, any>, actorId: string): string
   return nearest;
 }
 
+/* ── Scripted-AI reasoning fallbacks (used when LLM API is unavailable) ─── */
+const SCRIPTED_REASONING: Record<string, string> = {
+  MELEE_STRIKE: 'Enemy in range — press the advantage!',
+  RANGED_SHOT: 'Clear line of sight — taking the shot.',
+  GUARD: 'Low resources — bracing for impact.',
+  MOVE: 'Closing distance to engage.',
+  DASH: 'Rushing into position!',
+  UTILITY: 'Deploying tactical ability.',
+  NO_OP: 'Conserving energy.',
+};
+
+function scriptedFallback(loadout: string[]): { type: string; reasoning?: string } {
+  const candidates = loadout.length > 0 ? loadout : ['NO_OP'];
+  const type = candidates[Math.floor(Math.random() * candidates.length)];
+  const reasoning = SCRIPTED_REASONING[type] ?? `Executing ${type}.`;
+  return { type, reasoning };
+}
+
 async function fetchDecision(
   apiBase: string,
   gameState: any,
@@ -134,14 +152,14 @@ async function fetchDecision(
       signal: controller.signal,
     });
     clearTimeout(timer);
-    if (!res.ok) return { type: 'NO_OP' };
+    if (!res.ok) return scriptedFallback(loadout);
     const data = await res.json();
     const action = data?.action ?? { type: 'NO_OP' };
     if (data?.reasoning) action.reasoning = data.reasoning;
     return action;
   } catch {
     clearTimeout(timer);
-    return { type: 'NO_OP' };
+    return scriptedFallback(loadout);
   }
 }
 
