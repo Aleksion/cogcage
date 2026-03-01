@@ -246,3 +246,47 @@ git add -A && git commit -m "feat(ws12a): full-bleed game UI overhaul — HUD na
 git push origin feat/ws12a-game-ui-overhaul
 gh pr create --title "feat(ws12a): full-bleed game UI overhaul" --body "HUD nav strip, cyan pill active state, arena ThePit, ember Forge, remove global bg. WS12A."
 ```
+
+---
+
+## 5. `sign-in.tsx` — Auth Gate Full Treatment
+
+The sign-in page currently shows a plain `#111` dark background. It needs arena atmosphere.
+
+### Background:
+Same as ThePit — radial dark blue arena:
+```css
+min-height: 100vh;
+background: radial-gradient(ellipse at 50% 40%, #0a0a2e 0%, #050510 60%, #000 100%);
+display: flex; align-items: center; justify-content: center;
+```
+
+### Card:
+```css
+background: rgba(0,0,0,0.7);
+border: 1px solid rgba(0,229,255,0.25);
+border-radius: 16px;
+padding: 2.5rem 2rem;
+backdrop-filter: blur(12px);
+max-width: 420px; width: 100%;
+box-shadow: 0 0 60px rgba(0,229,255,0.06);
+```
+
+### Typography:
+- "PLAYER AUTH" label: `font-family: 'IBM Plex Mono'; font-size: 0.7rem; letter-spacing: 3px; color: rgba(0,229,255,0.6); text-transform: uppercase;`
+- "ENTER THE PIT" heading: keep Bangers, but make it `color: #fff; font-size: 2.5rem; text-shadow: 0 0 30px rgba(0,229,255,0.4);`
+
+### GitHub button:
+```css
+background: #fff; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 #000;
+font-family: 'Kanit'; font-weight: 800; text-transform: uppercase;
+```
+
+### Magic link button:
+```css
+background: #00E5FF; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 #000;
+font-family: 'Kanit'; font-weight: 800; text-transform: uppercase;
+```
+
+### Add to File Changes Summary:
+5. `web/app/routes/sign-in.tsx` — arena atmosphere, arcade card, styled buttons
