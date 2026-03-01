@@ -39,7 +39,6 @@ const PIT_STYLES = `
     flex-direction: column;
     align-items: center;
     width: 100%;
-    max-width: 900px;
   }
 
   .pit-hud-panel {
@@ -331,7 +330,7 @@ export default function ThePit() {
         </div>
 
         {/* Two-column grid */}
-        <div className="pit-grid" style={{ width: '100%', maxWidth: 900 }}>
+        <div className="pit-grid" style={{ width: '100%' }}>
           {/* Leaderboard */}
           <div className="pit-panel">
             <h2 className="pit-section-title">Leaderboard</h2>
