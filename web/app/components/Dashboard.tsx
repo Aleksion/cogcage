@@ -282,16 +282,6 @@ export default function Dashboard() {
 
   return (
     <div className="dash-root">
-      {/* Header */}
-      <header className="dash-header">
-        <a href="/" className="dash-logo">The Molt Pit</a>
-        <nav className="dash-nav">
-          <a href="/">Home</a>
-          <a href="/play" className="active">Play</a>
-          <a href="/shell">The Shell</a>
-        </nav>
-      </header>
-
       <main className="dash-shell">
         {/* WATCH A LIVE MOLT */}
         <div className="dash-section-title">Watch a Live Molt</div>

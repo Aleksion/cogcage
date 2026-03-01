@@ -67,25 +67,13 @@ const armoryStyles = `
 
   .armory-root { min-height: 100vh; position: relative; font-family: var(--f-body); }
 
-  .armory-header {
-    position: sticky; top: 0; z-index: 10;
-    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-    padding: 0.8rem 2rem;
-    background: #000;
-    border-bottom: 3px solid #FFD600;
+  .armory-back-link {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: var(--f-display); font-size: 1rem; text-decoration: none;
+    color: #FFD600; text-shadow: 1px 1px 0 #000;
+    padding: 0.4rem 0; margin-bottom: 0.75rem;
   }
-  .armory-logo {
-    font-family: var(--f-display); font-size: 2rem; text-decoration: none;
-    color: #EB4D4B; text-shadow: 2px 2px 0 #000;
-  }
-  .armory-nav { display: flex; gap: 0.8rem; align-items: center; }
-  .armory-nav a {
-    font-weight: 800; text-transform: uppercase; text-decoration: none;
-    color: rgba(255,255,255,0.6); padding: 0.4rem 0.8rem;
-    font-size: 0.85rem; transition: color 0.15s;
-  }
-  .armory-nav a:hover { color: #fff; }
-  .armory-nav a.active { color: #FFD600; border-bottom: 3px solid #FFD600; }
+  .armory-back-link:hover { opacity: 0.8; }
 
   .armory-shell { padding: 1.5rem 2rem 3rem; max-width: 1400px; margin: 0 auto; }
 
@@ -522,24 +510,10 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
 
   return (
     <div className="armory-root">
-      {/* Header */}
-      <header className="armory-header">
-        <a href="/" className="armory-logo">The Molt Pit</a>
-        <nav className="armory-nav">
-          {resolvedReturnTo ? (
-            <a href={resolvedReturnTo} style={{ color: '#FFD600', fontFamily: "'Bangers', display", fontSize: '1rem' }}>
-              Back to The Tank
-            </a>
-          ) : (
-            <>
-              <a href="/play">Play</a>
-              <a href="/shell" className="active">The Shell</a>
-            </>
-          )}
-        </nav>
-      </header>
-
       <main className="armory-shell">
+        {resolvedReturnTo && (
+          <a href={resolvedReturnTo} className="armory-back-link">← Back to Tank</a>
+        )}
         <div className="armory-layout">
           {/* Left: Card Gallery */}
           <div className="gallery-panel">
