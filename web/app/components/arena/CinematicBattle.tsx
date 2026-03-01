@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { runMatchAsync } from '~/lib/ws2/run-match'
 import { HP_MAX, TICK_RATE, MAX_TICKS, UNIT_SCALE } from '~/lib/ws2/index'
 import type { BotConfig, MatchSnapshot } from '~/lib/ws2/match-types'
+import { PARTS, composeMold, type Part } from '~/lib/ws2/parts'
 import ArenaCanvas, { type ArenaHandle } from './ArenaCanvas'
 import BattleHUD from './BattleHUD'
 import BrainStream from './BrainStream'
@@ -19,31 +20,19 @@ import {
 
 const ENERGY_MAX = 1000
 
-const BERSERKER: BotConfig = {
-  id: 'botA',
-  name: 'BERSERKER',
-  systemPrompt:
-    'You are BERSERKER, an aggressive melee fighter. Rush the enemy. Attack at every opportunity. Never retreat.',
-  loadout: ['MOVE', 'MELEE_STRIKE', 'DASH', 'GUARD'],
-  armor: 'light',
-  position: { x: 4, y: 10 },
-  temperature: 0.9,
-  brainPrompt:
-    'Rush the enemy. Attack at every opportunity. Never retreat.',
-}
+const DEFAULT_PLAYER_MOLD: Part[] = [
+  PARTS.find(p => p.id === 'exo-plating')!,
+  PARTS.find(p => p.id === 'crusher-claws')!,
+  PARTS.find(p => p.id === 'berserker-directive')!,
+  PARTS.find(p => p.id === 'adrenaline')!,
+]
 
-const TACTICIAN: BotConfig = {
-  id: 'botB',
-  name: 'TACTICIAN',
-  systemPrompt:
-    'You are TACTICIAN, a defensive ranged fighter. Maintain optimal range. Snipe from distance.',
-  loadout: ['MOVE', 'RANGED_SHOT', 'GUARD', 'UTILITY'],
-  armor: 'heavy',
-  position: { x: 16, y: 10 },
-  temperature: 0.3,
-  brainPrompt:
-    'Maintain optimal range. Snipe from distance.',
-}
+const DEFAULT_OPPONENT_MOLD: Part[] = [
+  PARTS.find(p => p.id === 'phase-silk')!,
+  PARTS.find(p => p.id === 'rending-talons')!,
+  PARTS.find(p => p.id === 'tactician-directive')!,
+  PARTS.find(p => p.id === 'regenerator')!,
+]
 
 const ACTION_ICONS: Record<string, string> = {
   MELEE_STRIKE: '\u2694\uFE0F',
@@ -137,9 +126,25 @@ async function streamBrainTokens(
 
 interface CinematicBattleProps {
   seed?: number
+  playerMold?: Part[] | null
+  opponentMold?: Part[] | null
+  playerName?: string
 }
 
-export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps) {
+export default function CinematicBattle({ seed: seedProp, playerMold, opponentMold, playerName }: CinematicBattleProps) {
+  const playerBot = useMemo(() => composeMold(
+    playerMold ?? DEFAULT_PLAYER_MOLD,
+    'botA',
+    playerName ?? 'YOUR CRAWLER',
+    { x: 4, y: 10 },
+  ), [playerMold, playerName])
+
+  const opponentBot = useMemo(() => composeMold(
+    opponentMold ?? DEFAULT_OPPONENT_MOLD,
+    'botB',
+    'OPPONENT',
+    { x: 16, y: 10 },
+  ), [opponentMold])
   const arenaRef = useRef<ArenaHandle>(null)
   const abortRef = useRef<AbortController | null>(null)
   const prevEventsLenRef = useRef(0)
@@ -214,7 +219,7 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
     const entries: FeedEntry[] = []
 
     for (const evt of newEvents) {
-      const who = evt.actorId === 'botA' ? 'BERSERKER' : 'TACTICIAN'
+      const who = evt.actorId === 'botA' ? playerBot.name : opponentBot.name
       const isA = evt.actorId === 'botA'
 
       if (evt.type === 'ACTION_ACCEPTED') {
@@ -258,7 +263,7 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
       }
 
       if (evt.type === 'DAMAGE_APPLIED') {
-        const target = evt.targetId === 'botA' ? 'BERSERKER' : 'TACTICIAN'
+        const target = evt.targetId === 'botA' ? playerBot.name : opponentBot.name
         const isTargetA = evt.targetId === 'botA'
         const amount = evt.data?.amount ?? 0
         const guarded = evt.data?.defenderGuarded ? ' (guarded)' : ''
@@ -302,7 +307,7 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
       playKOSound()
       stopAmbient()
     }
-  }, [])
+  }, [playerBot.name, opponentBot.name])
 
   /* ── Brain stream integration ─────────────────────────────── */
 
@@ -400,7 +405,7 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
             runBrainStream(
               { tick: s.tick, actors: s.actors, events: (s.events || []).slice(-10) },
               'botA',
-              BERSERKER,
+              playerBot,
               ['botB'],
             )
           }
@@ -408,18 +413,18 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
             runBrainStream(
               { tick: s.tick, actors: s.actors, events: (s.events || []).slice(-10) },
               'botB',
-              TACTICIAN,
+              opponentBot,
               ['botA'],
             )
           }
         }
       }
 
-      runMatchAsync(seed, [BERSERKER, TACTICIAN], wrappedSnapshot, '/api/agent/decide', controller.signal).catch(
+      runMatchAsync(seed, [playerBot, opponentBot], wrappedSnapshot, '/api/agent/decide', controller.signal).catch(
         (err) => console.error('[CinematicBattle] match error:', err),
       )
     },
-    [handleSnapshot, runBrainStream],
+    [handleSnapshot, runBrainStream, playerBot, opponentBot],
   )
 
   /* ── Auto-start with countdown ───────────────────────────── */
@@ -473,7 +478,7 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
   }
 
   const winnerName =
-    winnerId === 'botA' ? 'BERSERKER' : winnerId === 'botB' ? 'TACTICIAN' : null
+    winnerId === 'botA' ? playerBot.name : winnerId === 'botB' ? opponentBot.name : null
   const winnerColor =
     winnerId === 'botA' ? '#EB4D4B' : winnerId === 'botB' ? '#00E5FF' : '#FFD600'
 
@@ -506,12 +511,14 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
         /* countdown and loading also show 'playing' state in HUD */
         muted={muted}
         onToggleMute={onToggleMute}
+        botAName={playerBot.name}
+        botBName={opponentBot.name}
       />
 
       {/* Brain Stream Panels — desktop only */}
       <div className="brain-panels-desktop">
         <BrainStream
-          botName="BERSERKER"
+          botName={playerBot.name}
           botColor="#EB4D4B"
           tokens={brainTokensA}
           isThinking={thinkingA}
@@ -520,7 +527,7 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
           side="left"
         />
         <BrainStream
-          botName="TACTICIAN"
+          botName={opponentBot.name}
           botColor="#00E5FF"
           tokens={brainTokensB}
           isThinking={thinkingB}
@@ -549,11 +556,11 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
             overflow: 'hidden',
           }}
         >
-          <span style={{ color: '#EB4D4B', flexShrink: 0 }}>B:</span>
+          <span style={{ color: '#EB4D4B', flexShrink: 0 }}>{playerBot.name.slice(0, 3)}:</span>
           <span style={{ color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
             {thinkingA ? brainTokensA.slice(-60) + '...' : lastActionA || 'waiting'}
           </span>
-          <span style={{ color: '#00E5FF', flexShrink: 0 }}>T:</span>
+          <span style={{ color: '#00E5FF', flexShrink: 0 }}>{opponentBot.name.slice(0, 3)}:</span>
           <span style={{ color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
             {thinkingB ? brainTokensB.slice(-60) + '...' : lastActionB || 'waiting'}
           </span>
@@ -700,7 +707,7 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
               animation: 'slide-up 0.5s ease-out 0.7s both',
             }}
           >
-            {/* Berserker stats */}
+            {/* Player stats */}
             <div
               style={{
                 background: 'rgba(235,77,75,0.1)',
@@ -712,7 +719,7 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
               }}
             >
               <div style={{ fontFamily: "'Bangers', display", fontSize: '1.2rem', color: '#EB4D4B', marginBottom: 8 }}>
-                BERSERKER
+                {playerBot.name}
               </div>
               <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.8 }}>
                 HP: {botAHp}<br />
@@ -721,7 +728,7 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
               </div>
             </div>
 
-            {/* Tactician stats */}
+            {/* Opponent stats */}
             <div
               style={{
                 background: 'rgba(0,229,255,0.1)',
@@ -733,7 +740,7 @@ export default function CinematicBattle({ seed: seedProp }: CinematicBattleProps
               }}
             >
               <div style={{ fontFamily: "'Bangers', display", fontSize: '1.2rem', color: '#00E5FF', marginBottom: 8 }}>
-                TACTICIAN
+                {opponentBot.name}
               </div>
               <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.8 }}>
                 HP: {botBHp}<br />
