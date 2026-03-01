@@ -25,68 +25,47 @@ interface LobbyInfo {
 const dashStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:ital,wght@0,400;0,800;1,900&family=IBM+Plex+Mono:wght@400;600&display=swap');
 
-  :root {
-    --c-yellow: #FFD600;
-    --c-orange: #FF9F1C;
-    --c-red: #EB4D4B;
-    --c-cyan: #00E5FF;
-    --c-dark: #1A1A1A;
-    --c-white: #FFFFFF;
-    --c-green: #2ecc71;
-    --f-display: 'Bangers', display;
-    --f-body: 'Kanit', sans-serif;
-    --f-mono: 'IBM Plex Mono', monospace;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: #1A1A1A;
-    font-family: var(--f-body);
-    color: #f0f0f5;
-    min-height: 100vh;
-  }
-
-  .dash-root { min-height: 100vh; position: relative; }
+  .dash-root { min-height: 100vh; position: relative; font-family: var(--f-body); }
 
   .dash-header {
     position: sticky; top: 0; z-index: 10;
     display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-    padding: 1rem 2rem;
-    background: rgba(26,26,26,0.98);
-    border-bottom: 2px solid rgba(255,255,255,0.08);
-    backdrop-filter: blur(12px);
+    padding: 0.8rem 2rem;
+    background: #000;
+    border-bottom: 3px solid #FFD600;
   }
   .dash-logo {
     font-family: var(--f-display); font-size: 2rem; text-decoration: none;
-    color: var(--c-red); text-shadow: 2px 2px 0px #000;
+    color: #EB4D4B; text-shadow: 2px 2px 0 #000;
   }
   .dash-nav { display: flex; gap: 0.8rem; align-items: center; }
   .dash-nav a {
     font-weight: 800; text-transform: uppercase; text-decoration: none;
     color: rgba(255,255,255,0.6); padding: 0.4rem 0.8rem;
-    border-radius: 8px; font-size: 0.85rem; transition: color 0.15s;
+    font-size: 0.85rem; transition: color 0.15s;
   }
   .dash-nav a:hover { color: #fff; }
-  .dash-nav a.active { color: var(--c-yellow); }
+  .dash-nav a.active { color: #FFD600; border-bottom: 3px solid #FFD600; }
 
   .dash-shell { padding: 2rem; max-width: 800px; margin: 0 auto; }
 
   .dash-section-title {
-    font-family: var(--f-display); font-size: 1.5rem; text-transform: uppercase;
-    letter-spacing: 1px; margin-bottom: 0.8rem; color: #fff;
+    font-family: var(--f-display); font-size: 2rem; text-transform: uppercase;
+    letter-spacing: 2px; margin-bottom: 0.8rem; color: #fff;
+    text-shadow: 2px 2px 0 var(--c-orange);
   }
 
   .dash-bot-card {
-    background: rgba(20,20,28,0.8);
-    border: 2px solid rgba(255,214,0,0.3);
-    border-radius: 12px; padding: 1.2rem;
-    backdrop-filter: blur(8px);
+    background: #111;
+    border: 3px solid #FFD600;
+    box-shadow: 6px 6px 0 #000;
+    border-radius: 12px; padding: 1.5rem;
     margin-bottom: 1.5rem;
   }
   .dash-bot-card.empty {
     border-style: dashed;
-    border-color: rgba(255,255,255,0.15);
+    border-color: rgba(255,255,255,0.25);
+    box-shadow: none;
     text-align: center;
     padding: 2rem;
   }
@@ -95,29 +74,44 @@ const dashStyles = `
     margin-bottom: 0.6rem;
   }
   .dash-bot-name {
-    font-family: var(--f-display); font-size: 1.3rem; color: #fff;
-    text-transform: uppercase;
+    font-family: var(--f-display); font-size: 2.5rem; color: #FFD600;
+    text-transform: uppercase; text-shadow: 3px 3px 0 #000;
   }
   .dash-btn {
-    font-family: var(--f-display); font-size: 0.9rem; text-transform: uppercase;
-    padding: 0.5rem 1.2rem; border-radius: 8px; cursor: pointer; border: none;
-    transition: opacity 0.15s; text-decoration: none; display: inline-block;
+    font-family: var(--f-display); font-size: 1.2rem; text-transform: uppercase;
+    padding: 0.6rem 2rem; border-radius: 8px; cursor: pointer;
+    border: 3px solid #000; box-shadow: 3px 3px 0 #000;
+    transition: transform 0.1s, box-shadow 0.1s, opacity 0.15s;
+    text-decoration: none; display: inline-block;
   }
-  .dash-btn:hover { opacity: 0.85; }
-  .dash-btn.configure { background: var(--c-cyan); color: #111; }
-  .dash-btn.build { background: var(--c-yellow); color: #111; }
+  .dash-btn:active { transform: translateY(3px); box-shadow: none; }
+  .dash-btn:hover { opacity: 0.9; }
+  .dash-btn.configure {
+    background: transparent; color: #fff;
+    border: 3px solid rgba(255,255,255,0.5);
+    box-shadow: 3px 3px 0 rgba(255,255,255,0.2);
+  }
+  .dash-btn.build {
+    background: #FFD600; color: #000;
+    border: 3px solid #000; box-shadow: 3px 3px 0 #000;
+  }
   .dash-btn.cta {
-    background: var(--c-yellow); color: #111; font-size: 1.3rem;
-    padding: 0.9rem 2.5rem; display: block; text-align: center;
-    margin: 1.5rem auto; max-width: 400px; border-radius: 12px;
-    box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+    background: #EB4D4B; color: #fff; font-size: 1.8rem;
+    padding: 1rem 2rem; display: block; text-align: center;
+    margin: 1.5rem auto; max-width: 400px; width: 100%;
+    border: 4px solid #000; box-shadow: 0 6px 0 #000;
+    border-radius: 12px;
   }
-  .dash-btn.cta:active { transform: translateY(2px); box-shadow: none; }
+  .dash-btn.cta:active { transform: translateY(6px); box-shadow: none; }
   .dash-btn.cta:disabled { opacity: 0.4; cursor: not-allowed; }
-  .dash-btn.join { background: var(--c-green); color: #fff; font-size: 0.8rem; padding: 0.4rem 0.9rem; }
+  .dash-btn.join {
+    background: #2ecc71; color: #fff; font-size: 0.8rem;
+    padding: 0.4rem 0.9rem; border: 2px solid #000; box-shadow: 2px 2px 0 #000;
+  }
 
   .dash-bot-info {
-    font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 0.4rem;
+    font-family: var(--f-body); font-weight: 800;
+    font-size: 1rem; color: rgba(255,255,255,0.4); margin-bottom: 0.4rem;
   }
   .dash-bot-icons {
     display: flex; gap: 6px; font-size: 1.2rem; margin-bottom: 0.4rem;
@@ -127,8 +121,9 @@ const dashStyles = `
   }
 
   .dash-weight-bar {
-    height: 8px; border-radius: 999px; overflow: hidden;
-    background: rgba(255,255,255,0.06); margin-top: 0.4rem;
+    height: 10px; border-radius: 999px; overflow: hidden;
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+    margin-top: 0.4rem;
   }
   .dash-weight-fill {
     height: 100%; border-radius: 999px;
@@ -142,25 +137,27 @@ const dashStyles = `
   .dash-lobby-row {
     display: flex; justify-content: space-between; align-items: center;
     padding: 0.7rem 1rem;
-    background: rgba(20,20,28,0.8);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
+    background: #111;
+    border: 3px solid #000;
+    box-shadow: 4px 4px 0 #000;
+    border-radius: 10px;
   }
   .dash-lobby-host {
-    font-weight: 800; color: #fff;
+    font-family: var(--f-display); font-weight: 800; color: #fff; font-size: 1.1rem;
   }
   .dash-lobby-vs {
     color: rgba(255,255,255,0.4); font-size: 0.85rem;
   }
   .dash-empty-text {
-    color: rgba(255,255,255,0.3); font-size: 0.9rem; text-align: center;
+    font-family: var(--f-body); font-weight: 800;
+    color: rgba(255,255,255,0.4); font-size: 1rem; text-align: center;
     padding: 1rem;
   }
 
   @media (max-width: 600px) {
-    .dash-header { padding: 1rem; }
+    .dash-header { padding: 0.8rem 1rem; }
     .dash-shell { padding: 1rem; }
-    .dash-btn.cta { font-size: 1.1rem; padding: 0.8rem 1.5rem; }
+    .dash-btn.cta { font-size: 1.4rem; padding: 0.8rem 1.5rem; }
   }
 `;
 

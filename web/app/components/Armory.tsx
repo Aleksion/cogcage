@@ -64,51 +64,27 @@ const SKILL_CATEGORY_COLORS: Record<string, string> = {
 const armoryStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:ital,wght@0,400;0,800;1,900&family=IBM+Plex+Mono:wght@400;600&display=swap');
 
-  :root {
-    --c-yellow: #FFD600;
-    --c-orange: #FF9F1C;
-    --c-red: #EB4D4B;
-    --c-cyan: #00E5FF;
-    --c-dark: #1A1A1A;
-    --c-white: #FFFFFF;
-    --c-green: #2ecc71;
-    --c-purple: #7c3aed;
-    --f-display: 'Bangers', display;
-    --f-body: 'Kanit', sans-serif;
-    --f-mono: 'IBM Plex Mono', monospace;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: #1A1A1A;
-    font-family: var(--f-body);
-    color: #f0f0f5;
-    min-height: 100vh;
-  }
-
-  .armory-root { min-height: 100vh; position: relative; }
+  .armory-root { min-height: 100vh; position: relative; font-family: var(--f-body); }
 
   .armory-header {
     position: sticky; top: 0; z-index: 10;
     display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-    padding: 1rem 2rem;
-    background: rgba(26,26,26,0.98);
-    border-bottom: 2px solid rgba(255,255,255,0.08);
-    backdrop-filter: blur(12px);
+    padding: 0.8rem 2rem;
+    background: #000;
+    border-bottom: 3px solid #FFD600;
   }
   .armory-logo {
     font-family: var(--f-display); font-size: 2rem; text-decoration: none;
-    color: var(--c-red); text-shadow: 2px 2px 0px #000;
+    color: #EB4D4B; text-shadow: 2px 2px 0 #000;
   }
   .armory-nav { display: flex; gap: 0.8rem; align-items: center; }
   .armory-nav a {
     font-weight: 800; text-transform: uppercase; text-decoration: none;
     color: rgba(255,255,255,0.6); padding: 0.4rem 0.8rem;
-    border-radius: 8px; font-size: 0.85rem; transition: color 0.15s;
+    font-size: 0.85rem; transition: color 0.15s;
   }
   .armory-nav a:hover { color: #fff; }
-  .armory-nav a.active { color: var(--c-yellow); }
+  .armory-nav a.active { color: #FFD600; border-bottom: 3px solid #FFD600; }
 
   .armory-shell { padding: 1.5rem 2rem 3rem; max-width: 1400px; margin: 0 auto; }
 
@@ -118,15 +94,16 @@ const armoryStyles = `
   }
 
   .gallery-panel, .builder-panel, .saved-panel {
-    background: rgba(20,20,28,0.8);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: #111;
+    border: 3px solid #000;
+    box-shadow: 4px 4px 0 #000;
     border-radius: 12px; padding: 1.2rem;
-    backdrop-filter: blur(8px);
   }
 
   .panel-title {
-    font-family: var(--f-display); font-size: 1.5rem; text-transform: uppercase;
-    letter-spacing: 1px; margin-bottom: 0.8rem; color: #fff;
+    font-family: var(--f-display); font-size: 2.5rem; text-transform: uppercase;
+    letter-spacing: 2px; margin-bottom: 1.2rem; color: #fff;
+    text-shadow: 3px 3px 0 var(--c-orange);
   }
 
   .filter-tabs {
@@ -134,12 +111,16 @@ const armoryStyles = `
   }
   .filter-tab {
     font-family: var(--f-body); font-weight: 800; font-size: 0.8rem;
-    text-transform: uppercase; padding: 0.35rem 0.8rem; border-radius: 999px;
-    border: 2px solid rgba(255,255,255,0.15); background: transparent;
+    text-transform: uppercase; padding: 0.35rem 0.8rem; border-radius: 6px;
+    border: 2px solid rgba(255,255,255,0.2); background: transparent;
     color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.15s;
   }
-  .filter-tab:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
-  .filter-tab.active { border-color: var(--c-yellow); color: var(--c-yellow); background: rgba(255,214,0,0.08); }
+  .filter-tab:hover { border-color: rgba(255,255,255,0.4); color: #fff; }
+  .filter-tab.active {
+    background: #FFD600; color: #000;
+    border: 3px solid #000; box-shadow: 3px 3px 0 #000;
+    font-family: var(--f-display); font-size: 1rem;
+  }
 
   .card-grid {
     display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
@@ -156,20 +137,20 @@ const armoryStyles = `
     margin-bottom: 1rem;
   }
   .slot {
-    width: 100%; aspect-ratio: 4/5; border-radius: 8px;
-    border: 2px dashed rgba(255,255,255,0.15);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 120px; height: 180px; border-radius: 10px;
+    border: 3px dashed rgba(255,255,255,0.25);
+    display: grid; place-items: center;
     cursor: pointer; transition: border-color 0.15s;
     position: relative; overflow: hidden;
-    background: rgba(255,255,255,0.02);
+    color: rgba(255,255,255,0.2); font-size: 2rem;
   }
-  .slot:hover { border-color: rgba(255,255,255,0.3); }
+  .slot:hover { border-color: rgba(255,255,255,0.4); }
   .slot .slot-empty {
-    font-size: 1.5rem; color: rgba(255,255,255,0.15);
+    font-size: 2rem; color: rgba(255,255,255,0.2);
   }
   .slot .slot-remove {
     position: absolute; top: 2px; right: 2px; width: 16px; height: 16px;
-    border-radius: 50%; background: var(--c-red); color: #fff;
+    border-radius: 50%; background: #EB4D4B; color: #fff;
     font-size: 0.55rem; display: grid; place-items: center;
     cursor: pointer; border: none; opacity: 0; transition: opacity 0.15s;
   }
@@ -183,11 +164,13 @@ const armoryStyles = `
     display: flex; align-items: center; gap: 0.5rem;
   }
   .stat-label {
-    font-weight: 800; font-size: 0.75rem; text-transform: uppercase;
-    color: rgba(255,255,255,0.5); width: 80px; flex-shrink: 0;
+    font-family: var(--f-display); font-size: 1rem;
+    color: rgba(255,255,255,0.8); width: 80px; flex-shrink: 0;
+    text-transform: uppercase;
   }
   .stat-bar-shell {
-    flex: 1; height: 10px; background: rgba(255,255,255,0.06);
+    flex: 1; height: 10px; background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
     border-radius: 999px; overflow: hidden;
   }
   .stat-bar-fill {
@@ -203,20 +186,22 @@ const armoryStyles = `
     display: flex; gap: 0.5rem; align-items: center;
   }
   .save-input {
-    flex: 1; padding: 0.5rem 0.75rem; border-radius: 8px;
-    border: 2px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04);
-    color: #fff; font-family: var(--f-body); font-size: 0.85rem;
+    flex: 1; padding: 0.6rem 1rem; border-radius: 6px;
+    border: 3px solid rgba(255,255,255,0.3); background: #0a0a0a;
+    color: #fff; font-family: var(--f-body); font-weight: 800; font-size: 1rem;
     outline: none; transition: border-color 0.15s;
   }
-  .save-input:focus { border-color: var(--c-yellow); }
+  .save-input:focus { border-color: #FFD600; }
   .save-input::placeholder { color: rgba(255,255,255,0.25); }
 
   .save-btn {
-    font-family: var(--f-display); font-size: 1rem; text-transform: uppercase;
-    padding: 0.5rem 1.2rem; background: var(--c-yellow); color: #111;
-    border: none; border-radius: 8px; cursor: pointer;
-    transition: opacity 0.15s;
+    font-family: var(--f-display); font-size: 1.3rem; text-transform: uppercase;
+    padding: 0.6rem 2rem; background: #EB4D4B; color: #fff;
+    border: 3px solid #000; box-shadow: 4px 4px 0 #000;
+    border-radius: 8px; cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
   }
+  .save-btn:active { transform: translateY(4px); box-shadow: none; }
   .save-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
   /* Saved shells strip */
@@ -228,7 +213,8 @@ const armoryStyles = `
 
   .saved-card {
     flex-shrink: 0; width: 240px; padding: 0.8rem;
-    background: rgba(20,20,28,0.9); border: 1px solid rgba(255,255,255,0.1);
+    background: #111; border: 3px solid #000;
+    box-shadow: 4px 4px 0 #000;
     border-radius: 10px; position: relative;
   }
   .saved-card-name {
@@ -247,11 +233,13 @@ const armoryStyles = `
   }
   .saved-card-btn {
     font-family: var(--f-display); font-size: 0.75rem; text-transform: uppercase;
-    padding: 0.3rem 0.7rem; border-radius: 6px; cursor: pointer; border: none;
-    transition: opacity 0.15s;
+    padding: 0.3rem 0.7rem; border-radius: 6px; cursor: pointer;
+    border: 2px solid #000; box-shadow: 2px 2px 0 #000;
+    transition: transform 0.1s, box-shadow 0.1s;
   }
-  .saved-card-btn.enter { background: var(--c-green); color: #fff; }
-  .saved-card-btn.delete { background: var(--c-red); color: #fff; }
+  .saved-card-btn:active { transform: translateY(2px); box-shadow: none; }
+  .saved-card-btn.enter { background: #2ecc71; color: #fff; }
+  .saved-card-btn.delete { background: #EB4D4B; color: #fff; }
   .saved-card-btn:hover { opacity: 0.85; }
 
   .clear-btn {
@@ -259,14 +247,14 @@ const armoryStyles = `
     font-size: 0.75rem; cursor: pointer; text-decoration: underline;
     font-family: var(--f-body);
   }
-  .clear-btn:hover { color: var(--c-red); }
+  .clear-btn:hover { color: #EB4D4B; }
 
   /* Skills panel */
   .skills-panel, .brain-panel {
-    background: rgba(20,20,28,0.8);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: #111;
+    border: 3px solid #000;
+    box-shadow: 4px 4px 0 #000;
     border-radius: 12px; padding: 1.2rem;
-    backdrop-filter: blur(8px);
     margin-top: 1.5rem;
   }
 
@@ -275,17 +263,18 @@ const armoryStyles = `
   }
   .skill-chip {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 12px; border-radius: 8px;
-    font-size: 0.8rem; font-weight: 800;
+    padding: 4px 10px; border-radius: 6px;
+    font-family: var(--f-body); font-size: 0.8rem; font-weight: 800;
     cursor: pointer; transition: all 0.15s;
     border: 2px solid transparent;
-    background: rgba(255,255,255,0.04);
+    background: #1a1a1a;
+    box-shadow: 2px 2px 0 #000;
     color: rgba(255,255,255,0.7);
   }
-  .skill-chip:hover { background: rgba(255,255,255,0.08); }
+  .skill-chip:hover { background: #222; }
   .skill-chip.equipped {
-    background: rgba(255,255,255,0.1);
-    box-shadow: 0 0 8px rgba(255,255,255,0.1);
+    color: #000;
+    border-color: #000;
   }
   .skill-chip .skill-icon { font-size: 1.1rem; }
   .skill-chip .skill-meta {
@@ -298,29 +287,31 @@ const armoryStyles = `
   }
   .skill-slot {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 14px; border-radius: 8px;
+    padding: 8px 14px; border-radius: 6px;
     font-size: 0.85rem; font-weight: 800;
-    border: 2px dashed rgba(255,255,255,0.15);
-    background: rgba(255,255,255,0.02);
+    border: 3px dashed rgba(255,255,255,0.25);
+    background: #1a1a1a;
     color: rgba(255,255,255,0.3);
     min-width: 80px; justify-content: center;
+    box-shadow: 2px 2px 0 #000;
   }
   .skill-slot.filled {
     border-style: solid;
     cursor: pointer;
     color: #fff;
+    border-color: currentColor;
   }
   .skill-slot.filled:hover { opacity: 0.8; }
 
   /* Brain panel */
   .brain-textarea {
     width: 100%; min-height: 100px; padding: 0.75rem;
-    border-radius: 8px; border: 2px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.04); color: #fff;
+    border-radius: 6px; border: 3px solid rgba(255,255,255,0.3);
+    background: #0a0a0a; color: #fff;
     font-family: var(--f-mono); font-size: 0.8rem;
     outline: none; resize: vertical; transition: border-color 0.15s;
   }
-  .brain-textarea:focus { border-color: var(--c-cyan); }
+  .brain-textarea:focus { border-color: #00E5FF; }
   .brain-textarea::placeholder { color: rgba(255,255,255,0.2); }
 
   .preset-row {
@@ -328,11 +319,12 @@ const armoryStyles = `
   }
   .preset-btn {
     font-family: var(--f-body); font-weight: 800; font-size: 0.72rem;
-    text-transform: uppercase; padding: 4px 10px; border-radius: 999px;
-    border: 2px solid rgba(255,255,255,0.15); background: transparent;
+    text-transform: uppercase; padding: 4px 10px; border-radius: 6px;
+    border: 2px solid rgba(255,255,255,0.2); background: #1a1a1a;
+    box-shadow: 2px 2px 0 #000;
     color: rgba(255,255,255,0.5); cursor: pointer; transition: all 0.15s;
   }
-  .preset-btn:hover { border-color: var(--c-cyan); color: var(--c-cyan); }
+  .preset-btn:hover { border-color: #00E5FF; color: #00E5FF; background: #111; }
 
   .char-count {
     font-family: var(--f-mono); font-size: 0.7rem;
@@ -341,7 +333,7 @@ const armoryStyles = `
 
   @media (max-width: 900px) {
     .armory-layout { grid-template-columns: 1fr; }
-    .armory-header { padding: 1rem; }
+    .armory-header { padding: 0.8rem 1rem; }
     .armory-shell { padding: 1rem; }
   }
 `;
