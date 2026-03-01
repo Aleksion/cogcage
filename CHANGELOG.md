@@ -4,6 +4,32 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-02-28] - feat: guest/anonymous auth for frictionless onboarding
+
+**Type:** feat | **Phase:** auth | **Priority:** TESTING VELOCITY
+
+### Summary
+Adds the `Anonymous` provider from `@convex-dev/auth` so users and agents can access the product without GitHub OAuth or a real email inbox. Enables frictionless onboarding and unblocked E2E testing of the `/shell` and `/play` flows.
+
+### Changes
+- `web/convex/auth.ts` — Added `Anonymous` provider from `@convex-dev/auth/providers/Anonymous`, wired into `convexAuth({ providers: [...] })`
+- `web/app/routes/sign-in.tsx` — Added `GuestSignIn` component with muted gray styling (secondary, not primary CTA). Sits below the email/OTP divider with user icon.
+
+### Design Decisions
+- Guest button is intentionally styled dim (no yellow, no red) — it's a fallback, not the primary CTA. Encourages real account creation.
+- No changes to `auth.config.ts` — the Anonymous provider is Convex-native and doesn't require JWT domain config.
+- Guest sessions are ephemeral by default (Convex deletes anonymous users after inactivity unless they link an account).
+
+### Breaking Changes
+None.
+
+### Next Steps
+- Add "Link your account" upgrade flow for anonymous users who want to save progress
+- Gate certain features (e.g., public ladder) behind real accounts
+- Merge + deploy to Convex + Vercel
+
+---
+
 ## [2026-02-28] - feat(plugin): Phase 2 OpenClaw plugin — connect → decide → queue (PR #27)
 
 **Type:** feat | **Phase:** 2 | **Priority:** REVENUE CRITICAL

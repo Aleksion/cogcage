@@ -175,6 +175,29 @@ const STYLES = `
     font-family: 'IBM Plex Mono', monospace;
   }
 
+  .signin-guest-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    font-family: 'Kanit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, transform 0.1s;
+    margin-top: 0.75rem;
+  }
+  .signin-guest-btn:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.75); transform: translateY(-1px); }
+  .signin-guest-btn:active { transform: translateY(0); }
+
   .signin-success-note {
     font-size: 0.9rem;
     color: rgba(255,255,255,0.5);
@@ -259,6 +282,10 @@ function SignInPage() {
               <div className="signin-divider">or</div>
 
               <EmailOTPForm />
+
+              <div className="signin-divider">or</div>
+
+              <GuestSignIn />
             </div>
           )}
         </div>
@@ -364,5 +391,31 @@ function EmailOTPForm() {
         ← Use a different email
       </button>
     </div>
+  )
+}
+
+function GuestSignIn() {
+  const { signIn } = useAuthActions()
+  const [loading, setLoading] = useState(false)
+
+  const handleGuestSignIn = async () => {
+    setLoading(true)
+    try {
+      await signIn('anonymous')
+    } catch (e) {
+      // Anonymous auth shouldn't fail in practice
+      console.error('Guest sign-in failed:', e)
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button className="signin-guest-btn" onClick={handleGuestSignIn} disabled={loading}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+      {loading ? 'Entering...' : 'Continue as Guest'}
+    </button>
   )
 }
