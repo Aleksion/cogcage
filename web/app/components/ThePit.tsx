@@ -8,13 +8,57 @@ import { api } from '../../convex/_generated/api'
 const PIT_STYLES = `
   .pit-root {
     min-height: calc(100vh - 56px);
-    background: #1A1A1A;
+    width: 100%;
+    background:
+      radial-gradient(circle, rgba(0,229,255,0.08) 1px, transparent 1px),
+      radial-gradient(ellipse at 50% 30%, #0a0a2e 0%, #050510 60%, #000 100%);
+    background-size: 24px 24px, 100% 100%;
     color: #f0f0f5;
     font-family: 'Kanit', sans-serif;
-    padding: 2rem 1.5rem 3rem;
-    max-width: 900px;
-    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3rem 1.5rem 4rem;
   }
+
+  .pit-spotlight {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,229,255,0.12) 0%, transparent 70%);
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .pit-hero {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .pit-hud-panel {
+    position: fixed;
+    bottom: 2rem;
+    left: 2rem;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 8px;
+    padding: 0.75rem 1.25rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: rgba(0,229,255,0.8);
+    backdrop-filter: blur(8px);
+    min-width: 160px;
+    z-index: 10;
+  }
+  .pit-hud-label { color: rgba(255,255,255,0.4); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; }
+  .pit-hud-val { color: #00E5FF; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; }
 
   .pit-title {
     font-family: 'Bangers', cursive;
@@ -45,14 +89,14 @@ const PIT_STYLES = `
     font-size: 2rem;
     letter-spacing: 3px;
     text-transform: uppercase;
-    background: #EB4D4B;
-    color: #fff;
+    background: #00E5FF;
+    color: #000;
     border: 4px solid #000;
     box-shadow: 0 6px 0 #000;
     border-radius: 12px;
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
-    text-shadow: 1px 1px 0 rgba(0,0,0,0.3);
+    text-shadow: none;
   }
   .pit-enter-btn:active {
     transform: translateY(6px);
@@ -269,22 +313,25 @@ export default function ThePit() {
     <>
       <style dangerouslySetInnerHTML={{ __html: PIT_STYLES }} />
       <div className="pit-root">
-        {/* Header */}
-        <h1 className="pit-title">&#9889; THE PIT</h1>
-        <p className="pit-subtitle">The arena. Live matches. Real crawlers fighting now.</p>
+        {/* Hero area with spotlight */}
+        <div className="pit-hero">
+          <div className="pit-spotlight" />
+          <h1 className="pit-title">&#9889; THE PIT</h1>
+          <p className="pit-subtitle">The arena. Live matches. Real crawlers fighting now.</p>
 
-        {/* Enter a Molt CTA */}
-        <button
-          className={`pit-enter-btn${!hasShells ? ' pit-btn-noshell' : ''}`}
-          onClick={handleEnterMolt}
-          disabled={entering}
-        >
-          {entering ? 'ENTERING...' : hasShells ? '\u26A1 ENTER A MOLT' : noShellText}
-        </button>
-        {enterError && <div className="pit-error">{enterError}</div>}
+          {/* Enter a Molt CTA */}
+          <button
+            className={`pit-enter-btn${!hasShells ? ' pit-btn-noshell' : ''}`}
+            onClick={handleEnterMolt}
+            disabled={entering}
+          >
+            {entering ? 'ENTERING...' : hasShells ? '\u26A1 ENTER A MOLT' : noShellText}
+          </button>
+          {enterError && <div className="pit-error">{enterError}</div>}
+        </div>
 
         {/* Two-column grid */}
-        <div className="pit-grid">
+        <div className="pit-grid" style={{ width: '100%', maxWidth: 900 }}>
           {/* Leaderboard */}
           <div className="pit-panel">
             <h2 className="pit-section-title">Leaderboard</h2>
@@ -325,6 +372,14 @@ export default function ThePit() {
               ))
             )}
           </div>
+        </div>
+
+        {/* HUD panel — bottom-left */}
+        <div className="pit-hud-panel">
+          <div className="pit-hud-label">Hardness</div>
+          <div className="pit-hud-val">{player?.hardness ?? '—'}</div>
+          <div className="pit-hud-label">Molts</div>
+          <div className="pit-hud-val">{player?.moltsPlayed ?? 0}</div>
         </div>
       </div>
     </>

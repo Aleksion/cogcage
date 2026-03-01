@@ -82,13 +82,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 width: 100%;
                 min-height: 100%;
                 background: #0D0D0D;
-                background-image: repeating-linear-gradient(
-                  45deg,
-                  transparent,
-                  transparent 10px,
-                  rgba(255,255,255,0.015) 10px,
-                  rgba(255,255,255,0.015) 20px
-                );
                 color: #f0f0f5;
               }
               a { color: inherit; }
