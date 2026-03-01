@@ -10,7 +10,7 @@ async function getCallerPlayerId(ctx: any) {
     .query("players")
     .withIndex("by_userId", (q: any) => q.eq("userId", userId))
     .unique();
-  if (!player) throw new ConvexError("Player profile not found");
+  if (!player) throw new ConvexError("Player profile not found — try refreshing");
   return player._id;
 }
 

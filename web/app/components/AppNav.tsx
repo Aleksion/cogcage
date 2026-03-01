@@ -1,10 +1,10 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { useConvexAuth } from 'convex/react'
+import { useConvexAuth, useMutation } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
 import { api } from '../../convex/_generated/api'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const NAV_STYLES = `
   .appnav {
@@ -150,6 +150,14 @@ export function AppNav() {
   const { signOut } = useAuthActions()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const upsertPlayer = useMutation(api.players.upsertPlayer)
+
+  // Auto-create player profile on first sign-in
+  useEffect(() => {
+    if (isAuthenticated) {
+      upsertPlayer({}).catch(() => {})
+    }
+  }, [isAuthenticated])
 
   const { data: player } = useQuery({
     ...convexQuery(api.players.getCurrent, {}),
