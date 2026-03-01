@@ -144,7 +144,7 @@ const NAV_STYLES = `
 const NAV_ITEMS = [
   { to: '/forge', label: 'Forge' },
   { to: '/shell', label: 'Molds' },
-  { to: '/play', label: 'Cage' },
+  { to: '/play', label: 'The Pit' },
   { to: '/ops-log', label: 'Ladder' },
   { to: '/', label: 'Guide', exact: true },
 ] as const
