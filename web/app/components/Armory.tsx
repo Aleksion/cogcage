@@ -65,27 +65,36 @@ const SKILL_CATEGORY_COLORS: Record<string, string> = {
 const armoryStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:ital,wght@0,400;0,800;1,900&family=IBM+Plex+Mono:wght@400;600&display=swap');
 
-  .armory-root { min-height: 100vh; position: relative; font-family: var(--f-body); }
+  /* ── Landing-page visual system ── */
+  :root {
+    --c-yellow: #FFD600;
+    --c-orange: #FF9F1C;
+    --c-red: #EB4D4B;
+    --c-cyan: #00E5FF;
+    --c-dark: #1A1A1A;
+    --f-display: 'Bangers', display;
+    --f-body: 'Kanit', sans-serif;
+    --f-mono: 'IBM Plex Mono', monospace;
+  }
 
-  .armory-header {
-    position: sticky; top: 0; z-index: 10;
-    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-    padding: 0.8rem 2rem;
-    background: #000;
-    border-bottom: 3px solid #FFD600;
+  .armory-root {
+    min-height: 100vh;
+    font-family: var(--f-body);
+    background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+    background-image:
+      radial-gradient(circle at 10% 20%, rgba(255,214,0,0.12) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(235,77,75,0.07) 0%, transparent 40%),
+      repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.025) 10px, rgba(0,0,0,0.025) 20px);
+    color: var(--c-dark);
   }
-  .armory-logo {
-    font-family: var(--f-display); font-size: 2rem; text-decoration: none;
-    color: #EB4D4B; text-shadow: 2px 2px 0 #000;
+
+  .armory-back-link {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: var(--f-display); font-size: 1rem; text-decoration: none;
+    color: var(--c-red); text-shadow: 1px 1px 0 rgba(0,0,0,0.15);
+    padding: 0.4rem 0; margin-bottom: 0.75rem;
   }
-  .armory-nav { display: flex; gap: 0.8rem; align-items: center; }
-  .armory-nav a {
-    font-weight: 800; text-transform: uppercase; text-decoration: none;
-    color: rgba(255,255,255,0.6); padding: 0.4rem 0.8rem;
-    font-size: 0.85rem; transition: color 0.15s;
-  }
-  .armory-nav a:hover { color: #fff; }
-  .armory-nav a.active { color: #FFD600; border-bottom: 3px solid #FFD600; }
+  .armory-back-link:hover { opacity: 0.8; }
 
   .armory-shell { padding: 1.5rem 2rem 3rem; max-width: 1400px; margin: 0 auto; }
 
@@ -94,16 +103,17 @@ const armoryStyles = `
     align-items: start;
   }
 
+  /* ── Panels — white cards with hard shadow (landing DNA) ── */
   .gallery-panel, .builder-panel, .saved-panel {
-    background: #111;
+    background: #fff;
     border: 3px solid #000;
-    box-shadow: 4px 4px 0 #000;
+    box-shadow: 6px 6px 0 #000;
     border-radius: 12px; padding: 1.2rem;
   }
 
   .panel-title {
     font-family: var(--f-display); font-size: 2.5rem; text-transform: uppercase;
-    letter-spacing: 2px; margin-bottom: 1.2rem; color: #fff;
+    letter-spacing: 2px; margin-bottom: 1.2rem; color: var(--c-dark);
     text-shadow: 3px 3px 0 var(--c-orange);
   }
 
@@ -113,12 +123,12 @@ const armoryStyles = `
   .filter-tab {
     font-family: var(--f-body); font-weight: 800; font-size: 0.8rem;
     text-transform: uppercase; padding: 0.35rem 0.8rem; border-radius: 6px;
-    border: 2px solid rgba(255,255,255,0.2); background: transparent;
-    color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.15s;
+    border: 2px solid rgba(0,0,0,0.2); background: #fff;
+    color: rgba(0,0,0,0.45); cursor: pointer; transition: all 0.15s;
   }
-  .filter-tab:hover { border-color: rgba(255,255,255,0.4); color: #fff; }
+  .filter-tab:hover { border-color: rgba(0,0,0,0.5); color: #000; }
   .filter-tab.active {
-    background: #FFD600; color: #000;
+    background: var(--c-yellow); color: #000;
     border: 3px solid #000; box-shadow: 3px 3px 0 #000;
     font-family: var(--f-display); font-size: 1rem;
   }
@@ -128,32 +138,33 @@ const armoryStyles = `
   }
 
   .armory-card:hover {
-    transform: scale(1.08);
+    transform: scale(1.06) translateY(-2px);
     z-index: 5;
   }
 
-  /* Builder */
+  /* ── Builder / Shell panel ── */
   .slot-grid {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
     margin-bottom: 1rem;
   }
   .slot {
     width: 120px; height: 180px; border-radius: 10px;
-    border: 3px dashed rgba(255,255,255,0.25);
+    border: 3px dashed rgba(0,0,0,0.18);
     display: grid; place-items: center;
-    cursor: pointer; transition: border-color 0.15s;
+    cursor: pointer; transition: border-color 0.15s, background 0.15s;
     position: relative; overflow: hidden;
-    color: rgba(255,255,255,0.2); font-size: 2rem;
+    background: rgba(0,0,0,0.03);
+    color: rgba(0,0,0,0.18); font-size: 2rem;
   }
-  .slot:hover { border-color: rgba(255,255,255,0.4); }
+  .slot:hover { border-color: rgba(0,0,0,0.35); background: rgba(0,0,0,0.06); }
   .slot .slot-empty {
-    font-size: 2rem; color: rgba(255,255,255,0.2);
+    font-size: 2rem; color: rgba(0,0,0,0.18);
   }
   .slot .slot-remove {
     position: absolute; top: 2px; right: 2px; width: 16px; height: 16px;
-    border-radius: 50%; background: #EB4D4B; color: #fff;
+    border-radius: 50%; background: var(--c-red); color: #fff;
     font-size: 0.55rem; display: grid; place-items: center;
-    cursor: pointer; border: none; opacity: 0; transition: opacity 0.15s;
+    cursor: pointer; border: 2px solid #000; opacity: 0; transition: opacity 0.15s;
   }
   .slot:hover .slot-remove { opacity: 1; }
 
@@ -161,17 +172,15 @@ const armoryStyles = `
     display: flex; flex-direction: column; gap: 0.6rem;
     margin-bottom: 1rem;
   }
-  .stat-row {
-    display: flex; align-items: center; gap: 0.5rem;
-  }
+  .stat-row { display: flex; align-items: center; gap: 0.5rem; }
   .stat-label {
     font-family: var(--f-display); font-size: 1rem;
-    color: rgba(255,255,255,0.8); width: 80px; flex-shrink: 0;
+    color: var(--c-dark); width: 80px; flex-shrink: 0;
     text-transform: uppercase;
   }
   .stat-bar-shell {
-    flex: 1; height: 10px; background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.15);
+    flex: 1; height: 10px; background: rgba(0,0,0,0.08);
+    border: 1px solid rgba(0,0,0,0.12);
     border-radius: 999px; overflow: hidden;
   }
   .stat-bar-fill {
@@ -179,25 +188,23 @@ const armoryStyles = `
     transition: width 0.3s ease, background 0.3s ease;
   }
   .stat-value {
-    font-family: var(--f-mono); font-size: 0.75rem; color: rgba(255,255,255,0.7);
+    font-family: var(--f-mono); font-size: 0.75rem; color: rgba(0,0,0,0.5);
     min-width: 60px; text-align: right;
   }
 
-  .save-row {
-    display: flex; gap: 0.5rem; align-items: center;
-  }
+  .save-row { display: flex; gap: 0.5rem; align-items: center; }
   .save-input {
     flex: 1; padding: 0.6rem 1rem; border-radius: 6px;
-    border: 3px solid rgba(255,255,255,0.3); background: #0a0a0a;
-    color: #fff; font-family: var(--f-body); font-weight: 800; font-size: 1rem;
+    border: 3px solid rgba(0,0,0,0.25); background: #f8f9fa;
+    color: var(--c-dark); font-family: var(--f-body); font-weight: 800; font-size: 1rem;
     outline: none; transition: border-color 0.15s;
   }
-  .save-input:focus { border-color: #FFD600; }
-  .save-input::placeholder { color: rgba(255,255,255,0.25); }
+  .save-input:focus { border-color: #000; box-shadow: 3px 3px 0 #000; }
+  .save-input::placeholder { color: rgba(0,0,0,0.3); }
 
   .save-btn {
     font-family: var(--f-display); font-size: 1.3rem; text-transform: uppercase;
-    padding: 0.6rem 2rem; background: #EB4D4B; color: #fff;
+    padding: 0.6rem 2rem; background: var(--c-red); color: #fff;
     border: 3px solid #000; box-shadow: 4px 4px 0 #000;
     border-radius: 8px; cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
@@ -205,33 +212,28 @@ const armoryStyles = `
   .save-btn:active { transform: translateY(4px); box-shadow: none; }
   .save-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-  /* Saved shells strip */
-  .saved-strip {
-    display: flex; gap: 12px; overflow-x: auto; padding: 0.5rem 0;
-  }
+  /* ── Saved shells strip ── */
+  .saved-strip { display: flex; gap: 12px; overflow-x: auto; padding: 0.5rem 0; }
   .saved-strip::-webkit-scrollbar { height: 4px; }
-  .saved-strip::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+  .saved-strip::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
 
   .saved-card {
     flex-shrink: 0; width: 240px; padding: 0.8rem;
-    background: #111; border: 3px solid #000;
+    background: #fff; border: 3px solid #000;
     box-shadow: 4px 4px 0 #000;
     border-radius: 10px; position: relative;
   }
   .saved-card-name {
-    font-family: var(--f-display); font-size: 1.1rem; color: #fff;
+    font-family: var(--f-display); font-size: 1.1rem; color: var(--c-dark);
     text-transform: uppercase; margin-bottom: 0.3rem;
+    text-shadow: 1px 1px 0 var(--c-orange);
   }
-  .saved-card-icons {
-    display: flex; gap: 4px; margin-bottom: 0.4rem;
-  }
+  .saved-card-icons { display: flex; gap: 4px; margin-bottom: 0.4rem; }
   .saved-card-stat {
     font-family: var(--f-mono); font-size: 0.7rem;
-    color: rgba(255,255,255,0.5);
+    color: rgba(0,0,0,0.45);
   }
-  .saved-card-actions {
-    display: flex; gap: 0.5rem; margin-top: 0.5rem;
-  }
+  .saved-card-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
   .saved-card-btn {
     font-family: var(--f-display); font-size: 0.75rem; text-transform: uppercase;
     padding: 0.3rem 0.7rem; border-radius: 6px; cursor: pointer;
@@ -240,101 +242,94 @@ const armoryStyles = `
   }
   .saved-card-btn:active { transform: translateY(2px); box-shadow: none; }
   .saved-card-btn.enter { background: #2ecc71; color: #fff; }
-  .saved-card-btn.delete { background: #EB4D4B; color: #fff; }
+  .saved-card-btn.delete { background: var(--c-red); color: #fff; }
   .saved-card-btn:hover { opacity: 0.85; }
 
   .clear-btn {
-    background: none; border: none; color: rgba(255,255,255,0.4);
+    background: none; border: none; color: rgba(0,0,0,0.35);
     font-size: 0.75rem; cursor: pointer; text-decoration: underline;
     font-family: var(--f-body);
   }
-  .clear-btn:hover { color: #EB4D4B; }
+  .clear-btn:hover { color: var(--c-red); }
 
-  /* Skills panel */
+  /* ── Skills + Brain panels ── */
   .skills-panel, .brain-panel {
-    background: #111;
+    background: #fff;
     border: 3px solid #000;
-    box-shadow: 4px 4px 0 #000;
+    box-shadow: 6px 6px 0 #000;
     border-radius: 12px; padding: 1.2rem;
     margin-top: 1.5rem;
   }
 
-  .skill-grid {
-    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0.6rem;
-  }
+  .skill-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0.6rem; }
   .skill-chip {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 4px 10px; border-radius: 6px;
     font-family: var(--f-body); font-size: 0.8rem; font-weight: 800;
     cursor: pointer; transition: all 0.15s;
-    border: 2px solid transparent;
-    background: #1a1a1a;
-    box-shadow: 2px 2px 0 #000;
-    color: rgba(255,255,255,0.7);
+    border: 2px solid rgba(0,0,0,0.2);
+    background: #f8f9fa;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.15);
+    color: rgba(0,0,0,0.55);
   }
-  .skill-chip:hover { background: #222; }
+  .skill-chip:hover { border-color: #000; color: #000; background: #fff; }
   .skill-chip.equipped {
-    color: #000;
-    border-color: #000;
+    background: var(--c-dark); color: #fff;
+    border-color: #000; box-shadow: 2px 2px 0 #000;
   }
   .skill-chip .skill-icon { font-size: 1.1rem; }
   .skill-chip .skill-meta {
     font-size: 0.65rem; font-weight: 600;
-    color: rgba(255,255,255,0.4); margin-left: 2px;
+    color: rgba(0,0,0,0.35); margin-left: 2px;
   }
+  .skill-chip.equipped .skill-meta { color: rgba(255,255,255,0.5); }
 
-  .skill-slots {
-    display: flex; gap: 8px; margin-bottom: 0.8rem; flex-wrap: wrap;
-  }
+  .skill-slots { display: flex; gap: 8px; margin-bottom: 0.8rem; flex-wrap: wrap; }
   .skill-slot {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 8px 14px; border-radius: 6px;
     font-size: 0.85rem; font-weight: 800;
-    border: 3px dashed rgba(255,255,255,0.25);
-    background: #1a1a1a;
-    color: rgba(255,255,255,0.3);
+    border: 3px dashed rgba(0,0,0,0.2);
+    background: rgba(0,0,0,0.04);
+    color: rgba(0,0,0,0.25);
     min-width: 80px; justify-content: center;
-    box-shadow: 2px 2px 0 #000;
   }
   .skill-slot.filled {
-    border-style: solid;
-    cursor: pointer;
-    color: #fff;
-    border-color: currentColor;
+    border-style: solid; border-color: #000;
+    background: var(--c-dark); color: #fff;
+    cursor: pointer; box-shadow: 2px 2px 0 #000;
   }
   .skill-slot.filled:hover { opacity: 0.8; }
 
-  /* Brain panel */
+  /* ── Brain panel ── */
   .brain-textarea {
     width: 100%; min-height: 100px; padding: 0.75rem;
-    border-radius: 6px; border: 3px solid rgba(255,255,255,0.3);
-    background: #0a0a0a; color: #fff;
+    border-radius: 6px; border: 3px solid rgba(0,0,0,0.2);
+    background: #f8f9fa; color: var(--c-dark);
     font-family: var(--f-mono); font-size: 0.8rem;
-    outline: none; resize: vertical; transition: border-color 0.15s;
+    outline: none; resize: vertical; transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .brain-textarea:focus { border-color: #00E5FF; }
-  .brain-textarea::placeholder { color: rgba(255,255,255,0.2); }
+  .brain-textarea:focus { border-color: #000; box-shadow: 3px 3px 0 #000; }
+  .brain-textarea::placeholder { color: rgba(0,0,0,0.28); }
 
-  .preset-row {
-    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 0.6rem;
-  }
+  .preset-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 0.6rem; }
   .preset-btn {
     font-family: var(--f-body); font-weight: 800; font-size: 0.72rem;
     text-transform: uppercase; padding: 4px 10px; border-radius: 6px;
-    border: 2px solid rgba(255,255,255,0.2); background: #1a1a1a;
-    box-shadow: 2px 2px 0 #000;
-    color: rgba(255,255,255,0.5); cursor: pointer; transition: all 0.15s;
+    border: 2px solid rgba(0,0,0,0.2); background: #fff;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.12);
+    color: rgba(0,0,0,0.5); cursor: pointer; transition: all 0.15s;
   }
-  .preset-btn:hover { border-color: #00E5FF; color: #00E5FF; background: #111; }
+  .preset-btn:hover { border-color: #000; color: #000; background: var(--c-yellow); box-shadow: 2px 2px 0 #000; }
+  .preset-btn.active { background: var(--c-dark); color: #fff; border-color: #000; box-shadow: 2px 2px 0 #000; }
 
   .char-count {
     font-family: var(--f-mono); font-size: 0.7rem;
-    color: rgba(255,255,255,0.3); text-align: right; margin-top: 0.3rem;
+    color: rgba(0,0,0,0.3); text-align: right; margin-top: 0.3rem;
   }
 
   @media (max-width: 900px) {
     .armory-layout { grid-template-columns: 1fr; }
-    .armory-header { padding: 0.8rem 1rem; }
     .armory-shell { padding: 1rem; }
   }
 `;
