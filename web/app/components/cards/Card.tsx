@@ -3,10 +3,10 @@ import type { Card as CardData } from '../../lib/cards';
 
 /* ── Type → color mapping ────────────────────────────────────── */
 
-const TYPE_COLORS: Record<string, { border: string; glow: string; label: string }> = {
-  weapon: { border: '#eb4d4b', glow: 'rgba(235,77,75,0.4)', label: '#eb4d4b' },
-  armor:  { border: '#00e5ff', glow: 'rgba(0,229,255,0.4)', label: '#00e5ff' },
-  tool:   { border: '#7c3aed', glow: 'rgba(124,58,237,0.4)', label: '#7c3aed' },
+const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
+  weapon: { bg: '#EB4D4B', text: '#fff' },
+  armor:  { bg: '#00E5FF', text: '#000' },
+  tool:   { bg: '#7C3AED', text: '#fff' },
 };
 
 const RARITY_DOT: Record<string, string> = {
@@ -31,9 +31,9 @@ export default function Card({ card, selected, disabled, onClick, mini }: CardPr
       <div
         style={{
           width: 72, height: 90, borderRadius: 8,
-          background: 'linear-gradient(180deg, #0f0f0f 0%, #1a1a1a 100%)',
-          border: `2px solid ${selected ? '#FFD600' : colors.border}`,
-          boxShadow: selected ? '0 0 10px #FFD60066' : `0 0 8px ${colors.glow}`,
+          background: '#111',
+          border: selected ? '3px solid #FFD600' : '3px solid #000',
+          boxShadow: selected ? '3px 3px 0 #FFD600' : '3px 3px 0 #000',
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           gap: 2, cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.4 : 1, position: 'relative', overflow: 'hidden',
@@ -57,11 +57,9 @@ export default function Card({ card, selected, disabled, onClick, mini }: CardPr
       className="armory-card"
       style={{
         width: 120, height: 180, borderRadius: 10, position: 'relative', overflow: 'hidden',
-        background: 'linear-gradient(180deg, #0f0f0f 0%, #1a1a1a 100%)',
-        border: `2px solid ${selected ? '#FFD600' : colors.border}`,
-        boxShadow: selected
-          ? '0 0 14px #FFD60066, inset 0 0 20px rgba(255,214,0,0.05)'
-          : `0 0 12px ${colors.glow}`,
+        background: '#111',
+        border: selected ? '3px solid #FFD600' : '3px solid #000',
+        boxShadow: selected ? '4px 4px 0 #FFD600' : '4px 4px 0 #000',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.4 : 1,
         display: 'flex', flexDirection: 'column',
@@ -92,8 +90,8 @@ export default function Card({ card, selected, disabled, onClick, mini }: CardPr
       <div style={{
         padding: '4px 0', textAlign: 'center',
         fontSize: '0.55rem', fontWeight: 900, textTransform: 'uppercase',
-        letterSpacing: '1.5px', color: colors.label,
-        borderBottom: `1px solid ${colors.border}33`,
+        letterSpacing: '1.5px', color: colors.text,
+        background: colors.bg,
       }}>
         {card.type}{card.subtype ? ` · ${card.subtype}` : ''}
       </div>
@@ -127,8 +125,8 @@ export default function Card({ card, selected, disabled, onClick, mini }: CardPr
       {/* Stats footer */}
       <div style={{
         height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        borderTop: `1px solid ${colors.border}33`, padding: '0 6px',
-        fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)',
+        borderTop: '1px solid rgba(255,255,255,0.1)', padding: '0 6px',
+        fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,255,255,0.85)',
       }}>
         {card.type === 'weapon' && (
           <>

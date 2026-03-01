@@ -11,20 +11,19 @@ const NAV_STYLES = `
     position: sticky;
     top: 0;
     z-index: 50;
-    background: #1A1A1A;
-    border-bottom: 3px solid #000;
+    background: #000;
+    border-bottom: 3px solid #FFD600;
     font-family: 'Kanit', sans-serif;
-    padding: 0 1.5rem;
+    padding: 0 2rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
     height: 56px;
-    box-shadow: 0 4px 0 rgba(0,0,0,0.3);
   }
 
   .appnav-logo {
     font-family: 'Bangers', cursive;
-    font-size: 1.4rem;
+    font-size: 2rem;
     color: #EB4D4B;
     text-decoration: none;
     text-shadow: 2px 2px 0 #000;
@@ -48,22 +47,21 @@ const NAV_STYLES = `
   .appnav-link {
     font-family: 'Kanit', sans-serif;
     font-size: 0.85rem;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: rgba(255,255,255,0.5);
+    color: rgba(255,255,255,0.6);
     text-decoration: none;
     padding: 0.5rem 0.85rem;
-    border-radius: 8px;
-    transition: color 0.15s, background 0.15s;
+    transition: color 0.15s;
+    border-bottom: 3px solid transparent;
   }
   .appnav-link:hover {
     color: rgba(255,255,255,0.85);
-    background: rgba(255,255,255,0.05);
   }
   .appnav-link.active {
     color: #FFD600;
-    background: rgba(255,214,0,0.08);
+    border-bottom: 3px solid #FFD600;
   }
 
   .appnav-right {
@@ -73,10 +71,15 @@ const NAV_STYLES = `
   }
 
   .appnav-user {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.8rem;
-    color: rgba(255,255,255,0.6);
-    font-weight: 600;
+    font-family: 'Bangers', cursive;
+    font-size: 1.1rem;
+    background: #FFD600;
+    color: #000;
+    border: 3px solid #000;
+    box-shadow: 3px 3px 0 #000;
+    border-radius: 999px;
+    padding: 0.3rem 1rem;
+    font-weight: 400;
   }
 
   .appnav-signout {
@@ -86,7 +89,7 @@ const NAV_STYLES = `
     text-transform: uppercase;
     color: rgba(255,255,255,0.35);
     background: none;
-    border: 1px solid rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.15);
     border-radius: 6px;
     padding: 0.3rem 0.7rem;
     cursor: pointer;
@@ -107,14 +110,15 @@ const NAV_STYLES = `
   }
 
   @media (max-width: 768px) {
+    .appnav { padding: 0 1rem; }
     .appnav-links {
       display: none;
       position: absolute;
       top: 56px;
       left: 0;
       right: 0;
-      background: #1A1A1A;
-      border-bottom: 3px solid #000;
+      background: #000;
+      border-bottom: 3px solid #FFD600;
       flex-direction: column;
       padding: 0.5rem 1rem;
       gap: 0;

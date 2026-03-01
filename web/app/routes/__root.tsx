@@ -59,13 +59,36 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               :root {
                 font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
                 color-scheme: dark;
+
+                --c-yellow: #FFD600;
+                --c-orange: #FF9F1C;
+                --c-red: #EB4D4B;
+                --c-cyan: #00E5FF;
+                --c-purple: #7C3AED;
+                --c-dark: #1A1A1A;
+                --c-black: #000000;
+
+                --arcade-border: 3px solid #000;
+                --arcade-shadow: 4px 4px 0 #000;
+                --arcade-shadow-lg: 6px 6px 0 #000;
+
+                --f-display: 'Bangers', display;
+                --f-body: 'Kanit', sans-serif;
+                --f-mono: 'IBM Plex Mono', monospace;
               }
               * { box-sizing: border-box; }
               html, body {
                 margin: 0;
                 width: 100%;
                 min-height: 100%;
-                background: #1A1A1A;
+                background: #0D0D0D;
+                background-image: repeating-linear-gradient(
+                  45deg,
+                  transparent,
+                  transparent 10px,
+                  rgba(255,255,255,0.015) 10px,
+                  rgba(255,255,255,0.015) 20px
+                );
                 color: #f0f0f5;
               }
               a { color: inherit; }
