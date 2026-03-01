@@ -8,6 +8,7 @@ interface BrainStreamProps {
   lastAction: string | null
   history: string[]
   side: 'left' | 'right'
+  isByo?: boolean
 }
 
 export default function BrainStream({
@@ -18,6 +19,7 @@ export default function BrainStream({
   lastAction,
   history,
   side,
+  isByo,
 }: BrainStreamProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -109,9 +111,9 @@ export default function BrainStream({
             width: 8,
             height: 8,
             borderRadius: '50%',
-            background: isThinking ? botColor : '#333',
-            boxShadow: isThinking ? `0 0 8px ${botColor}` : 'none',
-            animation: isThinking ? 'brain-pulse-dot 1s infinite' : 'none',
+            background: isByo ? '#00E5FF' : isThinking ? botColor : '#333',
+            boxShadow: isByo ? '0 0 8px #00E5FF' : isThinking ? `0 0 8px ${botColor}` : 'none',
+            animation: isByo || isThinking ? 'brain-pulse-dot 1s infinite' : 'none',
           }}
         />
         <span
@@ -120,11 +122,11 @@ export default function BrainStream({
             fontSize: '0.7rem',
             fontWeight: 600,
             textTransform: 'uppercase',
-            color: botColor,
+            color: isByo ? '#00E5FF' : botColor,
             letterSpacing: '2px',
           }}
         >
-          {botName} BRAIN
+          {isByo ? 'YOUR AGENT' : `${botName} BRAIN`}
         </span>
       </div>
 
@@ -161,30 +163,45 @@ export default function BrainStream({
           fontSize: '0.72rem',
           lineHeight: 1.6,
           color: 'rgba(255,255,255,0.7)',
-          fontStyle: isThinking ? 'italic' : 'normal',
-          opacity: isThinking ? 0.8 : 1,
+          fontStyle: isByo ? 'normal' : isThinking ? 'italic' : 'normal',
+          opacity: isByo ? 1 : isThinking ? 0.8 : 1,
           scrollbarWidth: 'thin',
-          scrollbarColor: `${botColor}33 transparent`,
+          scrollbarColor: `${isByo ? '#00E5FF' : botColor}33 transparent`,
         }}
       >
-        {displayText || (
-          <span style={{ color: 'rgba(255,255,255,0.2)' }}>
-            Waiting for first decision...
-          </span>
-        )}
-        {isThinking && (
-          <span
-            style={{
-              display: 'inline-block',
-              width: 2,
-              height: 14,
-              background: botColor,
-              marginLeft: 1,
-              animation: 'brain-blink-cursor 0.6s step-end infinite',
-              verticalAlign: 'text-bottom',
-              boxShadow: `0 0 4px ${botColor}`,
-            }}
-          />
+        {isByo ? (
+          // BYO: show action log
+          lastAction ? (
+            <div style={{ color: '#00E5FF' }}>
+              {'\u2192'} {lastAction}
+            </div>
+          ) : (
+            <span style={{ color: 'rgba(255,255,255,0.2)' }}>
+              Waiting for agent response...
+            </span>
+          )
+        ) : (
+          <>
+            {displayText || (
+              <span style={{ color: 'rgba(255,255,255,0.2)' }}>
+                Waiting for first decision...
+              </span>
+            )}
+            {isThinking && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: 2,
+                  height: 14,
+                  background: botColor,
+                  marginLeft: 1,
+                  animation: 'brain-blink-cursor 0.6s step-end infinite',
+                  verticalAlign: 'text-bottom',
+                  boxShadow: `0 0 4px ${botColor}`,
+                }}
+              />
+            )}
+          </>
         )}
       </div>
 

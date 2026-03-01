@@ -109,7 +109,38 @@ async function fetchDecision(
   extraHeaders?: Record<string, string>,
   brainPrompt?: string,
   skills?: string[],
+  webhookUrl?: string,
 ): Promise<{ type: string; dir?: string; targetId?: string; reasoning?: string }> {
+  // BYO agent: route through external proxy
+  if (webhookUrl) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch('/api/agent/external', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          webhookUrl,
+          payload: {
+            gameState,
+            actorId,
+            opponentIds: opponentId ? [opponentId] : [],
+            loadout,
+            validActions: loadout,
+          },
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) return { type: 'NO_OP' };
+      const data = await res.json();
+      return data?.action ?? { type: 'NO_OP' };
+    } catch {
+      clearTimeout(timer);
+      return { type: 'NO_OP' };
+    }
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -267,7 +298,7 @@ export async function runMatchAsync(
         const enemyId = nearestAliveEnemy(snap.actors, bot.id) ?? bot.id;
         const headers = headersMap.get(bot.id) ?? {};
         queue.enqueue(state.tick, () =>
-          fetchDecision(apiBase, snap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers, bot.brainPrompt, bot.skills),
+          fetchDecision(apiBase, snap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers, bot.brainPrompt, bot.skills, bot.webhookUrl),
         );
       }
 
@@ -330,7 +361,7 @@ export async function runMatchAsync(
             const enemyId = nearestAliveEnemy(nextSnap.actors, bot.id) ?? bot.id;
             const headers = headersMap.get(bot.id) ?? {};
             queue.enqueue(nextTick, () =>
-              fetchDecision(apiBase, nextSnap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers, bot.brainPrompt, bot.skills),
+              fetchDecision(apiBase, nextSnap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers, bot.brainPrompt, bot.skills, bot.webhookUrl),
             );
           }
         }
