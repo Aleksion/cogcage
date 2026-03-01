@@ -1404,7 +1404,7 @@ const HeroSection = ({ sectionRef }) => {
       meta: { variant, founderCtaVariant },
     });
     setStatus('success');
-    setMessage("You're on the list! We'll email you when the Founder Pack opens.");
+    setMessage("✓ We'll send you checkout access when it opens.");
   };
 
   const heroCopy = HERO_COPY[variant] || HERO_COPY.value;
