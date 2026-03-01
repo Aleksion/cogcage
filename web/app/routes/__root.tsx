@@ -2,6 +2,8 @@
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
+import { AppNav } from '~/components/AppNav'
+import { ClientOnly } from '~/components/ClientOnly'
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -29,7 +31,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;500;600;700&family=Kanit:wght@400;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap',
+        href: 'https://fonts.googleapis.com/css2?family=Bangers&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600;700&family=Kanit:wght@400;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap',
       },
     ],
   }),
@@ -38,7 +40,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 })
 
 function RootComponent() {
-  return <Outlet />
+  return (
+    <>
+      <ClientOnly>{() => <AppNav />}</ClientOnly>
+      <Outlet />
+    </>
+  )
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {

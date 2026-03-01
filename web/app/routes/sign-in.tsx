@@ -222,7 +222,7 @@ function SignInPage() {
   useEffect(() => {
     if (isAuthenticated) {
       // Auto-redirect after a beat
-      const t = setTimeout(() => navigate({ to: '/shell' }), 1200)
+      const t = setTimeout(() => navigate({ to: '/forge' }), 1200)
       return () => clearTimeout(t)
     }
   }, [isAuthenticated, navigate])
@@ -245,8 +245,8 @@ function SignInPage() {
             <div className="signin-card">
               <div className="signin-eyebrow">CRAWLER IDENTIFIED</div>
               <div className="signin-logged-in-title">YOU'RE IN.</div>
-              <p className="signin-sub" style={{ marginBottom: '1.5rem' }}>Redirecting you to The Shell...</p>
-              <Link to="/shell" className="signin-cta-btn">BUILD YOUR CRAWLER →</Link>
+              <p className="signin-sub" style={{ marginBottom: '1.5rem' }}>Redirecting you to The Forge...</p>
+              <Link to="/forge" className="signin-cta-btn">ENTER THE FORGE →</Link>
             </div>
           ) : (
             <div className="signin-card">

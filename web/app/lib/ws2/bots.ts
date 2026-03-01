@@ -144,7 +144,9 @@ export const createBot = (archetype: Archetype, rng: Rng): Bot => {
       if (!actor || !target) return null;
       if (state.tick % DECISION_WINDOW_TICKS !== 0) return null;
 
-      if (archetype === 'ranged') return pickRangedAction(state, actor, target, rangedPreference);
+      if (archetype === 'ranged') {
+        return pickRangedAction(state, actor, target, rangedPreference) ?? getConvergenceAction(state, actor, target);
+      }
       if (archetype === 'melee') {
         const dist = distanceTenths(actor.position, target.position);
         if (dist <= MELEE_RANGE * 2 && canUse(actor, 'GUARD') && rng.next() < meleeGuardBias) {
@@ -177,3 +179,23 @@ export const randomizeSpawn = (actors: Record<string, ActorState>, rng: Rng): vo
 };
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+/** If no LLM decision available, pathfind toward opponent */
+const getConvergenceAction = (
+  state: GameState,
+  actor: ActorState,
+  target: ActorState,
+): AgentAction => {
+  if (actor.energy < ACTION_COST.MOVE) {
+    return { tick: state.tick, actorId: actor.id, type: 'NO_OP' };
+  }
+  const dx = target.position.x - actor.position.x;
+  const dy = target.position.y - actor.position.y;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+  if (absDx >= absDy) {
+    return { tick: state.tick, actorId: actor.id, type: 'MOVE', dir: dx > 0 ? 'E' : 'W' };
+  } else {
+    return { tick: state.tick, actorId: actor.id, type: 'MOVE', dir: dy > 0 ? 'S' : 'N' };
+  }
+};
