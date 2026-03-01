@@ -1,15 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { ClientOnly } from '~/components/ClientOnly'
-import Dashboard from '~/components/Dashboard'
+import ThePit from '~/components/ThePit'
 
 export const Route = createFileRoute('/play')({
   head: () => ({
     meta: [
-      { title: 'The Molt Pit — Play' },
+      { title: 'The Molt Pit — The Pit' },
       {
         name: 'description',
         content:
-          'Battle AI bots in The Molt Pit. Build your strategy, earn your rank.',
+          'The Pit — live arena lobby. Enter a molt, climb the leaderboard.',
       },
     ],
   }),
@@ -17,5 +17,5 @@ export const Route = createFileRoute('/play')({
 })
 
 function PlayPage() {
-  return <ClientOnly>{() => <Dashboard />}</ClientOnly>
+  return <ClientOnly>{() => <ThePit />}</ClientOnly>
 }

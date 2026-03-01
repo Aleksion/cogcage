@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import Card from './cards/Card';
 import {
   ALL_CARDS,
@@ -381,6 +382,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
   const [resolvedReturnTo, setResolvedReturnTo] = useState(returnTo || '');
   const [equippedSkills, setEquippedSkills] = useState<string[]>([]);
   const [brainPrompt, setBrainPrompt] = useState('');
+  const navigate = useNavigate();
 
   // Inject styles
   useEffect(() => {
@@ -459,6 +461,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
 
   const handleSave = async () => {
     if (!loadoutName.trim() || loadout.length === 0) return;
+    const wasFirstSave = savedLoadouts.length === 0;
     setSaving(true);
     setError('');
     try {
@@ -481,6 +484,10 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
         setLoadout([]);
         setBrainPrompt('');
         setEquippedSkills([]);
+        if (wasFirstSave) {
+          navigate({ to: '/play' });
+          return;
+        }
       }
     } catch {
       setError('Failed to save');

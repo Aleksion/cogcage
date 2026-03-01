@@ -5,6 +5,7 @@ import { convexQuery } from '@convex-dev/react-query'
 import { api } from '../../convex/_generated/api'
 import { useEffect } from 'react'
 import { ClientOnly } from '~/components/ClientOnly'
+import { getCard } from '~/lib/cards'
 
 const FORGE_STYLES = `
   .forge-root {
@@ -353,6 +354,11 @@ function ForgeContent() {
     enabled: isAuthenticated,
   })
 
+  const { data: shells } = useQuery({
+    ...convexQuery(api.shells.list, {}),
+    enabled: isAuthenticated,
+  })
+
   const { data: openTanks } = useQuery({
     ...convexQuery(api.tanks.listOpen, {}),
     enabled: isAuthenticated,
@@ -386,24 +392,56 @@ function ForgeContent() {
         {/* Main grid */}
         <div className="forge-grid">
           {/* Left column — Crawler preview */}
-          <div className="forge-panel forge-crawler-preview">
-            <div className="forge-bot-art">&#129302;</div>
-            <h2 className="forge-crawler-name">DREADCLAW</h2>
-            <div className="forge-mold-label">Active Mold: Default</div>
+          {shells && shells.length > 0 ? (() => {
+            const shell = shells[0]
+            const attack = Math.round(Math.min(100, (shell.stats.totalWeight / 24) * 100))
+            const armor = shell.stats.armorValue
+            const compute = Math.round(Math.max(0, 100 - (shell.stats.totalOverhead / 30) * 100))
+            return (
+              <div className="forge-panel forge-crawler-preview">
+                <div className="forge-bot-art">&#129302;</div>
+                <h2 className="forge-crawler-name">{shell.name}</h2>
+                <div className="forge-mold-label">
+                  {shell.cards.length} cards equipped&ensp;
+                  {shell.cards.slice(0, 6).map((cardId, i) => (
+                    <span key={i} style={{ fontSize: '1.1rem' }}>{getCard(cardId)?.icon ?? '?'}</span>
+                  ))}
+                </div>
 
-            <StatBar label="Aggression" value={82} color="#EB4D4B" />
-            <StatBar label="Armor" value={65} color="#FFD600" />
-            <StatBar label="Compute Speed" value={88} color="#00E5FF" />
+                <StatBar label="Attack" value={attack} color="#EB4D4B" />
+                <StatBar label="Armor" value={armor} color="#FFD600" />
+                <StatBar label="Compute" value={compute} color="#00E5FF" />
 
-            <div className="forge-ctas">
-              <Link to="/play" className="forge-cta forge-cta-primary">
-                &#9889; Find a Molt
-              </Link>
-              <Link to="/shell" className="forge-cta forge-cta-secondary">
-                &#9998; Edit Mold
-              </Link>
+                <div className="forge-ctas">
+                  <Link to="/play" className="forge-cta forge-cta-primary">
+                    &#9889; Find a Molt
+                  </Link>
+                  <Link to="/shell" className="forge-cta forge-cta-secondary">
+                    &#9998; Edit Mold
+                  </Link>
+                </div>
+              </div>
+            )
+          })() : (
+            <div className="forge-panel forge-crawler-preview">
+              <div className="forge-bot-art" style={{ fontSize: '5rem', background: 'rgba(235,77,75,0.1)' }}>&#129302;</div>
+              <h2 className="forge-crawler-name">FORGE YOUR CRAWLER</h2>
+              <div className="forge-mold-label" style={{ maxWidth: 240 }}>
+                No crawler yet. Build your first shell to enter the pit.
+              </div>
+              <div className="forge-ctas">
+                <Link to="/shell" className="forge-cta" style={{
+                  background: '#FFD600',
+                  color: '#000',
+                  border: '4px solid #000',
+                  boxShadow: '0 6px 0 #000',
+                  fontSize: '1.5rem',
+                }}>
+                  &#9889; Build Your Crawler
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Right column */}
           <div>
