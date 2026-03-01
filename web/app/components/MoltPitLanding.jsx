@@ -1462,14 +1462,13 @@ const HeroSection = ({ sectionRef }) => {
           <button className="btn-arcade red" type="button" onClick={() => handleFounderCheckout()}>
             {founderCtaVariant === 'claim' ? 'Claim Founder Pricing' : 'Reserve Founder Spot'}
           </button>
-          <button
+          <a
             className="btn-arcade"
-            style={{ background: 'var(--c-white)' }}
-            type="button"
-            onClick={() => { window.location.href = '/play'; }}
+            style={{ background: 'var(--c-white)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+            href="/demo"
           >
-            Play Demo
-          </button>
+            WATCH A BATTLE LIVE
+          </a>
         </div>
         {status === 'success' && lastSubmittedEmail && (
           <div style={{ marginTop: '0.5rem', fontWeight: 800 }}>
