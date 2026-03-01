@@ -115,6 +115,15 @@ export const Route = createFileRoute('/api/ops')({
           eventsFallbackLines: files.find((file) => file.file === 'events-fallback.ndjson')?.lines ?? 0,
         };
 
+        // Recent commits — build-time manifest (hardcoded for reliability on serverless)
+        const recentCommits = [
+          { sha: 'e286c12', msg: 'feat: guest/anonymous auth for frictionless onboarding (#35)' },
+          { sha: '691421d', msg: 'fix(ws10): kill duplicate navbars + landing-page card aesthetic (#33)' },
+          { sha: 'ddff6e1', msg: 'feat(ws9): The Pit arena lobby + fix forge real crawler data (#32)' },
+          { sha: '7ffdfff', msg: 'feat(ws8): arcade visual overhaul — bring in-game UI to landing page energy (#31)' },
+          { sha: '9299438', msg: 'fix(auth): auto-upsert player profile on sign-in via AppNav' },
+        ];
+
         return new Response(JSON.stringify({
           ok: true,
           ts: new Date().toISOString(),
@@ -126,6 +135,7 @@ export const Route = createFileRoute('/api/ops')({
           runtimeDir: LOG_DIR,
           queueBacklog,
           files,
+          recentCommits,
         }), {
           status: 200,
           headers: { 'content-type': 'application/json' },

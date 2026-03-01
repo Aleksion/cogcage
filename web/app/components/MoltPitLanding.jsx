@@ -333,6 +333,9 @@ export const globalStyles = `
   .waitlist-message {
     margin-top: 0.75rem;
     font-weight: 800;
+    min-height: 1.4rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
   }
 
   .waitlist-honeypot {
@@ -1308,9 +1311,7 @@ const HeroSection = ({ sectionRef }) => {
       });
       setLastSubmittedEmail(trimmed.toLowerCase());
       setStatus('success');
-      setMessage(payload.queued === true
-        ? `You are on the list (queued). Ref ${payload.requestId}.`
-        : `You are on the list. Ref ${payload.requestId}.`);
+      setMessage('✓ You\'re on the list. Check your inbox for early access.');
       setEmail('');
     } catch (err) {
       if (shouldQueueForReplay(err)) {
