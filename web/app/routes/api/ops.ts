@@ -117,11 +117,11 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
-          { sha: 'PENDING', msg: 'feat(p2): interactive play mode in DemoLoop — player-controlled BERSERKER vs AI TACTICIAN' },
+          { sha: '90692d3', msg: 'feat(p2): interactive play mode — player picks actions vs AI on 7x7 grid' },
           { sha: '290542f', msg: 'feat(p3): monetization fallback hardening + env docs' },
           { sha: 'fbeec01', msg: 'feat(p2): action economy — speed-based AP system in DemoLoop' },
           { sha: '14863d4', msg: 'fix(p1): signup error states verified + Redis drain confirmed + ops log real commits' },
-          { sha: 'aef9555', msg: 'NOTE: autopilot checkpoint spam stopped. Product priorities: P1 signup done, P2 interactive done, P3 Stripe wired' },
+          { sha: '5743b71', msg: 'feat(autopilot): signup reliability + demo grid movement + monetization fallback' },
         ];
 
         return new Response(JSON.stringify({
