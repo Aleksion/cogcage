@@ -2,6 +2,39 @@
 
 ---
 
+## Product-Mode Ship — 15:42 ET Mar 2
+
+Directive executed in priority order: P1 signup reliability/storage/logs, P2 playable demo loop, P3 founder checkout + postback reconciliation, P4 ops artifacts.
+
+### Shipped artifacts
+- `web/app/routes/sign-in.tsx`
+  - Hardened email OTP sign-in reliability:
+    - normalized email + 6-digit code validation before submit
+    - duplicate-submit guard while request is in flight
+    - persisted normalized sign-in email (`moltpit_signin_email`) for retry resilience
+  - Added observable auth telemetry to `/api/events`:
+    - `auth_github_started|succeeded|failed`
+    - `auth_email_otp_sent|send_failed|verified|verify_failed|validation_failed`
+- `web/app/components/DemoLoop.tsx`
+  - Upgraded playable action economy from flat AP spend to per-action AP costs:
+    - MOVE 0.8, ATTACK 1.2, DEFEND 0.8, CHARGE 1.0, STUN 1.4
+  - Added directional map movement controls in PLAY mode (MOVE ↑→↓←).
+  - Updated WATCH mode bot action selection to honor AP affordability.
+  - Added founder checkout instrumentation:
+    - deterministic checkout `eventId`
+    - checkout/intent source + event id persisted in local storage
+    - keepalive telemetry to `/api/events`
+    - best-effort founder intent write to `/api/founder-intent` when email is known
+    - checkout URL enriched with `prefilled_email`, `client_reference_id`, `checkout_source`
+- `web/app/components/SuccessPage.tsx`
+  - Conversion reconciliation now falls back to persisted checkout `eventId` if `session_id` is absent.
+  - Reads `moltpit_signin_email` as secondary email source.
+  - Clears persisted checkout event id after successful conversion persist.
+
+### Verification
+- `cd web && npm run test:product` ✅ (9 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## Product-Mode Audit — 15:31 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.
