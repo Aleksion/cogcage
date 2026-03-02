@@ -8,6 +8,47 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): signup durability, playable loop checks, founder checkout telemetry, postback observability
+
+**Type:** fix/feature/ops | **Budget impact:** n/a (product-mode stabilization)
+
+### Why
+- Product-mode directive required reliability-first shipping in strict order: signup hardening, real playable loop validation, monetization lifecycle, and ops verification artifacts.
+
+### P1 — Signup reliability + storage + observable logs
+- `web/app/lib/waitlist-db.ts`
+  - ESM-safe SQLite loading via `createRequire(import.meta.url)` so local/server runtimes can use SQLite fallback when available.
+  - Fixed index migration for `founder_intents.intent_id` and `conversion_events.event_id` so `ON CONFLICT(...)` works reliably.
+- `web/app/routes/api/waitlist.ts`
+  - Added SQLite fallback write path when Redis is unavailable before file-queue fallback.
+  - Added explicit structured logs + conversion telemetry for sqlite-fallback success/failure.
+- `web/app/routes/api/founder-intent.ts`
+  - Fixed missing `redisInsertConversionEvent` import in telemetry path (runtime reliability bug).
+  - Added SQLite fallback write path when Redis is unavailable before file-queue fallback.
+  - Added explicit structured logs + conversion telemetry for sqlite-fallback success/failure.
+
+### P2 — Playable demo loop with map movement + action economy
+- `web/scripts/ws2-core.test.mjs`
+  - Added movement smoke test (`MOVE_COMPLETED` + position delta).
+  - Added action-economy smoke test (energy spend on accepted move action).
+
+### P3 — Founder pack checkout + postback confirmation lifecycle
+- `web/app/components/Play.tsx`
+  - Founder checkout now emits observable lifecycle events (`clicked`, validation failure, intent submitted/failed, redirect success/failure).
+  - Founder intent is captured before redirect (with idempotency header + request timeout) and stores checkout source keys used by `/success`.
+- `web/app/routes/api/postback.ts`
+  - Added structured lifecycle logs for request received, invalid payload, and unsupported event type.
+- `web/app/routes/api/checkout-success.ts`
+  - Added structured lifecycle logs for POST/GET receive and invalid email paths.
+
+### P4 — Ops and verification artifacts
+- `web/scripts/product-mode-reliability.test.mjs` (new)
+  - Persistence/idempotency/rate-limit checks for signup + monetization storage path.
+- `web/package.json`
+  - Added `test:product` command for product-mode smoke coverage.
+- `web/scripts/replay-fallback.mjs`
+  - Updated SQLite unique-index migration to match `ON CONFLICT` usage for replay reliability.
+
 ## [2026-03-02] - feat(autopilot): signup reliability + demo grid movement + monetization fallback
 
 **Type:** feature/ops | **Budget impact:** ~$2 (agent)
@@ -941,4 +982,3 @@ Project renamed from CogCage to The Molt Pit throughout docs, task specs, and ar
 - `cogcage.com` domain: keep for now, evaluate `themoltpit.com` separately
 - Redis key prefixes (`cogcage_pid`, `armory:*`, `lobby:*`) — follow-up rename PR
 - GitHub repo URL: `Aleksion/themoltpit` — can rename repo in GitHub settings when ready
-

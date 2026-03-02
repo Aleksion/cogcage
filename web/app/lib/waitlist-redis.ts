@@ -24,6 +24,8 @@ const FOUNDER_INTENT_KEY = 'moltpit:founder-intents';
 const CONVERSIONS_KEY = 'moltpit:conversions';
 const OPS_LOG_KEY = 'moltpit:ops-log';
 const RATE_LIMIT_PREFIX = 'moltpit:ratelimit:';
+const IDEMPOTENCY_PREFIX = 'moltpit:idempotency:';
+const IDEMPOTENCY_TTL_SECONDS = 3 * 24 * 60 * 60;
 
 function getRedis(): Redis {
   const url = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
@@ -44,6 +46,19 @@ export type RedisFunnelCounts = {
   founderIntents: number;
   conversionEvents: number;
 };
+
+type RedisApiRequestReceipt = {
+  route: string;
+  idempotencyKey: string;
+  responseStatus: number;
+  responseBody: string;
+  createdAt?: string;
+};
+
+function idempotencyRedisKey(route: string, idempotencyKey: string) {
+  const routeKey = route.replace(/[^a-z0-9_-]/gi, '_').slice(0, 80);
+  return `${IDEMPOTENCY_PREFIX}${routeKey}:${idempotencyKey}`;
+}
 
 // ── Waitlist ─────────────────────────────────────────────────────────────────
 
@@ -125,6 +140,41 @@ export async function redisGetFunnelCounts(): Promise<RedisFunnelCounts> {
     founderIntents: founder ?? 0,
     conversionEvents: conversions ?? 0,
   };
+}
+
+// ── Idempotency Receipts ─────────────────────────────────────────────────────
+
+export async function redisReadApiRequestReceipt(route: string, idempotencyKey: string): Promise<RedisApiRequestReceipt | null> {
+  const r = getRedis();
+  const raw = await r.get(idempotencyRedisKey(route, idempotencyKey));
+  if (typeof raw !== 'string' || raw.length === 0) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as RedisApiRequestReceipt;
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (typeof parsed.responseStatus !== 'number' || typeof parsed.responseBody !== 'string') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function redisWriteApiRequestReceipt(receipt: {
+  route: string;
+  idempotencyKey: string;
+  responseStatus: number;
+  responseBody: string;
+}): Promise<void> {
+  const r = getRedis();
+  const key = idempotencyRedisKey(receipt.route, receipt.idempotencyKey);
+  const value = JSON.stringify({
+    ...receipt,
+    createdAt: new Date().toISOString(),
+  });
+  await r.set(key, value);
+  await r.expire(key, IDEMPOTENCY_TTL_SECONDS);
 }
 
 // ── Rate Limiting (Redis-native, survives across Lambda invocations) ──────────

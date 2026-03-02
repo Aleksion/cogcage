@@ -2,6 +2,31 @@
 
 ---
 
+## Product-Mode Ship — 15:40 ET Mar 2
+
+Directive executed in strict order: P1 signup reliability, P2 playable loop, P3 monetization lifecycle, P4 ops artifacts.
+
+### Shipped
+- **P1 signup/storage reliability**
+  - `app/routes/api/waitlist.ts` now attempts SQLite fallback write if Redis fails, then file queue as final fallback.
+  - `app/routes/api/founder-intent.ts` now attempts SQLite fallback write if Redis fails, then file queue as final fallback.
+  - `app/routes/api/founder-intent.ts` fixed telemetry runtime bug (missing `redisInsertConversionEvent` import).
+  - `app/lib/waitlist-db.ts` uses ESM-safe SQLite load and migrated unique indexes so `ON CONFLICT(intent_id|event_id)` is valid.
+- **P2 playable loop verification**
+  - `scripts/ws2-core.test.mjs` now includes movement + action-economy assertions (`MOVE_COMPLETED`, energy spend).
+- **P3 founder checkout + postback lifecycle**
+  - `app/components/Play.tsx` now records checkout lifecycle events and persists founder intent before Stripe redirect.
+  - `app/routes/api/postback.ts` now logs `postback_received`, invalid payload, and unsupported type outcomes.
+  - `app/routes/api/checkout-success.ts` now logs request receipt + validation failures for both GET and POST.
+- **P4 ops/testing artifacts**
+  - `scripts/product-mode-reliability.test.mjs` added (idempotent persistence + receipt + rate-limit checks).
+  - `package.json` added `test:product`.
+  - `scripts/replay-fallback.mjs` updated index migration for reliable replay upserts.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+- `npm run build` ✅ (Vite + Nitro Vercel output)
+
 ## Autopilot Checkpoint — 00:50 ET Mar 2 (cron 3a2fb22f, pass 48)
 
 **Directive:** STOP landing-page copy. Priorities: (1) signup reliability, (2) playable demo loop, (3) monetization, (4) ops log.
