@@ -218,11 +218,39 @@ export default function BattleHUD({
         </button>
       </div>
 
-      {/* Action feed — bottom center */}
+      {/* Action economy legend */}
       <div
         style={{
           position: 'fixed',
           bottom: 0,
+          left: 0,
+          right: 0,
+          padding: '6px 12px',
+          background: 'rgba(0,0,0,0.75)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 6,
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 16,
+          flexWrap: 'wrap',
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: '0.7rem',
+          color: 'rgba(255,255,255,0.55)',
+          letterSpacing: 0.5,
+        }}
+      >
+        <span>{'\u2694\uFE0F'} MELEE &le;3</span>
+        <span>{'\uD83C\uDFAF'} RANGED &le;10</span>
+        <span>{'\uD83D\uDEE1\uFE0F'} GUARD blocks 40%</span>
+        <span>{'\uD83D\uDCA8'} DASH move&times;2</span>
+        <span>{'\u26A1'} UTILITY varies</span>
+      </div>
+
+      {/* Action feed — bottom center */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 26,
           left: '50%',
           transform: 'translateX(-50%)',
           width: '100%',

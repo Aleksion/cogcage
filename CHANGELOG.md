@@ -8,6 +8,20 @@
 
 ---
 
+## [2026-03-01] - feat(ws19): map movement + action economy legibility
+
+**Type:** feat | **Budget impact:** ~$0 (no AI generation)
+- MOVE action now auto-calculates direction toward nearest opponent (stepToward, Manhattan-style)
+- MELEE_STRIKE range updated to ≤3 tiles (was 1.5); RANGED_SHOT ≤10 confirmed
+- Engine emits MOVE_COMPLETED events with position + distance data
+- OUT_OF_RANGE attacks show dist/range in feed: "⚠️ BOT attacks — OUT OF RANGE (dist: 8, need ≤3)"
+- MOVE events show position in feed: "📍 BOT moves → (12, 8) [dist: 4]"
+- ArenaCanvas lerp speed increased (0.08→0.15) for ~300ms smooth tween
+- BattleHUD: action economy legend strip at bottom (MELEE/RANGED/GUARD/DASH/UTILITY)
+- Zero regressions on existing demo functionality
+
+---
+
 ## [2026-03-01] - design: game studio structure + full ontology
 
 **Type:** design | **Budget impact:** ~$0 (no agent)
