@@ -8,6 +8,30 @@
 
 ---
 
+## [2026-03-01] - chore(ws20): rename CogCage → The Molt Pit across codebase
+
+**Type:** chore | **Budget impact:** ~$2
+
+### Summary
+Comprehensive rename: all user-facing references to CogCage/cogcage replaced with The Molt Pit across 34 files (UI display text, page titles, meta descriptions, headings, copy, code comments, doc files). User-facing URLs updated from `cogcage.com` to `themoltpit.com`.
+
+### What changed
+- **UI**: demo page title, CinematicBattle share URL and branding text
+- **Docs**: all task specs, architecture docs, ops logs, plans, roadmap
+- **Ops**: operating system doc, PEM plan, landing copy spec
+
+### What did NOT change (by design)
+- Environment variable names (`COGCAGE_ENGINE_SECRET`, `COGCAGE_POSTBACK_KEY`, etc.)
+- Cookie/localStorage keys (`cogcage_pid`, `cogcage_email`, etc.)
+- Redis key prefixes (`cogcage:*`)
+- Database filename (`cogcage.db`)
+- Schema identifiers (`cogcage.turn.v1`, `cogcage.action.v1`)
+- DNS zone config (`zone_name = "cogcage.com"`)
+- File/component names (`CogCageLanding.jsx`)
+- GitHub repo paths, npm package names, Vercel project names
+
+---
+
 ## [2026-03-01] - feat(ws19): map movement + action economy legibility
 
 **Type:** feat | **Budget impact:** ~$0 (no AI generation)
@@ -432,7 +456,7 @@ This is Phase 2's core deliverable. Without this skill, players can only watch m
 
 ### Next Steps
 - Publish to ClawHub: `clawhub publish ./skills/themoltpit --slug themoltpit --name "The Molt Pit" --version 0.1.0`
-- Wire `cogcage.com/play` to show "Connect your OpenClaw" CTA after match starts
+- Wire `themoltpit.com/play` to show "Connect your OpenClaw" CTA after match starts
 - TASK-014: Wrap LLM calls in Electric Durable Streams for mobile resilience
 
 ---
@@ -552,7 +576,7 @@ Documented the full architecture decision for the game engine tick loop. Three o
 
 ### Notes
 - **Phase 1 (now):** client-side engine, get demo working — acceptable for Friday gameday
-- **Phase 2 (next week):** build `MatchEngine` Durable Object, deploy `engine.cogcage.com`
+- **Phase 2 (next week):** build `MatchEngine` Durable Object, deploy `engine.themoltpit.com`
 - **Phase 3:** OpenClaw plugin SKILL.md + Electric Durable Transport for resilient agent streams
 - Key constraint: Vercel has NO Durable Objects — that's a Cloudflare Workers primitive. Tick loop cannot live in Vercel serverless functions (stateless, can't hold a loop).
 - QStash minimum tick interval is 500ms — too slow for 150–300ms target. DO alarm API achieves ~10ms precision.
@@ -586,12 +610,12 @@ All API routes using Redis were silently crashing on Vercel with a module-level 
 
 ---
 
-## [2026-02-27] - feat(skills): agent skills — LLM tool-use for CogCage bots
+## [2026-02-27] - feat(skills): agent skills — LLM tool-use for The Molt Pit bots
 
 **Type:** feat
 
 ### Summary
-Added LLM tool-use skill system for CogCage bots. Bots can now invoke typed skills (intel, attack, defense) as discrete LLM tool calls, with results feeding back into decision context. Armory wired to skill selection.
+Added LLM tool-use skill system for The Molt Pit bots. Bots can now invoke typed skills (intel, attack, defense) as discrete LLM tool calls, with results feeding back into decision context. Armory wired to skill selection.
 
 ### Changes
 - `web/src/lib/skills.ts` — Skill definitions and registry (intel, combat, utility types)

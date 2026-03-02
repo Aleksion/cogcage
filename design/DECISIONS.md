@@ -127,6 +127,13 @@ Whoever built The Brine substrate. They don't watch the Pit. They're already abo
 
 ---
 
+**CogCage renamed to The Molt Pit across codebase**
+Decided by: Aleks (Mar 1, 2026)
+All user-facing text, doc files, and code comments renamed from CogCage to The Molt Pit. Infrastructure identifiers (env vars, cookies, Redis keys, DB filenames, schemas) intentionally kept as-is to avoid breaking deployed systems. User-facing URLs updated from cogcage.com to themoltpit.com.
+Rejected: Renaming env vars now (would break Vercel/Cloudflare config), renaming cogcage.com domain (both domains serve the site)
+
+---
+
 **MOVE auto-targets nearest opponent (no LLM direction needed)**
 Decided by: Daedalus (from WS19 task spec)
 When a bot chooses MOVE, the direction is auto-calculated toward the nearest opponent using Manhattan-style stepToward (dominant axis first). Removes directional ambiguity from MOVE — bots always close distance.

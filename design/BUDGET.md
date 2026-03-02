@@ -23,6 +23,7 @@
 | 2026-03-01 | Starting budget | — | $880.00 |
 | 2026-03-01 | Daily burn | -$20.00 | $860.00 |
 | 2026-03-01 | WS19 map movement + action economy | $0.00 | $860.00 |
+| 2026-03-01 | WS20 rename CogCage → The Molt Pit | ~$2.00 | $858.00 |
 
 ---
 
