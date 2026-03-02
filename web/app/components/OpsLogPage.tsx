@@ -78,6 +78,10 @@ export function OpsLogPage() {
     data?.redisFunnel?.conversionEvents ??
     data?.funnel?.conversionEvents ??
     '—'
+  const founderEntitlementCount =
+    data?.founderEntitlements?.redis ??
+    data?.founderEntitlements?.sqlite ??
+    '—'
 
   return (
     <div
@@ -268,6 +272,11 @@ export function OpsLogPage() {
                 label: 'Conversions',
                 value: conversionCount,
                 color: '#ffd600',
+              },
+              {
+                label: 'Founder Entitlements',
+                value: founderEntitlementCount,
+                color: '#5d6bff',
               },
             ].map((s) => (
               <div

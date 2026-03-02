@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { createFileRoute } from '@tanstack/react-router'
-import { getFunnelCounts, getReliabilitySnapshot, getStorageHealth } from '~/lib/waitlist-db'
+import { getFunnelCounts, getFounderEntitlementCount, getReliabilitySnapshot, getStorageHealth } from '~/lib/waitlist-db'
 import { drainFallbackQueues } from '~/lib/fallback-drain'
 import { getRuntimeDir } from '~/lib/runtime-paths'
 import { redisGetOpsLogTail, redisGetFunnelCounts } from '~/lib/waitlist-redis'
@@ -87,12 +87,15 @@ export const Route = createFileRoute('/api/ops')({
         let counts;
         let reliability;
         let storage;
+        let sqliteFounderEntitlements: number | null = null;
         try {
           counts = getFunnelCounts();
+          sqliteFounderEntitlements = getFounderEntitlementCount();
           reliability = getReliabilitySnapshot(24);
           storage = getStorageHealth();
         } catch (error) {
           counts = null;
+          sqliteFounderEntitlements = null;
           reliability = null;
           storage = { error: error instanceof Error ? error.message : 'unknown-error' };
         }
@@ -132,6 +135,10 @@ export const Route = createFileRoute('/api/ops')({
           redisOpsLog,
           reliability,
           storage,
+          founderEntitlements: {
+            sqlite: sqliteFounderEntitlements,
+            redis: redisCounts?.founderEntitlements ?? null,
+          },
           runtimeDir: LOG_DIR,
           queueBacklog,
           files,

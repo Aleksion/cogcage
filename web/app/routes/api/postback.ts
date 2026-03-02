@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { appendEventsFallback, appendFounderIntentFallback, appendOpsLog } from '~/lib/observability'
-import { insertConversionEvent, insertFounderIntent } from '~/lib/waitlist-db'
-import { redisInsertConversionEvent, redisInsertFounderIntent } from '~/lib/waitlist-redis'
+import { insertConversionEvent, insertFounderIntent, upsertFounderEntitlement } from '~/lib/waitlist-db'
+import { redisInsertConversionEvent, redisInsertFounderIntent, redisUpsertFounderEntitlement } from '~/lib/waitlist-redis'
 
 type CheckoutPostback = {
   type?: string;
@@ -260,6 +260,16 @@ export const Route = createFileRoute('/api/postback')({
           userAgent: request.headers.get('user-agent') ?? undefined,
           ipAddress: getClientIp(request),
         } : null;
+        const entitlementPayload = email ? {
+          email,
+          entitlementState: 'active' as const,
+          source: `${source}-postback`,
+          eventId,
+          provider: 'postback',
+          metaJson: safeMetaJson(meta),
+          userAgent: request.headers.get('user-agent') ?? undefined,
+          ipAddress: getClientIp(request),
+        } : null;
 
         try {
           await redisInsertConversionEvent(conversionPayload);
@@ -341,6 +351,59 @@ export const Route = createFileRoute('/api/postback')({
               }
             }
           }
+          if (entitlementPayload) {
+            try {
+              await redisUpsertFounderEntitlement(entitlementPayload);
+              try {
+                upsertFounderEntitlement(entitlementPayload);
+              } catch (sqliteError) {
+                appendOpsLog({
+                  route: '/api/postback',
+                  level: 'warn',
+                  event: 'postback_sqlite_entitlement_write_failed',
+                  requestId,
+                  eventType,
+                  source,
+                  eventId,
+                  error: sqliteError instanceof Error ? sqliteError.message : 'unknown',
+                });
+              }
+            } catch (redisEntitlementError) {
+              appendOpsLog({
+                route: '/api/postback',
+                level: 'warn',
+                event: 'postback_redis_entitlement_write_failed',
+                requestId,
+                eventType,
+                source,
+                eventId,
+                error: redisEntitlementError instanceof Error ? redisEntitlementError.message : 'unknown',
+              });
+              try {
+                upsertFounderEntitlement(entitlementPayload);
+                appendOpsLog({
+                  route: '/api/postback',
+                  level: 'warn',
+                  event: 'postback_entitlement_saved_sqlite_fallback',
+                  requestId,
+                  eventType,
+                  source,
+                  eventId,
+                });
+              } catch (sqliteEntitlementError) {
+                appendOpsLog({
+                  route: '/api/postback',
+                  level: 'error',
+                  event: 'postback_entitlement_sqlite_fallback_failed',
+                  requestId,
+                  eventType,
+                  source,
+                  eventId,
+                  error: sqliteEntitlementError instanceof Error ? sqliteEntitlementError.message : 'unknown',
+                });
+              }
+            }
+          }
 
           appendOpsLog({
             route: '/api/postback',
@@ -351,6 +414,7 @@ export const Route = createFileRoute('/api/postback')({
             source,
             eventId,
             hasEmail: Boolean(email),
+            entitlementUpdated: Boolean(entitlementPayload),
             storage: 'redis',
             durationMs: Date.now() - startedAt,
           });
@@ -391,6 +455,22 @@ export const Route = createFileRoute('/api/postback')({
                 });
               }
             }
+            if (entitlementPayload) {
+              try {
+                upsertFounderEntitlement(entitlementPayload);
+              } catch (sqliteEntitlementError) {
+                appendOpsLog({
+                  route: '/api/postback',
+                  level: 'warn',
+                  event: 'postback_sqlite_entitlement_write_failed',
+                  requestId,
+                  eventType,
+                  source,
+                  eventId,
+                  error: sqliteEntitlementError instanceof Error ? sqliteEntitlementError.message : 'unknown',
+                });
+              }
+            }
             appendOpsLog({
               route: '/api/postback',
               level: 'warn',
@@ -400,6 +480,7 @@ export const Route = createFileRoute('/api/postback')({
               source,
               eventId,
               hasEmail: Boolean(email),
+              entitlementUpdated: Boolean(entitlementPayload),
               durationMs: Date.now() - startedAt,
             });
 

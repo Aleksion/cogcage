@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { insertConversionEvent } from '~/lib/waitlist-db'
+import { insertConversionEvent, upsertFounderEntitlement } from '~/lib/waitlist-db'
 import { appendEventsFallback, appendOpsLog } from '~/lib/observability'
-import { redisInsertConversionEvent } from '~/lib/waitlist-redis'
+import { redisInsertConversionEvent, redisUpsertFounderEntitlement } from '~/lib/waitlist-redis'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -86,6 +86,16 @@ const recordSuccess = async ({
     userAgent,
     ipAddress,
   };
+  const entitlementPayload = email ? {
+    email,
+    entitlementState: 'active' as const,
+    source: payload.source,
+    eventId: payload.eventId,
+    provider: 'checkout-success',
+    metaJson: payload.metaJson,
+    userAgent,
+    ipAddress,
+  } : null;
 
   try {
     await redisInsertConversionEvent(payload);
@@ -102,6 +112,55 @@ const recordSuccess = async ({
         error: sqliteError instanceof Error ? sqliteError.message : 'unknown',
       });
     }
+    if (entitlementPayload) {
+      try {
+        await redisUpsertFounderEntitlement(entitlementPayload);
+        try {
+          upsertFounderEntitlement(entitlementPayload);
+        } catch (sqliteError) {
+          appendOpsLog({
+            route: '/api/checkout-success',
+            level: 'warn',
+            event: 'checkout_success_sqlite_entitlement_write_failed',
+            requestId,
+            source: payload.source,
+            eventId: payload.eventId,
+            error: sqliteError instanceof Error ? sqliteError.message : 'unknown',
+          });
+        }
+      } catch (redisEntitlementError) {
+        appendOpsLog({
+          route: '/api/checkout-success',
+          level: 'warn',
+          event: 'checkout_success_redis_entitlement_write_failed',
+          requestId,
+          source: payload.source,
+          eventId: payload.eventId,
+          error: redisEntitlementError instanceof Error ? redisEntitlementError.message : 'unknown',
+        });
+        try {
+          upsertFounderEntitlement(entitlementPayload);
+          appendOpsLog({
+            route: '/api/checkout-success',
+            level: 'warn',
+            event: 'checkout_success_entitlement_saved_sqlite_fallback',
+            requestId,
+            source: payload.source,
+            eventId: payload.eventId,
+          });
+        } catch (sqliteEntitlementError) {
+          appendOpsLog({
+            route: '/api/checkout-success',
+            level: 'error',
+            event: 'checkout_success_entitlement_sqlite_fallback_failed',
+            requestId,
+            source: payload.source,
+            eventId: payload.eventId,
+            error: sqliteEntitlementError instanceof Error ? sqliteEntitlementError.message : 'unknown',
+          });
+        }
+      }
+    }
     appendOpsLog({
       route: '/api/checkout-success',
       level: 'info',
@@ -109,6 +168,7 @@ const recordSuccess = async ({
       requestId,
       source: payload.source,
       eventId: payload.eventId,
+      entitlementUpdated: Boolean(entitlementPayload),
       storage: 'redis',
       durationMs: Date.now() - startedAt,
     });
@@ -128,6 +188,21 @@ const recordSuccess = async ({
 
     try {
       insertConversionEvent(payload);
+      if (entitlementPayload) {
+        try {
+          upsertFounderEntitlement(entitlementPayload);
+        } catch (sqliteEntitlementError) {
+          appendOpsLog({
+            route: '/api/checkout-success',
+            level: 'warn',
+            event: 'checkout_success_sqlite_entitlement_write_failed',
+            requestId,
+            source: payload.source,
+            eventId: payload.eventId,
+            error: sqliteEntitlementError instanceof Error ? sqliteEntitlementError.message : 'unknown',
+          });
+        }
+      }
       appendOpsLog({
         route: '/api/checkout-success',
         level: 'warn',
@@ -135,6 +210,7 @@ const recordSuccess = async ({
         requestId,
         source: payload.source,
         eventId: payload.eventId,
+        entitlementUpdated: Boolean(entitlementPayload),
         durationMs: Date.now() - startedAt,
       });
       return { requestId, queued: false, degraded: true };

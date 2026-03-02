@@ -9,6 +9,7 @@
  *   moltpit:waitlist              LIST  — newline-delimited JSON entries (newest first)
  *   moltpit:founder-intents       LIST  — newline-delimited JSON entries (newest first)
  *   moltpit:conversions           LIST  — newline-delimited JSON entries (newest first)
+ *   moltpit:founder-entitlements  LIST  — latest entitlement snapshots by email (newest first)
  *   moltpit:ops-log               LIST  — last 500 structured log lines (newest first)
  *   moltpit:ratelimit:{key}:{win} STRING — counter per sliding window bucket
  */
@@ -22,12 +23,14 @@ const MAX_OPS_LOG = 500;
 const WAITLIST_KEY = 'moltpit:waitlist';
 const FOUNDER_INTENT_KEY = 'moltpit:founder-intents';
 const CONVERSIONS_KEY = 'moltpit:conversions';
+const FOUNDER_ENTITLEMENTS_KEY = 'moltpit:founder-entitlements';
 const OPS_LOG_KEY = 'moltpit:ops-log';
 const RATE_LIMIT_PREFIX = 'moltpit:ratelimit:';
 const IDEMPOTENCY_PREFIX = 'moltpit:idempotency:';
 const WAITLIST_EMAIL_PREFIX = 'moltpit:waitlist:email:';
 const FOUNDER_INTENT_ID_PREFIX = 'moltpit:founder-intent:id:';
 const CONVERSION_EVENT_ID_PREFIX = 'moltpit:conversion:event-id:';
+const FOUNDER_ENTITLEMENT_EMAIL_PREFIX = 'moltpit:founder-entitlement:email:';
 const IDEMPOTENCY_TTL_SECONDS = 3 * 24 * 60 * 60;
 const DEDUPE_TTL_SECONDS = 365 * 24 * 60 * 60;
 
@@ -49,6 +52,7 @@ export type RedisFunnelCounts = {
   waitlistLeads: number;
   founderIntents: number;
   conversionEvents: number;
+  founderEntitlements: number;
 };
 
 type RedisApiRequestReceipt = {
@@ -169,6 +173,36 @@ export async function redisInsertConversionEvent(event: {
   await r.set(conversionKey, entry, { ex: DEDUPE_TTL_SECONDS });
 }
 
+// ── Founder Entitlements ──────────────────────────────────────────────────────
+
+export async function redisUpsertFounderEntitlement(entitlement: {
+  email: string;
+  entitlementState: 'active' | 'revoked' | 'refunded';
+  source: string;
+  eventId?: string;
+  provider?: string;
+  metaJson?: string;
+  userAgent?: string;
+  ipAddress?: string;
+}): Promise<void> {
+  const r = getRedis();
+  const normalizedEmail = entitlement.email.trim().toLowerCase();
+  const entry = JSON.stringify({
+    ...entitlement,
+    email: normalizedEmail,
+    updatedAt: new Date().toISOString(),
+  });
+  const entitlementKey = `${FOUNDER_ENTITLEMENT_EMAIL_PREFIX}${normalizedEmail}`;
+  const inserted = await r.set(entitlementKey, entry, { nx: true, ex: DEDUPE_TTL_SECONDS });
+  if (inserted) {
+    await r.lpush(FOUNDER_ENTITLEMENTS_KEY, entry);
+    void r.ltrim(FOUNDER_ENTITLEMENTS_KEY, 0, MAX_WAITLIST - 1);
+    return;
+  }
+
+  await r.set(entitlementKey, entry, { ex: DEDUPE_TTL_SECONDS });
+}
+
 // ── Ops Log ───────────────────────────────────────────────────────────────────
 
 export async function redisAppendOpsLog(logEvent: Record<string, unknown>): Promise<void> {
@@ -188,15 +222,17 @@ export async function redisGetOpsLogTail(n = 50): Promise<string[]> {
 
 export async function redisGetFunnelCounts(): Promise<RedisFunnelCounts> {
   const r = getRedis();
-  const [waitlist, founder, conversions] = await Promise.all([
+  const [waitlist, founder, conversions, founderEntitlements] = await Promise.all([
     r.llen(WAITLIST_KEY),
     r.llen(FOUNDER_INTENT_KEY),
     r.llen(CONVERSIONS_KEY),
+    r.llen(FOUNDER_ENTITLEMENTS_KEY),
   ]);
   return {
     waitlistLeads: waitlist ?? 0,
     founderIntents: founder ?? 0,
     conversionEvents: conversions ?? 0,
+    founderEntitlements: founderEntitlements ?? 0,
   };
 }
 

@@ -2,6 +2,26 @@
 
 ---
 
+## Product-Mode Ship — 17:58 ET Mar 2
+
+Directive executed in strict order (P1→P4), with no landing-copy scope.
+
+### Shipped artifacts (this pass)
+- **P1 signup reliability/log visibility**
+  - `app/lib/waitlist-db.ts`: added `founder_entitlements` SQLite table + `upsertFounderEntitlement` and `getFounderEntitlementCount`.
+  - `app/lib/waitlist-redis.ts`: added Redis founder entitlement snapshots + count exposure.
+- **P3 monetization postback/state**
+  - `app/routes/api/postback.ts`: paid postbacks now update founder entitlement state (`active`) with Redis→SQLite fallback and structured logs.
+  - `app/routes/api/checkout-success.ts`: success callback now updates founder entitlement state with the same fallback chain.
+- **P4 ops artifacts**
+  - `app/routes/api/ops.ts`: API now returns founder entitlement counts (`sqlite` + `redis`).
+  - `app/components/OpsLogPage.tsx`: ops UI now renders Founder Entitlements count.
+  - `scripts/product-mode-reliability.test.mjs`: added founder entitlement persistence coverage.
+
+### Verification evidence
+- `npm run test:product` ✅ (10/10 pass)
+- `npm run build` ✅
+
 ## Product-Mode Ship — 17:34 ET Mar 2
 
 Directive executed in strict order (P1→P4), with no landing-copy scope.

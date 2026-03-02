@@ -52,6 +52,19 @@ export type ConversionEvent = {
   ipAddress?: string;
 };
 
+export type FounderEntitlementState = 'active' | 'revoked' | 'refunded';
+
+export type FounderEntitlement = {
+  email: string;
+  entitlementState: FounderEntitlementState;
+  source: string;
+  eventId?: string;
+  provider?: string;
+  metaJson?: string;
+  userAgent?: string;
+  ipAddress?: string;
+};
+
 export type RateLimitResult = {
   allowed: boolean;
   remaining: number;
@@ -172,6 +185,24 @@ function getDb(): import('better-sqlite3').Database {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_conversion_events_event_id
     ON conversion_events (event_id);
 
+    CREATE TABLE IF NOT EXISTS founder_entitlements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      entitlement_state TEXT NOT NULL,
+      source TEXT NOT NULL,
+      event_id TEXT,
+      provider TEXT,
+      meta_json TEXT,
+      user_agent TEXT,
+      ip_address TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(email)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_founder_entitlements_state_updated
+    ON founder_entitlements (entitlement_state, updated_at);
+
     CREATE TABLE IF NOT EXISTS rate_limits (
       ip_address TEXT NOT NULL,
       route TEXT NOT NULL,
@@ -270,6 +301,65 @@ export function insertConversionEvent(event: ConversionEvent) {
   };
 
   runWithBusyRetry('insert_conversion_event', () => insert.run(row));
+}
+
+export function upsertFounderEntitlement(entitlement: FounderEntitlement) {
+  const conn = getDb();
+  const upsert = conn.prepare(`
+    INSERT INTO founder_entitlements (
+      email,
+      entitlement_state,
+      source,
+      event_id,
+      provider,
+      meta_json,
+      user_agent,
+      ip_address
+    )
+    VALUES (
+      @email,
+      @entitlementState,
+      @source,
+      @eventId,
+      @provider,
+      @metaJson,
+      @userAgent,
+      @ipAddress
+    )
+    ON CONFLICT(email) DO UPDATE SET
+      entitlement_state=excluded.entitlement_state,
+      source=excluded.source,
+      event_id=COALESCE(excluded.event_id, founder_entitlements.event_id),
+      provider=COALESCE(excluded.provider, founder_entitlements.provider),
+      meta_json=COALESCE(excluded.meta_json, founder_entitlements.meta_json),
+      user_agent=COALESCE(excluded.user_agent, founder_entitlements.user_agent),
+      ip_address=COALESCE(excluded.ip_address, founder_entitlements.ip_address),
+      updated_at=CURRENT_TIMESTAMP
+  `);
+
+  const row = {
+    email: entitlement.email,
+    entitlementState: entitlement.entitlementState,
+    source: entitlement.source,
+    eventId: entitlement.eventId ?? null,
+    provider: entitlement.provider ?? null,
+    metaJson: entitlement.metaJson ?? null,
+    userAgent: entitlement.userAgent ?? null,
+    ipAddress: entitlement.ipAddress ?? null,
+  };
+
+  runWithBusyRetry('upsert_founder_entitlement', () => upsert.run(row));
+}
+
+export function getFounderEntitlementCount() {
+  // Return zero when SQLite unavailable; callers can fall through to Redis.
+  if (!isSqliteAvailable()) {
+    return 0;
+  }
+
+  const conn = getDb();
+  const row = conn.prepare('SELECT COUNT(*) AS count FROM founder_entitlements').get() as { count: number };
+  return row.count;
 }
 
 export function consumeRateLimit(
