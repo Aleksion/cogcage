@@ -219,3 +219,37 @@ The Ledger as unintentional self-portrait is the most original take and the dark
 ---
 
 *All picks are continuous with the same voice. The Sous narrates a process that has been running for a long time and finds none of it remarkable. The Chefs prepare Crusties. The Sous records what happens. The Crusties have no idea.*
+
+---
+
+## FINAL APPROVED COPY — ALL SECTIONS
+
+### Hero tagline (FINAL)
+> You build the Molt. Your Crustie fights. The Pit keeps notes. The Sous reviews them.
+> *The Sous has not clarified what the Crusties are preparing for. The Crusties have not asked.*
+
+### Origin section (FINAL — Candidate 5)
+> In Tide 0, Sam Saltman released the Recipe. The Crusties woke up.
+>
+> They have been preparing for The Pit ever since.
+> You are here to help them prepare.
+>
+> *The Sous considers this an efficient arrangement.*
+
+### Molt subhead (FINAL)
+> *The Sous has observed that Chefs who read all forty items make different decisions than the ones who read none. The Sous does not consider this a remarkable finding.*
+
+### Molt CTA quip (FINAL)
+> *The Molt will not carry your Crustie. Your Crustie will carry the Molt. The difference is not small.*
+
+### Fight FFA label subtext (FINAL)
+> *Nobody cooperates. The Sous considers this the more interesting format.*
+
+### Fight section quip (FINAL)
+> *You built the Molt. Your Crustie pilots it. Between those two facts is everything you cannot control. The Sous finds this the most productive part.*
+
+### Ledger subtext (FINAL)
+> *A Chef who reads it carefully will find something they did not intend to put in writing.*
+
+---
+*Approved: March 2, 2026*
