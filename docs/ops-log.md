@@ -4,6 +4,28 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Cron — 13:17 ET, Mar 2 2026
+
+**Directive**: STOP copy iterations. Priorities: P1 signup, P2 demo, P3 monetization, P4 ops log.
+
+**Status:**
+- P1 — Signup reliability + Redis storage + observable logs: ✅ COMPLETE (no regression)
+- P2 — Playable demo loop (7×7 grid, bot movement, range-based AP economy): ✅ COMPLETE (no regression)
+- P3 — Founder checkout + postback: ✅ CODE COMPLETE — **blocked on Aleks env vars**
+- P4 — Ops log: ✅ CURRENT (this entry)
+
+**Build:** Clean
+**Branch:** main, up to date with origin/main
+
+**Blockers (Aleks action required — unchanged):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates live founder checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `https://cogcage.com/api/postback`
+3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
+
+**Cron status**: Code-idle. All P1-P3 shipped and stable. No product-critical code warranted this pass. Awaiting env vars from Aleks to activate live monetization.
+
+---
+
 ### Autopilot Cron — 13:07 ET, Mar 2 2026
 
 **Directive**: STOP copy iterations. Prioritize: (1) signup reliability + storage + observable logs, (2) real playable demo loop with map movement + action economy, (3) monetization path (founder checkout + postback), (4) ops log.
