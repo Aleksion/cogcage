@@ -179,6 +179,7 @@ export function composeMold(
   botName: string,
   position: { x: number; y: number },
   temperature?: number,
+  webhookUrl?: string,
 ): BotConfig {
   const BASE_SYSTEM = `You are ${botName}, a combat crawler in a gladiatorial arena. The arena is a 20x20 grid. Each turn you receive game state and must output ONE action as JSON: {"action":{"type":"MOVE","dir":"N"}} or {"action":{"type":"MELEE_STRIKE","targetId":"botB"}} or {"action":{"type":"RANGED_SHOT","targetId":"botB"}} or {"action":{"type":"GUARD"}} or {"action":{"type":"DASH","dir":"NE"}}. Output ONLY the JSON. No prose.`
 
@@ -210,6 +211,7 @@ export function composeMold(
     armor: armorType,
     position,
     temperature: temp,
+    ...(webhookUrl ? { webhookUrl } : {}),
   }
 }
 

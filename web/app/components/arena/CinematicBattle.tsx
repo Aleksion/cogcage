@@ -129,15 +129,18 @@ interface CinematicBattleProps {
   playerMold?: Part[] | null
   opponentMold?: Part[] | null
   playerName?: string
+  webhookUrl?: string
 }
 
-export default function CinematicBattle({ seed: seedProp, playerMold, opponentMold, playerName }: CinematicBattleProps) {
+export default function CinematicBattle({ seed: seedProp, playerMold, opponentMold, playerName, webhookUrl }: CinematicBattleProps) {
   const playerBot = useMemo(() => composeMold(
     playerMold ?? DEFAULT_PLAYER_MOLD,
     'botA',
     playerName ?? 'YOUR CRAWLER',
     { x: 4, y: 10 },
-  ), [playerMold, playerName])
+    undefined,
+    webhookUrl,
+  ), [playerMold, playerName, webhookUrl])
 
   const opponentBot = useMemo(() => composeMold(
     opponentMold ?? DEFAULT_OPPONENT_MOLD,
@@ -313,6 +316,9 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
 
   const runBrainStream = useCallback(
     (snap: any, botId: string, bot: BotConfig, opponentIds: string[]) => {
+      // Skip LLM streaming for BYO agents — action log shows in BrainStream via history
+      if (bot.webhookUrl) return
+
       const isA = botId === 'botA'
       if (isA) {
         setThinkingA(true)
@@ -525,6 +531,7 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
           lastAction={lastActionA}
           history={historyA}
           side="left"
+          isByo={!!webhookUrl}
         />
         <BrainStream
           botName={opponentBot.name}

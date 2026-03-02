@@ -37,6 +37,7 @@ function DemoPage() {
   const [playerMold, setPlayerMold] = useState<Part[] | null>(null)
   const [opponentMold, setOpponentMold] = useState<Part[] | null>(null)
   const [playerName, setPlayerName] = useState('CRAWLER-1')
+  const [webhookUrl, setWebhookUrl] = useState<string | undefined>()
 
   useEffect(() => setMounted(true), [])
 
@@ -82,10 +83,11 @@ function DemoPage() {
         }
       >
         <MoldBuilder
-          onConfirm={(pm, om, name) => {
+          onConfirm={(pm, om, name, url) => {
             setPlayerMold(pm)
             setOpponentMold(om)
             setPlayerName(name)
+            setWebhookUrl(url)
             setPhase('battle')
           }}
         />
@@ -118,6 +120,7 @@ function DemoPage() {
         playerMold={playerMold}
         opponentMold={opponentMold}
         playerName={playerName}
+        webhookUrl={webhookUrl}
       />
     </Suspense>
   )

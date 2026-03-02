@@ -20,6 +20,8 @@ export interface BotConfig {
   brainPrompt?: string;
   /** Equipped skill IDs (max 3) */
   skills?: string[];
+  /** BYO agent webhook URL — decisions routed through agent.external proxy */
+  webhookUrl?: string;
 }
 
 export interface MatchSnapshot {
