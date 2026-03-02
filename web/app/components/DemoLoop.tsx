@@ -6,6 +6,7 @@ const STRIPE_FOUNDER_URL = (import.meta as ImportMeta & { env?: Record<string, s
 // ── Action Economy ──
 type Action = 'MOVE' | 'ATTACK' | 'DEFEND' | 'CHARGE' | 'STUN'
 type GameMode = 'watch' | 'play'
+type MoveDir = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'
 
 interface Position {
   x: number
@@ -35,6 +36,8 @@ interface TurnResult {
   turn: number
   p1Action: Action | 'WAIT'
   p2Action: Action | 'WAIT'
+  p1MoveDir?: MoveDir | null
+  p2MoveDir?: MoveDir | null
   p1Dmg: number
   p2Dmg: number
   p1Hp: number
@@ -88,6 +91,19 @@ function clampGrid(pos: Position): Position {
   }
 }
 
+function moveInDirection(from: Position, dir: MoveDir): Position {
+  switch (dir) {
+    case 'UP':
+      return clampGrid({ x: from.x, y: from.y - 1 })
+    case 'DOWN':
+      return clampGrid({ x: from.x, y: from.y + 1 })
+    case 'LEFT':
+      return clampGrid({ x: from.x - 1, y: from.y })
+    case 'RIGHT':
+      return clampGrid({ x: from.x + 1, y: from.y })
+  }
+}
+
 function pickAction(bias: Record<Action, number>, dist: number, stunned: boolean): Action {
   const actions: Action[] = ['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN']
   const weights = actions.map((a) => {
@@ -120,6 +136,7 @@ function resolveTurn(
   p1: BotState,
   p2: BotState,
   turnNum: number,
+  moveIntent: { p1Dir?: MoveDir; p2Dir?: MoveDir } = {},
 ): TurnResult {
   let p1Dmg = 0
   let p2Dmg = 0
@@ -130,7 +147,11 @@ function resolveTurn(
     const dist = manhattan(p1.pos, p2.pos)
     switch (p1Act) {
       case 'MOVE':
-        if (!p1.stunned) p1.pos = clampGrid(moveToward(p1.pos, p2.pos))
+        if (!p1.stunned) {
+          p1.pos = moveIntent.p1Dir
+            ? moveInDirection(p1.pos, moveIntent.p1Dir)
+            : clampGrid(moveToward(p1.pos, p2.pos))
+        }
         break
       case 'ATTACK':
         if (dist <= 2) {
@@ -151,7 +172,11 @@ function resolveTurn(
     const dist2 = manhattan(p1.pos, p2.pos)
     switch (p2Act) {
       case 'MOVE':
-        if (!p2.stunned) p2.pos = clampGrid(moveToward(p2.pos, p1.pos))
+        if (!p2.stunned) {
+          p2.pos = moveIntent.p2Dir
+            ? moveInDirection(p2.pos, moveIntent.p2Dir)
+            : clampGrid(moveToward(p2.pos, p1.pos))
+        }
         break
       case 'ATTACK':
         if (dist2 <= 2) {
@@ -176,14 +201,16 @@ function resolveTurn(
   const logParts: string[] = [`T${turnNum}:`]
   if (p1Act === 'WAIT') logParts.push(`${BERSERKER.initial} WAIT`)
   else {
-    logParts.push(`${BERSERKER.initial} ${p1Act}`)
+    const p1MoveSuffix = p1Act === 'MOVE' && moveIntent.p1Dir ? ` ${moveIntent.p1Dir}` : ''
+    logParts.push(`${BERSERKER.initial} ${p1Act}${p1MoveSuffix}`)
     const d = manhattan(p1.pos, p2.pos)
     if (p1Act === 'ATTACK' && d > 2) logParts.push('(miss)')
     else if (p1Dmg > 0) logParts.push(`(${p1Dmg})`)
   }
   if (p2Act === 'WAIT') logParts.push(`vs ${TACTICIAN.initial} WAIT`)
   else {
-    logParts.push(`vs ${TACTICIAN.initial} ${p2Act}`)
+    const p2MoveSuffix = p2Act === 'MOVE' && moveIntent.p2Dir ? ` ${moveIntent.p2Dir}` : ''
+    logParts.push(`vs ${TACTICIAN.initial} ${p2Act}${p2MoveSuffix}`)
     const d2 = manhattan(p1.pos, p2.pos)
     if (p2Act === 'ATTACK' && d2 > 2) logParts.push('(miss)')
     else if (p2Dmg > 0) logParts.push(`(${p2Dmg})`)
@@ -193,6 +220,8 @@ function resolveTurn(
     turn: turnNum,
     p1Action: p1Act,
     p2Action: p2Act,
+    p1MoveDir: moveIntent.p1Dir ?? null,
+    p2MoveDir: moveIntent.p2Dir ?? null,
     p1Dmg,
     p2Dmg,
     p1Hp: p1.hp,
@@ -821,13 +850,13 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
                 <span style={{ color: '#666' }}>T{t.turn}</span>{' '}
                 <span style={{ color: BERSERKER.color }}>{BERSERKER.initial}</span>{' '}
                 <span className="demo-action-tag" style={{ background: ACTION_COLORS[t.p1Action], color: '#000' }}>
-                  {t.p1Action}
+                  {t.p1Action}{t.p1Action === 'MOVE' && t.p1MoveDir ? `:${t.p1MoveDir}` : ''}
                 </span>
                 {t.p1Dmg > 0 && <span style={{ color: '#EB4D4B' }}> -{t.p1Dmg}</span>}
                 {' '}
                 <span style={{ color: TACTICIAN.color }}>{TACTICIAN.initial}</span>{' '}
                 <span className="demo-action-tag" style={{ background: ACTION_COLORS[t.p2Action], color: '#000' }}>
-                  {t.p2Action}
+                  {t.p2Action}{t.p2Action === 'MOVE' && t.p2MoveDir ? `:${t.p2MoveDir}` : ''}
                 </span>
                 {t.p2Dmg > 0 && <span style={{ color: '#EB4D4B' }}> -{t.p2Dmg}</span>}
               </div>
@@ -866,7 +895,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [live.log.length])
 
-  const handlePlayerAction = useCallback((action: Action) => {
+  const handlePlayerAction = useCallback((action: Action, moveDir?: MoveDir) => {
     if (!live.waitingForPlayer || live.winner || aiThinking) return
 
     setAiThinking(true)
@@ -891,7 +920,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
         if (p1CanAct) p1.ap -= 1.0
         if (p2CanAct) p2.ap -= 1.0
 
-        const result = resolveTurn(p1Act, p2Act, p1, p2, prev.turn)
+        const result = resolveTurn(p1Act, p2Act, p1, p2, prev.turn, { p1Dir: moveDir })
 
         const newLog = [...prev.log, result]
         const isDone = p1.hp <= 0 || p2.hp <= 0 || prev.turn >= MAX_TURNS
@@ -912,6 +941,30 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
       setAiThinking(false)
     }, 350)
   }, [live.waitingForPlayer, live.winner, aiThinking])
+
+  useEffect(() => {
+    if (live.winner || aiThinking || !live.waitingForPlayer) return
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase()
+      if (key === 'w' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        handlePlayerAction('MOVE', 'UP')
+      } else if (key === 's' || event.key === 'ArrowDown') {
+        event.preventDefault()
+        handlePlayerAction('MOVE', 'DOWN')
+      } else if (key === 'a' || event.key === 'ArrowLeft') {
+        event.preventDefault()
+        handlePlayerAction('MOVE', 'LEFT')
+      } else if (key === 'd' || event.key === 'ArrowRight') {
+        event.preventDefault()
+        handlePlayerAction('MOVE', 'RIGHT')
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handlePlayerAction, live.winner, aiThinking, live.waitingForPlayer])
 
   const resetGame = useCallback(() => {
     setLive(makeInitialLiveState())
@@ -953,7 +1006,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
   }
 
   const ACTIONS: { action: Action; label: string; disabled?: boolean }[] = [
-    { action: 'MOVE', label: 'MOVE →' },
+    { action: 'MOVE', label: 'MOVE (WASD)' },
     { action: 'ATTACK', label: `ATTACK${!canAttack ? ' (far)' : ''}`, disabled: !canAttack },
     { action: 'DEFEND', label: 'DEFEND' },
     { action: 'CHARGE', label: 'CHARGE' },
@@ -1016,7 +1069,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           {aiThinking ? (
             <div className="demo-ai-turn">AI IS THINKING...</div>
           ) : (
-            <div className="demo-your-turn">YOUR TURN — PICK AN ACTION</div>
+            <div className="demo-your-turn">YOUR TURN — PICK AN ACTION · MOVE WITH WASD / ARROWS</div>
           )}
           <div className="demo-action-row">
             {ACTIONS.map(({ action, label, disabled }) => (
@@ -1028,7 +1081,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
                 disabled={disabled || aiThinking || !live.waitingForPlayer}
                 title={
                   action === 'ATTACK' ? 'Deals 15-25 dmg (range ≤ 2). +40% if CHARGED.' :
-                  action === 'MOVE' ? 'Move one step toward enemy.' :
+                  action === 'MOVE' ? 'Move one tile. Use WASD / Arrow keys for directional control.' :
                   action === 'DEFEND' ? 'Reduces incoming damage by 50% this turn.' :
                   action === 'CHARGE' ? 'Next ATTACK deals +40% damage.' :
                   'Stuns enemy for 1 turn (range ≤ 2, 50% miss chance when stunned).'
@@ -1044,8 +1097,10 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
       {lastResult && !winner && (
         <div style={{ textAlign: 'center', fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem' }}>
           Last: YOU {lastResult.p1Action}
+          {lastResult.p1Action === 'MOVE' && lastResult.p1MoveDir ? `:${lastResult.p1MoveDir}` : ''}
           {lastResult.p1Dmg > 0 && <span style={{ color: '#EB4D4B' }}> (-{lastResult.p1Dmg})</span>}
           {' · '}AI {lastResult.p2Action}
+          {lastResult.p2Action === 'MOVE' && lastResult.p2MoveDir ? `:${lastResult.p2MoveDir}` : ''}
           {lastResult.p2Dmg > 0 && <span style={{ color: '#EB4D4B' }}> (-{lastResult.p2Dmg})</span>}
         </div>
       )}
@@ -1066,13 +1121,13 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
                 <span style={{ color: '#666' }}>T{t.turn}</span>{' '}
                 <span style={{ color: BERSERKER.color }}>YOU</span>{' '}
                 <span className="demo-action-tag" style={{ background: ACTION_COLORS[t.p1Action], color: '#000' }}>
-                  {t.p1Action}
+                  {t.p1Action}{t.p1Action === 'MOVE' && t.p1MoveDir ? `:${t.p1MoveDir}` : ''}
                 </span>
                 {t.p1Dmg > 0 && <span style={{ color: '#EB4D4B' }}> -{t.p1Dmg}</span>}
                 {' '}
                 <span style={{ color: TACTICIAN.color }}>AI</span>{' '}
                 <span className="demo-action-tag" style={{ background: ACTION_COLORS[t.p2Action], color: '#000' }}>
-                  {t.p2Action}
+                  {t.p2Action}{t.p2Action === 'MOVE' && t.p2MoveDir ? `:${t.p2MoveDir}` : ''}
                 </span>
                 {t.p2Dmg > 0 && <span style={{ color: '#EB4D4B' }}> -{t.p2Dmg}</span>}
               </div>

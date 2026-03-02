@@ -24,6 +24,19 @@ type CheckoutPostback = {
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ACCEPTED_POSTBACK_TYPES = [
+  'checkout.session.completed',
+  'checkout.session.async_payment_succeeded',
+  'founder_pack.paid',
+  'founder_pack_paid',
+] as const;
+
+function normalizePostbackType(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const type = value.trim();
+  if (type === 'founder_pack_paid') return 'founder_pack.paid';
+  return type;
+}
 
 function normalizeString(value: unknown, maxLen = 500) {
   if (typeof value !== 'string') return '';
@@ -45,10 +58,21 @@ function getClientIp(request: Request) {
   return forwarded || realIp || cfIp || flyIp || undefined;
 }
 
+function getProvidedPostbackKey(request: Request): string {
+  const fromHeader = request.headers.get('x-postback-key')?.trim();
+  if (fromHeader) return fromHeader;
+
+  const auth = request.headers.get('authorization')?.trim() ?? '';
+  if (auth.toLowerCase().startsWith('bearer ')) {
+    return auth.slice(7).trim();
+  }
+  return '';
+}
+
 function authorize(request: Request): boolean {
   const key = (process.env.COGCAGE_POSTBACK_KEY ?? process.env.MOLTPIT_POSTBACK_KEY)?.trim();
   if (!key) return true;
-  const provided = request.headers.get('x-postback-key')?.trim() ?? '';
+  const provided = getProvidedPostbackKey(request);
   return provided === key;
 }
 
@@ -83,7 +107,17 @@ export const Route = createFileRoute('/api/postback')({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        const requestId = crypto.randomUUID();
         if (!authorize(request)) {
+          appendOpsLog({
+            route: '/api/postback',
+            level: 'warn',
+            event: 'postback_unauthorized',
+            requestId,
+            method: 'GET',
+            hasHeaderKey: Boolean(request.headers.get('x-postback-key')),
+            hasBearer: Boolean(request.headers.get('authorization')),
+          });
           return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
             status: 401,
             headers: { 'content-type': 'application/json' },
@@ -97,7 +131,7 @@ export const Route = createFileRoute('/api/postback')({
             headers: { 'content-type': 'application/json' },
           });
         }
-        return new Response(JSON.stringify({ ok: true, status: 'ready', acceptedTypes: ['checkout.session.completed', 'founder_pack.paid'] }), {
+        return new Response(JSON.stringify({ ok: true, status: 'ready', acceptedTypes: [...ACCEPTED_POSTBACK_TYPES] }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         });
@@ -113,6 +147,8 @@ export const Route = createFileRoute('/api/postback')({
           event: 'postback_received',
           requestId,
           contentType,
+          hasHeaderKey: Boolean(request.headers.get('x-postback-key')),
+          hasBearer: Boolean(request.headers.get('authorization')),
         });
 
         // Test mode stub: ?test=1 returns 200 without processing, for deploy verification
@@ -125,7 +161,15 @@ export const Route = createFileRoute('/api/postback')({
         }
 
         if (!authorize(request)) {
-          appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_unauthorized', requestId });
+          appendOpsLog({
+            route: '/api/postback',
+            level: 'warn',
+            event: 'postback_unauthorized',
+            requestId,
+            method: 'POST',
+            hasHeaderKey: Boolean(request.headers.get('x-postback-key')),
+            hasBearer: Boolean(request.headers.get('authorization')),
+          });
           return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', requestId }), {
             status: 401,
             headers: { 'content-type': 'application/json' },
@@ -183,15 +227,17 @@ export const Route = createFileRoute('/api/postback')({
         }
 
         const rawType = payload.type ?? '';
-        const eventType = typeof rawType === 'string' ? rawType : '';
-        const acceptedTypes = new Set(['checkout.session.completed', 'founder_pack.paid']);
+        const eventType = normalizePostbackType(rawType);
+        const acceptedTypes = new Set<string>(ACCEPTED_POSTBACK_TYPES);
         if (!acceptedTypes.has(eventType)) {
           appendOpsLog({
             route: '/api/postback',
             level: 'warn',
             event: 'postback_type_unsupported',
             requestId,
+            rawType: typeof rawType === 'string' ? rawType : '',
             eventType,
+            acceptedTypes: [...acceptedTypes],
             durationMs: Date.now() - startedAt,
           });
           return new Response(JSON.stringify({ ok: false, error: 'Unsupported postback type', requestId }), {

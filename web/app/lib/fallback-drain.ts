@@ -25,11 +25,11 @@ function runtimeFile(file: string) {
   return path.join(dir, file);
 }
 
-function drainFile(
+async function drainFile(
   filePath: string,
-  insertRow: (row: Record<string, unknown>) => void,
+  insertRow: (row: Record<string, unknown>) => Promise<void>,
   maxRows = 50
-): DrainStats {
+): Promise<DrainStats> {
   const empty: DrainStats = { processed: 0, inserted: 0, kept: 0, parseFailed: 0, insertFailed: 0 };
   if (!fs.existsSync(filePath)) return empty;
 
@@ -52,7 +52,7 @@ function drainFile(
     try {
       const row = JSON.parse(line) as Record<string, unknown>;
       try {
-        insertRow(row);
+        await insertRow(row);
         stats.inserted += 1;
       } catch {
         stats.insertFailed += 1;
@@ -74,8 +74,8 @@ function drainFile(
   return stats;
 }
 
-export function drainFallbackQueues(maxRowsPerFile = 50) {
-  const waitlist = drainFile(runtimeFile(WAITLIST_FILE), (row) => {
+export async function drainFallbackQueues(maxRowsPerFile = 50) {
+  const waitlist = await drainFile(runtimeFile(WAITLIST_FILE), async (row) => {
     const payload = {
       email: String(row.email || '').toLowerCase(),
       game: String(row.game || 'Unspecified'),
@@ -83,12 +83,24 @@ export function drainFallbackQueues(maxRowsPerFile = 50) {
       userAgent: typeof row.userAgent === 'string' ? row.userAgent : undefined,
       ipAddress: typeof row.ipAddress === 'string' ? row.ipAddress : undefined,
     };
-    insertWaitlistLead(payload);
-    // Fire-and-forget Redis replay — best-effort durable storage recovery
-    void redisInsertWaitlistLead(payload).catch(() => {});
+    try {
+      // Durable primary replay path.
+      await redisInsertWaitlistLead(payload);
+    } catch {
+      // Redis unavailable — recover to local sqlite if possible.
+      insertWaitlistLead(payload);
+      return;
+    }
+
+    // Best-effort local mirror for local diagnostics.
+    try {
+      insertWaitlistLead(payload);
+    } catch {
+      // Redis already persisted the row; do not requeue.
+    }
   }, maxRowsPerFile);
 
-  const founder = drainFile(runtimeFile(FOUNDER_FILE), (row) => {
+  const founder = await drainFile(runtimeFile(FOUNDER_FILE), async (row) => {
     const payload = {
       email: String(row.email || '').toLowerCase(),
       source: String(row.source || 'fallback-replay'),
@@ -96,12 +108,21 @@ export function drainFallbackQueues(maxRowsPerFile = 50) {
       userAgent: typeof row.userAgent === 'string' ? row.userAgent : undefined,
       ipAddress: typeof row.ipAddress === 'string' ? row.ipAddress : undefined,
     };
-    insertFounderIntent(payload);
-    // Fire-and-forget Redis replay
-    void redisInsertFounderIntent(payload).catch(() => {});
+    try {
+      await redisInsertFounderIntent(payload);
+    } catch {
+      insertFounderIntent(payload);
+      return;
+    }
+
+    try {
+      insertFounderIntent(payload);
+    } catch {
+      // Redis already persisted the row; do not requeue.
+    }
   }, maxRowsPerFile);
 
-  const events = drainFile(runtimeFile(EVENTS_FILE), (row) => {
+  const events = await drainFile(runtimeFile(EVENTS_FILE), async (row) => {
     const payload = {
       eventName: String(row.eventName || 'fallback_event'),
       eventId: typeof row.eventId === 'string' ? row.eventId : undefined,
@@ -114,9 +135,18 @@ export function drainFallbackQueues(maxRowsPerFile = 50) {
       userAgent: typeof row.userAgent === 'string' ? row.userAgent : undefined,
       ipAddress: typeof row.ipAddress === 'string' ? row.ipAddress : undefined,
     };
-    insertConversionEvent(payload);
-    // Fire-and-forget Redis replay
-    void redisInsertConversionEvent(payload).catch(() => {});
+    try {
+      await redisInsertConversionEvent(payload);
+    } catch {
+      insertConversionEvent(payload);
+      return;
+    }
+
+    try {
+      insertConversionEvent(payload);
+    } catch {
+      // Redis already persisted the row; do not requeue.
+    }
   }, maxRowsPerFile);
 
   return {

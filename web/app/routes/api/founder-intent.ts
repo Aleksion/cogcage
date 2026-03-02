@@ -366,12 +366,18 @@ export const Route = createFileRoute('/api/founder-intent')({
 
           appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'founder_intent_saved', requestId, source: payload.source, emailHash: payload.email.slice(0, 3), durationMs: Date.now() - startedAt });
           try {
-            const drained = drainFallbackQueues(10);
+            const drained = await drainFallbackQueues(10);
             if ((drained.waitlist.inserted + drained.founder.inserted + drained.events.inserted) > 0) {
               appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'fallback_drain_after_founder_intent', requestId, drained });
             }
-          } catch {
-            // best-effort background healing only
+          } catch (drainError) {
+            appendOpsLog({
+              route: '/api/founder-intent',
+              level: 'warn',
+              event: 'fallback_drain_after_founder_intent_failed',
+              requestId,
+              error: drainError instanceof Error ? drainError.message : 'unknown',
+            });
           }
           safeTrackConversion('/api/founder-intent', requestId, {
             eventName: 'founder_intent_submitted',

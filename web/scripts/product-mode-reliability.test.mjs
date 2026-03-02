@@ -6,8 +6,11 @@ import path from 'node:path';
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cogcage-product-mode-'));
 process.env.MOLTPIT_DB_PATH = path.join(tmpDir, 'moltpit.test.db');
+process.env.MOLTPIT_LOG_DIR = path.join(tmpDir, 'logs');
+fs.mkdirSync(process.env.MOLTPIT_LOG_DIR, { recursive: true });
 
 const dbModPromise = import('../app/lib/waitlist-db.ts');
+const drainModPromise = import('../app/lib/fallback-drain.ts');
 
 test('waitlist/founder/conversion persistence is idempotent in sqlite path', async (t) => {
   const db = await dbModPromise;
@@ -114,4 +117,31 @@ test('rate limit enforces cap with clear reset metadata', async (t) => {
   assert.equal(third.allowed, false);
   assert.equal(third.remaining, 0);
   assert.ok(Number.isFinite(third.resetMs));
+});
+
+test('fallback drain replays waitlist rows when redis is unavailable', async (t) => {
+  const db = await dbModPromise;
+  const drain = await drainModPromise;
+  const health = db.getStorageHealth();
+  if (!health.sqliteAvailable) {
+    t.skip(`SQLite unavailable in test runtime: ${health.sqliteLoadError ?? 'unknown error'}`);
+    return;
+  }
+
+  const logDir = process.env.MOLTPIT_LOG_DIR;
+  const filePath = path.join(logDir, 'waitlist-fallback.ndjson');
+  fs.writeFileSync(filePath, `${JSON.stringify({
+    email: 'drain-test@pit.dev',
+    game: 'The Molt Pit',
+    source: 'fallback-test',
+  })}\n`, 'utf8');
+
+  const before = db.getFunnelCounts().waitlistLeads;
+  const drained = await drain.drainFallbackQueues(10);
+  const after = db.getFunnelCounts().waitlistLeads;
+
+  assert.equal(drained.waitlist.inserted, 1);
+  assert.equal(drained.waitlist.kept, 0);
+  assert.equal(after, before + 1);
+  assert.equal(fs.readFileSync(filePath, 'utf8'), '');
 });
