@@ -1423,23 +1423,17 @@ const HeroSection = ({ sectionRef }) => {
       return;
     }
 
-    await Promise.all([
-      postJson('/api/founder-intent', {
-        email: trimmed.toLowerCase(),
-        source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
-      }),
-      postJson('/api/events', {
-        event: 'founder_checkout_unavailable',
-        source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
-        email: trimmed.toLowerCase(),
-        tier: 'founder',
-        page: '/',
-        variant,
-        meta: { variant, founderCtaVariant },
-      }),
-    ]);
+    await postJson('/api/events', {
+      event: 'founder_checkout_unavailable',
+      source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
+      email: trimmed.toLowerCase(),
+      tier: 'founder',
+      page: '/',
+      variant,
+      meta: { variant, founderCtaVariant },
+    });
     setStatus('success');
-    setMessage("✓ You're on the list! We'll send checkout link when live.");
+    setMessage("✓ We'll send you checkout access when it opens.");
   };
 
   const heroCopy = HERO_COPY[variant] || HERO_COPY.value;
@@ -1818,21 +1812,15 @@ const FooterSection = () => {
       return;
     }
 
-    await Promise.all([
-      postJson('/api/founder-intent', {
-        email: trimmed.toLowerCase(),
-        source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
-      }),
-      postJson('/api/events', {
-        event: 'founder_checkout_unavailable',
-        source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
-        email: trimmed,
-        tier: 'founder',
-        page: '/',
-        variant,
-        meta: { variant, founderCtaVariant },
-      }),
-    ]);
+    await postJson('/api/events', {
+      event: 'founder_checkout_unavailable',
+      source: `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`,
+      email: trimmed,
+      tier: 'founder',
+      page: '/',
+      variant,
+      meta: { variant, founderCtaVariant },
+    });
     setSubmittedEmail(trimmed);
     setSubmitted(true);
   };
