@@ -1,0 +1,16 @@
+{
+  "lobster/idle": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/lobster-idle-Sp6SXGuZHXtsI6xk0YeRWQip6Dzzvn.glb",
+  "lobster/walk": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/lobster-walk-4tdMV9xTuQK7f8i4nmNnyGKDL3i8H5.glb",
+  "lobster/attack": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/lobster-attack-yRnf07HLIaGuXO45romCQ0Qsq4bf2M.glb",
+  "lobster/hit": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/lobster-hit-XrUP3cUbligshiB9PdtFV4Ft4U22Vw.glb",
+  "lobster/death": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/lobster-death-mx5NbA87dIgUN07LeuEA8KeJmNjPyU.glb",
+  "shrimp/idle": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/shrimp-idle-cCGAwP8Yicwv9z1Kkh1okmvnnDuEwI.glb",
+  "shrimp/walk": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/shrimp-walk-Dc5oL8zAG0szzBYF5yrCrEuaLf0mM2.glb",
+  "shrimp/attack": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/shrimp-attack-DNiKH7H7VUJ4CGHBpKMRWsjkbai1VJ.glb",
+  "shrimp/hit": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/shrimp-hit-94DW98umgJ1JXP5wzsw5PwM0hc9Pcb.glb",
+  "shrimp/death": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/shrimp-death-lANDnRRrKRME20TCF7qLn2q1se5P3B.glb",
+  "mantis/idle": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/mantis-idle-5P5qASgN5ty3dNC3zTOgQVbosTFFEx.glb",
+  "mantis/walk": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/mantis-walk-ibJtyEB9ZqneF3lEJgjbhH34Z4aCb4.glb",
+  "mantis/attack": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/mantis-attack-GuP3aGkgsOQStQvIdvqb75brVH8oN3.glb",
+  "mantis/death": "https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/animations/mantis-death-dBbEOFWV9tp5S1P5NgA47leHlaomYz.glb"
+}
