@@ -12,6 +12,7 @@ type CheckoutPostback = {
   data?: {
     object?: {
       id?: string;
+      client_reference_id?: string;
       customer_email?: string;
       customer_details?: {
         email?: string;
@@ -206,16 +207,34 @@ export const Route = createFileRoute('/api/postback')({
           ?? normalizeEmail(object?.customer_email)
           ?? normalizeEmail(object?.customer_details?.email);
 
-        const source = typeof payload.source === 'string' && payload.source.trim() ? payload.source.trim() : 'postback';
+        const objectMetadata = (object?.metadata && typeof object.metadata === 'object')
+          ? object.metadata
+          : {};
+        const payloadMetadata = (payload.metadata && typeof payload.metadata === 'object')
+          ? payload.metadata
+          : undefined;
+        const resolvedMetadata = payloadMetadata ?? objectMetadata;
+        const sourceFromMetadata =
+          normalizeString((resolvedMetadata as Record<string, unknown>).checkout_source, 160)
+          || normalizeString((resolvedMetadata as Record<string, unknown>).source, 160);
+        const source =
+          normalizeString(payload.source, 160)
+          || sourceFromMetadata
+          || 'postback';
         const meta = {
           eventType,
           created: payload.created,
-          metadata: payload.metadata ?? object?.metadata ?? {},
+          metadata: resolvedMetadata,
         };
+        const metadataEventId =
+          normalizeString((resolvedMetadata as Record<string, unknown>).checkout_event_id, 180)
+          || normalizeString((resolvedMetadata as Record<string, unknown>).event_id, 180);
 
         const eventId =
           (typeof payload.eventId === 'string' && payload.eventId.trim() ? payload.eventId.trim() : undefined)
           ?? (typeof payload.id === 'string' && payload.id.trim() ? payload.id.trim() : undefined)
+          ?? (typeof object?.client_reference_id === 'string' && object.client_reference_id.trim() ? object.client_reference_id.trim() : undefined)
+          ?? metadataEventId
           ?? (typeof object?.id === 'string' && object.id.trim() ? object.id.trim() : undefined)
           ?? deriveFallbackEventId({ eventType, source, email, created: payload.created, metadata: meta.metadata as Record<string, unknown> });
 

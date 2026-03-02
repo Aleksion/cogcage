@@ -2,6 +2,36 @@
 
 ---
 
+## Product-Mode Ship — 15:49 ET Mar 2
+
+Directive executed in strict order: P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback handling, P4 ops artifacts.
+
+### Shipped artifacts
+- `web/app/lib/waitlist-redis.ts`
+  - Route-aware Redis rate-limit keying (`namespace:key:window`) to prevent cross-route throttle collisions.
+- `web/app/routes/api/waitlist.ts`
+  - Redis rate-limit consume now scoped to `waitlist`.
+- `web/app/routes/api/founder-intent.ts`
+  - Redis rate-limit consume now scoped to `founder-intent`.
+- `web/app/components/Play.tsx`
+  - Founder checkout now generates deterministic per-attempt `checkoutEventId`.
+  - Persists checkout lineage keys in local storage and forwards `client_reference_id`, `checkout_source`, `checkout_event_id` in Stripe redirect URL.
+  - Checkout lifecycle telemetry now includes `eventId`.
+- `web/app/components/DemoLoop.tsx`
+  - Founder checkout URL now includes `checkout_event_id` for consistent reconciliation path.
+- `web/app/routes/api/postback.ts`
+  - Event reconciliation now consumes `client_reference_id` and metadata (`checkout_event_id`, `checkout_source`) before deriving fallback IDs.
+- `web/app/components/SuccessPage.tsx`
+  - Success tracking now reads `event_id|checkout_event_id|client_reference_id` from URL before local storage fallback.
+- `web/app/routes/api/checkout-success.ts`
+  - GET/POST event ID extraction expanded to include `event_id`, `checkout_event_id`, and `client_reference_id`.
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added rate-limit namespace isolation test.
+
+### Verification
+- `cd web && npm run test:product` ✅ (10 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## Product-Mode Ship — 15:42 ET Mar 2
 
 Directive executed in priority order: P1 signup reliability/storage/logs, P2 playable demo loop, P3 founder checkout + postback reconciliation, P4 ops artifacts.

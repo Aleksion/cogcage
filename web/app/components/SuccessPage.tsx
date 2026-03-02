@@ -73,7 +73,12 @@ async function flushPendingConversions() {
 async function trackPaidConversion() {
   const params = new URLSearchParams(window.location.search)
   const sessionId = params.get('session_id') || params.get('checkout_session_id')
-  const checkoutEventId = localStorage.getItem(CHECKOUT_EVENT_ID_KEY) || undefined
+  const queryEventId =
+    params.get('event_id')
+    || params.get('checkout_event_id')
+    || params.get('client_reference_id')
+    || undefined
+  const checkoutEventId = queryEventId || localStorage.getItem(CHECKOUT_EVENT_ID_KEY) || undefined
   const email =
     params.get('prefilled_email') ||
     localStorage.getItem('moltpit_email') ||

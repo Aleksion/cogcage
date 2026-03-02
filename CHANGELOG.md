@@ -8,6 +8,48 @@
 
 ---
 
+## [2026-03-02] - fix(product-autopilot): signup throttle isolation + playable checkout event lineage + postback reconciliation
+
+**Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)
+
+### What
+- `web/app/lib/waitlist-redis.ts`
+  - Added namespace support to Redis rate-limit keys so independent product routes do not share the same throttle bucket.
+- `web/app/routes/api/waitlist.ts`
+  - Scoped Redis rate-limit consumption to `waitlist`.
+- `web/app/routes/api/founder-intent.ts`
+  - Scoped Redis rate-limit consumption to `founder-intent`.
+- `web/app/components/Play.tsx`
+  - Added deterministic founder checkout `eventId` creation and propagation.
+  - Persisted checkout lineage keys in local storage (`checkout_source`, `intent_source`, `checkout_event_id`).
+  - Enriched Stripe redirect URL with `client_reference_id`, `checkout_source`, and `checkout_event_id`.
+  - Attached checkout `eventId` to founder checkout lifecycle telemetry events.
+- `web/app/components/DemoLoop.tsx`
+  - Added `checkout_event_id` query propagation on founder checkout URL for reconciliation parity with play flow.
+- `web/app/routes/api/postback.ts`
+  - Added reconciliation support for Stripe `client_reference_id` and metadata-derived checkout IDs/sources.
+  - Source resolution now prefers explicit payload source, then postback metadata, then default fallback.
+- `web/app/components/SuccessPage.tsx`
+  - Conversion tracking now accepts `event_id`, `checkout_event_id`, and `client_reference_id` from success URL before local-storage fallback.
+- `web/app/routes/api/checkout-success.ts`
+  - Expanded accepted conversion ID inputs for both POST and GET (`event_id`, `checkout_event_id`, `client_reference_id`).
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added a route-namespace isolation test for rate limiting.
+
+### Why
+- Signup reliability needed strict separation between waitlist and founder-intent throttling; shared Redis buckets could block valid submits across routes.
+- Monetization reconciliation needed a stable, deterministic checkout identity across redirect, success page, and postback processing to prevent drift between client and server conversion records.
+- Observable logs and conversion analytics are only useful if event lineage remains consistent across all happy-path and fallback paths.
+
+### Design Decisions
+- Preserve existing API contracts and storage layering; harden behavior through keying, propagation, and parsing only.
+- Prefer deterministic, portable checkout IDs (`client_reference_id` lineage) over route-local derivations whenever upstream payloads provide them.
+- Keep fallback behavior unchanged (Redis → SQLite → file queue), but improve identifier continuity through each stage.
+
+### Verification
+- `cd web && npm run test:product` ✅ (10 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)

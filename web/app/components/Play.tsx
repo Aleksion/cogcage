@@ -313,6 +313,9 @@ interface ArenaTask {
 
 const GRID_SIZE = 8;
 const EMAIL_KEY = 'moltpit_email';
+const CHECKOUT_SOURCE_KEY = 'moltpit_last_founder_checkout_source';
+const INTENT_SOURCE_KEY = 'moltpit_last_founder_intent_source';
+const CHECKOUT_EVENT_ID_KEY = 'moltpit_last_founder_checkout_event_id';
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
 const ACTION_INFO: Record<string, { label: string; cost: number; desc: string }> = {
@@ -910,12 +913,15 @@ const Play = () => {
     setCheckoutBusy(true);
     setCheckoutMessage(null);
 
+    const day = new Date().toISOString().slice(0, 10);
     const checkoutSource = 'play-page-founder-cta';
     const intentSource = 'play-page-founder-checkout';
-    const intentId = `intent:${new Date().toISOString().slice(0, 10)}:${hashString(`${normalizedEmail}|${intentSource}`)}`;
+    const intentId = `intent:${day}:${hashString(`${normalizedEmail}|${intentSource}`)}`;
+    const checkoutEventId = `checkout:${day}:${hashString(`${day}|${checkoutSource}|${normalizedEmail}|${Math.random()}`).toString(36)}`;
 
     try {
       await postEvent('founder_checkout_clicked', {
+        eventId: checkoutEventId,
         source: checkoutSource,
         email: normalizedEmail,
         tier: 'founder',
@@ -930,6 +936,7 @@ const Play = () => {
       if (!intentResponse.ok || intentResponse.body?.ok !== true) {
         const reason = String(intentResponse.body?.error || `status_${intentResponse.status}`);
         await postEvent('founder_intent_submit_failed', {
+          eventId: checkoutEventId,
           source: intentSource,
           email: normalizedEmail,
           tier: 'founder',
@@ -941,6 +948,7 @@ const Play = () => {
         }
       } else {
         await postEvent('founder_intent_submitted', {
+          eventId: checkoutEventId,
           source: intentSource,
           email: normalizedEmail,
           tier: 'founder',
@@ -956,10 +964,15 @@ const Play = () => {
       const url = new URL(founderCheckoutUrl);
       url.searchParams.set('prefilled_email', normalizedEmail);
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem('moltpit_last_founder_checkout_source', checkoutSource);
-        window.localStorage.setItem('moltpit_last_founder_intent_source', intentSource);
+        window.localStorage.setItem(CHECKOUT_SOURCE_KEY, checkoutSource);
+        window.localStorage.setItem(INTENT_SOURCE_KEY, intentSource);
+        window.localStorage.setItem(CHECKOUT_EVENT_ID_KEY, checkoutEventId);
       }
+      url.searchParams.set('client_reference_id', checkoutEventId);
+      url.searchParams.set('checkout_source', checkoutSource);
+      url.searchParams.set('checkout_event_id', checkoutEventId);
       await postEvent('founder_checkout_redirected', {
+        eventId: checkoutEventId,
         source: checkoutSource,
         email: normalizedEmail,
         tier: 'founder',
@@ -968,6 +981,7 @@ const Play = () => {
     } catch {
       setCheckoutMessage('Could not start checkout. Try again.');
       await postEvent('founder_checkout_redirect_failed', {
+        eventId: checkoutEventId,
         source: checkoutSource,
         email: normalizedEmail,
         tier: 'founder',

@@ -89,6 +89,7 @@ function prepareFounderCheckout(variant: 'watch' | 'play') {
     if (email) target.searchParams.set('prefilled_email', email)
     target.searchParams.set('client_reference_id', eventId)
     target.searchParams.set('checkout_source', source)
+    target.searchParams.set('checkout_event_id', eventId)
     return target.toString()
   } catch {
     return STRIPE_FOUNDER_URL

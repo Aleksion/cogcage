@@ -241,11 +241,13 @@ export async function redisConsumeRateLimit(
   key: string,
   max: number,
   windowMs: number,
+  namespace = 'global',
 ): Promise<{ allowed: boolean; remaining: number; resetMs: number }> {
   const r = getRedis();
   const now = Date.now();
   const windowId = Math.floor(now / windowMs);
-  const windowKey = `${RATE_LIMIT_PREFIX}${key}:${windowId}`;
+  const safeNamespace = namespace.replace(/[^a-z0-9:_-]/gi, '_').slice(0, 40) || 'global';
+  const windowKey = `${RATE_LIMIT_PREFIX}${safeNamespace}:${key}:${windowId}`;
 
   const count = await r.incr(windowKey);
   if (count === 1) {

@@ -115,3 +115,20 @@ test('rate limit enforces cap with clear reset metadata', async (t) => {
   assert.equal(third.remaining, 0);
   assert.ok(Number.isFinite(third.resetMs));
 });
+
+test('rate limit scopes are isolated per route namespace', async (t) => {
+  const db = await dbModPromise;
+  const health = db.getStorageHealth();
+  if (!health.sqliteAvailable) {
+    t.skip(`SQLite unavailable in test runtime: ${health.sqliteLoadError ?? 'unknown error'}`);
+    return;
+  }
+
+  const waitlistFirst = db.consumeRateLimit('203.0.113.11', 'waitlist', 1, 60_000);
+  const founderFirst = db.consumeRateLimit('203.0.113.11', 'founder-intent', 1, 60_000);
+  const waitlistSecond = db.consumeRateLimit('203.0.113.11', 'waitlist', 1, 60_000);
+
+  assert.equal(waitlistFirst.allowed, true);
+  assert.equal(founderFirst.allowed, true);
+  assert.equal(waitlistSecond.allowed, false);
+});
