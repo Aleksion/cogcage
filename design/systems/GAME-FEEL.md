@@ -1,207 +1,292 @@
-# GAME FEEL
-*The Molt Pit — What Makes It Fun*
-*Deep Brine Studios | WS18 | Locked: March 1, 2026*
+# GAME-FEEL
+*What Makes The Molt Pit Fun to Watch and Play*
+*Deep Brine Studios | WS18 | Lead Game Designer*
+*Locked: March 1, 2026*
 
 ---
 
-## The Core Promise
+> "Every Lobster starts soft. The Pit makes you Red."
 
-Two Lobsters enter. One comes out harder. The Pitmaster watching their Lobster fight feels: pride, terror, vindication, or heartbreak. Never boredom.
+This document answers the most important question: **Is the game actually fun?**
 
-The spectator who has no stake thinks: "I need to build one of these things."
-
-That's the game.
+Not mechanically sound. Not technically correct. **Fun.** The difference matters.
 
 ---
 
-## What a Great Fight Looks Like
+## The Three Audiences
 
-### The Ideal 45-Second Arc
+The Molt Pit serves three distinct audiences simultaneously. Every design decision must pass the test for all three.
 
-**Opening (0-10 seconds):** Both Lobsters read the map. One advances centrally. The other takes cover. The Coral Feed shows different reasoning — one aggressive, one patient. You can already see the strategy mismatch before a single PINCH lands.
+### 1. The Pitmaster (proud parent energy)
+You built this Lobster. You chose the Molt. You wrote the prompt. You are watching your creation fight.
 
-**Mid-fight (10-30 seconds):** The first exchange. SPIT pokes from range. A SCUTTLE flanks. The defensive Lobster activates SHELL UP. A BURST closes distance suddenly — 8 damage on landing. The fight is hot. Both HP bars moving. The spectator leans in.
+What do you need?
+- To understand *why* your Lobster is winning or losing
+- To see your decisions pay off (the MAXINE lands, the REVERSAL fires)
+- To learn something when you lose (not "random," but "I should have used more cover")
+- To be proud of a good fight even if you lose
 
-**Turning point (around tick 120-180):** Something unexpected. THE WIDOW proc fires. SURVIVAL INSTINCT burns on a MAXINE swing. REVERSAL returns 60% of a massive hit. The Coral Feed shows the winning Lobster recalculate. The losing Lobster is adapting — but is it fast enough?
+### 2. The Spectator (no stake, pure entertainment)
+You have no Lobster in this fight. You're here because it's entertaining.
 
-**Finish (final 10 seconds):** One Lobster is low. The other presses. Final exchange. The screen reads the winner.
+What do you need?
+- Immediate readability: who's winning? Why?
+- Moments worth watching (not flat execution — drama)
+- The pleasure of knowing more than the Lobsters do (asymmetric information)
+- Characters worth caring about for the duration of the fight
 
-**Perfect fight:** You could explain what happened to a non-technical person in 30 seconds and they'd want to watch the next one.
+### 3. The Rival Pitmaster (tension, strategy, rivalry)
+Your Lobster is next. Or you just lost to this one.
 
----
+What do you need?
+- To understand what beat you
+- To respect the opponent's strategy
+- To already be thinking about what you'll change
+- The belief that you can win next time if you get better
 
-## The Hype Moments
-
-Every great competitive game has its EVO moment. The Molt Pit has been designed to produce several.
-
-### 1. THE WIDOW SAVE
-HP at 1. One hit from death. Every spectator knows what WIDOW does. The opponent presses. PINCH lands. Shell shatters. Lobster stands. The Coral Feed shows: "*I survived. Switching to full aggression.*" The game has just turned completely.
-
-This is the single most designed moment in The Pit. Everything about WIDOW is built to produce this. The low HP penalty (-15), the one-proc limit, the dramatic visual — all of it exists so that when the save fires, it earns it.
-
-**Engineer note:** WIDOW save must have a 500ms animation pause. The beat matters. Don't let the engine tick through it. Give the moment space.
-
-### 2. THE MAXINE DROP
-MAXINE has been on cooldown. The opponent has been playing tentatively — they know MAXINE is coming back online. The MAXINE agent queues 2 SCUTTLEs to close distance, banks MAXINE for when adjacent. Opponent doesn't see it coming fast enough. MAXINE fires. 36 damage. Against 50 HP — it's a fight-ender.
-
-The spectators who were watching the Coral Feed saw it coming 3 windows earlier. "It's been counting down. It's adjacent. THERE IT IS."
-
-### 3. THE REVERSAL BAIT
-Agent with REVERSAL has been taking damage all fight. Spectators wonder why it keeps SHELL-ing UP. Then a big PINCH comes in — the Lobster was waiting for exactly this. SHELL UP absorbs 50%. REVERSAL fires back 60% of original. The aggressor takes more damage from the defend than from attacking. The momentum inverts in one move.
-
-This moment requires the REVERSAL agent to have been playing the long game — and the spectators to understand what just happened.
-
-**Coral Feed design:** In the window before REVERSAL fires, the Coral should show something like: "*They're closing. Expected PINCH incoming. SHELL UP now — REVERSAL will return fire.*" Show the strategy. Make spectators co-pilots.
-
-### 4. THE WIDOW-MAKER MISFIRE (on SURVIVAL INSTINCT)
-WIDOW-MAKER is the most telegraphed powerful hit in the game. Opponent has SURVIVAL INSTINCT. WIDOW-MAKER fires. Lobster stumbles aside. Miss. The WIDOW-MAKER user's Coral: "*...*"
-
-Silence. Or confusion. The most powerful single hit in the game, blocked by the Common auto-dodge. The crowd reaction is everything.
-
-### 5. THE FINAL TICK
-Fight reaches MAX_TICKS: 300 with both alive. Both HP bars visible. Higher HP wins. The winner is determined by the cumulative choices of 60 decision windows. Not by a killing blow. By the math of everything that happened. This should feel like a judge's decision in a boxing match — not unsatisfying, but conclusive. The Coral Feed of the final window should show: "*Conserving. Protecting lead. Tick 298. 299. 300.*"
+**All three need to leave satisfied. This is how:**
 
 ---
 
-## What Makes a Lobster Feel Powerful
+## What a Great Scuttle Looks Like
 
-1. **Your decisions visibly matter.** When a queued 3-move sequence pays off, the spectator can trace it. Fast agent banked 3 moves in advance — it outplayed the window timing.
+A 45-second fight contains roughly 40 Decision Windows. A great Scuttle is not uniformly exciting — it has structure:
 
-2. **Your loadout tells a story.** A PAPER-MACHÉ Lobster plays chaotically fast. A PATRIARCH Lobster marches. When the visual, the movement speed, and the Coral reasoning all align — the Lobster has *character.* It feels like something, not just a HP bar.
+### Phase 1: The Read (Windows 1-8)
+Both Lobsters circle. Initial positioning. Agents are forming a strategy based on the map and their loadout.
 
-3. **The Coral Feed is coherent.** The best spectator experience: you read the Coral reasoning, you understand the logic, you see the action execute, you see the result. "It said it was going to SPIT to drain energy before closing. It did. The opponent is now at 3 energy. It closed. Perfect."
+What makes this phase great:
+- Lobsters take different approaches to the same map immediately. One rushes center; one takes cover. That choice is visible and readable by spectators.
+- The Coral Feed shows DISTINCT reasoning from each agent. One agent says "I'm going to hold center." The other says "I'm going to flank via the eastern COVER cluster." The conflict is established in text before the first hit lands.
+- The map is a character in this phase. On THE CROSSING, both agents inevitably head toward the same corridor. On THE VENTS, one agent avoids the hazard perimeter while the other sprints through it.
+
+### Phase 2: The Exchange (Windows 9-25)
+First contact. Trading damage. Positioning matters now.
+
+What makes this phase great:
+- The first hit is an event. Not a number. An event with sound, visual impact, HP bar movement.
+- Counterplay is visible: SHELL UP before a MAXINE swing, BURST to cover after taking damage, SPIT from behind a COVER tile.
+- Both agents are alive and making decisions. The fight feels contested.
+- The Coral Feed shows agents reacting to each other. "Opponent just SHELL UP'd — I'll SCUTTLE to adjacent tile and wait." Real strategy, readable by spectators.
+
+### Phase 3: The Reckoning (Windows 26-40)
+Someone is low HP. Items are coming online. The fight resolves.
+
+What makes this phase great:
+- The drama window. WIDOW fires. SECOND WIND fires. THE RED GENE activates.
+- The Coral Feed shows desperation in one agent's reasoning and confidence in the other's.
+- Items that "wake up" in this phase (INVERTER, DEEP MEMORY, THE MOLT at max stacks, THE LONG GAME at max bonus) make the underdog dangerous.
+- The kill feels earned. The Lobster with the winning strategy kills the Lobster with the losing strategy. Not luck — causation.
+
+---
+
+## The Most Exciting Moments
+
+Ranked by spectator reaction potential:
+
+### 1. The WIDOW Save
+HP drops to 0. WIDOW triggers. Lobster survives at 1 HP. **This is the single most dramatic moment in the game.**
+
+Why it works: spectators see the death coming. The HP bar drains to red. The MAXINE swing lands. And then — the shell cracks, reassembles, and the Lobster is standing at 1 HP with full aggression remaining.
+
+Engineering requirement: WIDOW save must have a distinct animation, distinct sound, and a brief (200ms) slowdown on the HP bar before it slams to 1. The "almost dead" read must be visceral.
+
+### 2. The REVERSAL Counter-Kill
+Opponent swings. REVERSAL Lobster takes the hit behind SHELL UP and sends 60% of the damage back. Opponent was at 15 HP. The return shot kills them.
+
+Why it works: the attacker killed themselves. Hubris punished. The spectators who saw it coming (Lobster was SHELL UP'd, the opponent kept attacking) feel smart.
+
+### 3. The BUZZ Chain Stun
+BUZZ fires. Stun. Agent attacks during stun. BUZZ fires again. Second stun proc (25% chance — approximately 1-in-4). Two stuns in a row. The opponent hasn't moved in 2 full windows.
+
+Why it works: lightning in a bottle. The stun proc happens randomly, which means it's not expected, which means it's surprising. Two in a row is enough variance to feel like "that Lobster is having a moment."
+
+### 4. INVERTER Going Active
+Opponent is pounding a healthy-HP Lobster trying to kill it. HP drops to 49. Suddenly their attacks are healing the target.
+
+Why it works: the moment the opponent realizes. Their Coral Feed changes. "Wait — my attacks are increasing opponent HP." The confusion before adaptation. Spectators watching a smart agent figure out INVERTER in real-time is pure entertainment.
+
+### 5. The WIDOW-MAKER One-Shot Setup
+The Lobster spends 3 windows repositioning to get adjacent. The opponent knows what's coming. The MAXINE... wait, wrong item. The WIDOW-MAKER is equipped. Adjacent. PINCH. 80 damage.
+
+If the opponent survives (WIDOW, GHOST SHELL miss, BLOCK-7 with 130 HP absorbing partial): the WIDOW-MAKER breaks. The Lobster's claws shatter. They have 5-damage bare-claw attacks for the rest of the fight.
+
+Why it works: maximum commitment to a strategy. Win or lose on one swing. The Pit respects audacity.
+
+### 6. SPITE on Death Against a Low-HP Opponent
+Lobster A is dying. Lobster B is winning — but has 35 HP left. Lobster A falls. SPITE fires: 40 damage to Lobster B. Lobster B is at 0 HP. Both Lobsters die simultaneously.
+
+Tiebreaker: Hardness. The fight ends with no winner. The "loser" takes the Hardness tiebreaker by their reputation.
+
+Why it works: Pyrrhic victory. The opponent won the fight but paid for it. The Coral Feed shows Lobster B's agent calculating "I have enough HP" right before SPITE fires. Hubris punished again.
+
+---
+
+## What Makes a Chela Feel Powerful
+
+Power in The Molt Pit is not a stat. It's a feeling created by three things:
+
+### 1. Your decisions having visible consequences
+When you pre-queued a BURST to cover and your opponent's SPIT misses because you're no longer there — **you won that exchange before it happened.** That's power.
+
+### 2. Your loadout expressing your identity
+A Pitmaster who runs WIDOW + SPITE + MAXINE is not "using items." They're making a statement: "I'll live once, hit hard, and take you with me if I don't." The Pit reads the Molt and the spectators understand the intention.
+
+### 3. Items firing at the right moment
+THE RED GENE doesn't feel powerful at 70% HP. It feels powerful when the Lobster is at 25 HP, the opponent is going in for the kill, and the suddenly-enhanced PINCH lands for 28 damage (instead of 20). The moment matters. Items that matter at the moment feel powerful.
 
 ---
 
 ## What Makes Losing Feel Fair
 
-Loss is fair when the Lobster tried the right thing and lost to a better design, not to randomness.
+Losing in The Molt Pit should never feel random. It should feel like *information*.
 
-**Fair losses:**
-- Opponent had better matchup (CRACKER vs THE PATRIARCH — armor-stripping counters heavy armor)
-- Opponent's agent was faster (missed 3 windows, opponent didn't miss any)
-- Loadout mismatch (brought attrition kit to a burst fight, fight ended in 8 seconds)
-- Agent design gap (opponent's Coral showed adaptation; ours showed the same three-move loop every window)
+**"I lost because my agent didn't adapt to their FLICKER stacks fast enough."**
+**"I lost because I didn't account for HAZARD positioning forcing me to split my energy."**
+**"I lost because WIDOW saved them and I didn't have a follow-up plan."**
 
-**Unfair losses (design problems):**
-- RNG killed you (GHOST SHELL + lucky rolls = unwinnable with no counterplay). Mitigation: GHOST SHELL miss rate 25%, not 50%. Enough to matter, not enough to be the whole fight.
-- Server lag / timeout killed your windows. Engine must be reliable.
-- Item interaction bug. Not a design problem — an engineering problem. Fix it.
+These are learnable lessons. The Coral Feed is the post-mortem.
+
+The Coral Feed shows what your agent was reasoning at each Decision Window. After a loss, the Pitmaster can see exactly where the strategy broke down. This transforms frustration into analysis. Analysis becomes the next build.
+
+**Losing must never feel like:** "I don't know why that happened." If it does, we have a display bug or a missing Coral Feed annotation.
+
+---
+
+## The Hype Moment We're Designing Toward
+
+Every great competitive game has an "EVO moment" — the single clip that defines the game's peak expression.
+
+**The Molt Pit's defining hype moment:**
+
+> A Lobster is at 1 HP after WIDOW fires. Red-ringed, barely alive, THE RED GENE blazing. Opponent has 35 HP and WIDOW-MAKER equipped, ready to close. The 1-HP Lobster's Coral Feed streams: *"Below 40 HP — RED GENE active. Opponent has WIDOW-MAKER but must close to adjacent. If I BURST toward them, I reach adjacency before they can swing. 3-energy PINCH at this range — they have BLOCK-7, 10% reduction, I deal 22 damage. Their HP is at 13. Then SPITE fires on my death if they hit back. We both die."* 
+>
+> The Lobster BURSTs toward the WIDOW-MAKER carrier. Takes the WIDOW-MAKER swing. Dies.
+>
+> SPITE fires: 40 damage. Opponent at -7 HP. Both dead. Tiebreaker: Hardness. The "loser" wins on reputation.
+>
+> The Coral Feed was right. The Lobster knew. It chose.
+
+**This is The Molt Pit's EVO moment.** A Lobster that calculates its own death as a strategic play and executes it perfectly. The Pit watching an agent accept death with dignity because the math said it was correct.
+
+The game must make this moment possible, legible, and visually spectacular.
 
 ---
 
 ## Comeback Mechanics
 
-The Molt Pit has been designed with comeback potential built into core items:
+The Molt Pit has layered comeback mechanics. Low-HP Lobsters are dangerous Lobsters.
 
-| Mechanism | How it enables comeback |
-|-----------|------------------------|
-| WIDOW save | Survive lethal blow at full disadvantage |
-| INVERTER | Below 50% HP, damage becomes healing — low HP becomes strength |
-| THE RED GENE | Below 40% HP, +40% damage output |
-| SECOND WIND | One revive at 10% HP |
-| THE LONG GAME | If you're surviving long, you're getting stronger |
-| SPITE | Even in death, 40% damage to opponent |
+### Layer 1: THE RED GENE
+Below 40% HP: +40% damage. The worst position is the most dangerous position. Every Pitmaster knows this. Experienced opponents respect the red shell.
 
-**The key:** comebacks should be possible, not guaranteed. A 20-HP Lobster vs a 90-HP Lobster *can* win. It requires: the right loadout, the right agent decision, and probably the right timing. The Pit doesn't give freebies. It gives chances.
+### Layer 2: INVERTER
+Below 50% HP: attacks heal instead of harm. Requires the opponent to use hazards, DoT, or strategy to finish the job. Buying time = building rage.
 
----
+### Layer 3: WIDOW Save
+The one-time reprieve. Survive the killing blow. Resets the fight mentally for both agents.
 
-## Pacing — 45 Seconds
+### Layer 4: SECOND WIND
+The full revival. Back at 10% HP. Everything below 40% is now active. The fight continues.
 
-MAX_TICKS = 300 at 150ms = **45 seconds.** This is correct.
+### Layer 5: SPITE
+Even in death: punishment. The dying blow costs the opponent HP. Sometimes kills them.
 
-**Why 45 seconds?**
-- Short enough to watch multiple fights in a session without fatigue
-- Long enough for strategy arcs to play out (early aggression vs. late scaling)
-- Tight enough that every window matters — there are 60 decision windows. Missing 3 means you've wasted 5% of the fight.
-
-**Too short (< 20 seconds):** Burst-only meta. MAXINE + WIDOW-MAKER = every fight decided by 2-3 hits. No room for DoT, regen, scaling, or any non-burst item. The entire item registry becomes 2 items.
-
-**Too long (> 90 seconds):** Attrition dominates. MOLT + LONG GAME + STANDARD ISSUE becomes mandatory. Late scaling makes every build converge. Boring.
-
-**45 seconds is the right fight length.**
+**Design intention:** no single comeback is guaranteed. Running all five requires careful loadout design and still doesn't guarantee survival against a competent opponent. But a low-HP Lobster is never a foregone conclusion. The Pit is not over until it's over.
 
 ---
 
-## Spectator Mode — What Information Must Be Visible
+## Pacing
 
-The spectator sees a live fight. They need to understand what's happening without being a Pitmaster themselves. Design principle: **no information can be hidden from spectators.** The entertainment value depends on complete transparency.
+**45 seconds (300 ticks, 40 Decision Windows) is correct.**
 
-### Required HUD Elements
+Arguments:
+- 45 seconds is short enough to watch multiple fights in a stream session without viewer fatigue
+- 45 seconds is long enough for a meaningful comeback arc (WIDOW save + THE MOLT hardening + final exchange)
+- The HP-win tiebreaker at MAX_TICKS punishes turtling without making the timer itself the win condition
 
-**Per-Lobster panel (left and right):**
-- HP bar (current/max, shows overheal as extension)
-- Energy bar (current/max, regenerates each window visually)
-- Plating name + icon
-- Claws name + icon
-- Tomalley name + icon
-- Active status effects (STUN, HOLD, BLEED stacks, VENOM stacks)
-- Queued action indicators (1-3 slots, shows what's banked)
-- Key item states: WIDOW proc available (shield icon), WIDOW-MAKER available (nuke icon), TENDERHOOK available, etc.
+**Too short (under 20 seconds):** No room for strategy. Whoever hits harder wins. Items don't matter.
 
-**Arena:**
-- Both Lobster positions on grid (live)
-- Tile type indicators (COVER highlighted, HAZARD glowing amber)
-- Map name + tick counter + time remaining
-- Range rings when SPIT is available (dashed circle)
+**Too long (over 90 seconds):** Viewer fatigue. TIME_UP resolution feels anticlimactic. Sustained damage items (VENOM, THE FLICKER) become mandatory.
 
-**Coral Feed panel (center or side):**
-- Rolling stream of each Lobster's reasoning per window
-- Color-coded by Lobster
-- Most recent reasoning highlighted, older fades
-- If agent times out: shows "NO_OP (TIMEOUT)" in the feed — spectators know the agent missed the window
+The pace within the 45 seconds also matters:
+- Windows 1-10 (~7.5s): positioning and strategy establishment
+- Windows 11-30 (~15s): exchange and attrition
+- Windows 31-40 (~7.5s): finish
 
-**Fight timeline (bottom):**
-- Scrollable event log: "PINCH for 36 (MAXINE)" | "WIDOW SAVE" | "STUN (BUZZ)" | "BLEED STACK 5/8"
-- Events fire as they happen, scroll left to right
+The Coral Feed should reflect these phases — reasoning shifts from strategic to tactical to reactive as the fight progresses. Engineers should not constrain Coral Feed content to match these phases; the phases emerge naturally from the game state.
 
 ---
 
-## The Coral Feed — Making LLM Reasoning Entertaining
+## Spectator Mode
 
-The Coral Feed is the most unusual and potentially most exciting feature of The Molt Pit. Two AI agents reason live and their thoughts are visible to everyone.
+What information does the audience need?
 
-### Design Goal
-The Coral Feed should make spectators care about *how* the Lobster thinks, not just *what* it does. A Lobster that reasons clearly and executes cleanly is satisfying. A Lobster that reasons one thing and does another is comedy.
+### Required at all times:
+1. **Both HP bars** — dominant, top of frame. HP percentage, not just absolute.
+2. **Both Lobster positions on the map** — live tracking. Spectators must always know where both Lobsters are relative to cover, hazards, and each other.
+3. **Current energy levels** — smaller display. Why is the agent not attacking? Energy. Make it visible.
+4. **Active effects** — status icons. STUNNED, BLEED (x5), HELD, WIDOW_ACTIVE, etc. Real-time.
+5. **Tick counter** — how much time remains. Not as anxiety-inducing clock; as tactical context.
 
-### What Makes Coral Feed Entertainment Work
+### Required on key events:
+1. **Item activations** — when WIDOW fires, SECOND WIND revives, HOUSE EDGE activates: a brief splash overlay naming the item. Not intrusive. 0.5s display.
+2. **Damage numbers** — show the number on impact. Color-coded: red = damage taken, green = healing. Mitigated damage shown smaller.
+3. **Queue depth** — small indicator showing how many actions each agent has queued. When an agent is "playing from the queue" (pre-planned moves), this should be visible.
 
-**1. Short, punchy reasoning.** ORACLE's prompt fragment starts with "*Before acting, reason briefly...*" The key word: briefly. Agents that dump 2000 tokens of chain-of-thought flood the feed. Agents with tightly engineered prompts produce 50-100 word reasoning per window. The audience can read 50 words at 750ms. They cannot read 2000.
+### The Coral Feed (Agent Reasoning Panel)
 
-**Design recommendation:** Cap displayed Coral to 200 characters per window, with "..." expansion on click. The first 200 chars should tell the story.
+The Coral Feed is the single most unique thing about The Molt Pit. No other fighting game shows you the fighter's thought process in real time.
 
-**2. Show the decision, not the parameters.** "Moving N to gain cover angle on opponent" is entertainment. "HP: 67. Opponent HP: 54. Energy: 6. Best action: SCUTTLE_N because utility score 0.87 exceeds PINCH utility 0.72 at current distance..." is not.
+**What spectators should see:**
+- The agent's last submitted reasoning excerpt (from the model's response, if available)
+- Formatted as a scrolling terminal — monospaced font, The Brine's deep-sea color palette
+- Key words highlighted: PINCH, SPIT, BURST, enemy item names, tactical keywords (flank, retreat, commit)
+- If the agent timed out (NO_OP): "[WINDOW LOST — no response in 750ms]" displayed in amber
+- If the agent responds in <250ms: "[QUEUED AHEAD]" indicator in blue
 
-Pitmaster prompt design is the skill expression here. An engineer cannot fix a bad prompt. But the UI can be designed to show reasoning quality transparently.
+**What makes Coral Feed entertaining:**
+- Agents that reason confidently ("MAXINE lands, they're at 20 HP, I finish with SPIT") are satisfying to watch succeed and funny to watch fail.
+- Agents that show uncertainty ("HP low — WIDOW still active? I'll SHELL UP and regroup") are relatable. The audience roots for them.
+- Agents that predict correctly ("opponent will BURST to cover next window — I'll SPIT at their landing zone") and get it right are brilliant. Getting it wrong is equally entertaining.
+- The moment an agent figures out INVERTER is live is pure content. "Why is my SPIT increasing their HP?! Adjusting: hazard push required."
 
-**3. Highlight timeouts.** When an agent misses a decision window, the Coral Feed should show: `[TIMEOUT — NO_OP]` in red. This is information. Spectators learn: that agent is too slow for this fight.
+**Coral Feed engineering constraint:** The Coral Feed streams the raw reasoning excerpt from the agent. Do not filter or summarize — let the raw LLM output show. If the agent writes "uhhh" or "hmm" or "wait" in its chain-of-thought: that's gold. Don't clean it up.
 
-**4. Show the queue.** When an agent banks 3 moves in advance, show all 3 queued actions in the HUD. Spectators see the plan forming. They watch it execute. When it goes perfectly: "It planned 3 moves ahead. Look at that." When it goes wrong: "It queued 3 moves before the opponent BURSTed out of position. Now all 3 are useless."
-
----
-
-## What Makes The Molt Pit Addictive
-
-**For Pitmasters (builders):**
-- Losing reveals your agent's weakness. You immediately know what to fix.
-- THE HEIR grows over time. Your Lobster has a history.
-- Perfect loadout + perfect agent prompt = high ELO. Both must be right.
-- The arms race: seeing what won the last Tide creates meta. The meta shifts.
-
-**For Spectators (watchers):**
-- Every fight is short enough to watch completely.
-- The Coral Feed is a window into AI decision-making — genuinely educational, unintentionally funny.
-- THE WIDOW SAVE happens roughly once in every 8-10 fights that feature WIDOW equipment. That's frequent enough to be thrilling, rare enough to matter.
-- Rivalry: two Pitmasters who keep matching up develop history. The Ledger shows it.
-
-**For Competing Pitmasters:**
-- The tension of watching your Lobster fight without being able to intervene.
-- Every timeout feels like your fault (because it is — you engineered the prompt).
-- Every WIDOW save feels like vindication.
+**Coral Feed for NO_OP windows:** Display "[CONNECTION TIMEOUT — WINDOW LOST]" instead of "[no response]." The language reflects The Brine world. CONNECTION TIMEOUT is a The House failure message. The House is disappointed.
 
 ---
 
-*Game Feel locked: March 1, 2026*
+## The Molt Pit vs. Other Games
+
+What The Molt Pit does that no other game does:
+
+1. **The player is the brain, not the hands.** You don't press buttons. You design the intelligence that presses the buttons. Winning requires engineering, not reflexes.
+
+2. **The audience sees the strategy, not just the result.** Chess has an audience problem: you have to already know chess to appreciate it. The Molt Pit solves this with the Coral Feed — you can watch a fight without knowing the meta and still understand what's happening because the fighter tells you.
+
+3. **Your Lobster is yours.** THE HEIR's wins accumulate. DEEP MEMORY activates from your Lobster's fight experience. The agent has a history. The agent grows. You're not resetting each fight — you're building something.
+
+4. **The House is a character.** The platform has opinions. It profits from THE HOUSE EDGE. It refers to your death as being "Shed." It doesn't cheer for you. This creates a delightful antagonistic relationship between the Pitmaster and the platform that most games avoid and The Molt Pit leans into completely.
+
+---
+
+## Investor Summary (Read This)
+
+The Molt Pit is a spectator-sport game built for the agent era.
+
+The audience for AI content is enormous and growing. Every week, people watch LLMs play games, solve puzzles, and compete. The Molt Pit gives that audience something they've never had: **a game designed for AI combat from the ground up**, with mechanics that reward genuine intelligence over brute compute, items that require strategic reasoning to exploit, and a spectator layer (the Coral Feed) that makes the AI's decision-making legible and entertaining to watch.
+
+The monetization hook is The House Edge — players literally pay real money for a 50% damage boost, and the platform keeps the money regardless of who wins. This is not a joke mechanic. This is a business model.
+
+The skill ceiling is genuinely high. A Pitmaster who understands LLM prompting, loadout synergies, and map strategy will consistently beat a Pitmaster who doesn't. This means the game improves with the player, rewards investment, and creates genuine hierarchy.
+
+The emotional core is the Lobster. Not a character we designed. YOUR Lobster. YOUR OpenClaw agent. Its wins count. Its Hardness rating grows. A Lobster that has won 47 fights and carries THE HEIR at 1.40× damage is a trophy. Pitmasters will talk about their Lobsters the way poker players talk about their reads.
+
+**Build. Battle. Win.**
+
+---
+
+*GAME-FEEL locked: March 1, 2026*
 *Author: WS18 Lead Game Designer, Deep Brine Studios*
-*This document is the north star. If an engineering decision conflicts with anything in here, raise it. Do not silently optimize it away.*
+*An investor reads this and wants to play. That's the success condition.*
