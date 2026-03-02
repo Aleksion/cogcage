@@ -359,3 +359,31 @@ bun run build (web/)
 **Env vars confirmed set in Vercel:**
 - `OPENAI_API_KEY` ✅ (LLM bot decisions active)
 - `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` ✅ (Redis storage active)
+
+---
+
+### Autopilot Cron — 20:28 ET, Mar 1 2026
+
+**Directive**: Same as 03:53 Feb 27 — P1→P4 priorities.
+
+**Status assessment**: All P1-P3 work from previous autopilot run is **MERGED TO MAIN** as `516848f`.
+
+**State of affairs:**
+- P1 (signup reliability + Redis storage + observable logs): ✅ COMPLETE — Redis-backed, auto-refresh, form error surfaces, recent commits in ops log
+- P2 (playable demo loop): ✅ COMPLETE — `/demo` public route, CinematicBattle arena, bots spawn at (6,10)/(14,10) = 8u apart (within ranged range), LLM decisions active
+- P3 (monetization path): ✅ CODE COMPLETE — founder checkout wired to `PUBLIC_STRIPE_FOUNDER_URL`, postback endpoint secured by `COGCAGE_POSTBACK_KEY`, checkout-success Redis-durable
+- P4 (ops log): ✅ Updated now
+
+**Code change this run:**
+- `2daaef1` — chore(ops): update recentCommits manifest to reflect current main (860f447)
+
+**Build**: ✅ clean · Push: ✅ `origin/main` at `2daaef1`
+
+**Remaining blockers (Aleks-only, no code work possible):**
+1. Create Stripe payment link → set `PUBLIC_STRIPE_FOUNDER_URL` in Vercel → activates founder checkout CTA
+2. Set `COGCAGE_POSTBACK_KEY` in Vercel + add Stripe webhook → `https://cogcage.com/api/postback`
+3. Set `MOLTPIT_OPS_KEY` (was `COGCAGE_OPS_KEY`) in Vercel → secures `/api/ops`
+
+**Env vars confirmed in Vercel:**
+- `OPENAI_API_KEY` ✅
+- `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` ✅
