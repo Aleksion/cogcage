@@ -1,7 +1,7 @@
-# CogCage Operating System
+# The Molt Pit Operating System
 
 ## Mission
-Build, launch, and monetize CogCage fast enough to remain cashflow-positive under fixed bankroll constraints.
+Build, launch, and monetize The Molt Pit fast enough to remain cashflow-positive under fixed bankroll constraints.
 
 ## Priority Stack
 1. Cashflow

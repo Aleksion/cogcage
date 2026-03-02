@@ -1,6 +1,6 @@
-# CogCage Web
+# The Molt Pit Web
 
-Conversion-focused Astro landing site for CogCage.
+Conversion-focused Astro landing site for The Molt Pit.
 
 ## Run
 

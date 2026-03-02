@@ -11,7 +11,7 @@ Full playable loop: `/shell` → build crawler → `/play` → Start Tank → 3D
 ### ✅ Done
 | What | Notes |
 |---|---|
-| cogcage.com live (HTTP 200) | TanStack Start on Vercel |
+| themoltpit.com live (HTTP 200) | TanStack Start on Vercel |
 | Landing page | Locked copy, Founder CTA, DREADCLAW hero (PR #20 pending) |
 | `/shell` bot builder | Card/claw selection, brain prompt, armor — saves to localStorage |
 | `/play` Dashboard | Shows "Your Crawler", "Start Tank", Open Molts list |
@@ -50,12 +50,12 @@ Full playable loop: `/shell` → build crawler → `/play` → Start Tank → 3D
 ## Full Flow (once PR #19 is merged)
 
 ```
-User → cogcage.com/shell
+User → themoltpit.com/shell
   → picks claws (loadout cards)
   → writes brain prompt (strategy)
   → saves crawler
 
-User → cogcage.com/play
+User → themoltpit.com/play
   → sees "Your Crawler" card
   → clicks "Start Tank"
   → POST /api/tank → creates lobby → /tank/:id

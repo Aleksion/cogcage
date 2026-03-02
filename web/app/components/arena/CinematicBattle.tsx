@@ -508,7 +508,7 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
   const winnerColor =
     winnerId === 'botA' ? '#EB4D4B' : winnerId === 'botB' ? '#00E5FF' : '#FFD600'
 
-  const shareUrl = `cogcage.com/demo?seed=${currentSeed}`
+  const shareUrl = `themoltpit.com/demo?seed=${currentSeed}`
   const [copied, setCopied] = useState(false)
   const copyLink = () => {
     navigator.clipboard.writeText(`https://${shareUrl}`)
@@ -877,7 +877,7 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
           opacity: 0.7,
         }}
       >
-        COGCAGE
+        THE MOLT PIT
       </a>
 
       <style>{`

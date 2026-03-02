@@ -23,7 +23,7 @@ The monetization flywheel:
 
 **Goal:** Working demo for gameday. Site live. Core loop playable.
 
-- [x] cogcage.com live (HTTP 200)
+- [x] themoltpit.com live (HTTP 200)
 - [x] The Shell — build and save shells
 - [x] The Den → The Tank → Arena flow
 - [x] LLM crawler decisions (`/api/agent/decide`)

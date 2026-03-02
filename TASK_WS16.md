@@ -195,7 +195,7 @@ HOW TO CONNECT
 4. Your Shell/Claws/Trait still apply as stat modifiers
 ```
 
-Or link to docs (placeholder URL for now: `https://docs.cogcage.com/byo-agent`).
+Or link to docs (placeholder URL for now: `https://docs.themoltpit.com/byo-agent`).
 
 ## Success Criteria
 1. MoldBuilder shows "YOUR AGENT" input at top — entering a valid URL hides Directive row, shows CONNECTED badge

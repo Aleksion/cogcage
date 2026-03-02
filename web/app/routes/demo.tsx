@@ -16,7 +16,7 @@ export const Route = createFileRoute('/demo')({
   }),
   head: () => ({
     meta: [
-      { title: 'LIVE BATTLE — CogCage AI Arena' },
+      { title: 'LIVE BATTLE — The Molt Pit AI Arena' },
       {
         name: 'description',
         content: 'Watch two AI agents fight in real-time. See their reasoning as they think.',
