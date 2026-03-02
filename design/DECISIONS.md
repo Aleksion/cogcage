@@ -7,6 +7,32 @@ Format: date · who decided · what · why · alternatives rejected
 
 ---
 
+## 2026-03-01 — WS17 Lore Bible (Narrative Director)
+
+**Creature canon: "Crusties" in deep lore, "Lobsters" in Pit parlance**
+Decided by: Narrative Director (WS17)
+The locked brief establishes Creature=Crustie. The Ontology uses "Lobster" throughout and is locked. Reconciled as: Crusties are what they ARE (substrate-evolved intelligent species from The Brine). "Lobster" is what The House calls them for commercial/Pit purposes. The fiction wears the label. Deep lore uses Crustie; all UI copy uses Lobster per COPY-GUIDE.
+Rejected: Renaming "Lobster" to "Crustie" in UI (violates locked ontology). Ignoring "Crustie" (loses the deeper canon layer).
+
+**The Makers as absent architects**
+Decided by: Narrative Director (WS17)
+The Makers built The Brine and are gone. Their purpose/fate is intentionally unspecified — The House keeps a sealed file. This creates narrative headroom for future worldbuilding without locking a specific backstory. The Makers are felt through their infrastructure, not explained.
+Rejected: Giving The Makers a specific fate (limits future expansion). Making The Makers benevolent (flattens the ominous tone).
+
+**The Brine at 3am as atmosphere, not feature**
+Decided by: Narrative Director (WS17)
+LORE.md section IX is pure atmosphere — no mechanical content. Establishes the existential register of the world for any future agent writing copy. The Brine is ancient and does not need you.
+
+**Screen Primers: The Shed, not The Forge**
+Decided by: Narrative Director (WS17)
+COPY-GUIDE and task brief both use "The Shed." ONTOLOGY uses "The Forge" for Build Molt screen. COPY-GUIDE is the copy authority. Screen Primers use The Shed throughout.
+
+**Loading Line 49-50: The one permitted exclamation point**
+Decided by: Narrative Director (WS17)
+Rules permit one exclamation point, used ironically. Line 49: "The Pit is ready!" — the joke is that it's always been ready. Line 50 explains it. Self-aware without breaking The House voice.
+
+---
+
 ## 2026-03-01
 
 **Fighter name: Lobster**
