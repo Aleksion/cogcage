@@ -11,6 +11,7 @@ import { appendEventsFallback, appendFounderIntentFallback, appendOpsLog } from 
 import { drainFallbackQueues } from '~/lib/fallback-drain'
 import {
   redisInsertFounderIntent,
+  redisInsertConversionEvent,
   redisConsumeRateLimit,
 } from '~/lib/waitlist-redis'
 

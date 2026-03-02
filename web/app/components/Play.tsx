@@ -15,7 +15,7 @@ const ENGINE_WS_URL =
   'wss://themoltpit-engine.aleks-precurion.workers.dev';
 
 /** HTTP base URL for DO REST calls (queue, state) — derived from WS URL */
-const ENGINE_HTTP_URL = ENGINE_WS_URL.replace(/^wss?:\/\//, (p) =>
+const ENGINE_HTTP_URL = ENGINE_WS_URL.replace(/^wss?:\/\//, (p: string) =>
   p.startsWith('wss') ? 'https://' : 'http://',
 );
 

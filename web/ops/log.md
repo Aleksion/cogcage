@@ -8,17 +8,19 @@
 
 | Area | Artifact | Outcome |
 |---|---|---|
-| Signup reliability | `web/app/routes/api/waitlist.ts` | Added payload guards, source normalization, storage-tier observability, and degraded acceptance path (`sqlite-only` salvage + fallback queue) so leads are not lost when Redis is unavailable. |
-| Runtime/storage observability | `web/app/lib/runtime-paths.ts` | Added runtime path resolution metadata (`env` / `workspace` / `tmp-fallback`) for actionable ops diagnostics. |
-| Rate-limit correctness | `web/app/lib/waitlist-redis.ts` | Fixed `resetMs` to report time remaining, not absolute timestamp-style value. |
-| Playable demo loop | `web/app/components/PlayableDemo.tsx`, `web/app/routes/demo.tsx` | `/demo` now ships a playable, turn-gated loop with map movement, action economy controls, and combat telemetry. |
-| Monetization path | `web/app/routes/api/founder-checkout.ts` | Added founder checkout init API (idempotent intent logging + conversion event + checkout URL handoff + fallback queue behavior). |
+| Signup/runtime reliability | `web/app/lib/runtime-paths.ts` | Runtime path resolution remains deterministic (`env` / `workspace` / `tmp-fallback`); strict typing fix prevents path resolution regressions under TS checks. |
+| Founder CTA initiation | `web/app/components/MoltPitLanding.jsx` | Hero/footer Founder CTA now goes through `/api/founder-checkout` initiation flow (server-observable path) instead of direct client-only Stripe URL assembly. |
+| Postback idempotency | `web/app/routes/api/postback.ts` | Added request-receipt replay (`x-idempotency-key` or derived `postback:${eventType}:${eventId}`), replay headers, and structured read/write failure logging. |
+| Founder intent observability | `web/app/routes/api/founder-intent.ts` | Fixed missing `redisInsertConversionEvent` import in safe conversion tracking path. |
+| Build/TS hygiene in play surface | `web/app/components/Play.tsx` | Fixed implicit-`any` callback parameter in engine URL transform to keep strict checks clean in touched area. |
 
 ### Verification Run
 - `npm run build` (from `web/`) ✅ pass
+- `npx tsc --noEmit` targeted grep for modified files ✅ no errors in touched paths
+- `node scripts/ws2-core.test.mjs` ❌ fails due legacy `web/src/...` import path (pre-existing script drift, unrelated to this patch)
 
 ### Notes
-- Existing `/api/postback` remains payment reconciliation sink; founder checkout init now has its own hardened entrypoint for better observability and idempotency.
+- Foundational signup reliability and playable `/demo` loop were already present in this branch state and were re-verified during this pass.
 
 ## 2026-02-27 / 2026-02-28 — Sprint Wrap
 

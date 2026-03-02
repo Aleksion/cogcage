@@ -4,42 +4,40 @@ Every PR must include an entry here. Newest first.
 
 ---
 
-## [2026-03-02] - feat(product): reliability hardening + playable loop + founder checkout path
+## [2026-03-02] - feat(product): founder checkout initiation wiring + idempotent postback processing
 
 **Type:** feat | **Phase:** product-core | **Priority:** PRODUCT-CRITICAL
 
 ### Summary
-Shifted focus away from landing-page copy iteration to product execution: hardened signup persistence and observability, shipped a real turn-gated playable loop on `/demo`, and added a dedicated founder checkout initiation endpoint to pair with postback tracking.
+Prioritized product-critical monetization and reliability execution in this branch: founder checkout CTAs now route through server-side checkout initiation, postback processing now has deterministic idempotency replay with structured logs, and touched reliability surfaces were verified and fixed for strict-type/runtime correctness.
 
 ### Changes
-- `web/app/routes/api/waitlist.ts`
-  - Added request envelope observability (`waitlist_request_received`) with runtime/db metadata.
-  - Added payload size guard (`413`) and source normalization to keep stored analytics keys safe.
-  - Added explicit storage-tier reporting (`redis/convex/sqlite/fallback`) on success/failure logs.
-  - Added degraded salvage path: if Redis fails but SQLite is writable, accept the signup (`202 degraded`) instead of dropping.
+- `web/app/components/MoltPitLanding.jsx`
+  - Hero and footer founder CTAs now call `/api/founder-checkout` first, then redirect using server-returned `checkoutUrl`.
+  - Preserves local replay buffering when initiation fails, and keeps founder source attribution keys in localStorage.
+- `web/app/routes/api/postback.ts`
+  - Added idempotency receipt support (`x-idempotency-key` or derived `postback:${eventType}:${eventId}`) before write side effects.
+  - Added replay response headers (`x-idempotent-replay`) and structured read/write failure logs for idempotency receipt operations.
+  - Consolidated postback responses through a single helper that emits `x-request-id`.
+- `web/app/routes/api/founder-intent.ts`
+  - Fixed missing `redisInsertConversionEvent` import used by safe conversion tracking path.
 - `web/app/lib/runtime-paths.ts`
-  - Added deterministic runtime-dir resolution metadata (`getRuntimeDirInfo`) so logs show whether storage uses env path, workspace path, or tmp fallback.
-- `web/app/lib/waitlist-redis.ts`
-  - Fixed rate-limit reset semantics to return milliseconds until reset (not absolute window end).
-- `web/app/components/PlayableDemo.tsx` (new)
-  - Added a playable turn-gated arena loop with map movement, energy/action economy visibility, turn submission, combat log, and reset.
-- `web/app/routes/demo.tsx`
-  - Repointed `/demo` to the playable loop experience.
-- `web/app/routes/api/founder-checkout.ts` (new)
-  - Added checkout-init endpoint that records founder intent + conversion event, supports idempotency, returns Stripe checkout URL when configured, and falls back to local queue when primary stores fail.
+  - Fixed strict typing around deterministic runtime path resolution branches (`env` and `workspace` sources).
+- `web/app/components/Play.tsx`
+  - Fixed implicit-`any` callback parameter in engine URL transform to keep strict checks green in touched paths.
 
 ### Design Decisions
-- Prefer accepting and queueing over rejecting when storage tiers degrade.
-- Keep `/demo` focused on game loop proof (movement + action economy) rather than cinematic-only presentation.
-- Monetization initiation uses a dedicated endpoint so observability and idempotency are consistent before redirecting to provider checkout.
+- Checkout initiation remains server-mediated so attribution, intent capture, and fallback behavior are observable and consistent.
+- Postback idempotency is keyed by deterministic event identity when explicit idempotency headers are absent, to handle provider retries safely.
+- Kept diff narrowly scoped to product-critical execution surfaces; no landing-copy iteration changes were introduced.
 
 ### Breaking Changes
 None.
 
 ### Next Steps
-- Wire all founder CTA entry points to `/api/founder-checkout` (if any still hit Stripe URL directly).
-- Validate `/api/postback` with live provider payload in staging and confirm funnel attribution end-to-end.
-- Promote to `main` and monitor ops log for storage-tier fallback rates.
+- Run staged provider replay tests against `/api/postback` to confirm duplicate delivery behavior and replay headers.
+- Add a small integration test harness for founder checkout init + postback roundtrip once route-test scaffolding is available.
+- Monitor ops logs for `postback_idempotency_replay` frequency and fallback queue rate after deploy.
 
 ## [2026-02-28] - feat: guest/anonymous auth for frictionless onboarding
 
@@ -693,4 +691,3 @@ Project renamed from CogCage to The Molt Pit throughout docs, task specs, and ar
 - `cogcage.com` domain: keep for now, evaluate `themoltpit.com` separately
 - Redis key prefixes (`cogcage_pid`, `armory:*`, `lobby:*`) — follow-up rename PR
 - GitHub repo URL: `Aleksion/themoltpit` — can rename repo in GitHub settings when ready
-

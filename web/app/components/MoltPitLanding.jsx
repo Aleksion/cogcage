@@ -797,7 +797,6 @@ export const globalStyles = `
   }
 `;
 
-const STRIPE_FOUNDER_URL = import.meta.env.PUBLIC_STRIPE_FOUNDER_URL || '';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COPY_VARIANT_KEY = 'moltpit_copy_variant';
 const FOUNDER_CTA_VARIANT_KEY = 'moltpit_founder_cta_variant';
@@ -1358,16 +1357,22 @@ const HeroSection = ({ sectionRef }) => {
       variant,
       meta: { variant, founderCtaVariant },
     });
+    const checkoutSource = `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`;
+    const checkoutIntentSource = `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`;
+    localStorage.setItem('moltpit_last_founder_checkout_source', checkoutSource);
+    localStorage.setItem('moltpit_last_founder_intent_source', checkoutIntentSource);
+
     const founderIntentPayload = {
       email: trimmed.toLowerCase(),
-      source: `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`,
+      source: checkoutIntentSource,
       intentId: `intent:${new Date().toISOString().slice(0, 10)}:${trimmed.toLowerCase()}:${variant}:${founderCtaVariant}`,
       variant,
       founderCtaVariant,
     };
 
+    let checkoutPayload = null;
     try {
-      await submitWithRetry('/api/founder-intent', founderIntentPayload, { retries: 1, timeoutMs: 6000 });
+      checkoutPayload = await submitWithRetry('/api/founder-checkout', founderIntentPayload, { retries: 1, timeoutMs: 6000 });
     } catch (error) {
       enqueueFounderIntentReplay(founderIntentPayload);
       await postJson('/api/events', {
@@ -1380,16 +1385,13 @@ const HeroSection = ({ sectionRef }) => {
           error: error instanceof Error ? error.message : 'unknown',
         },
       });
+      setStatus('success');
+      setMessage("Founder checkout intent saved locally. We'll retry when your connection stabilizes.");
+      return;
     }
 
-    if (STRIPE_FOUNDER_URL) {
-      const checkoutSource = `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`;
-      const checkoutIntentSource = `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`;
-      localStorage.setItem('moltpit_last_founder_checkout_source', checkoutSource);
-      localStorage.setItem('moltpit_last_founder_intent_source', checkoutIntentSource);
-      const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
-      target.searchParams.set('prefilled_email', trimmed.toLowerCase());
-      window.location.href = target.toString();
+    if (typeof checkoutPayload?.checkoutUrl === 'string' && checkoutPayload.checkoutUrl.trim()) {
+      window.location.href = checkoutPayload.checkoutUrl;
       return;
     }
 
@@ -1731,16 +1733,22 @@ const FooterSection = () => {
       variant,
       meta: { variant, founderCtaVariant },
     });
+    const checkoutSource = `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`;
+    const checkoutIntentSource = `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`;
+    localStorage.setItem('moltpit_last_founder_checkout_source', checkoutSource);
+    localStorage.setItem('moltpit_last_founder_intent_source', checkoutIntentSource);
+
     const founderIntentPayload = {
       email: trimmed,
-      source: `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`,
+      source: checkoutIntentSource,
       intentId: `intent:${new Date().toISOString().slice(0, 10)}:${trimmed}:${variant}:${founderCtaVariant}`,
       variant,
       founderCtaVariant,
     };
 
+    let checkoutPayload = null;
     try {
-      await submitWithRetry('/api/founder-intent', founderIntentPayload, { retries: 1, timeoutMs: 6000 });
+      checkoutPayload = await submitWithRetry('/api/founder-checkout', founderIntentPayload, { retries: 1, timeoutMs: 6000 });
     } catch (error) {
       enqueueFounderIntentReplay(founderIntentPayload);
       await postJson('/api/events', {
@@ -1753,16 +1761,13 @@ const FooterSection = () => {
           error: error instanceof Error ? error.message : 'unknown',
         },
       });
+      setSubmittedEmail(trimmed);
+      setSubmitted(true);
+      return;
     }
 
-    if (STRIPE_FOUNDER_URL) {
-      const checkoutSource = `${ctaSourcePrefix}-${variant}-${founderCtaVariant}`;
-      const checkoutIntentSource = `${checkoutSourcePrefix}-${variant}-${founderCtaVariant}`;
-      localStorage.setItem('moltpit_last_founder_checkout_source', checkoutSource);
-      localStorage.setItem('moltpit_last_founder_intent_source', checkoutIntentSource);
-      const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
-      target.searchParams.set('prefilled_email', trimmed);
-      window.location.href = target.toString();
+    if (typeof checkoutPayload?.checkoutUrl === 'string' && checkoutPayload.checkoutUrl.trim()) {
+      window.location.href = checkoutPayload.checkoutUrl;
       return;
     }
 

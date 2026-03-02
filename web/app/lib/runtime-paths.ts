@@ -37,12 +37,12 @@ function resolveRuntimeDir(): RuntimeResolution {
   const resolved = orderedCandidates.find((candidate) => isWritableDir(candidate));
 
   if (resolved === configured && configured) {
-    cachedResolution = { dir: resolved, source: 'env', candidates: orderedCandidates };
+    cachedResolution = { dir: configured, source: 'env', candidates: orderedCandidates };
     return cachedResolution;
   }
 
   if (resolved === workspaceDefault) {
-    cachedResolution = { dir: resolved, source: 'workspace', candidates: orderedCandidates };
+    cachedResolution = { dir: workspaceDefault, source: 'workspace', candidates: orderedCandidates };
     return cachedResolution;
   }
 

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { appendEventsFallback, appendOpsLog } from '~/lib/observability'
-import { insertConversionEvent, insertFounderIntent } from '~/lib/waitlist-db'
+import { insertConversionEvent, insertFounderIntent, readApiRequestReceipt, writeApiRequestReceipt } from '~/lib/waitlist-db'
 import { redisInsertConversionEvent, redisInsertFounderIntent } from '~/lib/waitlist-redis'
 
 type CheckoutPostback = {
@@ -77,9 +77,10 @@ export const Route = createFileRoute('/api/postback')({
       POST: async ({ request }) => {
         const startedAt = Date.now();
         const requestId = crypto.randomUUID();
+        const route = '/api/postback';
 
         if (!authorize(request)) {
-          appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_unauthorized', requestId });
+          appendOpsLog({ route, level: 'warn', event: 'postback_unauthorized', requestId });
           return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', requestId }), {
             status: 401,
             headers: { 'content-type': 'application/json' },
@@ -157,6 +158,58 @@ export const Route = createFileRoute('/api/postback')({
           ?? (typeof payload.id === 'string' && payload.id.trim() ? payload.id.trim() : undefined)
           ?? (typeof object?.id === 'string' && object.id.trim() ? object.id.trim() : undefined)
           ?? deriveFallbackEventId({ eventType, source, email, created: payload.created, metadata: meta.metadata as Record<string, unknown> });
+        const idempotencyKey = (
+          request.headers.get('x-idempotency-key')?.trim()
+          || `postback:${eventType}:${eventId}`
+        ).slice(0, 120);
+
+        const respond = (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
+          try {
+            writeApiRequestReceipt({
+              route,
+              idempotencyKey,
+              responseStatus: status,
+              responseBody: JSON.stringify({ ...body, requestId }),
+            });
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'postback_idempotency_write_failed',
+              requestId,
+              eventId,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+          return new Response(JSON.stringify({ ...body, requestId }), {
+            status,
+            headers: { 'content-type': 'application/json', 'x-request-id': requestId, ...extraHeaders },
+          });
+        };
+
+        try {
+          const cached = readApiRequestReceipt(route, idempotencyKey);
+          if (cached) {
+            appendOpsLog({ route, level: 'info', event: 'postback_idempotency_replay', requestId, eventId, durationMs: Date.now() - startedAt });
+            return new Response(cached.responseBody, {
+              status: cached.responseStatus,
+              headers: {
+                'content-type': 'application/json',
+                'x-request-id': requestId,
+                'x-idempotent-replay': '1',
+              },
+            });
+          }
+        } catch (error) {
+          appendOpsLog({
+            route,
+            level: 'warn',
+            event: 'postback_idempotency_read_failed',
+            requestId,
+            eventId,
+            error: error instanceof Error ? error.message : 'unknown',
+          });
+        }
 
         const conversionPayload = {
           eventName: 'paid_conversion_confirmed',
@@ -173,7 +226,7 @@ export const Route = createFileRoute('/api/postback')({
 
           // Fire-and-forget Redis writes — durable across Lambda invocations
           void redisInsertConversionEvent(conversionPayload).catch((e: unknown) => {
-            appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_redis_conversion_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
+            appendOpsLog({ route, level: 'warn', event: 'postback_redis_conversion_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
           });
 
           if (email) {
@@ -186,12 +239,12 @@ export const Route = createFileRoute('/api/postback')({
             };
             insertFounderIntent(founderIntentPayload);
             void redisInsertFounderIntent(founderIntentPayload).catch((e: unknown) => {
-              appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_redis_founder_intent_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
+              appendOpsLog({ route, level: 'warn', event: 'postback_redis_founder_intent_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
             });
           }
 
           appendOpsLog({
-            route: '/api/postback',
+            route,
             level: 'info',
             event: 'postback_recorded',
             requestId,
@@ -202,14 +255,11 @@ export const Route = createFileRoute('/api/postback')({
             durationMs: Date.now() - startedAt,
           });
 
-          return new Response(JSON.stringify({ ok: true, requestId, eventId }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          });
+          return respond({ ok: true, eventId }, 200);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
           appendOpsLog({
-            route: '/api/postback',
+            route,
             level: 'error',
             event: 'postback_record_failed',
             requestId,
@@ -221,9 +271,9 @@ export const Route = createFileRoute('/api/postback')({
           });
 
           try {
-            appendEventsFallback({ route: '/api/postback', requestId, ...conversionPayload, reason: errorMessage });
+            appendEventsFallback({ route, requestId, ...conversionPayload, reason: errorMessage });
             appendOpsLog({
-              route: '/api/postback',
+              route,
               level: 'warn',
               event: 'postback_saved_to_fallback',
               requestId,
@@ -232,13 +282,10 @@ export const Route = createFileRoute('/api/postback')({
               eventId,
               durationMs: Date.now() - startedAt,
             });
-            return new Response(JSON.stringify({ ok: true, queued: true, requestId, eventId }), {
-              status: 202,
-              headers: { 'content-type': 'application/json' },
-            });
+            return respond({ ok: true, queued: true, eventId }, 202);
           } catch (fallbackError) {
             appendOpsLog({
-              route: '/api/postback',
+              route,
               level: 'error',
               event: 'postback_fallback_write_failed',
               requestId,
@@ -249,10 +296,7 @@ export const Route = createFileRoute('/api/postback')({
               durationMs: Date.now() - startedAt,
             });
 
-            return new Response(JSON.stringify({ ok: false, error: 'Postback processing failed', requestId }), {
-              status: 500,
-              headers: { 'content-type': 'application/json' },
-            });
+            return respond({ ok: false, error: 'Postback processing failed' }, 500);
           }
         }
       },
