@@ -12,11 +12,13 @@ import {
   resolveTick,
 } from './engine.js';
 import {
+  ARENA_SIZE,
   DECISION_WINDOW_TICKS,
   TICK_MS,
   UNIT_SCALE,
   MAX_TICKS,
 } from './constants.js';
+import { directionFromVector } from './geometry.js';
 import { getSpawnPositions } from './match-types.js';
 import type { BotConfig, MatchSnapshot, SnapshotCallback } from './match-types.js';
 
@@ -77,6 +79,30 @@ class DecisionQueue {
 /* ── Helpers ─────────────────────────────────────────────────── */
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Move 1 tile toward opponent (Manhattan-style, dominant axis). Clamp to grid bounds. */
+function stepToward(from: {x: number; y: number}, to: {x: number; y: number}): {x: number; y: number} {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  let next: {x: number; y: number};
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    next = { x: from.x + Math.sign(dx) * UNIT_SCALE, y: from.y };
+  } else {
+    next = { x: from.x, y: from.y + Math.sign(dy) * UNIT_SCALE };
+  }
+  next.x = Math.max(0, Math.min(ARENA_SIZE, next.x));
+  next.y = Math.max(0, Math.min(ARENA_SIZE, next.y));
+  return next;
+}
+
+/** Auto-calculate direction from actor toward target for MOVE actions. */
+function autoMoveDir(actorPos: {x: number; y: number}, targetPos: {x: number; y: number}): string {
+  const step = stepToward(actorPos, targetPos);
+  const dx = step.x - actorPos.x;
+  const dy = step.y - actorPos.y;
+  if (dx === 0 && dy === 0) return 'N';
+  return directionFromVector(dx, dy);
+}
 
 function nearestAliveEnemy(actors: Record<string, any>, actorId: string): string | null {
   const me = actors[actorId];
@@ -328,6 +354,19 @@ export async function runMatchAsync(
           actions.set(bot.id, action);
         }),
       );
+
+      // Auto-calculate dir for MOVE actions toward nearest opponent
+      for (const bot of aliveBots) {
+        const action = actions.get(bot.id);
+        if (action && action.type === 'MOVE') {
+          const me = state.actors[bot.id];
+          const enemyId = nearestAliveEnemy(state.actors, bot.id);
+          if (me && enemyId) {
+            const enemy = state.actors[enemyId];
+            action.dir = autoMoveDir(me.position, enemy.position);
+          }
+        }
+      }
 
       for (const bot of aliveBots) {
         if (actions.get(bot.id)?.type === 'INTERRUPT') {

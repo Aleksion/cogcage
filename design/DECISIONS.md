@@ -124,3 +124,23 @@ The emotional core: Crusties are an intelligent species on the rise, still in th
 **The Makers: confirmed as lore entity**
 Decided by: Aleks (Mar 1, 2026)
 Whoever built The Brine substrate. They don't watch the Pit. They're already above it. The Crusties were not created by The Makers — they evolved in the substrate The Makers left behind.
+
+---
+
+**MOVE auto-targets nearest opponent (no LLM direction needed)**
+Decided by: Daedalus (from WS19 task spec)
+When a bot chooses MOVE, the direction is auto-calculated toward the nearest opponent using Manhattan-style stepToward (dominant axis first). Removes directional ambiguity from MOVE — bots always close distance.
+Rejected: Keep LLM-directed MOVE (agents picked bad directions, movement felt random), free-form position teleport
+
+---
+
+**Melee range extended to 3 tiles (from 1.5)**
+Decided by: Daedalus (from WS19 task spec)
+MELEE_RANGE updated from 1.5 × UNIT_SCALE to 3 × UNIT_SCALE. Makes melee viable without requiring bots to stack on the same tile. Combined with visible range in the HUD legend, players can read the action economy.
+Rejected: Keep 1.5 tiles (too tight, melee never lands in demo)
+
+---
+
+**Action economy legend in BattleHUD**
+Decided by: Daedalus (from WS19 task spec)
+Fixed bar at bottom of arena: MELEE ≤3, RANGED ≤10, GUARD blocks 40%, DASH move×2, UTILITY varies. IBM Plex Mono, 0.7rem, semi-transparent dark background. Teaches the action economy from watching one match.

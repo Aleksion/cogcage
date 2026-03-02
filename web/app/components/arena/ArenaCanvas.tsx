@@ -777,9 +777,9 @@ const ArenaCanvas = forwardRef<ArenaHandle, object>((_props, ref) => {
       const dt = Math.min(clock.getDelta(), 0.05)
       const t = clock.getElapsedTime()
 
-      // Smooth movement
-      state.crawlerA.position.lerp(state.targetA, 0.08)
-      state.crawlerB.position.lerp(state.targetB, 0.08)
+      // Smooth movement (~300ms tween via exponential lerp)
+      state.crawlerA.position.lerp(state.targetA, 0.15)
+      state.crawlerB.position.lerp(state.targetB, 0.15)
 
       // ── IDLE ANIMATIONS ──────────────────────────────
       const refsA = state.crawlerA.userData.refs as MechaRefs

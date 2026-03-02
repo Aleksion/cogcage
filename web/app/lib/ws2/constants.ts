@@ -23,7 +23,7 @@ export const MOVE_SPEED_UNITS = 4;
 export const MOVE_DISTANCE = Math.round(MOVE_SPEED_UNITS * DECISION_WINDOW_SEC * UNIT_SCALE); // 1.2 units
 export const DASH_DISTANCE = 3 * UNIT_SCALE;
 
-export const MELEE_RANGE = 1.5 * UNIT_SCALE;
+export const MELEE_RANGE = 3 * UNIT_SCALE;
 export const RANGED_MIN = 2.0 * UNIT_SCALE;
 export const RANGED_MAX = 10 * UNIT_SCALE;
 

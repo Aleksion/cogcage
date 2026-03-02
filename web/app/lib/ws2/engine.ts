@@ -106,6 +106,8 @@ export interface AgentAction {
 interface ValidationResult {
   valid: boolean;
   reason?: string;
+  dist?: number;
+  maxRange?: number;
 }
 
 export const createActorState = ({
@@ -232,10 +234,10 @@ const validateAction = (state: GameState, actor: ActorState, action: AgentAction
     const target = state.actors[targetId];
     const dist = distanceTenths(actor.position, target.position);
     if (action.type === 'MELEE_STRIKE' && dist > MELEE_RANGE) {
-      return { valid: false, reason: 'OUT_OF_RANGE' };
+      return { valid: false, reason: 'OUT_OF_RANGE', dist, maxRange: MELEE_RANGE };
     }
     if (action.type === 'RANGED_SHOT' && (dist < RANGED_MIN || dist > RANGED_MAX)) {
-      return { valid: false, reason: 'OUT_OF_RANGE' };
+      return { valid: false, reason: 'OUT_OF_RANGE', dist, maxRange: RANGED_MAX };
     }
   }
   if (action.type === 'UTILITY' && isStatusActive(actor.statuses.utility, state.tick)) {
@@ -342,6 +344,19 @@ const resolveAction = (state: GameState, actor: ActorState, action: AgentAction 
 
   if (action.type === 'MOVE') {
     applyMove(actor, action.dir as Direction, MOVE_DISTANCE);
+    // Emit position after move so UI can display it
+    const targetId = getTargetId(state, actor.id, action);
+    const target = targetId ? state.actors[targetId] : null;
+    const dist = target ? distanceTenths(actor.position, target.position) : 0;
+    emitEvent(state, makeEvent('MOVE_COMPLETED', {
+      tick: state.tick,
+      actorId: actor.id,
+      data: {
+        position: { x: actor.position.x, y: actor.position.y },
+        dist,
+        dir: action.dir,
+      },
+    }));
     return;
   }
   if (action.type === 'DASH') {
@@ -460,7 +475,7 @@ const sanitizeAction = (action: AgentAction): { tick: number; type: string; dir:
   targetId: action.targetId ?? null,
 });
 
-const markIllegal = (state: GameState, actor: ActorState, action: AgentAction, reason: string): void => {
+const markIllegal = (state: GameState, actor: ActorState, action: AgentAction, reason: string, extra?: Record<string, unknown>): void => {
   actor.stats.illegalActions += 1;
   emitEvent(state, makeEvent('ILLEGAL_ACTION', {
     tick: state.tick,
@@ -470,6 +485,7 @@ const markIllegal = (state: GameState, actor: ActorState, action: AgentAction, r
       action: sanitizeAction(action),
       energyAtReject: actor.energy,
       cooldowns: { ...actor.cooldowns },
+      ...extra,
     },
   }));
 };
@@ -492,7 +508,10 @@ export const resolveTick = (state: GameState, actionsByActor: Map<string, AgentA
       const validation = validateAction(state, actor, action);
       if (!validation.valid) {
         if (action.type !== 'NO_OP') {
-          markIllegal(state, actor, action, validation.reason!);
+          const extra: Record<string, unknown> = {};
+          if (validation.dist !== undefined) extra.dist = validation.dist;
+          if (validation.maxRange !== undefined) extra.maxRange = validation.maxRange;
+          markIllegal(state, actor, action, validation.reason!, Object.keys(extra).length > 0 ? extra : undefined);
         }
         acceptedActions.set(actorId, { tick: state.tick, type: 'NO_OP' });
       } else {

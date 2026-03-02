@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { runMatchAsync } from '~/lib/ws2/run-match'
-import { HP_MAX, TICK_RATE, MAX_TICKS, UNIT_SCALE } from '~/lib/ws2/index'
+import { HP_MAX, TICK_RATE, MAX_TICKS, UNIT_SCALE, MELEE_RANGE, RANGED_MAX } from '~/lib/ws2/index'
 import type { BotConfig, MatchSnapshot } from '~/lib/ws2/match-types'
 import { PARTS, composeMold, type Part } from '~/lib/ws2/parts'
 import ArenaCanvas, { type ArenaHandle } from './ArenaCanvas'
@@ -263,6 +263,26 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
         // Update brain stream last action
         if (isA) setLastActionA(d.type)
         else setLastActionB(d.type)
+      }
+
+      if (evt.type === 'MOVE_COMPLETED') {
+        const d = evt.data
+        const posX = Math.round((d?.position?.x ?? 0) / UNIT_SCALE)
+        const posY = Math.round((d?.position?.y ?? 0) / UNIT_SCALE)
+        const dist = Math.round((d?.dist ?? 0) / UNIT_SCALE)
+        entries.push({
+          text: `\uD83D\uDCCD ${who} moves \u2192 (${posX}, ${posY}) [dist: ${dist}]`,
+        })
+      }
+
+      if (evt.type === 'ILLEGAL_ACTION' && evt.data?.reason === 'OUT_OF_RANGE') {
+        const d = evt.data
+        const actionType = d?.action?.type ?? 'ATTACK'
+        const dist = Math.round((d?.dist ?? 0) / UNIT_SCALE)
+        const maxRange = Math.round((d?.maxRange ?? 0) / UNIT_SCALE)
+        entries.push({
+          text: `\u26A0\uFE0F ${who} ${actionType} \u2014 OUT OF RANGE (dist: ${dist}, need \u2264${maxRange})`,
+        })
       }
 
       if (evt.type === 'DAMAGE_APPLIED') {
