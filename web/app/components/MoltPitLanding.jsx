@@ -1474,7 +1474,15 @@ const HeroSection = ({ sectionRef }) => {
                 {status === 'loading' ? 'Joining...' : 'Join Waitlist'}
               </button>
             </form>
-            <div className="waitlist-message" role="status" aria-live="polite" style={{ color: status === 'error' ? 'var(--c-red)' : '#00C853' }}>
+            <div
+              className="waitlist-message"
+              role="status"
+              aria-live="polite"
+              style={{
+                color: status === 'error' ? 'var(--c-red)' : '#00C853',
+                fontWeight: status === 'error' ? 900 : 800,
+              }}
+            >
               {message}
             </div>
             <div className="waitlist-hint">Early access invites, creator perks, and arena updates.</div>

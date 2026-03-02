@@ -38,14 +38,8 @@ export function OpsLogPage() {
     // Auto-refresh every 30 seconds
     const refreshInterval = setInterval(() => void fetchData(), 30_000)
 
-    // Tick seconds-ago counter every second
-    const tickInterval = setInterval(() => {
-      setSecondsAgo(Math.round((Date.now() - lastRefreshed) / 1000))
-    }, 1000)
-
     return () => {
       clearInterval(refreshInterval)
-      clearInterval(tickInterval)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -60,6 +54,9 @@ export function OpsLogPage() {
 
   const redisWaitlistCount =
     data?.redisCounts?.waitlistLeads ?? data?.redisFunnel?.waitlistLeads ?? null
+  const recentCommits: { sha: string; msg: string }[] = Array.isArray(data?.recentCommits)
+    ? data.recentCommits
+    : []
 
   return (
     <div
@@ -86,11 +83,8 @@ export function OpsLogPage() {
       >
         <span>OPS LOG</span>
         <span style={{ color: '#888', fontSize: 11, fontWeight: 400 }}>
-          auto-refresh ·{' '}
-          {secondsAgo < 5
-            ? 'just now'
-            : `${secondsAgo}s ago`}{' '}
-          ·{' '}
+          Last refreshed:{' '}
+          {secondsAgo < 5 ? 'just now' : `${secondsAgo}s ago`} · auto-refresh: 30s ·{' '}
           <button
             onClick={() => void fetchData()}
             style={{
@@ -107,6 +101,45 @@ export function OpsLogPage() {
           </button>
         </span>
       </h1>
+
+      {/* ── Shipped Artifacts ── */}
+      {recentCommits.length > 0 && (
+        <>
+          <h2
+            style={{
+              fontSize: '0.85rem',
+              color: '#ffd600',
+              margin: '0 0 0.5rem',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Shipped Artifacts (last {recentCommits.length})
+          </h2>
+          <div
+            style={{
+              background: '#1a1a0a',
+              border: '1px solid #2a2a10',
+              borderRadius: 4,
+              padding: '0.75rem',
+              marginBottom: '1rem',
+            }}
+          >
+            {recentCommits.map((commit) => (
+              <div
+                key={`${commit.sha}-${commit.msg}`}
+                style={{
+                  padding: '3px 0',
+                  borderBottom: '1px solid #1e1e10',
+                }}
+              >
+                <span style={{ color: '#27d9e8' }}>{commit.sha}</span>{' '}
+                <span style={{ color: '#e0e0e0' }}>{commit.msg}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* ── WS18 Product Core Sprint ── */}
       <div
@@ -176,45 +209,6 @@ export function OpsLogPage() {
         <div style={{ color: '#888' }}>Loading...</div>
       ) : (
         <>
-          {/* ── Shipped Artifacts ── */}
-          {data.recentCommits && data.recentCommits.length > 0 && (
-            <>
-              <h2
-                style={{
-                  fontSize: '0.85rem',
-                  color: '#ffd600',
-                  margin: '1.5rem 0 0.5rem',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Shipped Artifacts (last {data.recentCommits.length})
-              </h2>
-              <div
-                style={{
-                  background: '#1a1a0a',
-                  border: '1px solid #2a2a10',
-                  borderRadius: 4,
-                  padding: '0.75rem',
-                  marginBottom: '1rem',
-                }}
-              >
-                {(data.recentCommits as { sha: string; msg: string }[]).map((c) => (
-                  <div
-                    key={c.sha}
-                    style={{
-                      padding: '3px 0',
-                      borderBottom: '1px solid #1e1e10',
-                    }}
-                  >
-                    <span style={{ color: '#27d9e8' }}>{c.sha}</span>{' '}
-                    <span style={{ color: '#e0e0e0' }}>{c.msg}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
           {/* ── Funnel ── */}
           <h2
             style={{

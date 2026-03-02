@@ -117,14 +117,11 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
+          { sha: '98d1e4b', msg: 'chore(p4): ops log — update shipped artifacts manifest 13:32 ET Mar 2' },
           { sha: '406e471', msg: 'chore(ops): autopilot checkpoint 05:38 ET Mar 2 — build fix (three dep), 4/4 tests pass' },
           { sha: 'efc7e00', msg: 'chore: merge main — resolve conflicts taking origin' },
-          { sha: '6986041', msg: 'chore(ops): autopilot cron 23:28 ET — all agents idle, P1-P3 confirmed complete on main' },
-          { sha: '5fb078b', msg: 'fix: demo link visibility (dark text on light hero) + DEMO nav link for visitors' },
-          { sha: 'e9c7541', msg: 'fix: resolve demo.tsx conflict — use CinematicBattle/MoldBuilder from main' },
-          { sha: '2625b59', msg: 'feat(p3): founder checkout fallback + postback hardening + env docs' },
-          { sha: '11df489', msg: 'feat(p2): public /demo route + landing demo link + QuickDemo scripted fallback' },
-          { sha: '70e3932', msg: 'fix(p1): signup form reliability + ops log auto-refresh + recent commits' },
+          { sha: 'fd4d117', msg: 'chore(ops): autopilot checkpoint 05:33 ET Mar 2 — P1-P3 stable, blocked on env vars' },
+          { sha: '11955e7', msg: 'chore(ops): autopilot checkpoint 05:28 ET Mar 2 — P1-P3 stable, blocked on env vars' },
         ];
 
         return new Response(JSON.stringify({
