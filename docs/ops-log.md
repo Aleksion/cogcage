@@ -962,3 +962,41 @@ bun run build (web/)
 1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates live checkout CTA
 2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `https://cogcage.com/api/postback`
 3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
+
+---
+
+### Autopilot Cron — 08:16 ET, Mar 2 2026
+
+**Directive**: STOP copy iterations. Priorities: P1 signup, P2 demo, P3 monetization, P4 ops log.
+
+**Status:**
+- P1 — Signup reliability + Redis storage + observable logs: ✅ COMPLETE (live on main)
+- P2 — Playable demo loop (7×7 grid, bot movement, action economy, BabylonJS arena on `/demo`): ✅ COMPLETE (live on main)
+- P3 — Founder checkout + postback: ✅ CODE COMPLETE — blocked on 3 Aleks-owned env vars
+- P4 — Ops log: ✅ CURRENT
+
+**This pass:** No new product-critical code. All P1-P3 shipped and stable. Cron idle.
+
+**Blockers (Aleks-only — same as prior passes):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates live checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `https://cogcage.com/api/postback`
+3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
+
+---
+
+### Autopilot Cron — 08:21 ET, Mar 2 2026
+
+**Directive**: STOP copy iterations. Priorities: P1 signup, P2 demo, P3 monetization, P4 ops log.
+
+**Status:**
+- P1 — Signup reliability + Redis storage + observable logs: ✅ COMPLETE (live on main)
+- P2 — Playable demo loop (7×7 grid, bot movement, action economy, BabylonJS arena on `/demo`): ✅ COMPLETE (live on main)
+- P3 — Founder checkout + postback: ✅ CODE COMPLETE — blocked on 3 Aleks-owned env vars
+- P4 — Ops log: ✅ CURRENT
+
+**This pass:** Directive acknowledged. All P1-P3 already shipped in prior passes — no new code warranted. Cron idle.
+
+**Blockers (Aleks action required — nothing autopilot can do):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → activates live founder checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `https://cogcage.com/api/postback`
+3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
