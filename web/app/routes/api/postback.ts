@@ -45,11 +45,15 @@ function getClientIp(request: Request) {
   return forwarded || realIp || cfIp || flyIp || undefined;
 }
 
-function authorize(request: Request): boolean {
+type PostbackAuthMode = 'shared-key' | 'open-fallback';
+
+function getPostbackAuth(request: Request): { authorized: boolean; mode: PostbackAuthMode } {
   const key = (process.env.COGCAGE_POSTBACK_KEY ?? process.env.MOLTPIT_POSTBACK_KEY)?.trim();
-  if (!key) return true;
+  if (!key) {
+    return { authorized: true, mode: 'open-fallback' };
+  }
   const provided = request.headers.get('x-postback-key')?.trim() ?? '';
-  return provided === key;
+  return { authorized: provided === key, mode: 'shared-key' };
 }
 
 function hashString(input: string) {
@@ -83,21 +87,30 @@ export const Route = createFileRoute('/api/postback')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!authorize(request)) {
+        const auth = getPostbackAuth(request);
+        if (!auth.authorized) {
           return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
             status: 401,
             headers: { 'content-type': 'application/json' },
           });
         }
+        if (auth.mode === 'open-fallback') {
+          appendOpsLog({
+            route: '/api/postback',
+            level: 'warn',
+            event: 'postback_auth_open_fallback',
+            method: 'GET',
+          });
+        }
         // Health check / test endpoint
         const url = new URL(request.url);
         if (url.searchParams.get('test') === '1') {
-          return new Response(JSON.stringify({ ok: true, mode: 'test', method: 'GET' }), {
+          return new Response(JSON.stringify({ ok: true, mode: 'test', method: 'GET', authMode: auth.mode }), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           });
         }
-        return new Response(JSON.stringify({ ok: true, status: 'ready', acceptedTypes: ['checkout.session.completed', 'founder_pack.paid'] }), {
+        return new Response(JSON.stringify({ ok: true, status: 'ready', authMode: auth.mode, acceptedTypes: ['checkout.session.completed', 'founder_pack.paid'] }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         });
@@ -106,6 +119,7 @@ export const Route = createFileRoute('/api/postback')({
         const startedAt = Date.now();
         const requestId = crypto.randomUUID();
         const contentType = request.headers.get('content-type') ?? '';
+        const auth = getPostbackAuth(request);
 
         appendOpsLog({
           route: '/api/postback',
@@ -113,19 +127,29 @@ export const Route = createFileRoute('/api/postback')({
           event: 'postback_received',
           requestId,
           contentType,
+          authMode: auth.mode,
         });
+        if (auth.mode === 'open-fallback') {
+          appendOpsLog({
+            route: '/api/postback',
+            level: 'warn',
+            event: 'postback_auth_open_fallback',
+            requestId,
+            method: 'POST',
+          });
+        }
 
         // Test mode stub: ?test=1 returns 200 without processing, for deploy verification
         const url = new URL(request.url);
         if (url.searchParams.get('test') === '1') {
-          return new Response(JSON.stringify({ ok: true, mode: 'test', requestId }), {
+          return new Response(JSON.stringify({ ok: true, mode: 'test', requestId, authMode: auth.mode }), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           });
         }
 
-        if (!authorize(request)) {
-          appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_unauthorized', requestId });
+        if (!auth.authorized) {
+          appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_unauthorized', requestId, authMode: auth.mode });
           return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', requestId }), {
             status: 401,
             headers: { 'content-type': 'application/json' },

@@ -2,6 +2,30 @@
 
 ---
 
+## Product-Mode Ship — 17:34 ET Mar 2
+
+Directive executed in strict order (P1→P4), with no landing-copy scope.
+
+### Shipped artifacts (this pass)
+- **P1 signup reliability/log visibility**
+  - `app/routes/api/waitlist.ts`: added terminal `waitlist_response` log event for every outcome.
+  - `app/routes/api/founder-intent.ts`: added terminal `founder_intent_response` log event for every outcome.
+- **P2 playable demo loop**
+  - `app/components/DemoLoop.tsx`: added directional map movement controls and explicit AP+MP economy; visible turn-stage state and per-turn AP/MP updates.
+- **P3 monetization path**
+  - `app/components/DemoLoop.tsx`: winner CTA now records founder intent + checkout source before Stripe redirect.
+  - `app/routes/api/postback.ts`: emits explicit `authMode` and `postback_auth_open_fallback` warnings when postback secret is missing.
+  - `app/components/SuccessPage.tsx`: added conversion sync confirmation status (confirmed/queued/unavailable).
+- **P4 ops artifacts**
+  - Updated `web/ops/log.md`, `ops/logs/2026-03-02.md`, `docs/ops-log.md`, and `CHANGELOG.md`.
+
+### Verification evidence
+- `npm run test:product` ✅ (9/9 pass)
+- `npm run build` ✅
+
+### Blockers / env-dependent behavior
+- If `COGCAGE_POSTBACK_KEY`/`MOLTPIT_POSTBACK_KEY` is unset, `/api/postback` remains in `open-fallback` mode by design and now logs this explicitly.
+
 ## Product-Mode Audit — 17:12 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Enforced priority order P1→P4 with no scope drift.

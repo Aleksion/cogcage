@@ -1,7 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 const PAID_KEY = 'moltpit_paid_conversions'
 const PENDING_KEY = 'moltpit_pending_paid_conversions'
+type ConversionSyncState = 'syncing' | 'confirmed' | 'queued' | 'unavailable'
+
+type ConversionPostResult = {
+  ok: boolean
+  queued: boolean
+  degraded: boolean
+  via: 'http' | 'beacon' | 'failed'
+}
 
 function rememberPaidConversion(id: string) {
   const known = JSON.parse(localStorage.getItem(PAID_KEY) || '[]')
@@ -39,17 +47,36 @@ async function postConversion(payload: any) {
       body,
       keepalive: true,
     })
-    if (response.ok) return true
+    if (response.ok) {
+      const parsed = await response.json().catch(() => ({} as Record<string, unknown>))
+      return {
+        ok: true,
+        queued: parsed?.queued === true,
+        degraded: parsed?.degraded === true,
+        via: 'http',
+      } as ConversionPostResult
+    }
   } catch {
     // Fall through to beacon.
   }
   try {
-    return navigator.sendBeacon(
+    const beaconOk = navigator.sendBeacon(
       '/api/checkout-success',
       new Blob([body], { type: 'application/json' }),
     )
+    return {
+      ok: beaconOk,
+      queued: beaconOk,
+      degraded: beaconOk,
+      via: beaconOk ? 'beacon' : 'failed',
+    } as ConversionPostResult
   } catch {
-    return false
+    return {
+      ok: false,
+      queued: false,
+      degraded: false,
+      via: 'failed',
+    } as ConversionPostResult
   }
 }
 
@@ -61,15 +88,15 @@ async function flushPendingConversions() {
       clearPending(payload?.eventId)
       continue
     }
-    const ok = await postConversion(payload)
-    if (ok) {
+    const result = await postConversion(payload)
+    if (result.ok) {
       rememberPaidConversion(payload.eventId)
       clearPending(payload.eventId)
     }
   }
 }
 
-async function trackPaidConversion() {
+async function trackPaidConversion(): Promise<ConversionPostResult> {
   const params = new URLSearchParams(window.location.search)
   const sessionId = params.get('session_id') || params.get('checkout_session_id')
   const email =
@@ -79,7 +106,9 @@ async function trackPaidConversion() {
   const conversionId =
     sessionId ||
     `success:${window.location.pathname}:${new Date().toISOString().slice(0, 10)}`
-  if (hasPaidConversion(conversionId)) return
+  if (hasPaidConversion(conversionId)) {
+    return { ok: true, queued: false, degraded: false, via: 'http' }
+  }
 
   const checkoutSource =
     localStorage.getItem('moltpit_last_founder_checkout_source') || 'stripe-success'
@@ -96,18 +125,33 @@ async function trackPaidConversion() {
     meta: { sessionId, url: window.location.href, checkoutSource, checkoutIntentSource },
   }
 
-  const ok = await postConversion(payload)
-  if (ok) {
+  const result = await postConversion(payload)
+  if (result.ok) {
     rememberPaidConversion(conversionId)
     clearPending(conversionId)
-    return
+    return result
   }
   rememberPending(payload)
+  return result
 }
 
 export function SuccessPage() {
+  const [syncState, setSyncState] = useState<ConversionSyncState>('syncing')
+
   useEffect(() => {
-    flushPendingConversions().finally(() => trackPaidConversion())
+    flushPendingConversions()
+      .finally(async () => {
+        const result = await trackPaidConversion()
+        if (result.ok && !result.queued) {
+          setSyncState('confirmed')
+          return
+        }
+        if (result.ok && result.queued) {
+          setSyncState('queued')
+          return
+        }
+        setSyncState('unavailable')
+      })
   }, [])
 
   return (
@@ -147,6 +191,13 @@ export function SuccessPage() {
           Thanks for backing The Molt Pit early. Your Founder Pack is active.
           We're preparing your onboarding email with alpha queue priority,
           rank-season kickoff timing, and exclusive tournament invites.
+        </p>
+        <p style={{ color: '#acb2d9', fontSize: '0.84rem', marginTop: '0.6rem' }}>
+          Conversion sync:{' '}
+          {syncState === 'syncing' && 'sending confirmation...'}
+          {syncState === 'confirmed' && 'confirmed in primary storage.'}
+          {syncState === 'queued' && 'queued in fallback storage; backend will reconcile automatically.'}
+          {syncState === 'unavailable' && 'temporarily unavailable; confirmation will retry from this browser.'}
         </p>
 
         <div

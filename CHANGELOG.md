@@ -8,6 +8,50 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): signup observability, AP+MP playable demo loop, founder checkout confirmation path
+
+**Type:** fix/feature/ops | **Budget impact:** n/a (product-critical only)
+
+### What
+- `web/app/routes/api/waitlist.ts`
+  - Added terminal `waitlist_response` structured log emission for every response path (status/storage/requestId/source/emailHash/duration).
+- `web/app/routes/api/founder-intent.ts`
+  - Added terminal `founder_intent_response` structured log emission for every response path (status/storage/requestId/source/emailHash/duration).
+- `web/app/components/DemoLoop.tsx`
+  - Upgraded playable loop to explicit dual-resource economy:
+    - AP + MP state tracked per actor.
+    - MOVE now spends `1 MP + 0.5 AP`; ATTACK/DEFEND/CHARGE/STUN spend AP.
+    - Directional player movement controls (`MOVE ↑/↓/←/→`) added in PLAY mode.
+    - Turn-stage visibility improved (`PLAYER_ACTION` / `AI_DECISION` / `MATCH_COMPLETE`) with MP/AP readouts.
+  - Founder Pack CTA now captures founder intent + checkout source metadata before Stripe redirect in winner states.
+- `web/app/routes/api/postback.ts`
+  - Added explicit postback auth-mode handling (`shared-key` vs `open-fallback`) with warning logs when secret is missing.
+  - `GET` readiness/test responses now include `authMode` for ops visibility.
+- `web/app/components/SuccessPage.tsx`
+  - Added conversion-sync confirmation state on `/success` (`confirmed` / `queued` / `unavailable`) based on `/api/checkout-success` result.
+
+### Why
+- Product mode required observable success/failure traces for signup persistence paths.
+- Demo loop needed a real, user-controlled map movement loop with explicit movement/action economy.
+- Founder checkout path from gameplay needed reliable intent capture and visible confirmation outcome.
+- Missing postback secret needed clear runtime blocker visibility without breaking local fallback behavior.
+
+### Design Decisions
+- Kept storage hierarchy unchanged (Redis primary, SQLite secondary, fallback queue tertiary); added logging only.
+- Added MP as a first-class resource in the demo loop while preserving existing combat cadence and UI footprint.
+- Kept postback permissive fallback when secret is absent, but now emits explicit warning-level logs and metadata.
+
+### Verification
+- `cd web && npm run test:product` ✅ (9/9 pass)
+- `cd web && npm run build` ✅
+
+### Breaking
+- None.
+
+### Next Steps
+- Set `COGCAGE_POSTBACK_KEY`/`MOLTPIT_POSTBACK_KEY` in deploy env to disable `open-fallback` postback auth mode.
+- Add focused tests for DemoLoop AP/MP and directional movement transitions.
+
 ## [2026-03-02] - docs(ops): autopilot checkpoint for product-mode P1→P4 verification
 
 **Type:** docs/ops | **Budget impact:** n/a

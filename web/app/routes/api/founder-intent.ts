@@ -167,6 +167,19 @@ export const Route = createFileRoute('/api/founder-intent')({
             }
           }
 
+          appendOpsLog({
+            route,
+            level: status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info',
+            event: 'founder_intent_response',
+            requestId,
+            status,
+            storage,
+            idempotencyKeyPresent: Boolean(idempotencyKey),
+            source: source || undefined,
+            emailHash: email ? email.toLowerCase().slice(0, 3) : undefined,
+            durationMs: Date.now() - startedAt,
+          });
+
           return jsonResponse({ ...body, storage }, status, requestId, {
             'x-storage-mode': storage,
             ...extraHeaders,
