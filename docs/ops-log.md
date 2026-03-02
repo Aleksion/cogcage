@@ -529,3 +529,30 @@ bun run build (web/)
 1. `PUBLIC_STRIPE_FOUNDER_URL` → create Stripe product → get payment link URL → set in Vercel env
 2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook → secures postback receiver
 3. `COGCAGE_OPS_KEY` → Vercel env → secures /api/ops endpoint
+
+
+---
+
+### Autopilot Checkpoint — 23:10 ET, Mar 1 2026
+
+**Directive**: STOP copy iterations. P1-P3 priorities.
+
+**Status:**
+
+- **P1 ✅ LIVE** — Signup reliability + Redis storage + observable logs (main `e6fc977`)
+- **P2 ✅ LIVE** — `/demo` live with map movement (PR #46 merged `dbf4d6b`). Babylon.js 3D engine (WS21) PR #50 open — `feat/ws21-game-engine`. Build was failing (Three.js + PlayCanvas stale imports); **fixed this pass** — stubbed both dead files, build now passes, pushed `5f2f469`.
+- **P3 ✅ code live ⚠️ env vars blocked** — Founder checkout live; `PUBLIC_STRIPE_FOUNDER_URL` not set by Aleks.
+- **P4 ✅** — Ops log current.
+
+**Artifacts this pass:**
+- Fixed PR #50 Vercel build failure: `fix(ws21): stub Three.js + PlayCanvas files` → `5f2f469`
+- WS21 (Babylon.js isometric arena): PR #50 merge-ready, Vercel build now passing
+
+**PR #50** (Babylon.js 3D engine): awaiting Aleks review + merge.
+
+**Agents running:** `cc-ws21-game-engine` (done, idle at bypass prompt). WS19 visual+sound merged (`95a442c`).
+
+**Aleks action required:**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret
+3. Merge PR #50 (Babylon.js 3D arena) when ready
