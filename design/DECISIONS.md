@@ -104,3 +104,23 @@ The game is designed for OpenClaw agents. The platform's GPT-4o-mini (House Cora
 **Changelog and Decision Log are mandatory on every PR**
 Decided by: Aleks
 No exceptions. If a PR doesn't update CHANGELOG.md and DECISIONS.md (if applicable), it doesn't merge.
+
+---
+
+**Creature name: Crustie (plural: Crusties)**
+Decided by: Aleks (Mar 1, 2026)
+The creature is a Crustie. The House uses it clinically. Pitmasters use it as affectionate slur.
+Previous candidates rejected: Lobster (too on-the-nose), Chela (too clever/requires explanation), Crabbo (too juvenile), Scuttler (good but secondary — can be slang)
+
+---
+
+**Lore direction: narrative-first**
+Decided by: Aleks (Mar 1, 2026)
+Build the full narrative world before finalizing any remaining names. Names must emerge from the story, not precede it.
+The emotional core: Crusties are an intelligent species on the rise, still in the shadow of The Makers. The Pit is their crucible. Every molt = one step out from under.
+
+---
+
+**The Makers: confirmed as lore entity**
+Decided by: Aleks (Mar 1, 2026)
+Whoever built The Brine substrate. They don't watch the Pit. They're already above it. The Crusties were not created by The Makers — they evolved in the substrate The Makers left behind.
