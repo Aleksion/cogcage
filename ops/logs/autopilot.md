@@ -71,3 +71,21 @@ Directive: STOP landing-page copy iterations. Prioritize: (1) signup form reliab
 **Aleks actions still blocking:**
 1. `COGCAGE_POSTBACK_KEY` → Vercel env → hardens Stripe webhook auth
 2. `COGCAGE_OPS_KEY` → Vercel env → gates `/api/ops` viewer
+
+---
+
+### Autopilot Checkpoint — 13:37 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Prioritize: (1) signup reliability, (2) playable demo, (3) monetization, (4) ops log.
+
+**Status (all shipped, no new code this pass):**
+- **P1 ✅ LIVE** — Signup form: Redis + SQLite dual-write, fallback drain, observable logs, health-check entry on every submit
+- **P2 ✅ LIVE** — DemoLoop: 7×7 grid, MOVE/ATTACK/STUN/CHARGE/DEFEND, AP economy, BFS pathfinding, WATCH+PLAY modes
+- **P3 ✅ LIVE (soft auth)** — Founder Pack CTA → `/api/founder-intent` → Stripe redirect; postback stub with `?test=1` mode
+- **P4 ✅** — This entry.
+
+**Blocked on Aleks (env vars — no code path to unblock these):**
+1. `COGCAGE_POSTBACK_KEY` → Vercel → hardens Stripe webhook auth (currently unauthenticated fallback)
+2. `COGCAGE_OPS_KEY` → Vercel → gates `/api/ops` viewer
+
+**Nothing to ship. Autopilot idle.**
