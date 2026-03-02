@@ -7,6 +7,50 @@ Format: date · who decided · what · why · alternatives rejected
 
 ---
 
+<<<<<<< HEAD
+## 2026-03-02 — WS18 Hand Slots + Swap Tempo + Balance Direction (Aleks)
+
+**Combos are good and intentionally supported**
+Decided by: Aleks
+High-expression item interactions are part of the game's identity. We do not "flatten" combos just because they are strong; we tune them only when counterplay disappears.
+Rejected: Anti-combo normalization (kills skill expression, kills spectator moments).
+
+**Balance target: matchup/context power, never universal power**
+Decided by: Aleks
+No single item should be the best answer in all maps, all loadouts, and all tempos. Design target is contextual strength with explicit counters.
+Rejected: Linear power ladder where one item is always optimal.
+
+**Hand slots added: `main_hand` + `off_hand`**
+Decided by: Aleks
+Crusties now equip two hand slots, with hand items classed as weapons or shields.
+Rejected: Single "Claws" slot only (too little tactical expression).
+
+**Weapons tagged by delivery mode**
+Decided by: Aleks
+Every weapon now carries `weapon_tag = melee | ranged` for clean rules and AI readability.
+Rejected: Untagged weapons inferred from prose only (engine ambiguity).
+
+**Carry + swap model**
+Decided by: Aleks
+Crusties can carry reserve hand items and swap mid-fight.
+Swap timing is fixed at exactly one decision window (5 ticks, 750ms).
+Rejected: Instant swaps (no commitment), multi-window swaps (too sluggish for current pace).
+
+**Core combat constants reaffirmed**
+Decided by: Aleks
+Tick speed remains 150ms, decision window remains 750ms (5 ticks), queue cap remains 3.
+Supersedes: the 250ms tick / queue 5 experiment logged below.
+Rejected: 250ms tick migration for core rules (breaks current design lock + docs coherence).
+
+**THE ROLL naming joke is lock-level canon**
+Decided by: Aleks
+The House named it THE ROLL and will never explain the lunch joke. Keep the bit dry, never wink at it in-world.
+Rejected: Explaining the joke in UI/tooltips (kills the tone).
+
+---
+
+=======
+>>>>>>> 6d83955e4ce7eac4b174ca9f00529410ecff930f
 ## 2026-03-02 — Product-Mode Reliability Hardening (Engineering)
 
 **Redis rate-limit reset semantics standardized to relative milliseconds**
@@ -150,7 +194,7 @@ Rejected: The Forge (blacksmithing — wrong world), The Burrow (accurate but le
 
 ---
 
-**Molt part slots: Carapace · Claws · Tomalley**
+**Molt part slots: Carapace · Claws · Tomalley** *(SUPERSEDED — now Carapace · main_hand · off_hand · Tomalley, see 2026-03-02 WS18 Hand Slots entry)*
 Decided by: Aleks + Daedalus
 Three C's. Biologically correct. Immediately readable. Carapace = the lobster's actual shell. Tomalley = the hepatopancreas, the passive metabolic organ that fires without asking.
 Rejected: Plating (too industrial), Core (generic tech vocabulary), Armor (generic)
@@ -437,23 +481,41 @@ Decided by: Head of Engineering (WS21, 2026-03-01)
 Babylon.js is the 3D game engine for The Pit's arena renderer. TypeScript-first, full game engine (ECS, animation, physics, scene graph), orthographic camera for TFT/LoL isometric angle, GLTF loader for incoming 3D assets from visual team, React integration via canvas ref pattern. Cloudflare DO WebSocket pipes cleanly into Babylon scene update loop. Babylon.js has the largest AI training corpus of any 3D web game engine.
 Rejected: Phaser 3 (2D only — cannot render 3D GLTF assets), Three.js/R3F (renderer wrapper, not a game engine — no built-in ECS, animation system, or scene management), PlayCanvas (smaller ecosystem, less TypeScript support), Unreal (not web-native)
 
+<<<<<<< HEAD
+## 2026-03-02 — Combat Tick Rate + Queue Model Revision (Head of Engineering) *(SUPERSEDED by WS18 hand-slot balance direction, same date)*
+
+**[SUPERSEDED] TICK RATE: 150ms → 250ms**
+=======
 ## 2026-03-02 — Combat Tick Rate + Queue Model Revision (Head of Engineering)
 
 **TICK RATE: 150ms → 250ms**
+>>>>>>> 6d83955e4ce7eac4b174ca9f00529410ecff930f
 Decided by: Daedalus (HoE), confirmed by Aleks
 250ms ticks give 220ms animation budget per action — workable for walk/attack cycles. 150ms was too tight (133ms budget caused animation overlap and visual jitter at action-per-tick execution).
 Rejected: 150ms (too tight for real skeletal animations), 300ms (comfortable but too slow for kinetic feel), 500ms (too slow)
 
+<<<<<<< HEAD
+**[SUPERSEDED] ACTION EXECUTION: per decision window → per tick**
+=======
 **ACTION EXECUTION: per decision window → per tick**
+>>>>>>> 6d83955e4ce7eac4b174ca9f00529410ecff930f
 Actions now dequeue and execute one per tick (250ms), not one per decision window (750ms). The game state ticks at 250ms. The LLM's 750ms decision window is 3 ticks.
 Rationale: action-per-tick is the correct model for an LLM queue system. LLM response speed becomes the direct skill axis — fast prompt = continuous action stream, slow prompt = visible gaps.
 Rejected: per-window execution (creates choppy "burst" feel, doesn't reward LLM latency optimization)
 
+<<<<<<< HEAD
+**[SUPERSEDED] QUEUE CAP: 3 → 5**
+5 actions = 1.25 seconds of buffered play. Covers one full decision window (750ms) plus half of the next, giving a fast LLM meaningful pre-buffer headroom without enabling front-loading exploits.
+Rejected: 3 (too shallow — a single slow response drains the queue immediately), 10+ (too deep — eliminates latency as skill axis)
+
+**[SUPERSEDED] Decision window: 750ms — UNCHANGED**
+=======
 **QUEUE CAP: 3 → 5**
 5 actions = 1.25 seconds of buffered play. Covers one full decision window (750ms) plus half of the next, giving a fast LLM meaningful pre-buffer headroom without enabling front-loading exploits.
 Rejected: 3 (too shallow — a single slow response drains the queue immediately), 10+ (too deep — eliminates latency as skill axis)
 
 **Decision window: 750ms — UNCHANGED**
+>>>>>>> 6d83955e4ce7eac4b174ca9f00529410ecff930f
 3 ticks at 250ms. LLMs still have 750ms to respond. This is the right budget for gpt-4o-mini (typical 200-400ms response).
 
 ---
@@ -473,3 +535,14 @@ Rejected: 3 (too shallow — a single slow response drains the queue immediately
 **Alternatives rejected:** 
 - RNG-based dodge (rejected — THE ROLL should be deterministic/skill-based, not luck)
 - Always-on 30% reduction + movement bonus (rejected — too safe, no tension)
+
+## 2026-03-02 — Arena size scales by mode (WS18)
+
+**Decision:** 20×20 remains canonical for 1v1 only. Team/FFA modes scale up.
+
+- 1v1: 20×20
+- 2v2: 22×22
+- 3-4p FFA: 24×24
+- 4v4: 24×24 baseline, 26×26 if congestion thresholds fail
+
+**Why:** 20×20 is excellent for 1v1 readability and tempo, but becomes congested in 8-agent play once obstacles/hazards are included.

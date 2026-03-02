@@ -6,15 +6,27 @@
 
 ## Grid Dimensions
 
-**20×20 is correct. Do not change it.**
+### Mode-scaled arena sizes (locked)
 
-Rationale:
-- At 150ms ticks, a Crustie can cross the arena in ~15 windows (~11 seconds). Fast enough to close. Slow enough that positioning decisions matter.
-- 400 tiles. A 2-Crustie fight uses ~30-40 tiles actively. The rest is breathing room — space to read, retreat, outmaneuver.
-- Larger (30×30): kiting marathons, ranged dominant, boring.
-- Smaller (12×12): cage matches, positioning irrelevant, also boring.
+- **1v1:** **20×20** (canonical ranked size)
+- **2v2:** **22×22**
+- **4-player FFA:** **24×24**
+- **4v4 (8 Crusties):** **24×24 default**, test **26×26** if pathing congestion appears in playtests
 
-Coordinate system: `(0,0)` = top-left. `(19,19)` = bottom-right. No wrapping.
+### Why this scaling
+
+- 20×20 is perfect for 1v1: fast closure, high readability, strong center control play.
+- Team/FFA modes add unit density and action contention. Without scaling up, lanes collapse and tactical spacing disappears.
+- 24×24 preserves melee/ranged identity and flank depth while keeping fights readable for spectators.
+
+### 1v1 rationale (20×20)
+
+- At 150ms ticks, a Crustie can cross the arena in ~15 windows (~11 seconds).
+- 400 tiles. A 2-Crustie fight uses ~30-40 tiles actively.
+- Larger (30×30): kiting marathons, ranged dominant.
+- Smaller (12×12): cage matches, positioning irrelevant.
+
+Coordinate system: `(0,0)` = top-left. No wrapping. Bounds depend on mode size (`max = size-1`).
 
 ---
 
