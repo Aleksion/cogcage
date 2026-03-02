@@ -2,6 +2,20 @@
 
 ---
 
+## Product-Mode Audit — 17:12 ET Mar 2
+
+Directive executed: STOP landing-page copy iterations. Enforced priority order P1→P4 with no scope drift.
+
+### Shipped artifacts (active)
+- **P1** signup reliability/storage/logging: `/api/waitlist` + `/api/founder-intent` return explicit storage mode telemetry and persist idempotency receipts across Redis/SQLite/fallback.
+- **P2** playable demo loop: map movement + action economy validated in `scripts/ws2-core.test.mjs` (`move action changes map position`, `action economy spends move energy`).
+- **P3** monetization path: founder checkout intent + postback + checkout-success lifecycle remains active and observable.
+- **P4** ops artifacts: this checkpoint logged in both web and docs ops logs.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+
+
 ## Product-Mode Audit — 15:31 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.

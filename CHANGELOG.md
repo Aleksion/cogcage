@@ -8,6 +8,34 @@
 
 ---
 
+## [2026-03-02] - docs(ops): autopilot checkpoint for product-mode P1→P4 verification
+
+**Type:** docs/ops | **Budget impact:** n/a
+
+### What
+- `web/ops/log.md`
+  - Added 17:12 ET product-mode checkpoint confirming enforced priority order (P1 signup reliability, P2 playable loop, P3 monetization path, P4 ops artifacts).
+  - Recorded concrete shipped artifact locations and current verification result.
+- `docs/ops-log.md`
+  - Added matching cron entry with status snapshot and branch attribution.
+
+### Why
+- Cron directive explicitly required P4 (ops log with shipped artifacts) after P1–P3.
+- Keeping product-mode proof in both runtime-facing and repo-level logs reduces ambiguity during handoff/deploy checks.
+
+### Design Decisions
+- Log-only update; no gameplay or API behavior changes in this pass.
+- Continue copy freeze: no landing-page iteration work touched.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+
+### Breaking
+- None.
+
+### Next Steps
+- Keep shipping only product-critical deltas until monetization env vars are set in deployment.
+
 ## [2026-03-02] - fix(product-mode): explicit storage-mode telemetry in signup + founder APIs
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical observability)
