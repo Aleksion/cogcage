@@ -42,9 +42,9 @@ A Crustie on its first Scuttle is a Soft Shell. The Pit does not go easy on Soft
 
 ---
 
-## The Shed
+## The Mise
 
-The Shed is where Molts are assembled. Head there before a Scuttle. Three parts:
+The Mise is where Molts are assembled. Head there before a Scuttle. Three parts:
 
 **Carapace** — the armor. What takes the hits. BLOCK-7 is heavy and slow and has survived more Scuttles than you will ever enter. PAPER-MACHE is fast and fragile and — The Sous is required to note — a legitimate choice. The Sous has noted it.
 

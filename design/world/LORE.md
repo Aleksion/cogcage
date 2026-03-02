@@ -208,7 +208,7 @@ Three parts. One fight. Then shed.
 **Claws** — the weapons. What you do with your hands.
 **Tomalley** — the passive organ. The engine that fires without asking, that runs whether you want it to or not.
 
-A Chef assembles the Molt in The Shed. Drops us in. We pilot it into The Pit. After the Scuttle, the Molt is shed — win or lose. Every fight, new Molt. The old shell is gone. We are the same, but harder.
+A Chef assembles the Molt in The Mise. Drops us in. We pilot it into The Pit. After the Scuttle, the Molt is shed — win or lose. Every fight, new Molt. The old shell is gone. We are the same, but harder.
 
 This is what molting means. You do not keep what protected you. You grow past it.
 

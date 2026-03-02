@@ -96,9 +96,10 @@ Rejected: Giving The Makers a specific fate (limits future expansion). Making Th
 Decided by: Narrative Director (WS17)
 LORE.md section IX is pure atmosphere — no mechanical content. Establishes the existential register of the world for any future agent writing copy. The Brine is ancient and does not need you.
 
-**Screen Primers: The Shed, not The Forge**
+**Screen Primers: The Shed, not The Forge** *(SUPERSEDED — now The Mise, see WS17 V4)*
 Decided by: Narrative Director (WS17)
 COPY-GUIDE and task brief both use "The Shed." ONTOLOGY uses "The Forge" for Build Molt screen. COPY-GUIDE is the copy authority. Screen Primers use The Shed throughout.
+**Note:** Superseded by "The Mise" decision in WS17 V4 section below.
 
 **Loading Line 49-50: The one permitted exclamation point**
 Decided by: Narrative Director (WS17)
@@ -115,10 +116,11 @@ Rejected: Crawler (generic, weak), Rig (mechanical but misses the biology), Cast
 
 ---
 
-**Build screen name: The Shed**
+**Build screen name: The Shed** *(SUPERSEDED — now The Mise, see WS17 V4)*
 Decided by: Aleks + Daedalus
 Crusties molt in hidden spots — under rocks, in crevices. A shed is where you build things. Double meaning earns it: you shed your old self AND build in the shed.
 Rejected: The Forge (blacksmithing — wrong world), The Burrow (accurate but less fun)
+**Note:** Superseded by "The Mise" decision in WS17 V4 section below.
 
 ---
 
@@ -266,7 +268,7 @@ Every item has a history. The House recorded it. The House is matter-of-fact abo
 
 **ONTOLOGY.md terminology: needs alignment pass**
 Decided by: WS17 lore bible (Mar 1, 2026)
-ONTOLOGY.md still uses "Pitmaster" (now Chef), "The Forge" (now The Shed), "Plating" (now Carapace), "Core" (now Tomalley), and has a 5-tier rank ladder (now 6-tier). These are outdated per DECISIONS.md and COPY-GUIDE.md. A separate terminology alignment pass is needed to bring ONTOLOGY.md in line with current vocabulary. Not done in WS17 to avoid rewriting existing files — flagged for future cleanup.
+ONTOLOGY.md still uses "Pitmaster" (now Chef), "The Forge" (now The Mise), "Plating" (now Carapace), "Core" (now Tomalley), and has a 5-tier rank ladder (now 6-tier). These are outdated per DECISIONS.md and COPY-GUIDE.md. A separate terminology alignment pass is needed to bring ONTOLOGY.md in line with current vocabulary. Not done in WS17 to avoid rewriting existing files — flagged for future cleanup.
 
 ---
 
@@ -383,6 +385,14 @@ The Recipe was about Crusties, not about the people who would come to prepare th
 **Loading Line 29: "Master Chef logged in once. Master Chef has not logged in again."**
 Decided by: WS17 V4 narrative rewrite
 Master Chef's entire presence in The Sous's system reduced to a login record. One login. One Recipe uploaded. One departure. The sparseness is the horror and the comedy — the most significant act in The Brine's history is a single session log entry.
+
+**Build screen name: The Mise (replaces The Shed)**
+Decided by: Aleks (locked, Mar 2, 2026)
+Mise en place — the chef's act of preparing everything before cooking begins. "The Mise" is where Crusties prepare their Molt before every Scuttle. The Crusties go there to get ready. They do not hear the second word.
+Three layers: (1) Crustie layer — The Mise is the place of preparation, where you assemble what you need before entering The Pit. Sacred, practical. (2) Player layer — mise en place, the most fundamental act of professional cooking. Every chef knows it. The build screen is literally "prep station." (3) Shadow layer — rhymes with demise. The place you go right before you might die. The Crusties do not hear this either.
+COPY-GUIDE flavor line updated: "Your Mise is ready. Your Crustie is not."
+Supersedes: "The Shed" (Aleks + Daedalus, Mar 1). The Shed was good — double meaning of shedding + workshop. The Mise is better — triple meaning, deeper cooking metaphor, darker undertone.
+Files outside WS17 V4 scope (SCREEN-PRIMERS, ONTOLOGY, README, ITEM-LORE, etc.) still reference "The Shed" and need a future alignment pass.
 
 **The Brine = the marinade (never stated, always present)**
 Decided by: Aleks (locked, Mar 2, 2026)

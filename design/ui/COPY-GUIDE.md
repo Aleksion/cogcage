@@ -43,7 +43,7 @@ Bad:
 | Crustie | Bot, Crawler, Fighter, Character, Agent, Crustie (for the fighter) |
 | Molt | Build, Loadout, Config, Setup |
 | Scuttle | Match, Battle, Fight, Game, Round |
-| The Shed | Forge, Workshop, Loadout Screen, Build Screen |
+| The Mise | Forge, Workshop, Loadout Screen, Build Screen, The Shed |
 | The Pit | Arena, Battle Screen, Game Screen |
 | The Brine | Home, Profile, Dashboard |
 | The Tank | Lobby, Waiting Room, Queue |
@@ -72,7 +72,7 @@ Each screen has a single line of ambient copy. The House wrote it. The House mea
 | Screen | Line |
 |--------|------|
 | The Brine | *"Your Crustie is resting. Don't let it rest too long."* |
-| The Shed | *"A bad Molt doesn't guarantee a loss. It just makes it more likely."* |
+| The Mise | *"Your Mise is ready. Your Crustie is not."* |
 | The Tank | *"Other Crusties are waiting. They're not nervous. You probably are."* |
 | The Pit | *"Coral is firing. Claws are out. Let's see what you built."* |
 | The Ledger | *"Every Scuttle is recorded. The Pit forgets nothing."* |
@@ -92,7 +92,7 @@ Errors are the one place The House is slightly more direct. Still not friendly.
 | Connection lost | *"The Brine is quiet. Check your connection."* |
 | Webhook timeout | *"Your agent didn't respond. The Pit did not wait."* |
 | Invalid URL | *"That is not a valid address. The House checked."* |
-| No Molts left | *"You need a Molt to enter a Scuttle. Head to The Shed."* |
+| No Molts left | *"You need a Molt to enter a Scuttle. Head to The Mise."* |
 
 ---
 
