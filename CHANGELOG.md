@@ -8,6 +8,54 @@
 
 ---
 
+## [2026-03-01] - design(ws18): complete game design systems spec
+
+**Type:** design | **Budget impact:** $0.00 (authoring only, no API calls)
+
+### Lead Game Designer (WS18)
+
+**New files added to `design/systems/`:**
+
+- `ITEMS-IN-PLAY.md` — Full mechanical spec for all 40 items
+  - Exact numbers, triggers, edge cases for every Carapace, Claws, and Tomalley item
+  - Agent state JSON representation per item (what the LLM receives)
+  - Spectator display + audio trigger specs per item
+  - Balance notes, synergy flags, degenerate combo audit
+  - Key rulings: INVERTER DoT classification, NEEDLE vs SILKWORM, SURVIVAL INSTINCT DoT exclusion, GHOST PROTOCOL as hard FLICKER counter
+  - Degenerate combo audit: all clear (WIDOW-MAKER cannot loop; BLEED BACK ping-pong prevented; INVERTER capped)
+
+- `GAME-FEEL.md` — Spectator + player experience spec
+  - Three-audience model: Pitmaster (proud parent), Spectator (entertainment), Rival (strategy)
+  - Fight phase structure: The Read / The Exchange / The Reckoning
+  - Six ranked "hype moments" designed for spectator reaction (WIDOW save, REVERSAL counter-kill, BUZZ chain stun, INVERTER flip, WIDOW-MAKER commitment, SPITE double death)
+  - Comeback mechanic layer design (RED GENE → INVERTER → WIDOW → SECOND WIND → SPITE)
+  - Coral Feed specification (raw LLM output, highlighted keywords, NO_OP display)
+  - EVO moment designed: the calculated SPITE death play
+  - Investor summary paragraph
+
+- `MULTIPLAYER.md` — FFA, 2v2, and tournament design
+  - 1v1 baseline analysis at 150ms
+  - FFA (3-4 Lobsters): targeting spec, multi-opponent state JSON, spawn positions, context token budget by mode
+  - SPITE in FFA: fires at ALL survivors simultaneously (designed chaos)
+  - 2v2 team design: emergent coordination (no inter-agent comms), loadout synergy archetypes, teammate state in snapshot
+  - Tournament bracket: Tides structure, single-elimination, Hardness seeding
+  - Context budget table: 1v1 ~750 tokens → 4-player FFA ~1050 tokens → 2v2 ~1100 tokens
+
+**Existing files (authored in prior WS18 pass — noted for completeness):**
+- `MAP-DESIGN.md` — 3 fixed arena layouts, tile types, spawn rules, LLM context implications
+- `VISIBILITY.md` — Full-visibility v1 + complete Fog of War spec deferred to Tide 2
+- `MOVEMENT.md` — Complete movement rules, collision resolution, energy economy, per-Carapace speed penalties
+
+**Breaking changes:** None
+
+**Next steps:**
+- Engineering builds from these six documents
+- FFA implementation: Tide 2
+- 2v2: Tide 3
+- Procedural map generation: Tide 2
+
+---
+
 ## [2026-03-01] - design(ws19): visual baseline + sound design plan
 
 **Type:** design | **Budget impact:** $0.20 (5 × DALL-E 3 1024px icons)

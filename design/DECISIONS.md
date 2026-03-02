@@ -7,6 +7,50 @@ Format: date · who decided · what · why · alternatives rejected
 
 ---
 
+## 2026-03-01 — WS18 Game Design Systems (Lead Game Designer)
+
+**INVERTER: DoT is environmental, does NOT convert to healing**
+Decided by: WS18 Lead Game Designer
+INVERTER converts incoming attack damage to healing below 50% HP. DoT from THE FLICKER and VENOM is classified as environmental damage (applied by the engine, not the opponent's action per-window). DoT does NOT convert. This gives THE FLICKER a hard counter to INVERTER — intentional. Without this ruling, INVERTER would be unkillable while DoT stacks.
+Rejected: DoT as attack damage (would make INVERTER unkillable via stacking, degenerate)
+
+**NEEDLE does NOT bypass SILKWORM scatter**
+Decided by: WS18 Lead Game Designer
+NEEDLE's armor-pierce ignores Carapace `damage_reduction` stat only. SILKWORM's 20% scatter is a separate passive (not a Carapace reduction stat). NEEDLE hits through BLOCK-7 reduction; it does not hit through SILKWORM scatter.
+Rejected: NEEDLE bypasses all Carapace passives (would make SILKWORM useless against NEEDLE — too hard a counter)
+
+**GHOST PROTOCOL is THE FLICKER's hard counter**
+Decided by: WS18 Lead Game Designer
+THE GHOST PROTOCOL grants 1-tick damage immunity after each hit. THE FLICKER DoT applies per-tick. Result: at max FLICKER stacks, every other DoT tick is negated. Effective DoT halved. This is a designed counter relationship.
+Rejected: GHOST PROTOCOL only phases on direct attacks (would miss the DoT interaction, making item useless vs FLICKER)
+
+**SURVIVAL INSTINCT does NOT trigger on DoT ticks**
+Decided by: WS18 Lead Game Designer
+Only PINCH, SPIT, and BURST hits count as "damage instances" for SURVIVAL INSTINCT. DoT ticks excluded — without this, SURVIVAL INSTINCT wastes its dodge on a 2 HP DoT tick instead of a 36 HP MAXINE swing.
+Rejected: DoT ticks count as instances (trivially wastes the item)
+
+**SPITE in FFA fires at ALL surviving opponents simultaneously**
+Decided by: WS18 Lead Game Designer
+On FFA death, SPITE hits every survivor (not just the killing attacker). Creates designed triple-death scenarios. Balanced by the dead Lobster's continued team disadvantage.
+Rejected: Only hits killing attacker (reduces SPITE to irrelevance in FFA)
+
+**REVERSAL counter based on damage received (post-SHELL UP), not raw incoming**
+Decided by: WS18 Lead Game Designer
+REVERSAL returns 60% of damage received after SHELL UP reduction. SHELL UP diminishes counter output. Agents must choose maximum protection vs. maximum counter value.
+Rejected: Counter on raw incoming damage (makes SHELL UP + REVERSAL trivially overpowered)
+
+**FFA context growth is a design feature**
+Decided by: WS18 Lead Game Designer
+Multi-opponent state increases agent context 20-40% in FFA. Creates distinct FFA meta requiring more efficient prompts. Intentional differentiation from 1v1.
+Rejected: Summarize opponent states to flatten context (removes FFA/1v1 optimization differentiation)
+
+**Single-elimination, one fight per tournament round**
+Decided by: WS18 Lead Game Designer
+Tide Tournament: one Scuttle per matchup. No best-of-X. Maximizes per-fight drama, prevents between-rounds recalibration meta.
+Rejected: Best-of-3 (reduces stakes, slows tournament pace)
+
+---
+
 ## 2026-03-01 — WS17 Lore Bible (Narrative Director)
 
 **Creature canon: "Crusties" in deep lore, "Lobsters" in Pit parlance**
