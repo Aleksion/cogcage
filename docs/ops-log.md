@@ -867,3 +867,22 @@ bun run build (web/)
 1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates live founder checkout CTA
 2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `https://cogcage.com/api/postback`
 3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
+
+---
+
+### Autopilot Cron — 06:23 ET, Mar 2 2026
+
+**Directive**: STOP copy iterations. Priorities: P1 signup reliability, P2 playable demo, P3 monetization, P4 ops log.
+
+**Status:**
+- P1 — Signup reliability + Redis storage + observable logs: ✅ COMPLETE (live on main)
+- P2 — Playable demo loop (7×7 grid movement, bot AI, action economy, BabylonJS arena on `/demo`): ✅ COMPLETE (live on main)
+- P3 — Monetization (founder checkout + email capture fallback + postback endpoint): ✅ CODE COMPLETE — blocked on Aleks env vars
+- P4 — Ops log: ✅ CURRENT
+
+**This pass:** Build ✅ clean. No regression. All P1-P3 shipped and stable. Cron idle — no product-critical code to write until env vars provided.
+
+**Blockers (Aleks-only — autopilot cannot activate P3 checkout without these):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates live founder checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `https://cogcage.com/api/postback`
+3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
