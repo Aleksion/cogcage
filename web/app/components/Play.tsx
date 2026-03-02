@@ -354,9 +354,6 @@ const ARENA_TASKS: ArenaTask[] = [
   { id: 'task-speed', label: '+V', cell: { x: 6, y: 1 }, color: '#5f27cd' },
 ];
 
-const founderCheckoutUrl =
-  ((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? '').trim();
-
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 const hpBarGradient = (hp: number): string => {
@@ -885,36 +882,30 @@ const Play = () => {
       setCheckoutMessage('Enter a valid email to reserve founder pricing.');
       return;
     }
-    if (!founderCheckoutUrl) {
-      // No Stripe URL configured — capture email intent instead
-      setCheckoutBusy(true);
-      setCheckoutMessage(null);
-      try {
-        const res = await fetch('/api/founder-intent', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ email: normalizedEmail, source: 'play-founder-cta' }),
-        });
-        const data = await res.json();
-        if (data.ok) {
-          setCheckoutMessage('✓ Reserved! You\'ll get early access pricing when checkout opens.');
-        } else {
-          setCheckoutMessage(data.error || 'Could not reserve spot. Try again.');
-        }
-      } catch {
-        setCheckoutMessage('Network error. Please try again.');
-      } finally {
-        setCheckoutBusy(false);
-      }
-      return;
-    }
-    if (typeof window !== 'undefined') window.localStorage.setItem(EMAIL_KEY, normalizedEmail);
+
     setCheckoutBusy(true);
     setCheckoutMessage(null);
     try {
-      const url = new URL(founderCheckoutUrl);
-      url.searchParams.set('prefilled_email', normalizedEmail);
-      window.location.href = url.toString();
+      const res = await fetch('/api/founder-checkout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail, source: 'play-founder-cta' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.ok !== true) {
+        setCheckoutBusy(false);
+        setCheckoutMessage(data?.error || 'Could not start checkout. Try again.');
+        return;
+      }
+
+      if (typeof window !== 'undefined') window.localStorage.setItem(EMAIL_KEY, normalizedEmail);
+      if (typeof data.checkoutUrl === 'string' && data.checkoutUrl.trim()) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+
+      setCheckoutBusy(false);
+      setCheckoutMessage('✓ Reserved! You\'ll get early access pricing when checkout opens.');
     } catch {
       setCheckoutBusy(false);
       setCheckoutMessage('Could not start checkout. Try again.');
@@ -1133,7 +1124,7 @@ const Play = () => {
         style={{ minHeight: 'unset', height: '48px', marginBottom: '0.8rem' }}
       />
       <button className="cta-btn" onClick={handleFounderCheckout} disabled={checkoutBusy}>
-        {checkoutBusy ? (founderCheckoutUrl ? 'Opening Checkout\u2026' : 'Reserving\u2026') : 'Reserve Founder Spot'}
+        {checkoutBusy ? 'Processing...' : 'Reserve Founder Spot'}
       </button>
       {checkoutMessage && <div className="hint" style={{ marginTop: '0.7rem' }}>{checkoutMessage}</div>}
     </div>

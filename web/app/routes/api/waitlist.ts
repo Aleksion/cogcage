@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import {
   consumeRateLimit,
+  getDbPath,
   insertConversionEvent,
   insertWaitlistLead,
   readApiRequestReceipt,
@@ -9,6 +10,7 @@ import {
 } from '~/lib/waitlist-db'
 import { appendEventsFallback, appendOpsLog, appendWaitlistFallback } from '~/lib/observability'
 import { drainFallbackQueues } from '~/lib/fallback-drain'
+import { getRuntimeDirInfo } from '~/lib/runtime-paths'
 import {
   redisInsertWaitlistLead,
   redisInsertConversionEvent,
@@ -24,6 +26,14 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
 const RATE_LIMIT_MAX = 6;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const MAX_REQUEST_BYTES = 8 * 1024;
+
+function normalizeSource(value: string, fallback: string) {
+  const normalized = value.trim().slice(0, 120);
+  if (!normalized) return fallback;
+  // Keep source tag storage-safe and searchable.
+  return normalized.replace(/[^a-zA-Z0-9:_./-]/g, '-').slice(0, 120);
+}
 
 function getClientIp(request: Request) {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
@@ -100,8 +110,10 @@ export const Route = createFileRoute('/api/waitlist')({
         const startedAt = Date.now();
         const requestId = crypto.randomUUID();
         const contentType = request.headers.get('content-type') ?? '';
+        const contentLength = Number(request.headers.get('content-length') ?? 0);
         const route = '/api/waitlist';
         const idempotencyKey = getIdempotencyKey(request);
+        const runtimeInfo = getRuntimeDirInfo();
         let email = '';
         let game = '';
         let source = '';
@@ -129,6 +141,31 @@ export const Route = createFileRoute('/api/waitlist')({
 
           return jsonResponse(body, status, requestId, extraHeaders);
         };
+
+        appendOpsLog({
+          route,
+          level: 'info',
+          event: 'waitlist_request_received',
+          requestId,
+          contentType,
+          hasIdempotencyKey: Boolean(idempotencyKey),
+          dbPath: getDbPath(),
+          runtimeDir: runtimeInfo.dir,
+          runtimeSource: runtimeInfo.source,
+        });
+
+        if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+          appendOpsLog({
+            route,
+            level: 'warn',
+            event: 'waitlist_payload_too_large',
+            requestId,
+            contentLength,
+            maxBytes: MAX_REQUEST_BYTES,
+            durationMs: Date.now() - startedAt,
+          });
+          return respond({ ok: false, error: 'Payload too large.' }, 413);
+        }
 
         if (idempotencyKey) {
           try {
@@ -226,7 +263,7 @@ export const Route = createFileRoute('/api/waitlist')({
         const ipAddress = getClientIp(request);
         const rateLimitKey = getRateLimitKey(request);
         const normalizedEmail = email.toLowerCase();
-        const eventSource = source || 'moltpit-landing';
+        const eventSource = normalizeSource(source, 'moltpit-landing');
 
         let rateLimit = { allowed: true, remaining: RATE_LIMIT_MAX, resetMs: 0 };
         try {
@@ -292,10 +329,17 @@ export const Route = createFileRoute('/api/waitlist')({
           userAgent: request.headers.get('user-agent') ?? undefined,
           ipAddress,
         };
+        const storage = {
+          redis: false,
+          convex: false,
+          sqlite: false,
+          fallback: false,
+        };
 
         try {
           // Redis is the primary storage on Vercel — durable across Lambda invocations
           await redisInsertWaitlistLead(payload);
+          storage.redis = true;
 
           // Convex is best-effort secondary — durable, queryable
           try {
@@ -303,6 +347,7 @@ export const Route = createFileRoute('/api/waitlist')({
               email: normalizedEmail,
               source: eventSource,
             });
+            storage.convex = true;
           } catch (convexError) {
             appendOpsLog({ route, level: 'warn', event: 'waitlist_convex_write_failed', requestId, error: convexError instanceof Error ? convexError.message : 'unknown' });
             // Never throw — Redis already succeeded
@@ -311,12 +356,22 @@ export const Route = createFileRoute('/api/waitlist')({
           // SQLite is best-effort tertiary — useful locally, ephemeral on Vercel
           try {
             insertWaitlistLead(payload);
+            storage.sqlite = true;
           } catch (sqliteError) {
             appendOpsLog({ route, level: 'warn', event: 'waitlist_sqlite_write_failed', requestId, error: sqliteError instanceof Error ? sqliteError.message : 'unknown' });
             // Never throw — Redis already succeeded
           }
 
-          appendOpsLog({ route: route, level: 'info', event: 'waitlist_saved', requestId, source: payload.source, emailHash: normalizedEmail.slice(0, 3), durationMs: Date.now() - startedAt });
+          appendOpsLog({
+            route: route,
+            level: 'info',
+            event: 'waitlist_saved',
+            requestId,
+            source: payload.source,
+            emailHash: normalizedEmail.slice(0, 3),
+            storage,
+            durationMs: Date.now() - startedAt,
+          });
           try {
             const drained = drainFallbackQueues(10);
             if ((drained.waitlist.inserted + drained.founder.inserted + drained.events.inserted) > 0) {
@@ -338,8 +393,36 @@ export const Route = createFileRoute('/api/waitlist')({
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
           appendOpsLog({ route: route, level: 'error', event: 'waitlist_redis_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
 
+          // Salvage path: if Redis is down but SQLite is writable, keep the signup.
+          try {
+            insertWaitlistLead(payload);
+            storage.sqlite = true;
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'waitlist_saved_sqlite_only',
+              requestId,
+              source: payload.source,
+              emailHash: normalizedEmail.slice(0, 3),
+              storage,
+              durationMs: Date.now() - startedAt,
+            });
+            safeTrackConversion(route, requestId, {
+              eventName: 'waitlist_submitted',
+              source: payload.source,
+              email: normalizedEmail,
+              metaJson: JSON.stringify({ degraded: true, storage: 'sqlite-only' }),
+              userAgent: request.headers.get('user-agent') ?? undefined,
+              ipAddress,
+            });
+            return respond({ ok: true, degraded: true }, 202);
+          } catch {
+            // Continue to fallback file queue.
+          }
+
           try {
             appendWaitlistFallback({ route: route, requestId, ...payload, reason: errorMessage });
+            storage.fallback = true;
             safeTrackConversion(route, requestId, {
               eventName: 'waitlist_queued_fallback',
               source: payload.source,
@@ -348,7 +431,7 @@ export const Route = createFileRoute('/api/waitlist')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
-            appendOpsLog({ route: route, level: 'warn', event: 'waitlist_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
+            appendOpsLog({ route: route, level: 'warn', event: 'waitlist_saved_to_fallback', requestId, storage, durationMs: Date.now() - startedAt });
             return respond({ ok: true, queued: true }, 202);
           } catch (fallbackError) {
             appendOpsLog({ route: route, level: 'error', event: 'waitlist_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });

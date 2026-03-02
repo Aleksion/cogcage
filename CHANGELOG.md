@@ -4,6 +4,43 @@ Every PR must include an entry here. Newest first.
 
 ---
 
+## [2026-03-02] - feat(product): reliability hardening + playable loop + founder checkout path
+
+**Type:** feat | **Phase:** product-core | **Priority:** PRODUCT-CRITICAL
+
+### Summary
+Shifted focus away from landing-page copy iteration to product execution: hardened signup persistence and observability, shipped a real turn-gated playable loop on `/demo`, and added a dedicated founder checkout initiation endpoint to pair with postback tracking.
+
+### Changes
+- `web/app/routes/api/waitlist.ts`
+  - Added request envelope observability (`waitlist_request_received`) with runtime/db metadata.
+  - Added payload size guard (`413`) and source normalization to keep stored analytics keys safe.
+  - Added explicit storage-tier reporting (`redis/convex/sqlite/fallback`) on success/failure logs.
+  - Added degraded salvage path: if Redis fails but SQLite is writable, accept the signup (`202 degraded`) instead of dropping.
+- `web/app/lib/runtime-paths.ts`
+  - Added deterministic runtime-dir resolution metadata (`getRuntimeDirInfo`) so logs show whether storage uses env path, workspace path, or tmp fallback.
+- `web/app/lib/waitlist-redis.ts`
+  - Fixed rate-limit reset semantics to return milliseconds until reset (not absolute window end).
+- `web/app/components/PlayableDemo.tsx` (new)
+  - Added a playable turn-gated arena loop with map movement, energy/action economy visibility, turn submission, combat log, and reset.
+- `web/app/routes/demo.tsx`
+  - Repointed `/demo` to the playable loop experience.
+- `web/app/routes/api/founder-checkout.ts` (new)
+  - Added checkout-init endpoint that records founder intent + conversion event, supports idempotency, returns Stripe checkout URL when configured, and falls back to local queue when primary stores fail.
+
+### Design Decisions
+- Prefer accepting and queueing over rejecting when storage tiers degrade.
+- Keep `/demo` focused on game loop proof (movement + action economy) rather than cinematic-only presentation.
+- Monetization initiation uses a dedicated endpoint so observability and idempotency are consistent before redirecting to provider checkout.
+
+### Breaking Changes
+None.
+
+### Next Steps
+- Wire all founder CTA entry points to `/api/founder-checkout` (if any still hit Stripe URL directly).
+- Validate `/api/postback` with live provider payload in staging and confirm funnel attribution end-to-end.
+- Promote to `main` and monitor ops log for storage-tier fallback rates.
+
 ## [2026-02-28] - feat: guest/anonymous auth for frictionless onboarding
 
 **Type:** feat | **Phase:** auth | **Priority:** TESTING VELOCITY

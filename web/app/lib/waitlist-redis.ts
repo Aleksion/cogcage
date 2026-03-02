@@ -148,6 +148,6 @@ export async function redisConsumeRateLimit(
   return {
     allowed: count <= max,
     remaining,
-    resetMs: (windowId + 1) * windowMs,
+    resetMs: (windowId + 1) * windowMs - now,
   };
 }

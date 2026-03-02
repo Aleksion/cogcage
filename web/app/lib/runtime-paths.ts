@@ -15,19 +15,44 @@ function isWritableDir(dirPath: string) {
 }
 
 export function getRuntimeDir() {
+  return resolveRuntimeDir().dir;
+}
+
+type RuntimeResolution = {
+  dir: string;
+  source: 'env' | 'workspace' | 'tmp-fallback';
+  candidates: string[];
+};
+
+let cachedResolution: RuntimeResolution | null = null;
+
+function resolveRuntimeDir(): RuntimeResolution {
+  if (cachedResolution) return cachedResolution;
+
   const configured = process.env.MOLTPIT_RUNTIME_DIR?.trim();
-  const appDefault = path.join(process.cwd(), '..', 'ops', 'runtime');
+  const workspaceDefault = path.join(process.cwd(), '.runtime', 'moltpit');
   const tmpFallback = path.join(os.tmpdir(), 'moltpit-runtime');
 
-  const candidates = [configured, appDefault, tmpFallback].filter(Boolean) as string[];
-  for (const candidate of candidates) {
-    if (isWritableDir(candidate)) {
-      return candidate;
-    }
+  const orderedCandidates = [configured, workspaceDefault, tmpFallback].filter(Boolean) as string[];
+  const resolved = orderedCandidates.find((candidate) => isWritableDir(candidate));
+
+  if (resolved === configured && configured) {
+    cachedResolution = { dir: resolved, source: 'env', candidates: orderedCandidates };
+    return cachedResolution;
+  }
+
+  if (resolved === workspaceDefault) {
+    cachedResolution = { dir: resolved, source: 'workspace', candidates: orderedCandidates };
+    return cachedResolution;
   }
 
   // Last-resort fallback. If this fails later, callers can still handle write failures.
-  return tmpFallback;
+  cachedResolution = { dir: tmpFallback, source: 'tmp-fallback', candidates: orderedCandidates };
+  return cachedResolution;
+}
+
+export function getRuntimeDirInfo() {
+  return resolveRuntimeDir();
 }
 
 export function ensureRuntimeDir() {

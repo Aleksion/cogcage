@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-03-02 — Product-mode autopilot execution
+
+### Shipped Artifacts
+
+| Area | Artifact | Outcome |
+|---|---|---|
+| Signup reliability | `web/app/routes/api/waitlist.ts` | Added payload guards, source normalization, storage-tier observability, and degraded acceptance path (`sqlite-only` salvage + fallback queue) so leads are not lost when Redis is unavailable. |
+| Runtime/storage observability | `web/app/lib/runtime-paths.ts` | Added runtime path resolution metadata (`env` / `workspace` / `tmp-fallback`) for actionable ops diagnostics. |
+| Rate-limit correctness | `web/app/lib/waitlist-redis.ts` | Fixed `resetMs` to report time remaining, not absolute timestamp-style value. |
+| Playable demo loop | `web/app/components/PlayableDemo.tsx`, `web/app/routes/demo.tsx` | `/demo` now ships a playable, turn-gated loop with map movement, action economy controls, and combat telemetry. |
+| Monetization path | `web/app/routes/api/founder-checkout.ts` | Added founder checkout init API (idempotent intent logging + conversion event + checkout URL handoff + fallback queue behavior). |
+
+### Verification Run
+- `npm run build` (from `web/`) ✅ pass
+
+### Notes
+- Existing `/api/postback` remains payment reconciliation sink; founder checkout init now has its own hardened entrypoint for better observability and idempotency.
+
 ## 2026-02-27 / 2026-02-28 — Sprint Wrap
 
 ### What Shipped
