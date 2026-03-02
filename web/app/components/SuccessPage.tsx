@@ -2,9 +2,45 @@ import { useEffect } from 'react'
 
 const PAID_KEY = 'moltpit_paid_conversions'
 const PENDING_KEY = 'moltpit_pending_paid_conversions'
+const FALLBACK_ID_KEY = 'moltpit_success_fallback_conversion_id'
+
+function readArrayStorage(key: string): any[] {
+  try {
+    const raw = localStorage.getItem(key)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function makeFallbackConversionId(email?: string) {
+  try {
+    const existing = sessionStorage.getItem(FALLBACK_ID_KEY)
+    if (existing) return existing
+  } catch {
+    // ignore
+  }
+
+  const date = new Date().toISOString().slice(0, 10)
+  const source = `${window.location.pathname}|${email || 'anon'}|${Date.now()}`
+  let suffix = ''
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    suffix = crypto.randomUUID()
+  } else {
+    suffix = Math.random().toString(36).slice(2, 12)
+  }
+  const fallbackId = `success:${date}:${source.length}:${suffix}`
+  try {
+    sessionStorage.setItem(FALLBACK_ID_KEY, fallbackId)
+  } catch {
+    // ignore
+  }
+  return fallbackId
+}
 
 function rememberPaidConversion(id: string) {
-  const known = JSON.parse(localStorage.getItem(PAID_KEY) || '[]')
+  const known = readArrayStorage(PAID_KEY)
   if (!known.includes(id)) {
     known.push(id)
     localStorage.setItem(PAID_KEY, JSON.stringify(known.slice(-200)))
@@ -12,20 +48,20 @@ function rememberPaidConversion(id: string) {
 }
 
 function hasPaidConversion(id: string) {
-  const known = JSON.parse(localStorage.getItem(PAID_KEY) || '[]')
+  const known = readArrayStorage(PAID_KEY)
   return known.includes(id)
 }
 
 function rememberPending(payload: any) {
   if (!payload?.eventId) return
-  const queue = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]')
+  const queue = readArrayStorage(PENDING_KEY)
   const deduped = queue.filter((entry: any) => entry?.eventId !== payload.eventId)
   deduped.push(payload)
   localStorage.setItem(PENDING_KEY, JSON.stringify(deduped.slice(-50)))
 }
 
 function clearPending(eventId: string) {
-  const queue = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]')
+  const queue = readArrayStorage(PENDING_KEY)
   const next = queue.filter((entry: any) => entry?.eventId !== eventId)
   localStorage.setItem(PENDING_KEY, JSON.stringify(next))
 }
@@ -54,7 +90,7 @@ async function postConversion(payload: any) {
 }
 
 async function flushPendingConversions() {
-  const queue = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]')
+  const queue = readArrayStorage(PENDING_KEY)
   if (!Array.isArray(queue) || queue.length === 0) return
   for (const payload of queue) {
     if (!payload?.eventId || hasPaidConversion(payload.eventId)) {
@@ -78,7 +114,7 @@ async function trackPaidConversion() {
     undefined
   const conversionId =
     sessionId ||
-    `success:${window.location.pathname}:${new Date().toISOString().slice(0, 10)}`
+    makeFallbackConversionId(email || undefined)
   if (hasPaidConversion(conversionId)) return
 
   const checkoutSource =

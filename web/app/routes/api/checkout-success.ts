@@ -51,7 +51,7 @@ function safeMetaJson(meta: Record<string, unknown> | undefined) {
   }
 }
 
-const recordSuccess = ({
+const recordSuccess = async ({
   eventId,
   page,
   href,
@@ -87,26 +87,91 @@ const recordSuccess = ({
     ipAddress,
   };
 
+  const stores: string[] = [];
+  const errors: string[] = [];
+
+  try {
+    await redisInsertConversionEvent(payload);
+    stores.push('redis');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown';
+    errors.push(`redis:${message}`);
+    appendOpsLog({
+      route: '/api/checkout-success',
+      level: 'warn',
+      event: 'checkout_success_redis_write_failed',
+      requestId,
+      source: payload.source,
+      error: message,
+    });
+  }
+
   try {
     insertConversionEvent(payload);
-    // Fire-and-forget Redis write — durable across Lambda invocations
-    void redisInsertConversionEvent(payload).catch((e: unknown) => {
-      appendOpsLog({ route: '/api/checkout-success', level: 'warn', event: 'checkout_success_redis_write_failed', requestId, source: payload.source, error: e instanceof Error ? e.message : 'unknown' });
-    });
-    appendOpsLog({ route: '/api/checkout-success', level: 'info', event: 'paid_conversion_confirmed', requestId, source: payload.source, eventId: payload.eventId, durationMs: Date.now() - startedAt });
-    return { requestId, queued: false };
+    stores.push('sqlite');
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'unknown-error';
-    appendOpsLog({ route: '/api/checkout-success', level: 'error', event: 'paid_conversion_db_write_failed', requestId, source: payload.source, eventId: payload.eventId, error: errorMessage, durationMs: Date.now() - startedAt });
+    const message = error instanceof Error ? error.message : 'unknown';
+    errors.push(`sqlite:${message}`);
+    appendOpsLog({
+      route: '/api/checkout-success',
+      level: 'warn',
+      event: 'checkout_success_sqlite_write_failed',
+      requestId,
+      source: payload.source,
+      error: message,
+    });
+  }
 
-    try {
-      appendEventsFallback({ route: '/api/checkout-success', requestId, ...payload, reason: errorMessage });
-      appendOpsLog({ route: '/api/checkout-success', level: 'warn', event: 'paid_conversion_saved_to_fallback', requestId, source: payload.source, eventId: payload.eventId, durationMs: Date.now() - startedAt });
-      return { requestId, queued: true };
-    } catch (fallbackError) {
-      appendOpsLog({ route: '/api/checkout-success', level: 'error', event: 'paid_conversion_fallback_write_failed', requestId, source: payload.source, eventId: payload.eventId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
-      throw error;
-    }
+  if (stores.length > 0) {
+    appendOpsLog({
+      route: '/api/checkout-success',
+      level: stores.includes('redis') ? 'info' : 'warn',
+      event: 'paid_conversion_confirmed',
+      requestId,
+      source: payload.source,
+      eventId: payload.eventId,
+      stores,
+      durationMs: Date.now() - startedAt,
+    });
+    return { requestId, queued: false, degraded: !stores.includes('redis') };
+  }
+
+  const combinedError = errors.join('; ') || 'unknown-error';
+  appendOpsLog({
+    route: '/api/checkout-success',
+    level: 'error',
+    event: 'paid_conversion_db_write_failed',
+    requestId,
+    source: payload.source,
+    eventId: payload.eventId,
+    error: combinedError,
+    durationMs: Date.now() - startedAt,
+  });
+
+  try {
+    appendEventsFallback({ route: '/api/checkout-success', requestId, ...payload, reason: combinedError });
+    appendOpsLog({
+      route: '/api/checkout-success',
+      level: 'warn',
+      event: 'paid_conversion_saved_to_fallback',
+      requestId,
+      source: payload.source,
+      eventId: payload.eventId,
+      durationMs: Date.now() - startedAt,
+    });
+    return { requestId, queued: true, degraded: true };
+  } catch (fallbackError) {
+    appendOpsLog({
+      route: '/api/checkout-success',
+      level: 'error',
+      event: 'paid_conversion_fallback_write_failed',
+      requestId,
+      source: payload.source,
+      eventId: payload.eventId,
+      error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error',
+      durationMs: Date.now() - startedAt,
+    });
+    throw new Error(combinedError);
   }
 };
 
@@ -160,7 +225,7 @@ export const Route = createFileRoute('/api/checkout-success')({
         const meta = payload.meta && typeof payload.meta === 'object' ? (payload.meta as Record<string, unknown>) : undefined;
 
         try {
-          const result = recordSuccess({
+          const result = await recordSuccess({
             eventId,
             page,
             href,
@@ -171,7 +236,7 @@ export const Route = createFileRoute('/api/checkout-success')({
             request,
           });
 
-          return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined }), {
+          return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined, degraded: result.degraded || undefined }), {
             status: result.queued ? 202 : 200,
             headers: { 'content-type': 'application/json' },
           });
@@ -202,7 +267,7 @@ export const Route = createFileRoute('/api/checkout-success')({
         const tier = optionalString(url.searchParams.get('tier'), 60);
 
         try {
-          const result = recordSuccess({
+          const result = await recordSuccess({
             eventId,
             page,
             href,
@@ -216,7 +281,7 @@ export const Route = createFileRoute('/api/checkout-success')({
             request,
           });
 
-          return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined }), {
+          return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined, degraded: result.degraded || undefined }), {
             status: result.queued ? 202 : 200,
             headers: { 'content-type': 'application/json' },
           });

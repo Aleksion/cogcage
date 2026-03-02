@@ -12,6 +12,7 @@ import { drainFallbackQueues } from '~/lib/fallback-drain'
 import {
   redisInsertFounderIntent,
   redisConsumeRateLimit,
+  redisInsertConversionEvent,
 } from '~/lib/waitlist-redis'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -331,9 +332,38 @@ export const Route = createFileRoute('/api/founder-intent')({
           });
           return respond({ ok: true }, 200);
         } catch (error) {
-          // Redis failed — try file fallback
+          // Redis failed — try SQLite secondary before file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
           appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_redis_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
+
+          try {
+            insertFounderIntent(payload);
+            appendOpsLog({
+              route: '/api/founder-intent',
+              level: 'warn',
+              event: 'founder_intent_saved_sqlite_fallback',
+              requestId,
+              durationMs: Date.now() - startedAt,
+            });
+            safeTrackConversion('/api/founder-intent', requestId, {
+              eventName: 'founder_intent_submitted',
+              source: payload.source,
+              email: payload.email,
+              metaJson: JSON.stringify({ storage: 'sqlite-fallback', error: errorMessage }),
+              userAgent: request.headers.get('user-agent') ?? undefined,
+              ipAddress,
+            });
+            return respond({ ok: true, degraded: true }, 200);
+          } catch (sqliteFallbackError) {
+            appendOpsLog({
+              route: '/api/founder-intent',
+              level: 'warn',
+              event: 'founder_intent_sqlite_fallback_failed',
+              requestId,
+              error: sqliteFallbackError instanceof Error ? sqliteFallbackError.message : 'unknown-sqlite-fallback-error',
+              durationMs: Date.now() - startedAt,
+            });
+          }
 
           try {
             appendFounderIntentFallback({ route: '/api/founder-intent', requestId, ...payload, reason: errorMessage });

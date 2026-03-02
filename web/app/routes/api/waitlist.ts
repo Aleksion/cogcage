@@ -13,7 +13,6 @@ import {
   redisInsertWaitlistLead,
   redisInsertConversionEvent,
   redisConsumeRateLimit,
-  redisAppendOpsLog,
 } from '~/lib/waitlist-redis'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '../../../convex/_generated/api'
@@ -335,9 +334,59 @@ export const Route = createFileRoute('/api/waitlist')({
           });
           return respond({ ok: true, message: 'You\'re on the list!' }, 200);
         } catch (error) {
-          // Redis failed — try file fallback
+          // Redis failed — try secondary stores before file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
           appendOpsLog({ route: route, level: 'error', event: 'waitlist_redis_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
+          const persistedStores: string[] = [];
+
+          try {
+            await convexClient.mutation(api.waitlist.addToWaitlist, {
+              email: normalizedEmail,
+              source: eventSource,
+            });
+            persistedStores.push('convex');
+          } catch (convexFallbackError) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'waitlist_convex_fallback_failed',
+              requestId,
+              error: convexFallbackError instanceof Error ? convexFallbackError.message : 'unknown',
+            });
+          }
+
+          try {
+            insertWaitlistLead(payload);
+            persistedStores.push('sqlite');
+          } catch (sqliteFallbackError) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'waitlist_sqlite_fallback_failed',
+              requestId,
+              error: sqliteFallbackError instanceof Error ? sqliteFallbackError.message : 'unknown',
+            });
+          }
+
+          if (persistedStores.length > 0) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'waitlist_saved_without_redis',
+              requestId,
+              stores: persistedStores,
+              durationMs: Date.now() - startedAt,
+            });
+            safeTrackConversion(route, requestId, {
+              eventName: 'waitlist_submitted',
+              source: payload.source,
+              email: normalizedEmail,
+              metaJson: JSON.stringify({ storage: persistedStores, redisError: errorMessage }),
+              userAgent: request.headers.get('user-agent') ?? undefined,
+              ipAddress,
+            });
+            return respond({ ok: true, degraded: true, stores: persistedStores, message: 'You\'re on the list!' }, 200);
+          }
 
           try {
             appendWaitlistFallback({ route: route, requestId, ...payload, reason: errorMessage });

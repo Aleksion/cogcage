@@ -195,48 +195,32 @@ export const Route = createFileRoute('/api/postback')({
           email,
           metaJson: safeMetaJson(meta),
           userAgent: request.headers.get('user-agent') ?? undefined,
+          ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,
         };
+
+        const conversionStores: string[] = [];
+        const conversionErrors: string[] = [];
+
+        try {
+          await redisInsertConversionEvent(conversionPayload);
+          conversionStores.push('redis');
+        } catch (redisError) {
+          const message = redisError instanceof Error ? redisError.message : 'unknown';
+          conversionErrors.push(`redis:${message}`);
+          appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_redis_conversion_write_failed', requestId, error: message });
+        }
 
         try {
           insertConversionEvent(conversionPayload);
+          conversionStores.push('sqlite');
+        } catch (sqliteError) {
+          const message = sqliteError instanceof Error ? sqliteError.message : 'unknown';
+          conversionErrors.push(`sqlite:${message}`);
+          appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_sqlite_conversion_write_failed', requestId, error: message });
+        }
 
-          // Fire-and-forget Redis writes — durable across Lambda invocations
-          void redisInsertConversionEvent(conversionPayload).catch((e: unknown) => {
-            appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_redis_conversion_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
-          });
-
-          if (email) {
-            const founderIntentPayload = {
-              email,
-              source: `${source}-postback`,
-              intentId: `paid:${eventId}`,
-              userAgent: request.headers.get('user-agent') ?? undefined,
-              ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,
-            };
-            insertFounderIntent(founderIntentPayload);
-            void redisInsertFounderIntent(founderIntentPayload).catch((e: unknown) => {
-              appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_redis_founder_intent_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
-            });
-          }
-
-          appendOpsLog({
-            route: '/api/postback',
-            level: 'info',
-            event: 'postback_recorded',
-            requestId,
-            eventType,
-            source,
-            eventId,
-            hasEmail: Boolean(email),
-            durationMs: Date.now() - startedAt,
-          });
-
-          return new Response(JSON.stringify({ ok: true, requestId, eventId }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          });
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'unknown-error';
+        if (conversionStores.length === 0) {
+          const combinedError = conversionErrors.join('; ') || 'unknown-error';
           appendOpsLog({
             route: '/api/postback',
             level: 'error',
@@ -245,12 +229,12 @@ export const Route = createFileRoute('/api/postback')({
             eventType,
             source,
             eventId,
-            error: errorMessage,
+            error: combinedError,
             durationMs: Date.now() - startedAt,
           });
 
           try {
-            appendEventsFallback({ route: '/api/postback', requestId, ...conversionPayload, reason: errorMessage });
+            appendEventsFallback({ route: '/api/postback', requestId, ...conversionPayload, reason: combinedError });
             appendOpsLog({
               route: '/api/postback',
               level: 'warn',
@@ -284,6 +268,84 @@ export const Route = createFileRoute('/api/postback')({
             });
           }
         }
+
+        let founderIntentStores: string[] = [];
+        if (email) {
+          const founderIntentPayload = {
+            email,
+            source: `${source}-postback`,
+            intentId: `paid:${eventId}`,
+            userAgent: request.headers.get('user-agent') ?? undefined,
+            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,
+          };
+          founderIntentStores = [];
+
+          try {
+            await redisInsertFounderIntent(founderIntentPayload);
+            founderIntentStores.push('redis');
+          } catch (redisError) {
+            appendOpsLog({
+              route: '/api/postback',
+              level: 'warn',
+              event: 'postback_redis_founder_intent_write_failed',
+              requestId,
+              error: redisError instanceof Error ? redisError.message : 'unknown',
+            });
+          }
+
+          try {
+            insertFounderIntent(founderIntentPayload);
+            founderIntentStores.push('sqlite');
+          } catch (sqliteError) {
+            appendOpsLog({
+              route: '/api/postback',
+              level: 'warn',
+              event: 'postback_sqlite_founder_intent_write_failed',
+              requestId,
+              error: sqliteError instanceof Error ? sqliteError.message : 'unknown',
+            });
+          }
+
+          if (founderIntentStores.length === 0) {
+            appendOpsLog({
+              route: '/api/postback',
+              level: 'warn',
+              event: 'postback_founder_intent_not_persisted',
+              requestId,
+              eventId,
+              durationMs: Date.now() - startedAt,
+            });
+          }
+        }
+
+        appendOpsLog({
+          route: '/api/postback',
+          level: conversionStores.includes('redis') ? 'info' : 'warn',
+          event: 'postback_recorded',
+          requestId,
+          eventType,
+          source,
+          eventId,
+          hasEmail: Boolean(email),
+          conversionStores,
+          founderIntentStores,
+          durationMs: Date.now() - startedAt,
+        });
+
+        const founderDegraded = Boolean(email) && (
+          founderIntentStores.length === 0
+          || !founderIntentStores.includes('redis')
+        );
+
+        return new Response(JSON.stringify({
+          ok: true,
+          requestId,
+          eventId,
+          degraded: !conversionStores.includes('redis') || founderDegraded,
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
       },
     },
   },

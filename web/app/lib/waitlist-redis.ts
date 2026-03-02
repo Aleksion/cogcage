@@ -14,6 +14,7 @@
  */
 
 import { Redis } from '@upstash/redis';
+import { computeRateLimitResetMs } from './rate-limit';
 
 const MAX_WAITLIST = 20_000;
 const MAX_CONVERSIONS = 10_000;
@@ -145,9 +146,10 @@ export async function redisConsumeRateLimit(
   }
 
   const remaining = Math.max(0, max - count);
+  const resetMs = computeRateLimitResetMs(now, windowMs);
   return {
     allowed: count <= max,
     remaining,
-    resetMs: (windowId + 1) * windowMs,
+    resetMs,
   };
 }
