@@ -2,16 +2,19 @@
  * PitScene.ts — Babylon.js arena renderer for The Molt Pit.
  *
  * Isometric orthographic camera, 20x20 grid, MAP 001 "THE STANDARD",
- * placeholder Crustie meshes (capsules), HP bars (GUI billboards),
+ * real Crustie GLB models from CDN, HP bars (GUI billboards),
  * bioluminescent deep-sea lighting, and action VFX animations.
  *
  * Consumes MatchSnapshot from Cloudflare DO WebSocket ticks.
  */
 
+import '@babylonjs/loaders/glTF';
 import {
   Engine,
   Scene,
-  FreeCamera,
+  SceneLoader,
+  UniversalCamera,
+  PBRMaterial,
   Vector3,
   Color3,
   Color4,
@@ -20,6 +23,7 @@ import {
   MeshBuilder,
   StandardMaterial,
   Mesh,
+  AbstractMesh,
   Animation,
   TransformNode,
   GlowLayer,
@@ -43,7 +47,7 @@ import type { GameState, GameEvent, ActorState } from '../lib/ws2/engine';
 const GRID_CELLS = ARENA_SIZE_UNITS; // 20
 const CELL_SIZE = 1; // 1 Babylon unit per cell
 const ARENA_WORLD = GRID_CELLS * CELL_SIZE; // 20
-const TWEEN_FRAMES = 12; // ~200ms at 60fps
+const TWEEN_FRAMES = 8; // ~133ms at 60fps, fits inside 150ms tick
 const FPS = 60;
 
 /* ── Brine Palette ──────────────────────────────────────────────── */
@@ -56,6 +60,24 @@ const C_RED = Color3.FromHexString('#ff1744');
 const C_YELLOW = Color3.FromHexString('#ffd600');
 const C_GREEN = Color3.FromHexString('#00c853');
 const C_PURPLE = Color3.FromHexString('#9c27b0');
+
+/* ── GLB CDN URLs (Vercel Blob — permanent) ──────────────────────── */
+
+const CRUSTIE_GLBS: Record<string, string> = {
+  lobster: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-lobster-Z2WN3cFGSSTQO0STQOxXJKG5GQOxXG.glb',
+  crab: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-crab-khUCfgl6zHSHOdiP2cMPeBA38tZRo3.glb',
+  mantis: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-mantis-N5cksDxSVDlCYxgBVl6YYIeNf2g7a3.glb',
+  hermit: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-hermit-YnSbhLPGa5nGN4O4dgNoHb7d36y7f3.glb',
+  shrimp: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-shrimp-G2WM2yC3gMbh1pWdMpQhmogyyDL52S.glb',
+};
+
+/** Default species for each team slot */
+const ALPHA_SPECIES = 'lobster';
+const BETA_SPECIES = 'crab';
+
+/* ── GLB scale (Meshy default is large — normalize) ──────────────── */
+
+const GLB_SCALE = 0.5;
 
 const C_WALL = Color3.FromHexString('#1a0a2e');
 const C_WALL_TRIM = Color3.FromHexString('#6a1b9a');
@@ -157,11 +179,13 @@ export class PitScene {
   private scene: Scene;
   private canvas: HTMLCanvasElement;
 
-  /* Crustie meshes */
+  /* Crustie GLB roots */
   private alphaNode!: TransformNode;
   private betaNode!: TransformNode;
-  private alphaMesh!: Mesh;
-  private betaMesh!: Mesh;
+  private alphaMeshes: AbstractMesh[] = [];
+  private betaMeshes: AbstractMesh[] = [];
+  private alphaLoaded = false;
+  private betaLoaded = false;
 
   /* GUI */
   private guiTexture!: AdvancedDynamicTexture;
@@ -221,9 +245,9 @@ export class PitScene {
 
   private setupCamera(): void {
     // Isometric orthographic camera — TFT/LoL angle (~45° elevation)
-    const camera = new FreeCamera('camera', new Vector3(10, 18, -6), this.scene);
+    const camera = new UniversalCamera('camera', new Vector3(10, 18, -6), this.scene);
     camera.setTarget(new Vector3(10, 0, 10)); // Center of arena
-    camera.mode = FreeCamera.ORTHOGRAPHIC_CAMERA;
+    camera.mode = UniversalCamera.ORTHOGRAPHIC_CAMERA;
 
     // Orthographic bounds — fit 20x20 grid with padding
     const aspect = this.canvas.width / this.canvas.height;
@@ -379,77 +403,109 @@ export class PitScene {
     }
   }
 
-  /* ── Crustie meshes (placeholder capsules) ─────────────────── */
+  /* ── Crustie GLB models ──────────────────────────────────── */
 
   private setupCrusties(): void {
-    // Alpha Crustie (cyan team)
+    // Create parent nodes immediately (position updates work before GLBs load)
     this.alphaNode = new TransformNode('alphaNode', this.scene);
-    this.alphaMesh = MeshBuilder.CreateCapsule('alpha', {
-      height: 0.8, radius: 0.25,
-    }, this.scene);
-    this.alphaMesh.parent = this.alphaNode;
-    this.alphaMesh.position.y = 0.4;
-
-    const alphaMat = new StandardMaterial('alphaMat', this.scene);
-    alphaMat.diffuseColor = C_CYAN.scale(0.8);
-    alphaMat.emissiveColor = C_CYAN.scale(0.3);
-    alphaMat.specularColor = new Color3(0.3, 0.3, 0.3);
-    this.alphaMesh.material = alphaMat;
-
-    // Claw stubs
-    this.createClawStubs(this.alphaNode, alphaMat);
-
-    // Eyes (small emissive spheres)
-    this.createEyes(this.alphaNode, C_CYAN);
-
-    // Beta Crustie (red team)
     this.betaNode = new TransformNode('betaNode', this.scene);
-    this.betaMesh = MeshBuilder.CreateCapsule('beta', {
-      height: 0.8, radius: 0.25,
-    }, this.scene);
-    this.betaMesh.parent = this.betaNode;
-    this.betaMesh.position.y = 0.4;
 
-    const betaMat = new StandardMaterial('betaMat', this.scene);
-    betaMat.diffuseColor = C_RED.scale(0.8);
-    betaMat.emissiveColor = C_RED.scale(0.3);
-    betaMat.specularColor = new Color3(0.3, 0.3, 0.3);
-    this.betaMesh.material = betaMat;
-
-    this.createClawStubs(this.betaNode, betaMat);
-    this.createEyes(this.betaNode, C_RED);
-
-    // Initial positions (off-grid)
+    // Initial positions (off-grid, moved on first snapshot)
     this.alphaNode.position = new Vector3(-2, 0, -2);
     this.betaNode.position = new Vector3(-2, 0, -2);
+
+    // Load GLBs async — Lobster vs Crab default
+    this.loadCrustieGLB(ALPHA_SPECIES, this.alphaNode, 'alpha');
+    this.loadCrustieGLB(BETA_SPECIES, this.betaNode, 'beta');
   }
 
-  private createClawStubs(parent: TransformNode, mat: StandardMaterial): void {
-    const leftClaw = MeshBuilder.CreateSphere(`${parent.name}_lclaw`, { diameter: 0.2 }, this.scene);
-    leftClaw.parent = parent;
-    leftClaw.position = new Vector3(-0.35, 0.45, -0.15);
-    leftClaw.material = mat;
+  private async loadCrustieGLB(
+    species: string,
+    parentNode: TransformNode,
+    team: 'alpha' | 'beta',
+  ): Promise<void> {
+    const url = CRUSTIE_GLBS[species];
+    if (!url) return;
 
-    const rightClaw = MeshBuilder.CreateSphere(`${parent.name}_rclaw`, { diameter: 0.2 }, this.scene);
-    rightClaw.parent = parent;
-    rightClaw.position = new Vector3(0.35, 0.45, -0.15);
-    rightClaw.material = mat;
+    try {
+      const result = await SceneLoader.ImportMeshAsync('', '', url, this.scene);
+      if (this.disposed) {
+        result.meshes.forEach(m => m.dispose());
+        return;
+      }
+
+      const root = result.meshes[0];
+      if (!root) return;
+
+      // Parent to team node
+      root.parent = parentNode;
+      root.scaling = new Vector3(GLB_SCALE, GLB_SCALE, GLB_SCALE);
+      root.position = Vector3.Zero(); // offset handled by parentNode
+
+      // Apply toon/cel-shading + outlines to all child meshes
+      const meshes: AbstractMesh[] = [];
+      for (const m of result.meshes) {
+        if (m.material) {
+          // GLB materials are PBRMaterial (albedoColor), not StandardMaterial (diffuseColor)
+          const origMat = m.material;
+          const color = origMat instanceof PBRMaterial
+            ? origMat.albedoColor?.clone() ?? new Color3(1, 1, 1)
+            : (origMat as StandardMaterial).diffuseColor?.clone() ?? new Color3(1, 1, 1);
+          const toonMat = new StandardMaterial(`toon_${team}_${m.name}`, this.scene);
+          toonMat.diffuseColor = color;
+          toonMat.specularColor = Color3.Black(); // flat, no specular highlight
+          toonMat.emissiveColor = color.scale(0.1); // subtle self-illumination in the dark
+          m.material = toonMat;
+        }
+
+        // Borderlands-style thick outlines
+        if (m instanceof Mesh) {
+          m.renderOutline = true;
+          m.outlineColor = Color3.Black();
+          m.outlineWidth = 0.05;
+        }
+
+        meshes.push(m);
+      }
+
+      if (team === 'alpha') {
+        this.alphaMeshes = meshes;
+        this.alphaLoaded = true;
+      } else {
+        this.betaMeshes = meshes;
+        this.betaLoaded = true;
+      }
+    } catch (err) {
+      console.warn(`[PitScene] Failed to load ${species} GLB, using fallback capsule:`, err);
+      this.createFallbackCapsule(parentNode, team);
+    }
   }
 
-  private createEyes(parent: TransformNode, color: Color3): void {
-    const eyeMat = new StandardMaterial(`${parent.name}_eyeMat`, this.scene);
-    eyeMat.emissiveColor = color;
-    eyeMat.disableLighting = true;
+  /** Capsule fallback if GLB load fails (network error, etc.) */
+  private createFallbackCapsule(parent: TransformNode, team: 'alpha' | 'beta'): void {
+    const color = team === 'alpha' ? C_CYAN : C_RED;
+    const capsule = MeshBuilder.CreateCapsule(`${team}_fallback`, {
+      height: 0.8, radius: 0.25,
+    }, this.scene);
+    capsule.parent = parent;
+    capsule.position.y = 0.4;
 
-    const leftEye = MeshBuilder.CreateSphere(`${parent.name}_leye`, { diameter: 0.08 }, this.scene);
-    leftEye.parent = parent;
-    leftEye.position = new Vector3(-0.1, 0.7, -0.2);
-    leftEye.material = eyeMat;
+    const mat = new StandardMaterial(`${team}_fallbackMat`, this.scene);
+    mat.diffuseColor = color.scale(0.8);
+    mat.emissiveColor = color.scale(0.3);
+    mat.specularColor = Color3.Black();
+    capsule.material = mat;
+    capsule.renderOutline = true;
+    capsule.outlineColor = Color3.Black();
+    capsule.outlineWidth = 0.05;
 
-    const rightEye = MeshBuilder.CreateSphere(`${parent.name}_reye`, { diameter: 0.08 }, this.scene);
-    rightEye.parent = parent;
-    rightEye.position = new Vector3(0.1, 0.7, -0.2);
-    rightEye.material = eyeMat;
+    if (team === 'alpha') {
+      this.alphaMeshes = [capsule];
+      this.alphaLoaded = true;
+    } else {
+      this.betaMeshes = [capsule];
+      this.betaLoaded = true;
+    }
   }
 
   /* ── GUI (HP bars, names, tick counter) ────────────────────── */
@@ -538,7 +594,7 @@ export class PitScene {
 
   private setupGlow(): void {
     this.glowLayer = new GlowLayer('glow', this.scene, {
-      mainTextureFixedSize: 256,
+      mainTextureFixedSize: 512,
       blurKernelSize: 32,
     });
     this.glowLayer.intensity = 0.6;
@@ -632,8 +688,7 @@ export class PitScene {
       { frame: 0, value: node.position.clone() },
       { frame: TWEEN_FRAMES, value: target },
     ]);
-    node.animations = [anim];
-    this.scene.beginAnimation(node, 0, TWEEN_FRAMES, false);
+    this.scene.beginDirectAnimation(node, [anim], 0, TWEEN_FRAMES, false);
   }
 
   /* ── HP bar update ───────────────────────────────────────────── */
@@ -662,6 +717,9 @@ export class PitScene {
       const target = targetId ? actors[targetId] : null;
       if (target) {
         this.vfxDamageNumber(posToWorld(target.position), data.amount as number);
+        // Scale pulse on the hit Crustie (procedural — models not rigged)
+        const hitNode = targetId === this.lastAlphaId ? this.alphaNode : this.betaNode;
+        this.vfxHitPulse(hitNode);
       }
     }
 
@@ -820,6 +878,23 @@ export class PitScene {
     ring.animations = [scaleAnim];
     this.scene.beginAnimation(ring, 0, 21, false);
     this.fadeAndDispose(ring, ringMat, 350);
+  }
+
+  /* ── VFX: Scale pulse on hit (procedural — models not rigged) ── */
+
+  private vfxHitPulse(node: TransformNode): void {
+    const anim = new Animation(
+      `${node.name}_hitpulse`, 'scaling', FPS,
+      Animation.ANIMATIONTYPE_VECTOR3,
+      Animation.ANIMATIONLOOPMODE_CONSTANT,
+    );
+    anim.setKeys([
+      { frame: 0, value: new Vector3(1, 1, 1) },
+      { frame: 4, value: new Vector3(1.2, 0.8, 1.2) },  // squash
+      { frame: 8, value: new Vector3(0.9, 1.15, 0.9) },  // stretch
+      { frame: 12, value: new Vector3(1, 1, 1) },         // settle
+    ]);
+    this.scene.beginDirectAnimation(node, [anim], 0, 12, false);
   }
 
   /* ── VFX: Damage number popup ───────────────────────────────── */

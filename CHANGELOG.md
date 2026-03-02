@@ -26,7 +26,13 @@
   - Dark Brine aesthetic with bioluminescent point lights (cyan, purple)
   - 20x20 grid floor with thin box grid lines (every 5th line glows cyan)
   - MAP 001 "THE STANDARD" tile rendering: WALL (3D boxes with purple trim dots), COVER (low boxes), HAZARD (ground planes with pulsing orange glow)
-  - Placeholder Crustie meshes: capsules with claw stubs, emissive eyes, team colors (cyan/red)
+  - Real Crustie GLB models loaded from Vercel Blob CDN via SceneLoader.ImportMeshAsync
+    - Default match: Lobster (alpha/cyan) vs Crab (beta/red)
+    - Toon/cel-shading: flat StandardMaterial, no specular, subtle emissive self-illumination
+    - Borderlands-style black outlines (renderOutline, outlineWidth: 0.05)
+    - Capsule fallback if GLB load fails (network error graceful degradation)
+    - 5 species available: lobster, crab, mantis, hermit, shrimp
+  - Procedural hit reaction: scale squash-stretch pulse on DAMAGE_APPLIED events
   - HP bars and tick counter via @babylonjs/gui fullscreen UI
   - Animated position lerp (12 frames ~200ms) on each tick
   - VFX animations: PINCH (slash line + impact flash), SPIT (projectile sphere with impact burst), SHELL UP (expanding green shield sphere), BURST (expanding torus ring)
