@@ -2,6 +2,25 @@
 
 ---
 
+## Product-Mode Ship — 16:20 ET Mar 2
+
+Directive executed in strict order: P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.
+
+### Shipped artifacts
+- `web/app/routes/sign-in.tsx`
+  - Sign-in email persistence now mirrors to both `moltpit_signin_email` and `moltpit_email` for resilient cross-flow prefill (auth + founder checkout).
+  - Stored-email bootstrap now reads both keys to recover from partial client state.
+  - OTP verify path now validates email before submission and emits validation telemetry.
+- `web/app/routes/demo.tsx`
+  - `/demo` now serves the real `DemoLoop` directly (public playable map movement + AP action economy flow).
+- `web/app/routes/api/postback.ts`
+  - Postback now records confirmed founder purchases to Convex (`api.purchases.record`) with structured success/failure ops events.
+  - Purchase payload normalization added for `stripeSessionId`, amount, and optional user id metadata.
+
+### Verification
+- `cd web && npm run test:product` ✅ (10 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## Product-Mode Ship — 15:49 ET Mar 2
 
 Directive executed in strict order: P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback handling, P4 ops artifacts.

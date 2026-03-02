@@ -17,6 +17,7 @@ function hashEmail(email: string): string {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const OTP_RE = /^[0-9]{6}$/
 const SIGNIN_EMAIL_STORAGE_KEY = 'moltpit_signin_email'
+const PRIMARY_EMAIL_STORAGE_KEY = 'moltpit_email'
 const AUTH_EVENTS_SOURCE = 'sign-in'
 
 function normalizeEmail(raw: string): string {
@@ -25,9 +26,15 @@ function normalizeEmail(raw: string): string {
 
 function readStoredEmail(): string {
   try {
-    const value = localStorage.getItem(SIGNIN_EMAIL_STORAGE_KEY) ?? ''
-    const normalized = normalizeEmail(value)
-    return EMAIL_RE.test(normalized) ? normalized : ''
+    const candidates = [
+      localStorage.getItem(SIGNIN_EMAIL_STORAGE_KEY) ?? '',
+      localStorage.getItem(PRIMARY_EMAIL_STORAGE_KEY) ?? '',
+    ]
+    for (const value of candidates) {
+      const normalized = normalizeEmail(value)
+      if (EMAIL_RE.test(normalized)) return normalized
+    }
+    return ''
   } catch {
     return ''
   }
@@ -35,7 +42,10 @@ function readStoredEmail(): string {
 
 function storeEmail(email: string) {
   try {
-    localStorage.setItem(SIGNIN_EMAIL_STORAGE_KEY, normalizeEmail(email))
+    const normalized = normalizeEmail(email)
+    localStorage.setItem(SIGNIN_EMAIL_STORAGE_KEY, normalized)
+    // Keep founder checkout prefill in sync across auth + play flows.
+    localStorage.setItem(PRIMARY_EMAIL_STORAGE_KEY, normalized)
   } catch {
     // Ignore storage failures (private mode / blocked storage).
   }
@@ -491,6 +501,14 @@ function EmailOTPForm() {
 
   const handleVerify = async () => {
     if (loading) return
+    if (!isEmailValid) {
+      setError('Enter a valid email address to verify this code.')
+      void logAuthTelemetryEvent({
+        eventName: 'auth_email_otp_validation_failed',
+        meta: { stage: 'verify', reason: 'invalid_email' },
+      })
+      return
+    }
     if (!isCodeValid) {
       setError('Enter the 6-digit code from your email.')
       void logAuthTelemetryEvent({

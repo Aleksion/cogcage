@@ -2,6 +2,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { appendEventsFallback, appendFounderIntentFallback, appendOpsLog } from '~/lib/observability'
 import { insertConversionEvent, insertFounderIntent } from '~/lib/waitlist-db'
 import { redisInsertConversionEvent, redisInsertFounderIntent } from '~/lib/waitlist-redis'
+import { ConvexHttpClient } from 'convex/browser'
+import { api } from '../../../convex/_generated/api'
+
+const convexClient = new ConvexHttpClient(process.env.CONVEX_URL || 'https://intent-horse-742.convex.cloud')
 
 type CheckoutPostback = {
   type?: string;
@@ -18,6 +22,7 @@ type CheckoutPostback = {
         email?: string;
       };
       metadata?: Record<string, unknown>;
+      amount_total?: number;
     };
   };
   email?: string;
@@ -77,6 +82,68 @@ function safeMetaJson(meta: Record<string, unknown>) {
       : serialized;
   } catch {
     return JSON.stringify({ invalidMeta: true });
+  }
+}
+
+function normalizeAmount(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, value);
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return Math.max(0, parsed);
+  }
+  return 0;
+}
+
+async function recordFounderPurchase({
+  requestId,
+  eventId,
+  eventType,
+  source,
+  stripeSessionId,
+  amount,
+  email,
+  userId,
+}: {
+  requestId: string;
+  eventId: string;
+  eventType: string;
+  source: string;
+  stripeSessionId: string;
+  amount: number;
+  email?: string;
+  userId?: string;
+}) {
+  try {
+    await convexClient.mutation(api.purchases.record, {
+      userId,
+      email,
+      stripeSessionId,
+      amount,
+      status: 'completed',
+    });
+    appendOpsLog({
+      route: '/api/postback',
+      level: 'info',
+      event: 'postback_purchase_recorded',
+      requestId,
+      eventType,
+      source,
+      eventId,
+      stripeSessionId,
+      amount,
+    });
+  } catch (error) {
+    appendOpsLog({
+      route: '/api/postback',
+      level: 'warn',
+      event: 'postback_purchase_record_failed',
+      requestId,
+      eventType,
+      source,
+      eventId,
+      stripeSessionId,
+      error: error instanceof Error ? error.message : 'unknown',
+    });
   }
 }
 
@@ -237,6 +304,21 @@ export const Route = createFileRoute('/api/postback')({
           ?? metadataEventId
           ?? (typeof object?.id === 'string' && object.id.trim() ? object.id.trim() : undefined)
           ?? deriveFallbackEventId({ eventType, source, email, created: payload.created, metadata: meta.metadata as Record<string, unknown> });
+        const stripeSessionId =
+          normalizeString(object?.id, 180)
+          || normalizeString((resolvedMetadata as Record<string, unknown>).stripe_session_id, 180)
+          || normalizeString((resolvedMetadata as Record<string, unknown>).session_id, 180)
+          || eventId;
+        const purchaseAmount = normalizeAmount(
+          object?.amount_total
+          ?? (resolvedMetadata as Record<string, unknown>).amount_total
+          ?? (resolvedMetadata as Record<string, unknown>).amount
+        );
+        const purchaseUserId = normalizeString(
+          (resolvedMetadata as Record<string, unknown>).user_id
+          ?? (resolvedMetadata as Record<string, unknown>).userId,
+          180
+        ) || undefined;
 
         const conversionPayload = {
           eventName: 'paid_conversion_confirmed',
@@ -336,6 +418,16 @@ export const Route = createFileRoute('/api/postback')({
               }
             }
           }
+          await recordFounderPurchase({
+            requestId,
+            eventId,
+            eventType,
+            source,
+            stripeSessionId,
+            amount: purchaseAmount,
+            email,
+            userId: purchaseUserId,
+          });
 
           appendOpsLog({
             route: '/api/postback',
@@ -396,6 +488,16 @@ export const Route = createFileRoute('/api/postback')({
               eventId,
               hasEmail: Boolean(email),
               durationMs: Date.now() - startedAt,
+            });
+            await recordFounderPurchase({
+              requestId,
+              eventId,
+              eventType,
+              source,
+              stripeSessionId,
+              amount: purchaseAmount,
+              email,
+              userId: purchaseUserId,
             });
 
             return new Response(JSON.stringify({ ok: true, degraded: true, requestId, eventId }), {
