@@ -112,13 +112,18 @@ export const Route = createFileRoute('/api/waitlist')({
         let source = '';
         let honeypot = '';
 
-        const respond = async (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
+        const respond = async (
+          body: Record<string, unknown>,
+          status: number,
+          storage: 'redis' | 'sqlite' | 'fallback' | 'none',
+          extraHeaders: Record<string, string> = {},
+        ) => {
           if (idempotencyKey) {
             const receipt = {
               route,
               idempotencyKey,
               responseStatus: status,
-              responseBody: JSON.stringify({ ...body, requestId }),
+              responseBody: JSON.stringify({ ...body, storage, requestId }),
             };
             let persisted = false;
 
@@ -158,7 +163,10 @@ export const Route = createFileRoute('/api/waitlist')({
             }
           }
 
-          return jsonResponse(body, status, requestId, extraHeaders);
+          return jsonResponse({ ...body, storage }, status, requestId, {
+            'x-storage-mode': storage,
+            ...extraHeaders,
+          });
         };
 
         if (idempotencyKey) {
@@ -274,7 +282,7 @@ export const Route = createFileRoute('/api/waitlist')({
             ipAddress: getClientIp(request),
             metaJson: JSON.stringify({ contentType }),
           });
-          return respond({ ok: false, error: 'Invalid request payload.' }, 400);
+          return respond({ ok: false, error: 'Invalid request payload.' }, 400, 'none');
         }
 
         const ipAddress = getClientIp(request);
@@ -309,7 +317,7 @@ export const Route = createFileRoute('/api/waitlist')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: false, error: 'Too many attempts. Try again in a few minutes.' }, 429, {
+          return respond({ ok: false, error: 'Too many attempts. Try again in a few minutes.' }, 429, 'none', {
             'retry-after': String(Math.ceil(rateLimit.resetMs / 1000)),
           });
         }
@@ -324,7 +332,7 @@ export const Route = createFileRoute('/api/waitlist')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: false, error: 'Submission blocked.' }, 400);
+          return respond({ ok: false, error: 'Submission blocked.' }, 400, 'none');
         }
 
         if (!EMAIL_RE.test(email)) {
@@ -336,7 +344,7 @@ export const Route = createFileRoute('/api/waitlist')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: false, error: 'Valid email is required.' }, 400);
+          return respond({ ok: false, error: 'Valid email is required.' }, 400, 'none');
         }
 
         const payload = {
@@ -387,7 +395,7 @@ export const Route = createFileRoute('/api/waitlist')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: true, message: 'You\'re on the list!' }, 200);
+          return respond({ ok: true, message: 'You\'re on the list!' }, 200, 'redis');
         } catch (error) {
           // Redis failed — try file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
@@ -412,7 +420,7 @@ export const Route = createFileRoute('/api/waitlist')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
-            return respond({ ok: true, degraded: true, message: 'You\'re on the list!' }, 200);
+            return respond({ ok: true, degraded: true, message: 'You\'re on the list!' }, 200, 'sqlite');
           } catch (sqliteFallbackError) {
             appendOpsLog({
               route,
@@ -434,7 +442,7 @@ export const Route = createFileRoute('/api/waitlist')({
               ipAddress,
             });
             appendOpsLog({ route: route, level: 'warn', event: 'waitlist_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
-            return respond({ ok: true, queued: true, message: 'You\'re on the list!' }, 202);
+            return respond({ ok: true, queued: true, message: 'You\'re on the list!' }, 202, 'fallback');
           } catch (fallbackError) {
             appendOpsLog({ route: route, level: 'error', event: 'waitlist_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
             safeTrackConversion(route, requestId, {
@@ -445,7 +453,7 @@ export const Route = createFileRoute('/api/waitlist')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
-            return respond({ ok: false, error: 'Temporary storage issue. Please retry in 1 minute.' }, 503);
+            return respond({ ok: false, error: 'Temporary storage issue. Please retry in 1 minute.' }, 503, 'none');
           }
         }
       },

@@ -116,13 +116,18 @@ export const Route = createFileRoute('/api/founder-intent')({
         let intentId = '';
         let honeypot = '';
 
-        const respond = async (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
+        const respond = async (
+          body: Record<string, unknown>,
+          status: number,
+          storage: 'redis' | 'sqlite' | 'fallback' | 'none',
+          extraHeaders: Record<string, string> = {},
+        ) => {
           if (idempotencyKey) {
             const receipt = {
               route,
               idempotencyKey,
               responseStatus: status,
-              responseBody: JSON.stringify({ ...body, requestId }),
+              responseBody: JSON.stringify({ ...body, storage, requestId }),
             };
             let persisted = false;
 
@@ -162,7 +167,10 @@ export const Route = createFileRoute('/api/founder-intent')({
             }
           }
 
-          return jsonResponse(body, status, requestId, extraHeaders);
+          return jsonResponse({ ...body, storage }, status, requestId, {
+            'x-storage-mode': storage,
+            ...extraHeaders,
+          });
         };
 
         if (idempotencyKey) {
@@ -278,7 +286,7 @@ export const Route = createFileRoute('/api/founder-intent')({
             ipAddress: getClientIp(request),
             metaJson: JSON.stringify({ contentType }),
           });
-          return respond({ ok: false, error: 'Invalid request payload.' }, 400);
+          return respond({ ok: false, error: 'Invalid request payload.' }, 400, 'none');
         }
 
         const ipAddress = getClientIp(request);
@@ -314,7 +322,7 @@ export const Route = createFileRoute('/api/founder-intent')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: false, error: 'Too many attempts. Try again in a few minutes.' }, 429, {
+          return respond({ ok: false, error: 'Too many attempts. Try again in a few minutes.' }, 429, 'none', {
             'retry-after': String(Math.ceil(rateLimit.resetMs / 1000)),
           });
         }
@@ -329,7 +337,7 @@ export const Route = createFileRoute('/api/founder-intent')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: false, error: 'Submission blocked.' }, 400);
+          return respond({ ok: false, error: 'Submission blocked.' }, 400, 'none');
         }
 
         if (!EMAIL_RE.test(email)) {
@@ -341,7 +349,7 @@ export const Route = createFileRoute('/api/founder-intent')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: false, error: 'Valid email is required.' }, 400);
+          return respond({ ok: false, error: 'Valid email is required.' }, 400, 'none');
         }
 
         const payload = {
@@ -381,7 +389,7 @@ export const Route = createFileRoute('/api/founder-intent')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: true }, 200);
+          return respond({ ok: true }, 200, 'redis');
         } catch (error) {
           // Redis failed — try file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
@@ -406,7 +414,7 @@ export const Route = createFileRoute('/api/founder-intent')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
-            return respond({ ok: true, degraded: true }, 200);
+            return respond({ ok: true, degraded: true }, 200, 'sqlite');
           } catch (sqliteFallbackError) {
             appendOpsLog({
               route: '/api/founder-intent',
@@ -428,7 +436,7 @@ export const Route = createFileRoute('/api/founder-intent')({
               ipAddress,
             });
             appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
-            return respond({ ok: true, queued: true }, 202);
+            return respond({ ok: true, queued: true }, 202, 'fallback');
           } catch (fallbackError) {
             appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
             safeTrackConversion('/api/founder-intent', requestId, {
@@ -439,7 +447,7 @@ export const Route = createFileRoute('/api/founder-intent')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
-            return respond({ ok: false, error: 'Temporary storage issue. Please retry.' }, 503);
+            return respond({ ok: false, error: 'Temporary storage issue. Please retry.' }, 503, 'none');
           }
         }
       },

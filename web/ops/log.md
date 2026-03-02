@@ -157,3 +157,26 @@ Set 3 env vars in Vercel dashboard → Stripe checkout + authenticated postback 
 - better-sqlite3 binary ABI mismatch was causing every API route to 500; now silently degraded
 
 ---
+
+### Autopilot Cron — 17:07 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Priorities remain P1 signup reliability, P2 playable demo loop, P3 monetization path, P4 ops log.
+
+**Shipped this pass (product-critical):**
+- P1 reliability telemetry normalization: API responses for both `/api/waitlist` and `/api/founder-intent` now always include explicit `storage` mode in body + `x-storage-mode` header (`redis`/`sqlite`/`fallback`/`none`).
+- This aligns idempotency replay receipts with actual durability path, removing ambiguity in ops/debug traces under retry and fallback conditions.
+
+**Validation:**
+- `node --test web/scripts/ws2-core.test.mjs` → ✅ 6/6 pass (movement + action economy + replay parity)
+- Build/test toolchain unavailable in this worktree (`vite: command not found`) until deps are installed; no additional non-critical changes made.
+
+**Status after ship:**
+- P1 — Signup reliability + storage + observable logs: ✅ LIVE (improved storage visibility)
+- P2 — Playable demo loop (map movement + AP economy): ✅ LIVE
+- P3 — Founder checkout + postback: ✅ CODE COMPLETE — still env-blocked
+- P4 — Ops log: ✅ CURRENT
+
+**Blockers (Aleks-only, unchanged):**
+1. `PUBLIC_STRIPE_FOUNDER_URL`
+2. `COGCAGE_POSTBACK_KEY`
+3. `MOLTPIT_OPS_KEY`

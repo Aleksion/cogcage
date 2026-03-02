@@ -8,6 +8,37 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): explicit storage-mode telemetry in signup + founder APIs
+
+**Type:** fix/ops | **Budget impact:** n/a (product-critical observability)
+
+### What
+- `web/app/routes/api/waitlist.ts`
+  - Standardized all responses to include `storage` (`redis`/`sqlite`/`fallback`/`none`) in JSON payload.
+  - Added `x-storage-mode` response header across success, degraded, fallback, and error outcomes.
+  - Idempotency receipt payloads now persist `storage` so replayed responses preserve true durability path.
+- `web/app/routes/api/founder-intent.ts`
+  - Applied the same `storage` payload + `x-storage-mode` header behavior as waitlist.
+  - Idempotency receipts now store/replay storage mode consistently.
+
+### Why
+- Product mode requires hard evidence of where writes landed under retries/fallbacks.
+- Without explicit storage-mode telemetry, ops traces were ambiguous when replaying idempotent responses or investigating degraded storage paths.
+
+### Design Decisions
+- Keep response contract backward-compatible (`ok`, `message`, `error` unchanged), adding only additive telemetry fields.
+- Treat storage mode as first-class runtime signal for P1/P3 reliability auditing.
+
+### Verification
+- `node --test web/scripts/ws2-core.test.mjs` ✅ (6 pass / 0 fail)
+- Build blocked in this worktree until deps are installed (`vite: command not found`).
+
+### Breaking
+- None.
+
+### Next Steps
+- Install deps in worktree and run full product suite/build before deployment cut.
+
 ## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)
