@@ -30,11 +30,24 @@ function normalizeString(value: unknown, maxLen = 500) {
   return value.trim().slice(0, maxLen);
 }
 
+function normalizeOptionalString(value: unknown, maxLen = 500): string | undefined {
+  const normalized = normalizeString(value, maxLen);
+  return normalized || undefined;
+}
+
 function normalizeEmail(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const email = value.trim().toLowerCase();
   if (!email || !EMAIL_RE.test(email)) return undefined;
   return email;
+}
+
+function pickMetadataString(metadata: Record<string, unknown>, keys: string[], maxLen = 180): string | undefined {
+  for (const key of keys) {
+    const value = normalizeOptionalString(metadata[key], maxLen);
+    if (value) return value;
+  }
+  return undefined;
 }
 
 function getClientIp(request: Request) {
@@ -206,8 +219,7 @@ export const Route = createFileRoute('/api/postback')({
           });
         }
 
-        const rawType = payload.type ?? '';
-        const eventType = typeof rawType === 'string' ? rawType : '';
+        const eventType = normalizeString(payload.type, 120);
         const acceptedTypes = new Set(['checkout.session.completed', 'founder_pack.paid']);
         if (!acceptedTypes.has(eventType)) {
           appendOpsLog({
@@ -225,22 +237,31 @@ export const Route = createFileRoute('/api/postback')({
         }
 
         const object = payload.data?.object;
+        const rawMetadata = payload.metadata ?? object?.metadata;
+        const metadata = rawMetadata && typeof rawMetadata === 'object'
+          ? (rawMetadata as Record<string, unknown>)
+          : {};
         const email =
           normalizeEmail(payload.email)
           ?? normalizeEmail(object?.customer_email)
-          ?? normalizeEmail(object?.customer_details?.email);
+          ?? normalizeEmail(object?.customer_details?.email)
+          ?? normalizeEmail(pickMetadataString(metadata, ['email', 'customer_email', 'customerEmail']));
 
-        const source = typeof payload.source === 'string' && payload.source.trim() ? payload.source.trim() : 'postback';
+        const source =
+          normalizeOptionalString(payload.source, 160)
+          ?? pickMetadataString(metadata, ['source', 'checkout_source', 'checkoutSource'], 160)
+          ?? 'postback';
         const meta = {
           eventType,
           created: payload.created,
-          metadata: payload.metadata ?? object?.metadata ?? {},
+          metadata,
         };
 
         const eventId =
-          (typeof payload.eventId === 'string' && payload.eventId.trim() ? payload.eventId.trim() : undefined)
-          ?? (typeof payload.id === 'string' && payload.id.trim() ? payload.id.trim() : undefined)
-          ?? (typeof object?.id === 'string' && object.id.trim() ? object.id.trim() : undefined)
+          normalizeOptionalString(payload.eventId, 180)
+          ?? normalizeOptionalString(payload.id, 180)
+          ?? normalizeOptionalString(object?.id, 180)
+          ?? pickMetadataString(metadata, ['eventId', 'event_id', 'session_id', 'checkout_session_id'], 180)
           ?? deriveFallbackEventId({ eventType, source, email, created: payload.created, metadata: meta.metadata as Record<string, unknown> });
 
         const conversionPayload = {

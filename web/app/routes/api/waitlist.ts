@@ -19,7 +19,9 @@ import {
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '../../../convex/_generated/api'
 
-const convexClient = new ConvexHttpClient(process.env.CONVEX_URL || 'https://intent-horse-742.convex.cloud')
+const CONVEX_URL = process.env.CONVEX_URL?.trim();
+const CONVEX_WRITE_TIMEOUT_MS = 1500;
+const convexClient = CONVEX_URL ? new ConvexHttpClient(CONVEX_URL) : null;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
@@ -73,6 +75,18 @@ function jsonResponse(body: Record<string, unknown>, status: number, requestId: 
       ...extraHeaders,
     },
   });
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutLabel: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await new Promise<T>((resolve, reject) => {
+      timer = setTimeout(() => reject(new Error(timeoutLabel)), timeoutMs);
+      promise.then(resolve, reject);
+    });
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function safeTrackConversion(route: string, requestId: string, event: ConversionEvent) {
@@ -372,15 +386,21 @@ export const Route = createFileRoute('/api/waitlist')({
           // Redis is the primary storage on Vercel — durable across Lambda invocations
           await redisInsertWaitlistLead(payload);
 
-          // Convex is best-effort secondary — durable, queryable
-          try {
-            await convexClient.mutation(api.waitlist.addToWaitlist, {
-              email: normalizedEmail,
-              source: eventSource,
-            });
-          } catch (convexError) {
-            appendOpsLog({ route, level: 'warn', event: 'waitlist_convex_write_failed', requestId, error: convexError instanceof Error ? convexError.message : 'unknown' });
-            // Never throw — Redis already succeeded
+          // Convex is optional best-effort secondary — do not block signup success on missing/slow env.
+          if (convexClient) {
+            try {
+              await withTimeout(
+                convexClient.mutation(api.waitlist.addToWaitlist, {
+                  email: normalizedEmail,
+                  source: eventSource,
+                }),
+                CONVEX_WRITE_TIMEOUT_MS,
+                'convex_waitlist_timeout'
+              );
+            } catch (convexError) {
+              appendOpsLog({ route, level: 'warn', event: 'waitlist_convex_write_failed', requestId, error: convexError instanceof Error ? convexError.message : 'unknown' });
+              // Never throw — Redis already succeeded
+            }
           }
 
           // SQLite is best-effort tertiary — useful locally, ephemeral on Vercel

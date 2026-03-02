@@ -178,7 +178,8 @@ function moveByDirection(from: Position, dir: MoveDirection): Position {
 
 function canPayAction(actor: BotState, action: Action) {
   if (action === 'MOVE') {
-    return actor.ap >= ACTION_AP_COST.MOVE && actor.mp >= MOVE_MP_COST
+    // Stunned actors cannot move; keep MOVE from burning AP/MP on invalid turns.
+    return !actor.stunned && actor.ap >= ACTION_AP_COST.MOVE && actor.mp >= MOVE_MP_COST
   }
   return actor.ap >= ACTION_AP_COST[action]
 }
