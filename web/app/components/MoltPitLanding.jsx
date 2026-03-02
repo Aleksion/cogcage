@@ -333,6 +333,9 @@ export const globalStyles = `
   .waitlist-message {
     margin-top: 0.75rem;
     font-weight: 800;
+    min-height: 1.4rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
   }
 
   .waitlist-honeypot {
@@ -1185,6 +1188,21 @@ const NavBar = ({ onNavClick }) => {
       </div>
       <div className="nav-controls">
         <a
+          href="/demo"
+          style={{
+            display: 'inline-block',
+            padding: '0.4rem 1rem',
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            color: 'rgba(255,255,255,0.75)',
+            textDecoration: 'none',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Demo
+        </a>
+        <a
           href="/sign-in"
           style={{
             display: 'inline-block',
@@ -1308,9 +1326,7 @@ const HeroSection = ({ sectionRef }) => {
       });
       setLastSubmittedEmail(trimmed.toLowerCase());
       setStatus('success');
-      setMessage(payload.queued === true
-        ? `You are on the list (queued). Ref ${payload.requestId}.`
-        : `You are on the list. Ref ${payload.requestId}.`);
+      setMessage('✓ You\'re on the list. Check your inbox for early access.');
       setEmail('');
     } catch (err) {
       if (shouldQueueForReplay(err)) {
@@ -1403,7 +1419,7 @@ const HeroSection = ({ sectionRef }) => {
       meta: { variant, founderCtaVariant },
     });
     setStatus('success');
-    setMessage("You're on the list! We'll email you when the Founder Pack opens.");
+    setMessage("✓ We'll send you checkout access when it opens.");
   };
 
   const heroCopy = HERO_COPY[variant] || HERO_COPY.value;
@@ -1468,6 +1484,21 @@ const HeroSection = ({ sectionRef }) => {
             href="/demo"
           >
             WATCH A BATTLE LIVE
+          </a>
+        </div>
+        <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
+          <a
+            href="/demo"
+            style={{
+              color: 'var(--c-dark)',
+              opacity: 0.6,
+              fontSize: '0.9rem',
+              textDecoration: 'underline',
+              textUnderlineOffset: '3px',
+              fontFamily: 'var(--f-body)',
+            }}
+          >
+            → Watch a live battle
           </a>
         </div>
         {status === 'success' && lastSubmittedEmail && (

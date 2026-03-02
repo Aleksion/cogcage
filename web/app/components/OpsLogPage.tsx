@@ -1,30 +1,65 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 export function OpsLogPage() {
   const [data, setData] = useState<any>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [lastRefreshed, setLastRefreshed] = useState<number>(Date.now())
+  const [secondsAgo, setSecondsAgo] = useState<number>(0)
+  const keyRef = useRef<string>('')
 
-  useEffect(() => {
-    // Read key from ?key= query param, then #key= hash, then fall back to empty
-    const searchParams = new URLSearchParams(window.location.search)
-    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
-    const key = searchParams.get('key') || hashParams.get('key') || ''
-
+  const fetchData = useCallback(async () => {
+    const key = keyRef.current
     const url = new URL('/api/ops', window.location.origin)
     if (key) url.searchParams.set('key', key)
 
-    fetch(url.toString(), {
-      headers: key ? { 'x-ops-key': key } : {},
-    })
-      .then((res) => {
-        if (res.status === 401)
-          throw new Error('Unauthorized — set MOLTPIT_OPS_KEY env var.')
-        if (!res.ok) throw new Error(`API returned ${res.status}`)
-        return res.json()
+    try {
+      const res = await fetch(url.toString(), {
+        headers: key ? { 'x-ops-key': key } : {},
       })
-      .then(setData)
-      .catch((e) => setFetchError(e.message))
+      if (res.status === 401) throw new Error('Unauthorized — set MOLTPIT_OPS_KEY env var.')
+      if (!res.ok) throw new Error(`API returned ${res.status}`)
+      const json = await res.json()
+      setData(json)
+      setFetchError(null)
+      setLastRefreshed(Date.now())
+      setSecondsAgo(0)
+    } catch (e: any) {
+      setFetchError(e.message)
+    }
   }, [])
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    keyRef.current = searchParams.get('key') || hashParams.get('key') || ''
+
+    void fetchData()
+
+    // Auto-refresh every 30 seconds
+    const refreshInterval = setInterval(() => void fetchData(), 30_000)
+
+    // Tick seconds-ago counter every second
+    const tickInterval = setInterval(() => {
+      setSecondsAgo(Math.round((Date.now() - lastRefreshed) / 1000))
+    }, 1000)
+
+    return () => {
+      clearInterval(refreshInterval)
+      clearInterval(tickInterval)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Keep secondsAgo ticking against current lastRefreshed value
+  useEffect(() => {
+    const tickInterval = setInterval(() => {
+      setSecondsAgo(Math.round((Date.now() - lastRefreshed) / 1000))
+    }, 1000)
+    return () => clearInterval(tickInterval)
+  }, [lastRefreshed])
+
+  const redisWaitlistCount =
+    data?.redisCounts?.waitlistLeads ?? data?.redisFunnel?.waitlistLeads ?? null
 
   return (
     <div
@@ -44,16 +79,63 @@ export function OpsLogPage() {
           color: '#ffd600',
           marginBottom: '1.2rem',
           letterSpacing: '0.05em',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
         }}
       >
-        OPS LOG{' '}
-        <span style={{ float: 'right', color: '#888', fontSize: 11 }}>
-          auto-refresh:{' '}
-          <a href="/ops-log" style={{ color: '#27d9e8' }}>
-            refresh
-          </a>
+        <span>OPS LOG</span>
+        <span style={{ color: '#888', fontSize: 11, fontWeight: 400 }}>
+          auto-refresh ·{' '}
+          {secondsAgo < 5
+            ? 'just now'
+            : `${secondsAgo}s ago`}{' '}
+          ·{' '}
+          <button
+            onClick={() => void fetchData()}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#27d9e8',
+              cursor: 'pointer',
+              fontSize: 11,
+              padding: 0,
+              fontFamily: 'inherit',
+            }}
+          >
+            refresh now
+          </button>
         </span>
       </h1>
+
+      {/* ── Signups (Redis) — primary durable count ── */}
+      {redisWaitlistCount !== null && (
+        <div
+          style={{
+            background: '#0a1a0a',
+            border: '1px solid #2ecc71',
+            borderRadius: 6,
+            padding: '1rem 1.5rem',
+            marginBottom: '1.2rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1.5rem',
+          }}
+        >
+          <div>
+            <div style={{ color: '#888', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Signups (Redis) — durable
+            </div>
+            <div style={{ fontSize: '2.5rem', color: '#2ecc71', fontWeight: 900, lineHeight: 1 }}>
+              {redisWaitlistCount}
+            </div>
+          </div>
+          <div style={{ color: '#555', fontSize: 11 }}>
+            Source: Upstash Redis waitlist_leads key<br />
+            Persists across Lambda invocations
+          </div>
+        </div>
+      )}
 
       {fetchError ? (
         <div
@@ -71,6 +153,46 @@ export function OpsLogPage() {
         <div style={{ color: '#888' }}>Loading...</div>
       ) : (
         <>
+          {/* ── Shipped Artifacts ── */}
+          {data.recentCommits && data.recentCommits.length > 0 && (
+            <>
+              <h2
+                style={{
+                  fontSize: '0.85rem',
+                  color: '#ffd600',
+                  margin: '1.5rem 0 0.5rem',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Shipped Artifacts (last {data.recentCommits.length})
+              </h2>
+              <div
+                style={{
+                  background: '#1a1a0a',
+                  border: '1px solid #2a2a10',
+                  borderRadius: 4,
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                {(data.recentCommits as { sha: string; msg: string }[]).map((c) => (
+                  <div
+                    key={c.sha}
+                    style={{
+                      padding: '3px 0',
+                      borderBottom: '1px solid #1e1e10',
+                    }}
+                  >
+                    <span style={{ color: '#27d9e8' }}>{c.sha}</span>{' '}
+                    <span style={{ color: '#e0e0e0' }}>{c.msg}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* ── Funnel ── */}
           <h2
             style={{
               fontSize: '0.85rem',
@@ -142,6 +264,7 @@ export function OpsLogPage() {
             ))}
           </div>
 
+          {/* ── Redis Ops Log ── */}
           {data.redisOpsLog && data.redisOpsLog.length > 0 && (
             <>
               <h2

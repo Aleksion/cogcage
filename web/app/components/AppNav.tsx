@@ -153,6 +153,7 @@ const NAV_ITEMS = [
   { to: '/forge', label: 'Forge' },
   { to: '/shell', label: 'Molds' },
   { to: '/play', label: 'The Pit' },
+  { to: '/demo', label: 'Demo' },
   { to: '/ops-log', label: 'Ladder' },
   { to: '/', label: 'Guide', exact: true },
 ] as const

@@ -115,6 +115,15 @@ export const Route = createFileRoute('/api/ops')({
           eventsFallbackLines: files.find((file) => file.file === 'events-fallback.ndjson')?.lines ?? 0,
         };
 
+        // Recent commits — build-time manifest (hardcoded for reliability on serverless)
+        const recentCommits = [
+          { sha: '5fb078b', msg: 'fix: demo link visibility (dark text on light hero) + DEMO nav link for visitors' },
+          { sha: '2625b59', msg: 'feat(p3): founder checkout fallback + postback hardening + env docs' },
+          { sha: '11df489', msg: 'feat(p2): public /demo route + landing demo link + QuickDemo scripted fallback' },
+          { sha: '70e3932', msg: 'fix(p1): signup form reliability + ops log auto-refresh + recent commits' },
+          { sha: 'e286c12', msg: 'feat: guest/anonymous auth for frictionless onboarding (#35)' },
+        ];
+
         return new Response(JSON.stringify({
           ok: true,
           ts: new Date().toISOString(),
@@ -126,6 +135,7 @@ export const Route = createFileRoute('/api/ops')({
           runtimeDir: LOG_DIR,
           queueBacklog,
           files,
+          recentCommits,
         }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
