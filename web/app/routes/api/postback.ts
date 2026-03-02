@@ -369,10 +369,14 @@ export const Route = createFileRoute('/api/postback')({
           objectMetadata,
           payloadMetadata,
         } = resolveIdentityFromPayload(payload);
+        const mergedMetadata = {
+          ...objectMetadata,
+          ...payloadMetadata,
+        };
         const meta = {
           eventType,
           created: payload.created,
-          metadata: payload.metadata ?? objectMetadata ?? payloadMetadata,
+          metadata: mergedMetadata,
         };
 
         const eventId =
