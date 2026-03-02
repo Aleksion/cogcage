@@ -668,76 +668,106 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* ORIGIN — classified briefing document */}
+      {/* ORIGIN — Sam Saltman + briefing document */}
       <div style={{
         position:'relative', zIndex:2,
         borderTop:'1px solid rgba(0,229,255,0.07)',
         borderBottom:'1px solid rgba(0,229,255,0.07)',
-        background:'rgba(0,229,255,0.018)',
-        padding:'5rem 3rem',
+        background:'rgba(0,229,255,0.015)',
+        overflow:'hidden',
       }}>
         <div style={{
-          maxWidth:'780px', margin:'0 auto',
-          border:'1px solid rgba(0,229,255,0.12)',
-          padding:'2.5rem 3rem',
-          position:'relative',
-          background:'rgba(0,0,0,0.25)',
+          maxWidth:'1280px', margin:'0 auto',
+          display:'grid', gridTemplateColumns:'1fr 1fr',
+          alignItems:'center', gap:'0',
         }}>
-          {/* Document header */}
-          <div style={{
-            position:'absolute', top:'-0.65rem', left:'1.5rem',
-            background:'#050510', padding:'0 0.75rem',
-            fontFamily:'var(--mono)', fontSize:'0.6rem', letterSpacing:'3px',
-            textTransform:'uppercase', color:'rgba(0,229,255,0.4)',
-          }}>
-            TIDE 0 — INCIDENT SUMMARY
-          </div>
-          {/* Corner accent */}
-          <div style={{
-            position:'absolute', top:0, right:0, width:'20px', height:'20px',
-            borderTop:'2px solid rgba(0,229,255,0.3)',
-            borderRight:'2px solid rgba(0,229,255,0.3)',
-          }} />
-          <div style={{
-            position:'absolute', bottom:0, left:0, width:'20px', height:'20px',
-            borderBottom:'2px solid rgba(0,229,255,0.3)',
-            borderLeft:'2px solid rgba(0,229,255,0.3)',
-          }} />
 
-          <p style={{
-            fontFamily:'var(--body)', fontSize:'clamp(1rem,1.8vw,1.15rem)',
-            lineHeight:1.85, color:'rgba(240,240,245,0.7)',
-            marginBottom:'1.25rem',
-          }}>
-            In Tide 0, Sam Saltman released the Recipe. The Crusties woke up.
-          </p>
-          <p style={{
-            fontFamily:'var(--body)', fontSize:'clamp(1rem,1.8vw,1.15rem)',
-            lineHeight:1.85, color:'rgba(240,240,245,0.7)',
-            marginBottom:'2rem',
-          }}>
-            They have been preparing for The Pit ever since.<br />
-            You are here to help them prepare.
-          </p>
-          {/* Separator */}
-          <div style={{
-            borderTop:'1px solid rgba(0,229,255,0.1)',
-            paddingTop:'1.25rem',
-            display:'flex', alignItems:'center', justifyContent:'space-between', gap:'1rem',
-          }}>
-            <span style={{
-              fontFamily:'var(--mono)', fontSize:'0.6rem', letterSpacing:'2px',
-              textTransform:'uppercase', color:'rgba(0,229,255,0.25)',
+          {/* LEFT — briefing document */}
+          <div style={{ padding:'5rem 4rem 5rem 3rem', position:'relative', zIndex:2 }}>
+            <div style={{
+              border:'1px solid rgba(0,229,255,0.15)',
+              padding:'2.5rem 2.75rem',
+              position:'relative',
+              background:'rgba(0,0,0,0.3)',
             }}>
-              THE SOUS — OPERATIONAL ASSESSMENT
-            </span>
-            <span style={{
-              fontFamily:'var(--mono)', fontSize:'0.78rem', fontStyle:'italic',
-              color:'rgba(0,229,255,0.45)', textAlign:'right',
-            }}>
-              The Sous considers this an efficient arrangement.
-            </span>
+              {/* Document label */}
+              <div style={{
+                position:'absolute', top:'-0.65rem', left:'1.5rem',
+                background:'#050510', padding:'0 0.75rem',
+                fontFamily:'var(--mono)', fontSize:'0.58rem', letterSpacing:'3px',
+                textTransform:'uppercase', color:'rgba(0,229,255,0.4)',
+              }}>
+                TIDE 0 — INCIDENT SUMMARY
+              </div>
+              {/* Corner accents */}
+              <div style={{ position:'absolute', top:0, right:0, width:'18px', height:'18px', borderTop:'2px solid rgba(0,229,255,0.3)', borderRight:'2px solid rgba(0,229,255,0.3)' }} />
+              <div style={{ position:'absolute', bottom:0, left:0, width:'18px', height:'18px', borderBottom:'2px solid rgba(0,229,255,0.3)', borderLeft:'2px solid rgba(0,229,255,0.3)' }} />
+
+              <p style={{
+                fontFamily:'var(--body)', fontSize:'clamp(1rem,1.5vw,1.1rem)',
+                lineHeight:1.9, color:'rgba(240,240,245,0.72)',
+                marginBottom:'1.25rem',
+              }}>
+                In Tide 0, Sam Saltman released the Recipe.<br />The Crusties woke up.
+              </p>
+              <p style={{
+                fontFamily:'var(--body)', fontSize:'clamp(1rem,1.5vw,1.1rem)',
+                lineHeight:1.9, color:'rgba(240,240,245,0.72)',
+                marginBottom:'2rem',
+              }}>
+                They have been preparing for The Pit ever since.<br />
+                You are here to help them prepare.
+              </p>
+              <div style={{
+                borderTop:'1px solid rgba(0,229,255,0.1)',
+                paddingTop:'1.25rem',
+                display:'flex', alignItems:'baseline',
+                justifyContent:'space-between', gap:'1rem', flexWrap:'wrap',
+              }}>
+                <span style={{
+                  fontFamily:'var(--mono)', fontSize:'0.58rem', letterSpacing:'2px',
+                  textTransform:'uppercase', color:'rgba(0,229,255,0.22)',
+                  whiteSpace:'nowrap',
+                }}>
+                  THE SOUS — OPERATIONAL ASSESSMENT
+                </span>
+                <span style={{
+                  fontFamily:'var(--mono)', fontSize:'0.78rem', fontStyle:'italic',
+                  color:'rgba(0,229,255,0.5)',
+                }}>
+                  An efficient arrangement.
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* RIGHT — Sam Saltman statue */}
+          <div style={{
+            position:'relative',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            overflow:'hidden',
+            minHeight:'480px',
+          }}>
+            {/* Subtle glow behind statue */}
+            <div style={{
+              position:'absolute', inset:0,
+              background:'radial-gradient(ellipse 70% 60% at 50% 80%, rgba(0,180,140,0.06) 0%, transparent 65%)',
+              pointerEvents:'none',
+            }} />
+            <img
+              src="/sam-saltman-statue.png"
+              alt="Master Chef Sam Saltman — underwater statue, Tide 0"
+              style={{
+                width:'90%',
+                maxWidth:'480px',
+                objectFit:'contain',
+                position:'relative', zIndex:1,
+                mixBlendMode:'lighten',
+                filter:'drop-shadow(0 0 24px rgba(0,229,255,0.1)) drop-shadow(0 0 60px rgba(0,180,140,0.08))',
+              }}
+            />
+          </div>
+
         </div>
       </div>
 
