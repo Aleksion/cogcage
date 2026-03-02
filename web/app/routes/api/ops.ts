@@ -117,14 +117,14 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
-          { sha: '290542f', msg: 'feat(p3): monetization fallback hardening + env docs' },
-          { sha: 'fbeec01', msg: 'feat(p2): action economy — speed-based AP system in DemoLoop' },
-          { sha: '14863d4', msg: 'fix(p1): signup error states verified + Redis drain confirmed + ops log real commits' },
-          { sha: '5f4ea05', msg: 'chore(ops): autopilot checkpoint 05:03 ET Mar 2 — P1-P3 stable, blocked on env vars' },
-          { sha: 'ad41553', msg: 'chore(ops): autopilot checkpoint 04:58 ET Mar 2 — P1-P3 stable, blocked on env vars' },
-          { sha: '7a2fd58', msg: 'chore(ops): autopilot checkpoint 04:53 ET Mar 2 — P1-P3 stable, blocked on env vars' },
-          { sha: '72d3f8a', msg: 'chore(ops): autopilot checkpoint 04:48 ET Mar 2 — P1-P3 stable, blocked on env vars' },
-          { sha: '1c46cbd', msg: 'chore(ops): autopilot checkpoint 04:28 ET Mar 2 — P1-P3 stable, blocked on env vars' },
+          { sha: '406e471', msg: 'chore(ops): autopilot checkpoint 05:38 ET Mar 2 — build fix (three dep), 4/4 tests pass' },
+          { sha: 'efc7e00', msg: 'chore: merge main — resolve conflicts taking origin' },
+          { sha: '6986041', msg: 'chore(ops): autopilot cron 23:28 ET — all agents idle, P1-P3 confirmed complete on main' },
+          { sha: '5fb078b', msg: 'fix: demo link visibility (dark text on light hero) + DEMO nav link for visitors' },
+          { sha: 'e9c7541', msg: 'fix: resolve demo.tsx conflict — use CinematicBattle/MoldBuilder from main' },
+          { sha: '2625b59', msg: 'feat(p3): founder checkout fallback + postback hardening + env docs' },
+          { sha: '11df489', msg: 'feat(p2): public /demo route + landing demo link + QuickDemo scripted fallback' },
+          { sha: '70e3932', msg: 'fix(p1): signup form reliability + ops log auto-refresh + recent commits' },
         ];
 
         return new Response(JSON.stringify({
