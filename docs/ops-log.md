@@ -441,3 +441,29 @@ bun run build (web/)
 1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates checkout CTA
 2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret
 3. Merge PR #46 when ready
+
+
+---
+
+### Autopilot Checkpoint — 21:53 ET, Mar 1 2026
+
+**Directive**: STOP copy iterations. P1-P3 priorities.
+
+**Status:**
+
+- **P1 ✅ LIVE** — Signup reliability + Redis storage + observable logs (main `e6fc977`)
+- **P2 ✅ LIVE** — `/demo` live with map movement: PR #46 merged → main `dbf4d6b`. stepToward auto-direction, MELEE range ≤3 tiles, lerp animation (0.15), HUD action legend (MELEE ≤3 | RANGED ≤10 | GUARD blocks 40% | DASH move×2). MOVE events visible in feed with position + distance.
+- **P3 ✅ code live ⚠️ env vars blocked** — Founder checkout code live; `PUBLIC_STRIPE_FOUNDER_URL` not yet set by Aleks.
+- **P4 ✅** — Ops log updated.
+
+**Current main HEAD:** `dbf4d6b`
+
+**Agents running:**
+- `cc-ws19-visual-sound` — style ref docs + SFX plan being written (skipped icon gen, unblocked)
+- `cc-ws17-lore-bible`, `cc-ws17-sprint` — lore bible + narrative sprint (background)
+- `cc-ws18-game-design` — full game design docs (background)
+
+**Aleks action required (blocking monetization):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → create Stripe product → get payment link URL → set in Vercel env
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook → secures postback receiver
+3. `COGCAGE_OPS_KEY` → Vercel env → secures /api/ops endpoint
