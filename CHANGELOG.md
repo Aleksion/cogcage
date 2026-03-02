@@ -8,6 +8,31 @@
 
 ---
 
+## [2026-03-02] - chore(p4): 16:21 ET product-mode cron checkpoint (scope lock preserved)
+
+**Type:** ops/logging | **Budget impact:** n/a
+
+### What
+- `docs/ops-log.md`
+  - Added 16:21 ET checkpoint with explicit P1–P3 re-verification and blocker status.
+- `ops/logs/2026-03-02.md`
+  - Added matching 16:21 ET timeline entry + verification artifacts.
+
+### Why
+- Preserve auditable execution of the cron directive while avoiding non-critical churn.
+- Confirm P1 signup reliability, P2 playable demo loop, and P3 monetization flow remain shipped and stable.
+
+### Design Decisions
+- Keep strict scope lock: no landing-page copy work, no speculative code edits.
+- Ship ops-artifact updates when product-critical implementation is already stable.
+
+### Breaking Changes
+- None.
+
+### Next Steps
+- Set `PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, and `MOLTPIT_OPS_KEY` in Vercel.
+- Re-enter code-change mode only on regression or new product-critical requirement.
+
 ## [2026-03-02] - chore(p4): 16:12 ET product-mode cron checkpoint (no code delta)
 
 **Type:** ops/logging | **Budget impact:** n/a

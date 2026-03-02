@@ -4,6 +4,29 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Cron — 16:21 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Prioritize: (1) signup reliability + storage + observable logs, (2) playable demo loop with map movement + AP economy, (3) founder checkout + postback, (4) ops log artifacts.
+
+**Status:**
+- P1 — Signup reliability/storage/logging: ✅ COMPLETE (re-verified)
+- P2 — Playable demo loop (public `/demo` + movement + AP economy): ✅ COMPLETE (re-verified)
+- P3 — Founder checkout + postback lifecycle: ✅ CODE COMPLETE (re-verified; still env-gated for live payments)
+- P4 — Ops logs: ✅ UPDATED (this entry + daily log)
+
+**Verification:**
+- `cd web && npm run test:product` ✅ (10 pass / 0 fail)
+- `cd web && npm run build` ✅
+
+**Blockers (Aleks env vars still required):**
+1. `PUBLIC_STRIPE_FOUNDER_URL`
+2. `COGCAGE_POSTBACK_KEY`
+3. `MOLTPIT_OPS_KEY`
+
+**Cron status**: No additional product-critical code delta required this pass. Scope lock preserved.
+
+---
+
 ### Autopilot Cron — 14:02 ET, Mar 2 2026
 
 **Directive**: STOP copy iterations. Priorities: P1 signup, P2 demo, P3 monetization, P4 ops log.
