@@ -1,11 +1,14 @@
 export const RULESET_VERSION = 'ws2-core-v1';
 
-export const TICK_RATE = 10;
-export const TICK_MS = 100;
+// Tick rate: 250ms per tick (4 ticks/second)
+// Decision: 2026-03-02 — action-per-tick model, 250ms chosen for animation budget + LLM latency fit
+export const TICK_RATE = 4;           // ticks per second
+export const TICK_MS = 250;           // ms per tick
 export const MATCH_DURATION_SEC = 90;
 export const MAX_TICKS = MATCH_DURATION_SEC * TICK_RATE;
-export const DECISION_WINDOW_TICKS = 3;
+export const DECISION_WINDOW_TICKS = 3;   // 3 ticks = 750ms decision window
 export const DECISION_WINDOW_SEC = DECISION_WINDOW_TICKS / TICK_RATE;
+export const QUEUE_CAP = 5;           // max actions pre-buffered per agent
 
 export const UNIT_SCALE = 10; // 0.1 units per integer step
 export const ARENA_SIZE_UNITS = 20;
