@@ -117,14 +117,11 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
+          { sha: 'PENDING', msg: 'feat(p2): interactive play mode in DemoLoop — player-controlled BERSERKER vs AI TACTICIAN' },
           { sha: '290542f', msg: 'feat(p3): monetization fallback hardening + env docs' },
           { sha: 'fbeec01', msg: 'feat(p2): action economy — speed-based AP system in DemoLoop' },
           { sha: '14863d4', msg: 'fix(p1): signup error states verified + Redis drain confirmed + ops log real commits' },
-          { sha: '5f4ea05', msg: 'chore(ops): autopilot checkpoint 05:03 ET Mar 2 — P1-P3 stable, blocked on env vars' },
-          { sha: 'ad41553', msg: 'chore(ops): autopilot checkpoint 04:58 ET Mar 2 — P1-P3 stable, blocked on env vars' },
-          { sha: '7a2fd58', msg: 'chore(ops): autopilot checkpoint 04:53 ET Mar 2 — P1-P3 stable, blocked on env vars' },
-          { sha: '72d3f8a', msg: 'chore(ops): autopilot checkpoint 04:48 ET Mar 2 — P1-P3 stable, blocked on env vars' },
-          { sha: '1c46cbd', msg: 'chore(ops): autopilot checkpoint 04:28 ET Mar 2 — P1-P3 stable, blocked on env vars' },
+          { sha: 'aef9555', msg: 'NOTE: autopilot checkpoint spam stopped. Product priorities: P1 signup done, P2 interactive done, P3 Stripe wired' },
         ];
 
         return new Response(JSON.stringify({
