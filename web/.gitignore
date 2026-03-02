@@ -32,3 +32,5 @@ data/
 
 # jetbrains setting folder
 .idea/
+.vercel
+.env*.local
