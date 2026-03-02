@@ -117,11 +117,11 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
-          { sha: '516848f', msg: 'feat(autopilot-march1): signup reliability + public demo loop + monetization [MERGED]' },
-          { sha: 'e9c7541', msg: 'fix: resolve demo.tsx conflict — use CinematicBattle/MoldBuilder from main' },
-          { sha: '5fb078b', msg: 'fix: demo link visibility (dark text on light hero) + DEMO nav link for visitors' },
-          { sha: '2625b59', msg: 'feat(p3): founder checkout fallback + postback hardening + env docs' },
-          { sha: '70e3932', msg: 'fix(p1): signup form reliability + ops log auto-refresh + recent commits' },
+          { sha: '860f447', msg: 'feat(ws16): BYO OpenClaw agent — webhook-based decision routing' },
+          { sha: '0af749a', msg: 'chore(ops): update shipped artifacts — autopilot-march1 merged 516848f' },
+          { sha: '516848f', msg: 'feat(autopilot-march1): signup reliability + public demo loop + monetization' },
+          { sha: '81ca9ca', msg: 'fix(test): update ws2-core.test.mjs import paths src→app after TanStack Start migration' },
+          { sha: '16dafb0', msg: 'feat(ws15): composable mold assembly + real LLM battles' },
         ];
 
         return new Response(JSON.stringify({
