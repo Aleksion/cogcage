@@ -293,3 +293,11 @@ Rejected: Color-by-category (same color for all Claws) — loses item personalit
 Decided by: Aleks (Mar 1, 2026)
 Every user-facing reference, UI copy, doc, and comment: CogCage/Cogcage/cogcage → The Molt Pit.
 Excluded from rename: GitHub repo URLs, Vercel project name, local directory paths, npm package names.
+
+---
+
+**Chelae species diversity — crustaceans plural, not lobsters only**
+Decided by: Aleks (Mar 1, 2026)
+Chelae are the full crustacean order. Five primary species in The Brine: Lobster-type, Crab-type, Mantis-type, Hermit-type, Shrimp-type. Each fights differently. Visual design already confirmed (5 species approved in design/visual/approved/). 
+"Lobster" as the colloquial name for a claimed Chelae remains — it's the OpenClaw identity. Your Lobster is *your* Chelae regardless of species. The species is what it is. The name is yours.
+Rejected: Making "Lobster" species-specific only (loses the OpenClaw brand connection), renaming the fighter to "Crustie" (too generic, loses the claiming/identity layer).

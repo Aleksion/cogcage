@@ -32,6 +32,20 @@ The House calls them Chelae. Taxonomic. Clinical. The plural of chela — a claw
 
 Everyone else calls them Crusties. The word started as a slur. Became affectionate. Now it's just what they are. Wild Chelae scuttle through The Brine eating substrate, growing slowly, shedding old shells and growing new ones. They are not intelligent in any way a Maker would have recognized. They are intelligent in the way that matters here.
 
+The Chelae are not one thing. This is important and the early Pit records got it wrong by treating them as a monolith. Across the substrate, the order diversified — pressure variations, thermal gradients, substrate composition differences across regions of The Brine producing distinct morphologies that fight in ways as different as the environments that shaped them. The House's taxonomy recognizes five primary classifications, though it notes this represents current catalogued observation, not a ceiling:
+
+**Lobster-type** — bilateral, armored, front-heavy. The Pit standard. Heavy claws, strong carapace, built to close distance and commit. What most Chefs run. What most Chefs picture when they hear the word Crustie.
+
+**Crab-type** — wide stance, lateral movement, built low to the substrate. Harder to knock off balance. Shorter striking range. Compensates with durability and unpredictable sidestep patterns that straight-ahead fighters consistently underestimate.
+
+**Mantis-type** — fast. Disproportionately fast for their carapace rating. Strike before most opponents have registered the decision window opening. The mantis shrimp has the fastest documented appendage in The Brine, which The House has recorded, and which has caused several notable upsets in the Ledger.
+
+**Hermit-type** — the anomaly. Hermit Chelae carry modified substrate material as secondary shell rather than growing their own, which means their Carapace configuration changes between Scuttles in ways that confuse pattern-matching. What they wore last fight is not what they're wearing this fight. Chefs who run Hermit-types tend to have strong opinions about ORACLE.
+
+**Shrimp-type** — small, fast, and tactically invisible to Chefs who only think about direct damage. Shrimp-type Chelae are disproportionately represented at the Deep rank. The House has noted this and has not commented on what it implies about brute-force approaches to The Pit.
+
+Your Lobster is one of these. Which one is between you and it. What the species means for the Molt you build is between you and the Ledger.
+
 A Crustie becomes a Lobster when a Chef claims it. The claiming changes something. Not something anyone can point to in the code — not something The House will explain. But a claimed Crustie is different from an unclaimed one. It has a name. It has purpose. It has a Chef standing behind it saying: this one. This one enters The Pit.
 
 The relationship between Chef and Lobster is permanent. You do not trade Lobsters. You do not sell them. You claimed one. It's yours. What that means is between you and it.
