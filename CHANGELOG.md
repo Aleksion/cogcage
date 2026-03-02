@@ -8,6 +8,41 @@
 
 ---
 
+## [2026-03-01] - design(ws19): visual baseline + sound design plan
+
+**Type:** design | **Budget impact:** $0.20 (5 × DALL-E 3 1024px icons)
+
+### Visual Director
+- `design/visual/STYLE-REFERENCE.md` — complete visual spec locked
+  - Full color palette with exact hex values for all screens, rarities, action states
+  - All 40 item dominant colors defined
+  - Typography hierarchy (sans + mono, 6 size levels)
+  - Cel-shading rules (6px outline at 512px, black always, top-left single light source)
+  - Rarity system (border, glow, animation specs)
+  - Image generation prompt template + 2 worked examples
+  - "Consistent" quality checklist (silhouette, 32px, family, color, background tests)
+- 5 baseline icons generated via DALL-E 3, saved to `web/public/icons/test/`
+  - `maxine.png` — industrial hydraulic piston claws (orange-red #F4511E)
+  - `block-7.png` — military segmented carapace with "7" stencil (green #4CAF50)
+  - `the-red-gene.png` — red pulsing DNA double helix (red #FF1744)
+  - `action-scuttle.png` — crustacean legs in sideways motion (cyan #00E5FF)
+  - `slot-carapace.png` — armor slot UI icon (blue-grey #78909C)
+
+### Sound Director
+- `design/audio/SFX-PLAN.md` — complete production plan with all ~82 ElevenLabs prompts
+  - ElevenLabs API endpoint documented + payload spec
+  - Full file structure for `web/public/sfx/` (global, actions, items)
+  - ElevenLabs text prompt written for every individual sound file
+  - Duration guidance per sound type
+  - Generation checklist
+  - **Audio generation BLOCKED pending ELEVENLABS_API_KEY from Aleks**
+
+### Design log
+- `design/DECISIONS.md` updated with 3 new decisions (visual baseline, ElevenLabs selection, color key rule)
+- `design/BUDGET.md` updated ($0.20 DALL-E spend logged)
+
+---
+
 ## [2026-03-01] - feat(ws19): map movement + action economy legibility
 
 **Type:** feat | **Budget impact:** ~$0 (no AI generation)

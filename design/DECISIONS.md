@@ -147,6 +147,27 @@ Fixed bar at bottom of arena: MELEE ≤3, RANGED ≤10, GUARD blocks 40%, DASH m
 
 ---
 
+**WS19 Visual baseline: High on Life / Borderlands cel-shading locked**
+Decided by: Visual Director (WS19, 2026-03-01)
+Thick black outlines (6px at 512px), single dominant color per item, flat cel-shaded shadow, single top-left light source. No gradients, no ambient occlusion. Style confirmed via 5 baseline icon generation pass (DALL-E 3). Icons generated: maxine, block-7, the-red-gene, action-scuttle, slot-carapace.
+See `design/visual/STYLE-REFERENCE.md` for full spec.
+
+---
+
+**WS19 SFX: ElevenLabs Sound Effects API selected**
+Decided by: Sound Director (WS19, 2026-03-01)
+ElevenLabs `/v1/sound-generation` endpoint with `prompt_influence: 0.3` for maximum naturalness. 82 sounds planned across global, action, carapace, claws, and tomalley categories. Generation pending ELEVENLABS_API_KEY from Aleks.
+See `design/audio/SFX-PLAN.md` for all prompts.
+
+---
+
+**WS19 Icon color rule: one dominant color per item, from STYLE-REFERENCE color keys**
+Decided by: Visual Director (WS19, 2026-03-01)
+Each item has exactly one dominant hex color defined in STYLE-REFERENCE.md. This single color is used for icon fill, rarity border tint, and any glow effects. No item gets two colors.
+Rejected: Color-by-category (same color for all Claws) — loses item personality.
+
+---
+
 **All "CogCage" references renamed to "The Molt Pit"**
 Decided by: Aleks (Mar 1, 2026)
 Every user-facing reference, UI copy, doc, and comment: CogCage/Cogcage/cogcage → The Molt Pit.
