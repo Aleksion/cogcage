@@ -764,15 +764,21 @@ function OriginSection() {
               objectFit: 'contain',
               position: 'relative', zIndex: 1,
               display: 'block',
-              // Blend the image into the substrate — fade all edges, hardest on left
+              // screen mode: near-black bg pixels (0,4,13) become invisible against #050510
+              // Layered masks: tight radial hold on statue body, hard fade on all edges
               WebkitMaskImage: `
-                radial-gradient(ellipse 90% 85% at 55% 50%, black 30%, transparent 78%)
+                linear-gradient(to right,  transparent 0%, black 18%),
+                linear-gradient(to left,   transparent 0%, black 10%),
+                linear-gradient(to bottom, transparent 0%, black 12%),
+                linear-gradient(to top,    transparent 0%, black 8%),
+                radial-gradient(ellipse 75% 80% at 52% 48%, black 25%, transparent 72%)
               `,
+              WebkitMaskComposite: 'source-in, source-in, source-in, source-in',
               maskImage: `
-                radial-gradient(ellipse 90% 85% at 55% 50%, black 30%, transparent 78%)
+                radial-gradient(ellipse 75% 80% at 52% 48%, black 25%, transparent 72%)
               `,
-              mixBlendMode: 'lighten',
-              filter: 'drop-shadow(0 0 30px rgba(0,200,160,0.12)) saturate(0.9) brightness(1.05)',
+              mixBlendMode: 'screen',
+              filter: 'brightness(1.1) contrast(1.05) saturate(0.95)',
             }}
           />
           {/* Left-edge fade so statue melts into the text column */}
