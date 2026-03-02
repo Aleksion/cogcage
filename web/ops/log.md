@@ -2,6 +2,25 @@
 
 ---
 
+## Product-Mode Ship — 18:12 ET Mar 2
+
+Directive executed in strict order: (1) signup reliability + durable storage + observable logs, (2) playable demo loop movement + action economy, (3) founder checkout + postback path, (4) ops artifact update.
+
+### Shipped artifacts
+- `app/routes/index.tsx`
+  - Added production signup/founder conversion panel to the active landing route (`/`) without changing narrative copy structure.
+  - Signup submit now uses idempotent POSTs to `/api/waitlist` with bounded timeout + response parsing.
+  - Added browser-side durable replay queues (`localStorage`) for waitlist and founder-intent requests, with automatic drain on page load and `online` events.
+  - Added conversion observability calls to `/api/events` for validation failure, joined, buffered, failed, checkout clicked, founder redirect.
+  - Founder checkout now captures `/api/founder-intent` before redirect and persists checkout source keys consumed by success/postback analytics.
+- `app/components/DemoLoop.tsx`
+  - Added explicit directional map movement controls (UP/LEFT/RIGHT/DOWN) for play mode, in addition to WASD/arrow hotkeys.
+  - Kept AP action economy constraints intact; movement controls are AP-gated and disabled while AI is resolving turns.
+
+### Verification
+- `npm run test:product` ✅ (10/10 pass)
+- `npm run build` ✅
+
 ## Product-Mode Audit — 15:31 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.

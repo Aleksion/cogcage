@@ -8,6 +8,42 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): hero conversion reliability lane + directional demo controls
+
+**Type:** fix/feature | **Budget impact:** n/a (product-critical execution)
+
+### What
+- `web/app/routes/index.tsx`
+  - Added a production conversion panel to the active hero with:
+    - waitlist submission to `/api/waitlist` using idempotency keys and bounded timeout handling,
+    - founder intent capture via `/api/founder-intent` before checkout redirect,
+    - durable browser replay queues for waitlist + founder-intent requests (auto-flush on load and when the browser comes back online),
+    - lightweight conversion telemetry to `/api/events` for success/failure/buffered/redirect outcomes.
+  - Persists email and checkout intent source locally to keep the path resilient through navigation and transient network failure.
+- `web/app/components/DemoLoop.tsx`
+  - Added explicit directional move controls (UP/LEFT/RIGHT/DOWN buttons) in PLAY mode, while preserving WASD/arrow-key support.
+  - Movement controls remain AP-gated and disabled during AI resolution to preserve action-economy correctness.
+- `web/ops/log.md`
+  - Added 18:12 ET product-mode shipment entry documenting this pass and verification artifacts.
+
+### Why
+- Directive required halting copy iteration and prioritizing hard product outcomes:
+  1) reliable signup capture + storage durability,
+  2) playable demo loop with visible movement/action economy,
+  3) founder monetization path that records intent before redirect,
+  4) ops artifact trail.
+
+### Design
+- Kept server durability model unchanged (Redis → SQLite → fallback queue) and made hero-level client behavior match that contract through local replay buffering.
+- Avoided broad UI redesign; limited to conversion-critical controls and status messaging only.
+
+### Breaking Changes
+- None.
+
+### Next Steps
+- Add route-level integration tests for hero replay queue drain behavior (offline→online).
+- Validate founder checkout `prefilled_email` propagation against production Stripe link format.
+
 ## [2026-03-02] - fix(product-critical): event durability fallback, postback fail-closed auth, and AP-cost demo economy
 
 **Type:** fix/security/feature | **Budget impact:** n/a (product-critical hardening)

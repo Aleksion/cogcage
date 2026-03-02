@@ -159,6 +159,90 @@ const STYLES = `
 
   .cta-row { display: flex; align-items: center; gap: 1.75rem; flex-wrap: wrap; }
 
+  .hero-convert-panel {
+    margin-top: 1.4rem;
+    border: 1px solid rgba(0,229,255,0.18);
+    background: rgba(0,0,0,0.38);
+    padding: 0.9rem;
+    border-radius: 12px;
+    max-width: 580px;
+  }
+  .hero-convert-label {
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(0,229,255,0.65);
+    margin-bottom: 0.55rem;
+  }
+  .hero-convert-row {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .hero-email-input {
+    flex: 1 1 210px;
+    min-width: 0;
+    font-family: var(--body);
+    font-size: 0.9rem;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.16);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+  }
+  .hero-email-input:focus {
+    outline: none;
+    border-color: rgba(0,229,255,0.85);
+    box-shadow: 0 0 0 2px rgba(0,229,255,0.2);
+  }
+  .hero-submit-btn {
+    padding: 0.68rem 1.1rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.24);
+    background: rgba(0,229,255,0.92);
+    color: #050510;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .hero-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .hero-founder-btn {
+    padding: 0.68rem 1.1rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,214,0,0.95);
+    color: #111;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .hero-founder-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .hero-convert-note {
+    margin-top: 0.55rem;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: rgba(240,240,245,0.78);
+  }
+  .hero-convert-note.error {
+    color: #FF6B6B;
+  }
+  .hero-convert-note.success {
+    color: #4CAF50;
+  }
+
   .hero-r {
     position: relative; display: flex; align-items: center; justify-content: center;
     height: 100%; min-height: 500px;
@@ -500,6 +584,7 @@ const STYLES = `
     .hero { grid-template-columns:1fr; text-align:center; padding:2rem 1.5rem; }
     .hero-l { padding:2rem 0; }
     .eyebrow,.cta-row { justify-content:center; }
+    .hero-convert-panel { margin-left: auto; margin-right: auto; text-align: left; }
     .house-line { text-align:left; }
     .hero-r { min-height:280px; }
     .items-grid { grid-template-columns:1fr; }
@@ -523,6 +608,8 @@ const STYLES = `
     .hero-r { min-height:220px; }
     .crustie-frame { width:clamp(220px,70vw,320px); }
     .headline { font-size:clamp(3rem,12vw,5rem); }
+    .hero-convert-row { flex-direction: column; }
+    .hero-submit-btn, .hero-founder-btn { width: 100%; }
   }
 `
 
@@ -647,6 +734,168 @@ const LORE_LINES = [
   '"The Pit is a machine that makes things better than they were designed to be. Somebody should turn it off. Nobody is going to."',
   '"Two Crusties entered the Pit. The Pit will return one."',
 ]
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const FOUNDER_CHECKOUT_URL = ((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? '').trim()
+const LANDING_EMAIL_KEY = 'moltpit_email'
+const WAITLIST_QUEUE_KEY = 'moltpit_waitlist_replay_queue'
+const FOUNDER_QUEUE_KEY = 'moltpit_founder_replay_queue'
+
+type ApiResponsePayload = Record<string, unknown>
+type ApiResult = {
+  ok: boolean
+  status: number
+  body: ApiResponsePayload
+  retryAfter?: string
+}
+
+type WaitlistReplayItem = {
+  email: string
+  source: string
+  game: string
+}
+
+type FounderReplayItem = {
+  email: string
+  source: string
+  intentId: string
+}
+
+function readStored(key: string): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writeStored(key: string, value: string) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(key, value)
+  } catch {
+    // best-effort local durability only
+  }
+}
+
+function createIdempotencyKey() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+async function postJson(
+  url: string,
+  payload: Record<string, unknown>,
+  { timeoutMs = 7000, idempotencyKey }: { timeoutMs?: number; idempotencyKey?: string } = {},
+): Promise<ApiResult> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const headers: Record<string, string> = { 'content-type': 'application/json' }
+    if (idempotencyKey) headers['x-idempotency-key'] = idempotencyKey
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    })
+    const raw = await response.text()
+    let body: ApiResponsePayload = {}
+    if (raw) {
+      try {
+        body = JSON.parse(raw) as ApiResponsePayload
+      } catch {
+        body = { raw: raw.slice(0, 400) }
+      }
+    }
+    return {
+      ok: response.ok,
+      status: response.status,
+      body,
+      retryAfter: response.headers.get('retry-after') ?? undefined,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      body: { error: error instanceof Error ? error.message : 'network_error' },
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function shouldQueue(status: number) {
+  return status === 0 || status >= 500
+}
+
+function readQueue<T>(key: string): T[] {
+  const raw = readStored(key)
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed as T[] : []
+  } catch {
+    return []
+  }
+}
+
+function writeQueue<T>(key: string, queue: T[], maxItems: number) {
+  if (typeof window === 'undefined') return
+  try {
+    if (queue.length === 0) {
+      window.localStorage.removeItem(key)
+      return
+    }
+    window.localStorage.setItem(key, JSON.stringify(queue.slice(-maxItems)))
+  } catch {
+    // best-effort
+  }
+}
+
+function enqueueWaitlistReplay(item: WaitlistReplayItem) {
+  const current = readQueue<WaitlistReplayItem>(WAITLIST_QUEUE_KEY)
+  const deduped = current.filter((entry) => !(entry.email === item.email && entry.source === item.source))
+  deduped.push(item)
+  writeQueue(WAITLIST_QUEUE_KEY, deduped, 20)
+}
+
+function enqueueFounderReplay(item: FounderReplayItem) {
+  const current = readQueue<FounderReplayItem>(FOUNDER_QUEUE_KEY)
+  const deduped = current.filter((entry) => entry.intentId !== item.intentId)
+  deduped.push(item)
+  writeQueue(FOUNDER_QUEUE_KEY, deduped, 20)
+}
+
+async function flushWaitlistQueue() {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return
+  const queue = readQueue<WaitlistReplayItem>(WAITLIST_QUEUE_KEY)
+  if (queue.length === 0) return
+  const kept: WaitlistReplayItem[] = []
+  for (const row of queue) {
+    const result = await postJson('/api/waitlist', row, { timeoutMs: 7000, idempotencyKey: createIdempotencyKey() })
+    if (!result.ok || result.body.ok !== true) {
+      if (shouldQueue(result.status)) kept.push(row)
+    }
+  }
+  writeQueue(WAITLIST_QUEUE_KEY, kept, 20)
+}
+
+async function flushFounderQueue() {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return
+  const queue = readQueue<FounderReplayItem>(FOUNDER_QUEUE_KEY)
+  if (queue.length === 0) return
+  const kept: FounderReplayItem[] = []
+  for (const row of queue) {
+    const result = await postJson('/api/founder-intent', row, { timeoutMs: 7000, idempotencyKey: createIdempotencyKey() })
+    if (!result.ok || result.body.ok !== true) {
+      if (shouldQueue(result.status)) kept.push(row)
+    }
+  }
+  writeQueue(FOUNDER_QUEUE_KEY, kept, 20)
+}
 
 // ─── COMPONENT ───────────────────────────────────────────────────────
 
@@ -825,7 +1074,182 @@ function OriginSection() {
 
 function LandingPage() {
   const [moltTab, setMoltTab] = useState<'CARAPACE'|'CLAWS'|'TOMALLEY'>('CARAPACE')
+  const [email, setEmail] = useState('')
+  const [submitBusy, setSubmitBusy] = useState(false)
+  const [founderBusy, setFounderBusy] = useState(false)
+  const [submitState, setSubmitState] = useState<'idle' | 'success' | 'error'>('idle')
+  const [submitMessage, setSubmitMessage] = useState('')
   const slot = MOLT_SLOTS[moltTab]
+
+  useEffect(() => {
+    const saved = readStored(LANDING_EMAIL_KEY)
+    if (saved) setEmail(saved)
+    void flushWaitlistQueue()
+    void flushFounderQueue()
+    const onOnline = () => {
+      void flushWaitlistQueue()
+      void flushFounderQueue()
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', onOnline)
+      return () => window.removeEventListener('online', onOnline)
+    }
+    return undefined
+  }, [])
+
+  const trackEvent = (event: string, payload: Record<string, unknown> = {}) => {
+    void postJson('/api/events', {
+      event,
+      page: '/',
+      ...payload,
+    }, { timeoutMs: 3000 })
+  }
+
+  const submitWaitlist = async () => {
+    if (submitBusy) return
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!EMAIL_RE.test(normalizedEmail)) {
+      setSubmitState('error')
+      setSubmitMessage('Valid email required.')
+      trackEvent('waitlist_validation_failed', {
+        source: 'hero-waitlist-index',
+        email: normalizedEmail || undefined,
+      })
+      return
+    }
+
+    setSubmitBusy(true)
+    setSubmitMessage('')
+    const payload: WaitlistReplayItem = {
+      email: normalizedEmail,
+      game: 'Unspecified',
+      source: 'moltpit-index-hero',
+    }
+    const result = await postJson('/api/waitlist', payload, {
+      timeoutMs: 7000,
+      idempotencyKey: createIdempotencyKey(),
+    })
+
+    if (result.ok && result.body.ok === true) {
+      writeStored(LANDING_EMAIL_KEY, normalizedEmail)
+      setSubmitState('success')
+      setSubmitMessage("You're on the list.")
+      trackEvent('waitlist_joined', {
+        source: 'hero-waitlist-index',
+        email: normalizedEmail,
+        meta: {
+          requestId: result.body.requestId,
+          queued: result.body.queued === true,
+          degraded: result.body.degraded === true,
+          status: result.status,
+        },
+      })
+      setSubmitBusy(false)
+      return
+    }
+
+    if (shouldQueue(result.status)) {
+      enqueueWaitlistReplay(payload)
+      setSubmitState('error')
+      setSubmitMessage('Network/storage issue. Saved locally and will auto-retry.')
+      trackEvent('waitlist_submit_buffered', {
+        source: 'hero-waitlist-index',
+        email: normalizedEmail,
+        meta: {
+          status: result.status,
+          reason: result.body.error ?? 'unknown_error',
+        },
+      })
+      setSubmitBusy(false)
+      return
+    }
+
+    setSubmitState('error')
+    setSubmitMessage(String(result.body.error || 'Could not submit.'))
+    trackEvent('waitlist_submit_failed', {
+      source: 'hero-waitlist-index',
+      email: normalizedEmail,
+      meta: {
+        status: result.status,
+        retryAfter: result.retryAfter ?? null,
+      },
+    })
+    setSubmitBusy(false)
+  }
+
+  const handleFounderCheckout = async () => {
+    if (founderBusy) return
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!EMAIL_RE.test(normalizedEmail)) {
+      setSubmitState('error')
+      setSubmitMessage('Add a valid email before founder checkout.')
+      trackEvent('founder_checkout_validation_failed', {
+        source: 'hero-founder-index',
+        email: normalizedEmail || undefined,
+      })
+      return
+    }
+
+    setFounderBusy(true)
+    writeStored(LANDING_EMAIL_KEY, normalizedEmail)
+    const intentSource = 'hero-founder-index'
+    const intentId = `intent:${new Date().toISOString().slice(0, 10)}:${normalizedEmail}:${intentSource}`
+    trackEvent('founder_checkout_clicked', {
+      source: 'hero-founder-index',
+      email: normalizedEmail,
+      tier: 'founder',
+    })
+
+    const intentPayload: FounderReplayItem = {
+      email: normalizedEmail,
+      source: intentSource,
+      intentId,
+    }
+
+    const intentResult = await postJson('/api/founder-intent', intentPayload, {
+      timeoutMs: 7000,
+      idempotencyKey: createIdempotencyKey(),
+    })
+
+    if (!intentResult.ok || intentResult.body.ok !== true) {
+      if (shouldQueue(intentResult.status)) {
+        enqueueFounderReplay(intentPayload)
+        trackEvent('founder_intent_buffered', {
+          source: intentSource,
+          email: normalizedEmail,
+          tier: 'founder',
+          meta: { intentId, status: intentResult.status },
+        })
+      } else {
+        setSubmitState('error')
+        setSubmitMessage(String(intentResult.body.error || 'Could not reserve founder intent.'))
+        setFounderBusy(false)
+        return
+      }
+    }
+
+    if (!FOUNDER_CHECKOUT_URL) {
+      setSubmitState('success')
+      setSubmitMessage('Founder checkout reserved. We will email when checkout is live.')
+      setFounderBusy(false)
+      return
+    }
+
+    try {
+      const url = new URL(FOUNDER_CHECKOUT_URL, typeof window !== 'undefined' ? window.location.origin : 'https://example.com')
+      url.searchParams.set('prefilled_email', normalizedEmail)
+      writeStored('moltpit_last_founder_checkout_source', 'hero-founder-index')
+      writeStored('moltpit_last_founder_intent_source', intentSource)
+      trackEvent('founder_checkout_redirected', {
+        source: 'hero-founder-index',
+        email: normalizedEmail,
+        tier: 'founder',
+      })
+      if (typeof window !== 'undefined') window.location.href = url.toString()
+    } finally {
+      setFounderBusy(false)
+    }
+  }
 
   return (
     <div className="lp">
@@ -888,6 +1312,42 @@ function LandingPage() {
           <div className="cta-row">
             <Link to="/sign-in" className="btn btn-lg">Descend</Link>
             <Link to="/demo"    className="ghost-link">Watch a Scuttle →</Link>
+          </div>
+          <div className="hero-convert-panel">
+            <div className="hero-convert-label">Signup + Founder Access</div>
+            <div className="hero-convert-row">
+              <input
+                className="hero-email-input"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@domain.com"
+                aria-label="Email address"
+              />
+              <button
+                className="hero-submit-btn"
+                type="button"
+                onClick={submitWaitlist}
+                disabled={submitBusy || founderBusy}
+              >
+                {submitBusy ? 'Saving...' : 'Join Waitlist'}
+              </button>
+              <button
+                className="hero-founder-btn"
+                type="button"
+                onClick={handleFounderCheckout}
+                disabled={submitBusy || founderBusy}
+              >
+                {founderBusy ? 'Opening...' : 'Founder Pack'}
+              </button>
+            </div>
+            {submitMessage && (
+              <div className={`hero-convert-note ${submitState}`}>
+                {submitMessage}
+              </div>
+            )}
+            <div className="hero-convert-note">Durable capture with auto-replay when connectivity recovers.</div>
           </div>
         </div>
         <div className="hero-r">

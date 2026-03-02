@@ -551,6 +551,31 @@ const DEMO_STYLES = `
     flex-wrap: wrap;
   }
 
+  .demo-move-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.35rem;
+    margin-bottom: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .demo-move-btn {
+    padding: 0.35rem 0.6rem;
+    min-width: 58px;
+    font-family: 'Bangers', cursive;
+    font-size: 0.9rem;
+    letter-spacing: 0.8px;
+    border: 2px solid rgba(0,0,0,0.65);
+    border-radius: 6px;
+    background: #3498db;
+    color: #000;
+    cursor: pointer;
+  }
+  .demo-move-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
   .demo-action-btn {
     padding: 0.4rem 0.8rem;
     font-family: 'Bangers', cursive;
@@ -1036,7 +1061,6 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
   }
 
   const ACTIONS: { action: Action; label: string; disabled?: boolean }[] = [
-    { action: 'MOVE', label: `MOVE (WASD · ${ACTION_AP_COST.MOVE.toFixed(1)} AP)`, disabled: !canAffordAction(p1.ap, 'MOVE') },
     {
       action: 'ATTACK',
       label: `ATTACK (${ACTION_AP_COST.ATTACK.toFixed(1)} AP)${!canAttackRange ? ' · far' : ''}`,
@@ -1049,6 +1073,12 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
       label: `STUN (${ACTION_AP_COST.STUN.toFixed(1)} AP)${!canStunRange ? ' · far' : ''}`,
       disabled: !canStunRange || !canAffordAction(p1.ap, 'STUN'),
     },
+  ]
+  const MOVE_DIRS: { dir: MoveDir; label: string }[] = [
+    { dir: 'UP', label: 'UP' },
+    { dir: 'LEFT', label: 'LEFT' },
+    { dir: 'RIGHT', label: 'RIGHT' },
+    { dir: 'DOWN', label: 'DOWN' },
   ]
 
   return (
@@ -1107,8 +1137,21 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           {aiThinking ? (
             <div className="demo-ai-turn">AI IS THINKING...</div>
           ) : (
-            <div className="demo-your-turn">YOUR TURN — PICK AN ACTION · MOVE WITH WASD / ARROWS</div>
+            <div className="demo-your-turn">YOUR TURN — PICK ACTION · MOVE WITH WASD OR TAP ARROWS</div>
           )}
+          <div className="demo-move-row">
+            {MOVE_DIRS.map(({ dir, label }) => (
+              <button
+                key={dir}
+                className="demo-move-btn"
+                onClick={() => handlePlayerAction('MOVE', dir)}
+                disabled={!canAffordAction(p1.ap, 'MOVE') || aiThinking || !live.waitingForPlayer}
+                title={`Move ${dir} (${ACTION_AP_COST.MOVE.toFixed(1)} AP)`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="demo-action-row">
             {ACTIONS.map(({ action, label, disabled }) => (
               <button
