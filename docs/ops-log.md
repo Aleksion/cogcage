@@ -533,6 +533,27 @@ bun run build (web/)
 
 ---
 
+### Autopilot Checkpoint — 00:13 ET, Mar 2 2026
+
+**Directive**: STOP copy iterations. P1-P3 priorities.
+
+**Status:**
+
+- **P1 ✅ LIVE** — Signup form reliability + Redis storage + observable auth logs (main `e6fc977`)
+- **P2 ✅ LIVE** — `/demo` playable with map movement + action economy (merged `dbf4d6b`). PR #50 (Babylon.js 3D isometric arena) build-passing, awaiting Aleks merge.
+- **P3 ✅ code live ⚠️ env vars blocked** — Founder checkout CTA live; `PUBLIC_STRIPE_FOUNDER_URL` not set by Aleks → checkout button inactive.
+- **P4 ✅** — Ops log current.
+
+**This pass:** Build ✅ (4.06s). No new product-critical code changes — all P1-P3 shipped prior passes. State verified clean.
+
+**Aleks action required (still blocking monetization):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret
+3. `COGCAGE_OPS_KEY` → Vercel env → secures /api/ops
+4. Merge PR #50 (Babylon.js 3D arena) when ready
+
+---
+
 ### Autopilot Checkpoint — 23:10 ET, Mar 1 2026
 
 **Directive**: STOP copy iterations. P1-P3 priorities.
