@@ -848,3 +848,24 @@ bun run build (web/)
 1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates founder checkout CTA
 2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `https://cogcage.com/api/postback`
 3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
+
+---
+
+## Autopilot Checkpoint — 05:38 ET (cron 3a2fb22f, pass ~51)
+
+Directive: STOP landing-page copy. Priorities: (1) signup reliability, (2) playable demo loop, (3) monetization, (4) ops log.
+
+- **Build**: ✅ clean (3.02s) — fixed missing `three` dep (was in package.json but not installed; ran `npm install three`)
+- **Tests**: 4/4 ✅ — guard arc multiplier, guard arc miss, illegal action no-op, replay parity
+- **HEAD**: `efc7e00` (feat/autopilot-march1-p1-p3-wt, synced with origin/main)
+- **P1 signup + storage + observable logs**: ✅ stable — `/api/waitlist`, `/api/founder-intent`, `waitlist-db.ts` idempotent + rate-limited + health probe + drain fallback
+- **P2 playable demo loop**: ✅ stable — `Play.tsx` 8×8 grid, BFS pathfinding, speed-based AP economy, WASD controls, 3 presets, combat log, ws2 engine
+- **P3 monetization**: ✅ code complete — `/api/founder-intent`, `/api/postback`, `/api/ops`, Stripe redirect wired / ⚠️ BLOCKED on 2 env vars (Aleks-only):
+  - `COGCAGE_POSTBACK_KEY` — authenticates `/api/postback` webhook
+  - `COGCAGE_OPS_KEY` — gates `/api/ops` viewer
+- **P4 ops log**: this entry
+- **Landing copy**: ✅ halted — zero copy changes
+
+**Change shipped this pass:** Fixed `three` dep installation so build stays green. All P1-P3 logic unchanged and live.
+
+**⚠️ ACTION REQUIRED (Aleks only):** Set `COGCAGE_POSTBACK_KEY` + `COGCAGE_OPS_KEY` in Vercel to fully activate postback auth and ops viewer.
