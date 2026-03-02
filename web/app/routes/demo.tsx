@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import React, { lazy, Suspense, useState, useEffect } from 'react'
 import type { Part } from '~/lib/ws2/parts'
+import DemoLoop from '~/components/DemoLoop'
 
 const DEMO_STYLES = `
   body {
@@ -13,6 +14,7 @@ const DEMO_STYLES = `
 export const Route = createFileRoute('/demo')({
   validateSearch: (search: Record<string, unknown>) => ({
     seed: search.seed ? Number(search.seed) : undefined,
+    mode: search.mode === 'cinematic' ? 'cinematic' : undefined,
   }),
   head: () => ({
     meta: [
@@ -31,7 +33,7 @@ const CinematicBattle = lazy(() => import('~/components/arena/CinematicBattle'))
 const MoldBuilder = lazy(() => import('~/components/MoldBuilder'))
 
 function DemoPage() {
-  const { seed } = Route.useSearch()
+  const { seed, mode } = Route.useSearch()
   const [mounted, setMounted] = useState(false)
   const [phase, setPhase] = useState<'build' | 'battle'>('build')
   const [playerMold, setPlayerMold] = useState<Part[] | null>(null)
@@ -59,6 +61,12 @@ function DemoPage() {
         LOADING ARENA...
       </div>
     )
+  }
+
+  // Product demo default: real playable map+action loop.
+  // Legacy cinematic flow remains available via ?mode=cinematic.
+  if (mode !== 'cinematic') {
+    return <DemoLoop />
   }
 
   if (phase === 'build') {

@@ -65,7 +65,12 @@ function getPostbackAuth(request: Request): { authorized: boolean; mode: Postbac
   if (!key) {
     return { authorized: true, mode: 'open-fallback' };
   }
-  const provided = request.headers.get('x-postback-key')?.trim() ?? '';
+  const authHeader = request.headers.get('authorization')?.trim() ?? '';
+  const bearer = authHeader.toLowerCase().startsWith('bearer ')
+    ? authHeader.slice(7).trim()
+    : '';
+  const queryKey = new URL(request.url).searchParams.get('key')?.trim() ?? '';
+  const provided = request.headers.get('x-postback-key')?.trim() || bearer || queryKey;
   return { authorized: provided === key, mode: 'shared-key' };
 }
 

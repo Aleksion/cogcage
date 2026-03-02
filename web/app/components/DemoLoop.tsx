@@ -1042,6 +1042,60 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
     setAiThinking(false)
   }, [])
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) return
+      const target = event.target as HTMLElement | null
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+        return
+      }
+
+      const key = event.key.toLowerCase()
+      if (key === 'arrowup' || key === 'w') {
+        event.preventDefault()
+        handlePlayerAction('MOVE', 'UP')
+        return
+      }
+      if (key === 'arrowleft' || key === 'a') {
+        event.preventDefault()
+        handlePlayerAction('MOVE', 'LEFT')
+        return
+      }
+      if (key === 'arrowright' || key === 'd') {
+        event.preventDefault()
+        handlePlayerAction('MOVE', 'RIGHT')
+        return
+      }
+      if (key === 'arrowdown' || key === 's') {
+        event.preventDefault()
+        handlePlayerAction('MOVE', 'DOWN')
+        return
+      }
+      if (key === '1') {
+        event.preventDefault()
+        handlePlayerAction('ATTACK')
+        return
+      }
+      if (key === '2') {
+        event.preventDefault()
+        handlePlayerAction('DEFEND')
+        return
+      }
+      if (key === '3') {
+        event.preventDefault()
+        handlePlayerAction('CHARGE')
+        return
+      }
+      if (key === '4') {
+        event.preventDefault()
+        handlePlayerAction('STUN')
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handlePlayerAction])
+
   const { p1, p2, turn, log, winner, lastResult } = live
   const p1Pct = (p1.hp / BERSERKER.hp) * 100
   const p2Pct = (p2.hp / TACTICIAN.hp) * 100
@@ -1189,6 +1243,9 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
                 {label}
               </button>
             ))}
+          </div>
+          <div style={{ textAlign: 'center', fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.64rem', color: 'rgba(255,255,255,0.38)', marginBottom: '0.35rem' }}>
+            Hotkeys: WASD/Arrows move, 1 Attack, 2 Defend, 3 Charge, 4 Stun
           </div>
         </>
       )}

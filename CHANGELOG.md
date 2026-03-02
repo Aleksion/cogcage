@@ -8,6 +8,50 @@
 
 ---
 
+## [2026-03-02] - fix(product-critical): durable signup telemetry fallback, live playable `/demo` loop, and hardened postback auth input
+
+**Type:** fix/feature/ops | **Budget impact:** n/a (product-critical only)
+
+### What
+- `web/app/routes/api/events.ts`
+  - Added terminal `conversion_event_response` logging for all response outcomes.
+  - Added explicit storage telemetry in responses (`storage` JSON + `x-storage-mode` header).
+  - Upgraded persistence fallback chain from `Redis -> file queue` to `Redis -> SQLite -> file queue`.
+- `web/app/routes/demo.tsx`
+  - `/demo` now defaults to the real playable `DemoLoop` (map movement + AP/MP action economy).
+  - Preserved legacy cinematic flow behind `?mode=cinematic`.
+- `web/app/components/DemoLoop.tsx`
+  - Added keyboard controls for playable loop:
+    - Movement: `WASD`/arrow keys
+    - Actions: `1` Attack, `2` Defend, `3` Charge, `4` Stun
+  - Added in-UI hotkey hint to improve discoverability.
+- `web/app/routes/api/postback.ts`
+  - Expanded shared-key auth input support to include:
+    - `x-postback-key`
+    - `Authorization: Bearer <key>`
+    - `?key=<key>` query fallback
+
+### Why
+- P1 required durable, observable signup/event storage even during Redis outages.
+- P2 required the public demo surface to expose the real action-economy gameplay loop, not only cinematic flow.
+- P3 needed lower-friction postback auth compatibility across webhook senders while retaining existing shared-secret behavior.
+
+### Design Decisions
+- Kept existing response contracts additive and backward compatible; only added telemetry fields/headers.
+- Kept cinematic demo behavior available explicitly via query opt-in to avoid removing existing flow.
+- Did not change postback auth mode semantics (`open-fallback` remains unchanged when env secret is unset).
+
+### Verification
+- `cd web && npm run test:product` ✅ (10/10 pass)
+- `cd web && npm run build` ✅
+
+### Breaking
+- None.
+
+### Next Steps
+- Add focused API tests for `/api/events` degraded storage-path behavior (`sqlite` and `fallback` statuses).
+- Set `COGCAGE_POSTBACK_KEY`/`MOLTPIT_POSTBACK_KEY` in deploy env to remove `open-fallback` runtime mode.
+
 ## [2026-03-02] - fix(product-mode): signup observability, AP+MP playable demo loop, founder checkout confirmation path
 
 **Type:** fix/feature/ops | **Budget impact:** n/a (product-critical only)

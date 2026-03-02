@@ -31,7 +31,33 @@ export const Route = createFileRoute('/api/events')({
       POST: async ({ request }) => {
         const startedAt = Date.now();
         const requestId = crypto.randomUUID();
+        const route = '/api/events';
         const contentType = request.headers.get('content-type') ?? '';
+        const respond = (
+          body: Record<string, unknown>,
+          status: number,
+          storage: 'redis' | 'sqlite' | 'fallback' | 'none',
+          extraHeaders: Record<string, string> = {},
+        ) => {
+          appendOpsLog({
+            route,
+            level: status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info',
+            event: 'conversion_event_response',
+            requestId,
+            status,
+            storage,
+            durationMs: Date.now() - startedAt,
+          });
+          return new Response(JSON.stringify({ ...body, requestId, storage }), {
+            status,
+            headers: {
+              'content-type': 'application/json',
+              'x-request-id': requestId,
+              'x-storage-mode': storage,
+              ...extraHeaders,
+            },
+          });
+        };
 
         let json: Record<string, unknown> | null = null;
         try {
@@ -64,35 +90,20 @@ export const Route = createFileRoute('/api/events')({
         }
 
         if (!json || typeof json !== 'object') {
-          return new Response(JSON.stringify({ ok: false, error: 'Invalid request payload.', requestId }), {
-            status: 400,
-            headers: {
-              'content-type': 'application/json',
-              'x-request-id': requestId,
-            },
-          });
+          appendOpsLog({ route, level: 'warn', event: 'conversion_event_payload_invalid', requestId, contentType, durationMs: Date.now() - startedAt });
+          return respond({ ok: false, error: 'Invalid request payload.' }, 400, 'none');
         }
 
         const eventName = normalizeString((json as Record<string, unknown>).event, 64);
         if (!EVENT_RE.test(eventName)) {
-          return new Response(JSON.stringify({ ok: false, error: 'Valid event name is required.', requestId }), {
-            status: 400,
-            headers: {
-              'content-type': 'application/json',
-              'x-request-id': requestId,
-            },
-          });
+          appendOpsLog({ route, level: 'warn', event: 'conversion_event_invalid_name', requestId, durationMs: Date.now() - startedAt });
+          return respond({ ok: false, error: 'Valid event name is required.' }, 400, 'none');
         }
 
         const emailRaw = optionalString((json as Record<string, unknown>).email)?.toLowerCase();
         if (emailRaw && !EMAIL_RE.test(emailRaw)) {
-          return new Response(JSON.stringify({ ok: false, error: 'Invalid email format.', requestId }), {
-            status: 400,
-            headers: {
-              'content-type': 'application/json',
-              'x-request-id': requestId,
-            },
-          });
+          appendOpsLog({ route, level: 'warn', event: 'conversion_event_invalid_email', requestId, eventName, durationMs: Date.now() - startedAt });
+          return respond({ ok: false, error: 'Invalid email format.' }, 400, 'none');
         }
 
         const rawMeta = (json as Record<string, unknown>).meta;
@@ -134,38 +145,45 @@ export const Route = createFileRoute('/api/events')({
             // Never throw — Redis already succeeded
           }
 
-          appendOpsLog({ route: '/api/events', level: 'info', event: 'conversion_event_saved', requestId, eventName, source: payload.source, durationMs: Date.now() - startedAt });
-          return new Response(JSON.stringify({ ok: true, requestId }), {
-            status: 200,
-            headers: {
-              'content-type': 'application/json',
-              'x-request-id': requestId,
-            },
-          });
+          appendOpsLog({ route, level: 'info', event: 'conversion_event_saved', requestId, eventName, source: payload.source, durationMs: Date.now() - startedAt });
+          return respond({ ok: true }, 200, 'redis');
         } catch (error) {
           // Redis failed — try file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
-          appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_redis_write_failed', requestId, eventName, source: payload.source, error: errorMessage, durationMs: Date.now() - startedAt });
+          appendOpsLog({ route, level: 'error', event: 'conversion_event_redis_write_failed', requestId, eventName, source: payload.source, error: errorMessage, durationMs: Date.now() - startedAt });
+
+          // Try SQLite directly when Redis is unavailable.
+          try {
+            insertConversionEvent(payload);
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'conversion_event_saved_sqlite_fallback',
+              requestId,
+              eventName,
+              source: payload.source,
+              durationMs: Date.now() - startedAt,
+            });
+            return respond({ ok: true, degraded: true }, 200, 'sqlite');
+          } catch (sqliteError) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'conversion_event_sqlite_fallback_failed',
+              requestId,
+              eventName,
+              source: payload.source,
+              error: sqliteError instanceof Error ? sqliteError.message : 'unknown',
+            });
+          }
 
           try {
-            appendEventsFallback({ route: '/api/events', requestId, ...payload, reason: errorMessage });
-            appendOpsLog({ route: '/api/events', level: 'warn', event: 'conversion_event_saved_to_fallback', requestId, eventName, source: payload.source, durationMs: Date.now() - startedAt });
-            return new Response(JSON.stringify({ ok: true, queued: true, requestId }), {
-              status: 202,
-              headers: {
-                'content-type': 'application/json',
-                'x-request-id': requestId,
-              },
-            });
+            appendEventsFallback({ route, requestId, ...payload, reason: errorMessage });
+            appendOpsLog({ route, level: 'warn', event: 'conversion_event_saved_to_fallback', requestId, eventName, source: payload.source, durationMs: Date.now() - startedAt });
+            return respond({ ok: true, queued: true }, 202, 'fallback');
           } catch (fallbackError) {
-            appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_fallback_write_failed', requestId, eventName, source: payload.source, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
-            return new Response(JSON.stringify({ ok: false, error: 'Event storage unavailable.', requestId }), {
-              status: 503,
-              headers: {
-                'content-type': 'application/json',
-                'x-request-id': requestId,
-              },
-            });
+            appendOpsLog({ route, level: 'error', event: 'conversion_event_fallback_write_failed', requestId, eventName, source: payload.source, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
+            return respond({ ok: false, error: 'Event storage unavailable.' }, 503, 'none');
           }
         }
       },

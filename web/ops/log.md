@@ -2,6 +2,25 @@
 
 ---
 
+## Product-Mode Ship — 18:47 ET Mar 2
+
+Directive executed in strict order (P1→P4), with no landing-copy scope.
+
+### Shipped artifacts (this pass)
+- **P1 signup reliability/log visibility**
+  - `app/routes/api/events.ts`: added terminal `conversion_event_response` logs, explicit storage telemetry in responses (`storage` + `x-storage-mode`), and durable fallback upgrade (`Redis -> SQLite -> fallback queue`).
+- **P2 playable demo loop**
+  - `app/routes/demo.tsx`: `/demo` now defaults to real `DemoLoop`; legacy cinematic flow remains available via `?mode=cinematic`.
+  - `app/components/DemoLoop.tsx`: added keyboard controls (`WASD`/arrows + `1/2/3/4` actions) and hotkey hint.
+- **P3 monetization postback handling**
+  - `app/routes/api/postback.ts`: shared-key auth now accepts `x-postback-key`, `Authorization: Bearer`, or `?key=` query input for provider compatibility.
+- **P4 ops artifacts**
+  - Updated `CHANGELOG.md`, `ops/logs/2026-03-02.md`, and `web/ops/log.md` with this pass.
+
+### Verification evidence
+- `npm run test:product` ✅ (10/10 pass)
+- `npm run build` ✅
+
 ## Product-Mode Ship — 17:58 ET Mar 2
 
 Directive executed in strict order (P1→P4), with no landing-copy scope.
