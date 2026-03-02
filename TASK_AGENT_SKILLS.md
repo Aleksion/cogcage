@@ -1,4 +1,4 @@
-# TASK: Agent Skills — LLM Tool-Use for CogCage Agents
+# TASK: Agent Skills — LLM Tool-Use for The Molt Pit Agents
 
 ## Vision
 Skills are callable tools the LLM agent invokes during a match — exactly like Anthropic's tool_use / MCP.

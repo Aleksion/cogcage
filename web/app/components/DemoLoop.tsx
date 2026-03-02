@@ -1,0 +1,798 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Link } from '@tanstack/react-router'
+
+// ── Action Economy ──
+type Action = 'MOVE' | 'ATTACK' | 'DEFEND' | 'CHARGE' | 'STUN'
+
+interface Position {
+  x: number
+  y: number
+}
+
+interface BotConfig {
+  name: string
+  color: string
+  initial: string
+  hp: number
+  speed: number
+  bias: Record<Action, number>
+  start: Position
+}
+
+interface BotState {
+  hp: number
+  pos: Position
+  charged: boolean
+  stunned: boolean
+  defending: boolean
+  ap: number
+}
+
+interface TurnResult {
+  turn: number
+  p1Action: Action | 'WAIT'
+  p2Action: Action | 'WAIT'
+  p1Dmg: number
+  p2Dmg: number
+  p1Hp: number
+  p2Hp: number
+  p1Pos: Position
+  p2Pos: Position
+  p1Ap: number
+  p2Ap: number
+  log: string
+}
+
+const GRID_SIZE = 7
+
+const BERSERKER: BotConfig = {
+  name: 'BERSERKER',
+  color: '#EB4D4B',
+  initial: 'B',
+  hp: 100,
+  speed: 1.2,
+  bias: { MOVE: 20, ATTACK: 40, DEFEND: 5, CHARGE: 25, STUN: 10 },
+  start: { x: 0, y: 0 },
+}
+
+const TACTICIAN: BotConfig = {
+  name: 'TACTICIAN',
+  color: '#00E5FF',
+  initial: 'T',
+  hp: 100,
+  speed: 0.9,
+  bias: { MOVE: 15, ATTACK: 20, DEFEND: 25, CHARGE: 15, STUN: 25 },
+  start: { x: 6, y: 6 },
+}
+
+function manhattan(a: Position, b: Position): number {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
+}
+
+function moveToward(from: Position, to: Position): Position {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  // Move along the axis with the greater distance
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return { x: from.x + Math.sign(dx), y: from.y }
+  }
+  return { x: from.x, y: from.y + Math.sign(dy) }
+}
+
+function clampGrid(pos: Position): Position {
+  return {
+    x: Math.max(0, Math.min(GRID_SIZE - 1, pos.x)),
+    y: Math.max(0, Math.min(GRID_SIZE - 1, pos.y)),
+  }
+}
+
+function pickAction(bias: Record<Action, number>, dist: number, stunned: boolean): Action {
+  const actions: Action[] = ['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN']
+
+  // If stunned, can't move
+  const weights = actions.map((a) => {
+    if (a === 'MOVE' && stunned) return 0
+    // If already in melee range, reduce move weight
+    if (a === 'MOVE' && dist <= 2) return Math.floor(bias[a] * 0.3)
+    // If out of range, boost move weight and reduce attack/stun
+    if (dist > 2 && (a === 'ATTACK' || a === 'STUN')) return Math.floor(bias[a] * 0.2)
+    if (dist > 2 && a === 'MOVE') return bias[a] * 3
+    return bias[a]
+  })
+
+  const total = weights.reduce((s, w) => s + w, 0)
+  let r = Math.random() * total
+  for (let i = 0; i < actions.length; i++) {
+    r -= weights[i]
+    if (r <= 0) return actions[i]
+  }
+  return 'MOVE'
+}
+
+function rollDamage() {
+  return 15 + Math.floor(Math.random() * 11) // 15-25
+}
+
+const MAX_TURNS = 15
+const MATCH_COUNT = 3
+
+function simulateMatch(): { turns: TurnResult[]; winner: string } {
+  const p1: BotState = { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: 0 }
+  const p2: BotState = { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: 0 }
+  const turns: TurnResult[] = []
+
+  for (let t = 1; t <= MAX_TURNS; t++) {
+    // Accumulate AP based on speed
+    p1.ap += BERSERKER.speed
+    p2.ap += TACTICIAN.speed
+
+    const p1CanAct = p1.ap >= 1.0
+    const p2CanAct = p2.ap >= 1.0
+
+    const dist = manhattan(p1.pos, p2.pos)
+    const p1Act: Action | 'WAIT' = p1CanAct ? pickAction(BERSERKER.bias, dist, p1.stunned) : 'WAIT'
+    const p2Act: Action | 'WAIT' = p2CanAct ? pickAction(TACTICIAN.bias, dist, p2.stunned) : 'WAIT'
+
+    if (p1CanAct) p1.ap -= 1.0
+    if (p2CanAct) p2.ap -= 1.0
+
+    let p1Dmg = 0 // damage dealt TO p2
+    let p2Dmg = 0 // damage dealt TO p1
+    p1.defending = false
+    p2.defending = false
+
+    // P1 action
+    if (p1Act !== 'WAIT') {
+      switch (p1Act) {
+        case 'MOVE':
+          if (!p1.stunned) {
+            p1.pos = clampGrid(moveToward(p1.pos, p2.pos))
+          }
+          break
+        case 'ATTACK':
+          if (dist <= 2) {
+            let dmg = rollDamage()
+            if (p1.charged) { dmg = Math.floor(dmg * 1.4); p1.charged = false }
+            if (p1.stunned && Math.random() < 0.5) { dmg = 0 }
+            if (p2Act === 'DEFEND') dmg = Math.floor(dmg * 0.5)
+            p1Dmg = dmg
+          }
+          break
+        case 'CHARGE':
+          p1.charged = true
+          break
+        case 'STUN':
+          if (dist <= 2) p2.stunned = true
+          break
+        case 'DEFEND':
+          p1.defending = true
+          break
+      }
+    }
+
+    // P2 action
+    if (p2Act !== 'WAIT') {
+      const dist2 = manhattan(p1.pos, p2.pos) // recalculate after p1 move
+      switch (p2Act) {
+        case 'MOVE':
+          if (!p2.stunned) {
+            p2.pos = clampGrid(moveToward(p2.pos, p1.pos))
+          }
+          break
+        case 'ATTACK':
+          if (dist2 <= 2) {
+            let dmg = rollDamage()
+            if (p2.charged) { dmg = Math.floor(dmg * 1.4); p2.charged = false }
+            if (p2.stunned && Math.random() < 0.5) { dmg = 0 }
+            if (p1Act === 'DEFEND') dmg = Math.floor(dmg * 0.5)
+            p2Dmg = dmg
+          }
+          break
+        case 'CHARGE':
+          p2.charged = true
+          break
+        case 'STUN':
+          if (dist2 <= 2) p1.stunned = true
+          break
+        case 'DEFEND':
+          p2.defending = true
+          break
+      }
+    }
+
+    p2.hp = Math.max(0, p2.hp - p1Dmg)
+    p1.hp = Math.max(0, p1.hp - p2Dmg)
+
+    // Clear stun after it's been applied for one turn
+    if (p1Act !== 'STUN') p2.stunned = false
+    if (p2Act !== 'STUN') p1.stunned = false
+
+    const logParts: string[] = []
+    logParts.push(`T${t}:`)
+    if (p1Act === 'WAIT') {
+      logParts.push(`${BERSERKER.initial} WAIT`)
+    } else {
+      logParts.push(`${BERSERKER.initial} ${p1Act}`)
+      if (p1Act === 'ATTACK' && dist > 2) logParts.push('(out of range)')
+      else if (p1Dmg > 0) logParts.push(`(${p1Dmg} dmg)`)
+    }
+    if (p2Act === 'WAIT') {
+      logParts.push(`vs ${TACTICIAN.initial} WAIT`)
+    } else {
+      logParts.push(`vs ${TACTICIAN.initial} ${p2Act}`)
+      const dist2 = manhattan(p1.pos, p2.pos)
+      if (p2Act === 'ATTACK' && dist2 > 2) logParts.push('(out of range)')
+      else if (p2Dmg > 0) logParts.push(`(${p2Dmg} dmg)`)
+    }
+
+    turns.push({
+      turn: t,
+      p1Action: p1Act,
+      p2Action: p2Act,
+      p1Dmg,
+      p2Dmg,
+      p1Hp: p1.hp,
+      p2Hp: p2.hp,
+      p1Pos: { ...p1.pos },
+      p2Pos: { ...p2.pos },
+      p1Ap: p1.ap,
+      p2Ap: p2.ap,
+      log: logParts.join(' '),
+    })
+
+    if (p1.hp <= 0 || p2.hp <= 0) break
+  }
+
+  const winner = p1.hp > p2.hp ? BERSERKER.name
+    : p2.hp > p1.hp ? TACTICIAN.name
+    : 'DRAW'
+  return { turns, winner }
+}
+
+// ── Styles ──
+const DEMO_STYLES = `
+  .demo-root {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 30%, #0a0a2e 0%, #050510 60%, #000 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Kanit', sans-serif;
+    color: #f0f0f5;
+    overflow: hidden;
+  }
+
+  .demo-arena {
+    width: 100%;
+    max-width: 800px;
+    padding: 1rem 1.5rem;
+  }
+
+  .demo-title {
+    font-family: 'Bangers', cursive;
+    font-size: 2rem;
+    text-align: center;
+    color: #FFD600;
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: 2px;
+    margin: 0 0 0.75rem;
+  }
+
+  .demo-vs {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    gap: 1rem;
+  }
+
+  .demo-bot {
+    flex: 1;
+    text-align: center;
+  }
+
+  .demo-bot-name {
+    font-family: 'Bangers', cursive;
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+    margin-bottom: 0.35rem;
+  }
+
+  .demo-hp-bar {
+    width: 100%;
+    height: 16px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.15);
+  }
+
+  .demo-hp-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.5s ease, background-color 0.3s;
+  }
+
+  .demo-hp-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.6);
+    margin-top: 0.15rem;
+  }
+
+  .demo-vs-text {
+    font-family: 'Bangers', cursive;
+    font-size: 1.3rem;
+    color: #FFD600;
+    text-shadow: 1px 1px 0 #000;
+    flex-shrink: 0;
+  }
+
+  .demo-body {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 600px) {
+    .demo-body {
+      flex-direction: column;
+    }
+  }
+
+  /* ── Grid ── */
+  .demo-grid-wrap {
+    flex-shrink: 0;
+  }
+
+  .demo-grid {
+    display: grid;
+    grid-template-columns: repeat(${GRID_SIZE}, 1fr);
+    grid-template-rows: repeat(${GRID_SIZE}, 1fr);
+    gap: 2px;
+    width: 238px;
+    height: 238px;
+    background: rgba(0,229,255,0.06);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 6px;
+    padding: 2px;
+  }
+
+  .demo-cell {
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.03);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bangers', cursive;
+    font-size: 1rem;
+    font-weight: 700;
+    transition: background 0.3s, box-shadow 0.3s;
+    position: relative;
+  }
+
+  .demo-cell--active {
+    box-shadow: inset 0 0 8px rgba(255,214,0,0.4);
+    background: rgba(255,214,0,0.08);
+  }
+
+  .demo-cell--p1 {
+    background: rgba(235,77,75,0.25);
+    box-shadow: 0 0 6px rgba(235,77,75,0.5);
+  }
+
+  .demo-cell--p2 {
+    background: rgba(0,229,255,0.2);
+    box-shadow: 0 0 6px rgba(0,229,255,0.5);
+  }
+
+  .demo-cell--both {
+    background: linear-gradient(135deg, rgba(235,77,75,0.3), rgba(0,229,255,0.3));
+    box-shadow: 0 0 8px rgba(255,214,0,0.5);
+  }
+
+  .demo-grid-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    color: rgba(0,229,255,0.4);
+    text-align: center;
+    margin-top: 0.35rem;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Log ── */
+  .demo-log {
+    flex: 1;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 8px;
+    padding: 0.6rem;
+    max-height: 238px;
+    overflow-y: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 1.55;
+  }
+
+  .demo-log-entry {
+    padding: 0.1rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    animation: demo-fade-in 0.3s ease;
+  }
+
+  @keyframes demo-fade-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .demo-action-tag {
+    display: inline-block;
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin: 0 0.15rem;
+  }
+
+  .demo-turn-counter {
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(0,229,255,0.6);
+    letter-spacing: 1px;
+    margin-bottom: 0.6rem;
+  }
+
+  .demo-match-counter {
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 0.4rem;
+  }
+
+  .demo-winner {
+    text-align: center;
+    animation: demo-fade-in 0.5s ease;
+  }
+
+  .demo-winner-title {
+    font-family: 'Bangers', cursive;
+    font-size: 2.5rem;
+    color: #FFD600;
+    text-shadow: 3px 3px 0 #000;
+    letter-spacing: 3px;
+    margin: 0 0 0.3rem;
+  }
+
+  .demo-winner-sub {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 1rem;
+  }
+
+  .demo-cta {
+    display: inline-block;
+    padding: 0.75rem 1.8rem;
+    font-family: 'Bangers', cursive;
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    color: #000;
+    background: #FFD600;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: transform 0.1s, background 0.15s;
+    box-shadow: 4px 4px 0 #000;
+  }
+  .demo-cta:hover { background: #f0c800; transform: translateY(-2px); }
+
+  .demo-restart {
+    display: block;
+    margin: 0.75rem auto 0;
+    background: none;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.4);
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .demo-restart:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.3); }
+
+  /* ── Action Legend ── */
+  .demo-legend {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+  }
+
+  .demo-legend-item {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.45);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .demo-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .demo-ap-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.2rem;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .demo-ap-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+    background: #FFD600;
+  }
+
+  .demo-ap-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    color: rgba(255,214,0,0.5);
+    margin-top: 0.1rem;
+  }
+
+  .demo-speed-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.55rem;
+    color: rgba(255,214,0,0.6);
+    margin-top: 0.1rem;
+  }
+`
+
+const ACTION_COLORS: Record<Action | 'WAIT', string> = {
+  MOVE: '#3498db',
+  ATTACK: '#EB4D4B',
+  DEFEND: '#2ecc71',
+  CHARGE: '#FFD600',
+  STUN: '#9b59b6',
+  WAIT: '#555',
+}
+
+function hpColor(pct: number) {
+  if (pct > 60) return '#2ecc71'
+  if (pct > 30) return '#f39c12'
+  return '#EB4D4B'
+}
+
+export default function DemoLoop() {
+  const [match, setMatch] = useState(() => simulateMatch())
+  const [visibleTurn, setVisibleTurn] = useState(0)
+  const [phase, setPhase] = useState<'playing' | 'ended'>('playing')
+  const [matchNum, setMatchNum] = useState(1)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const logRef = useRef<HTMLDivElement>(null)
+
+  const startNewMatch = useCallback(() => {
+    setMatch(simulateMatch())
+    setVisibleTurn(0)
+    setPhase('playing')
+    setMatchNum((n) => n + 1)
+  }, [])
+
+  // Auto-advance turns at 800ms
+  useEffect(() => {
+    if (phase !== 'playing') return
+
+    if (visibleTurn >= match.turns.length) {
+      setPhase('ended')
+      // Auto-restart after 6 seconds, loops 3 matches then restarts from 1
+      timerRef.current = setTimeout(() => {
+        if (matchNum >= MATCH_COUNT) {
+          setMatchNum(0) // will be incremented to 1 in startNewMatch
+        }
+        startNewMatch()
+      }, 6000)
+      return
+    }
+
+    timerRef.current = setTimeout(() => {
+      setVisibleTurn((v) => v + 1)
+    }, visibleTurn === 0 ? 1000 : 800)
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [visibleTurn, phase, match.turns.length, matchNum, startNewMatch])
+
+  // Auto-scroll log
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight
+    }
+  }, [visibleTurn])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [])
+
+  const currentTurn = visibleTurn > 0 ? match.turns[visibleTurn - 1] : null
+  const p1Hp = currentTurn ? currentTurn.p1Hp : BERSERKER.hp
+  const p2Hp = currentTurn ? currentTurn.p2Hp : TACTICIAN.hp
+  const p1Pct = (p1Hp / BERSERKER.hp) * 100
+  const p2Pct = (p2Hp / TACTICIAN.hp) * 100
+  const p1Pos = currentTurn ? currentTurn.p1Pos : BERSERKER.start
+  const p2Pos = currentTurn ? currentTurn.p2Pos : TACTICIAN.start
+  const p1Ap = currentTurn ? currentTurn.p1Ap : 0
+  const p2Ap = currentTurn ? currentTurn.p2Ap : 0
+  const visibleLogs = match.turns.slice(0, visibleTurn)
+  const dist = manhattan(p1Pos, p2Pos)
+
+  // Build grid cells
+  const gridCells: React.ReactElement[] = []
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      const isP1 = p1Pos.x === x && p1Pos.y === y
+      const isP2 = p2Pos.x === x && p2Pos.y === y
+      const isBoth = isP1 && isP2
+
+      let cellClass = 'demo-cell'
+      if (isBoth) cellClass += ' demo-cell--both'
+      else if (isP1) cellClass += ' demo-cell--p1'
+      else if (isP2) cellClass += ' demo-cell--p2'
+
+      gridCells.push(
+        <div key={`${x}-${y}`} className={cellClass}>
+          {isBoth ? (
+            <span style={{ fontSize: '0.7rem' }}>
+              <span style={{ color: BERSERKER.color }}>B</span>
+              <span style={{ color: TACTICIAN.color }}>T</span>
+            </span>
+          ) : isP1 ? (
+            <span style={{ color: BERSERKER.color }}>B</span>
+          ) : isP2 ? (
+            <span style={{ color: TACTICIAN.color }}>T</span>
+          ) : null}
+        </div>
+      )
+    }
+  }
+
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: DEMO_STYLES }} />
+      <div className="demo-root">
+        <div className="demo-arena">
+          <h2 className="demo-title">QUICK DEMO</h2>
+
+          {/* Health bars */}
+          <div className="demo-vs">
+            <div className="demo-bot">
+              <div className="demo-bot-name" style={{ color: BERSERKER.color }}>{BERSERKER.name}</div>
+              <div className="demo-hp-bar">
+                <div className="demo-hp-fill" style={{ width: `${p1Pct}%`, background: hpColor(p1Pct) }} />
+              </div>
+              <div className="demo-hp-text">{p1Hp} / {BERSERKER.hp} HP</div>
+              <div className="demo-ap-bar">
+                <div className="demo-ap-fill" style={{ width: `${Math.min(p1Ap, 1) * 100}%` }} />
+              </div>
+              <div className="demo-ap-text">AP {p1Ap.toFixed(1)}</div>
+              <div className="demo-speed-badge">SPD {BERSERKER.speed}x</div>
+            </div>
+            <div className="demo-vs-text">VS</div>
+            <div className="demo-bot">
+              <div className="demo-bot-name" style={{ color: TACTICIAN.color }}>{TACTICIAN.name}</div>
+              <div className="demo-hp-bar">
+                <div className="demo-hp-fill" style={{ width: `${p2Pct}%`, background: hpColor(p2Pct) }} />
+              </div>
+              <div className="demo-hp-text">{p2Hp} / {TACTICIAN.hp} HP</div>
+              <div className="demo-ap-bar">
+                <div className="demo-ap-fill" style={{ width: `${Math.min(p2Ap, 1) * 100}%` }} />
+              </div>
+              <div className="demo-ap-text">AP {p2Ap.toFixed(1)}</div>
+              <div className="demo-speed-badge">SPD {TACTICIAN.speed}x</div>
+            </div>
+          </div>
+
+          {/* Turn + match counter */}
+          <div className="demo-match-counter">MATCH {matchNum > MATCH_COUNT ? 1 : matchNum} / {MATCH_COUNT}</div>
+          <div className="demo-turn-counter">
+            {phase === 'playing'
+              ? visibleTurn === 0
+                ? 'MATCH STARTING...'
+                : `TURN ${visibleTurn} / ${match.turns.length}  ·  DIST ${dist}`
+              : 'MATCH COMPLETE'}
+          </div>
+
+          {/* Action Legend */}
+          <div className="demo-legend">
+            {(['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN', 'WAIT'] as (Action | 'WAIT')[]).map((a) => (
+              <div key={a} className="demo-legend-item">
+                <span className="demo-legend-dot" style={{ background: ACTION_COLORS[a] }} />
+                {a}
+              </div>
+            ))}
+            <div className="demo-legend-item" style={{ color: 'rgba(255,255,255,0.3)' }}>
+              ATK/STUN range ≤ 2
+            </div>
+          </div>
+
+          {/* Grid + Log side by side */}
+          <div className="demo-body">
+            <div className="demo-grid-wrap">
+              <div className="demo-grid">
+                {gridCells}
+              </div>
+              <div className="demo-grid-label">7×7 ARENA GRID</div>
+            </div>
+
+            <div className="demo-log" ref={logRef}>
+              {visibleLogs.length === 0 ? (
+                <div style={{ color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: '1rem 0' }}>
+                  Waiting for first turn...
+                </div>
+              ) : (
+                visibleLogs.map((t) => (
+                  <div key={t.turn} className="demo-log-entry">
+                    <span style={{ color: '#666' }}>T{t.turn}</span>{' '}
+                    <span style={{ color: BERSERKER.color }}>{BERSERKER.initial}</span>{' '}
+                    <span className="demo-action-tag" style={{ background: ACTION_COLORS[t.p1Action], color: '#000' }}>
+                      {t.p1Action}
+                    </span>
+                    {t.p1Dmg > 0 && <span style={{ color: '#EB4D4B' }}> -{t.p1Dmg}</span>}
+                    {t.p1Action === 'ATTACK' && t.p1Dmg === 0 && manhattan(
+                      visibleTurn >= 2 ? match.turns[t.turn - 2]?.p1Pos ?? BERSERKER.start : BERSERKER.start,
+                      visibleTurn >= 2 ? match.turns[t.turn - 2]?.p2Pos ?? TACTICIAN.start : TACTICIAN.start
+                    ) > 2 && <span style={{ color: '#666' }}> miss</span>}
+                    {' '}
+                    <span style={{ color: TACTICIAN.color }}>{TACTICIAN.initial}</span>{' '}
+                    <span className="demo-action-tag" style={{ background: ACTION_COLORS[t.p2Action], color: '#000' }}>
+                      {t.p2Action}
+                    </span>
+                    {t.p2Dmg > 0 && <span style={{ color: '#EB4D4B' }}> -{t.p2Dmg}</span>}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Winner / CTA */}
+          {phase === 'ended' && (
+            <div className="demo-winner">
+              <div className="demo-winner-title">
+                {match.winner === 'DRAW' ? 'DRAW!' : `${match.winner} WINS!`}
+              </div>
+              <div className="demo-winner-sub">
+                {match.winner === 'DRAW'
+                  ? 'Both crawlers still standing after 15 rounds.'
+                  : `${match.winner} crushed the opposition.`}
+              </div>
+              <Link to="/shell" className="demo-cta">
+                BUILD YOUR CRAWLER &rarr;
+              </Link>
+              <button className="demo-restart" onClick={startNewMatch}>
+                Watch another match
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}

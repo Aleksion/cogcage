@@ -12,11 +12,13 @@ import {
   resolveTick,
 } from './engine.js';
 import {
+  ARENA_SIZE,
   DECISION_WINDOW_TICKS,
   TICK_MS,
   UNIT_SCALE,
   MAX_TICKS,
 } from './constants.js';
+import { directionFromVector } from './geometry.js';
 import { getSpawnPositions } from './match-types.js';
 import type { BotConfig, MatchSnapshot, SnapshotCallback } from './match-types.js';
 
@@ -78,6 +80,30 @@ class DecisionQueue {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Move 1 tile toward opponent (Manhattan-style, dominant axis). Clamp to grid bounds. */
+function stepToward(from: {x: number; y: number}, to: {x: number; y: number}): {x: number; y: number} {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  let next: {x: number; y: number};
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    next = { x: from.x + Math.sign(dx) * UNIT_SCALE, y: from.y };
+  } else {
+    next = { x: from.x, y: from.y + Math.sign(dy) * UNIT_SCALE };
+  }
+  next.x = Math.max(0, Math.min(ARENA_SIZE, next.x));
+  next.y = Math.max(0, Math.min(ARENA_SIZE, next.y));
+  return next;
+}
+
+/** Auto-calculate direction from actor toward target for MOVE actions. */
+function autoMoveDir(actorPos: {x: number; y: number}, targetPos: {x: number; y: number}): string {
+  const step = stepToward(actorPos, targetPos);
+  const dx = step.x - actorPos.x;
+  const dy = step.y - actorPos.y;
+  if (dx === 0 && dy === 0) return 'N';
+  return directionFromVector(dx, dy);
+}
+
 function nearestAliveEnemy(actors: Record<string, any>, actorId: string): string | null {
   const me = actors[actorId];
   if (!me || me.hp <= 0) return null;
@@ -127,7 +153,38 @@ async function fetchDecision(
   extraHeaders?: Record<string, string>,
   brainPrompt?: string,
   skills?: string[],
+  webhookUrl?: string,
 ): Promise<{ type: string; dir?: string; targetId?: string; reasoning?: string }> {
+  // BYO agent: route through external proxy
+  if (webhookUrl) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch('/api/agent/external', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          webhookUrl,
+          payload: {
+            gameState,
+            actorId,
+            opponentIds: opponentId ? [opponentId] : [],
+            loadout,
+            validActions: loadout,
+          },
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) return { type: 'NO_OP' };
+      const data = await res.json();
+      return data?.action ?? { type: 'NO_OP' };
+    } catch {
+      clearTimeout(timer);
+      return { type: 'NO_OP' };
+    }
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -285,7 +342,7 @@ export async function runMatchAsync(
         const enemyId = nearestAliveEnemy(snap.actors, bot.id) ?? bot.id;
         const headers = headersMap.get(bot.id) ?? {};
         queue.enqueue(state.tick, () =>
-          fetchDecision(apiBase, snap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers, bot.brainPrompt, bot.skills),
+          fetchDecision(apiBase, snap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers, bot.brainPrompt, bot.skills, bot.webhookUrl),
         );
       }
 
@@ -297,6 +354,19 @@ export async function runMatchAsync(
           actions.set(bot.id, action);
         }),
       );
+
+      // Auto-calculate dir for MOVE actions toward nearest opponent
+      for (const bot of aliveBots) {
+        const action = actions.get(bot.id);
+        if (action && action.type === 'MOVE') {
+          const me = state.actors[bot.id];
+          const enemyId = nearestAliveEnemy(state.actors, bot.id);
+          if (me && enemyId) {
+            const enemy = state.actors[enemyId];
+            action.dir = autoMoveDir(me.position, enemy.position);
+          }
+        }
+      }
 
       for (const bot of aliveBots) {
         if (actions.get(bot.id)?.type === 'INTERRUPT') {
@@ -348,7 +418,7 @@ export async function runMatchAsync(
             const enemyId = nearestAliveEnemy(nextSnap.actors, bot.id) ?? bot.id;
             const headers = headersMap.get(bot.id) ?? {};
             queue.enqueue(nextTick, () =>
-              fetchDecision(apiBase, nextSnap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers, bot.brainPrompt, bot.skills),
+              fetchDecision(apiBase, nextSnap, bot.id, enemyId, bot.systemPrompt, bot.loadout, 4000, headers, bot.brainPrompt, bot.skills, bot.webhookUrl),
             );
           }
         }

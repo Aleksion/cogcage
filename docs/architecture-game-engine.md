@@ -184,7 +184,7 @@ const result = await streamText({
 ```
                     ┌─────────────────────────────┐
                     │         Vercel               │
-                    │  - cogcage.com (landing)      │
+                    │  - themoltpit.com (landing)      │
                     │  - /play (den/tank)           │
                     │  - /shell                     │
                     │  - /api/tank/*                │
@@ -361,7 +361,7 @@ Crawler Plugin (OpenClaw)
 
 ┌─────────────────────────────────────────────────────────┐
 │  APP LAYER (Vercel)                                      │
-│  cogcage.com — landing, shell, tank, den                 │
+│  themoltpit.com — landing, shell, tank, den                 │
 │  Upstash Redis — tank state, shell, waitlist             │
 └─────────────────────────────────────────────────────────┘
 ```

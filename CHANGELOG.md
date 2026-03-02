@@ -1,6 +1,291 @@
-# CogCage Changelog
+# THE MOLT PIT — Changelog
 
-Every PR must include an entry here. Newest first.
+## MANDATORY PR RULES (read before merging anything)
+1. Add an entry to this file — newest first
+2. Update `design/DECISIONS.md` if a design decision was made or changed
+3. Update `design/BUDGET.md` ledger with estimated agent cost
+4. No exceptions. PRs without changelog entries do not merge.
+
+---
+
+## [2026-03-02] - feat(autopilot): signup reliability + demo grid movement + monetization fallback
+
+**Type:** feature/ops | **Budget impact:** ~$2 (agent)
+
+### P1 — Signup form reliability + observable logs
+- `web/app/lib/observability.ts` — Redis ops log failures now warn to stderr instead of silently swallowing; added `appendSessionSummary()` structured entry type
+- `web/app/routes/api/waitlist.ts` — success response now returns `{ ok: true, message: "You're on the list!" }`; added `waitlist_health_check` log entry on every successful submit
+- `web/app/lib/fallback-drain.ts` — drain now replays to Redis (fire-and-forget) alongside SQLite inserts, closing the durability gap
+
+### P2 — Demo grid movement + spatial tactics
+- `web/app/components/DemoLoop.tsx` — complete rewrite:
+  - 7×7 arena grid with CSS grid visualization
+  - Added `MOVE` action: bots move 1 tile toward enemy each turn (unless stunned)
+  - Position tracking (`{x, y}`) in bot state, bots start at opposite corners (0,0) vs (6,6)
+  - Range-based combat: ATTACK and STUN only work at Manhattan distance ≤ 2, CHARGE at any range
+  - Smart action selection: bots prefer MOVE when out of range, prefer combat when close
+  - Colored bot markers (B = red BERSERKER, T = cyan TACTICIAN) on grid
+  - 800ms per turn auto-play, loops 3 matches then restarts
+  - Action legend with range indicator
+  - Side-by-side grid + turn log layout
+
+### P3 — Monetization fallback path
+- `web/app/components/MoltPitLanding.jsx` — Founder Pack button now captures email via `/api/founder-intent` when Stripe URL is not configured (zero revenue lost)
+- `web/app/routes/api/postback.ts` — added `?test=1` stub mode returning `{ok:true,mode:"test"}` for deploy verification
+
+---
+
+## [2026-03-01] - feat(lore): WS17 lore bible — item lore, soft shell guide, loading lines, creature sounds, rank ladder
+
+**Type:** design/lore | **Budget impact:** ~$3 (agent)
+- `design/world/LORE.md` — full lore bible: The Brine, The Makers, The Chelae, The House, The Pit, The Chef, rank ladder (6 tiers), The Deep, Subject 1
+- `design/items/ITEM-LORE.md` — full paragraph lore for all 40 items, The House voice
+- `design/ui/SOFT-SHELL-GUIDE.md` — onboarding written by The House for new Chefs
+- `design/ui/LOADING-LINES.md` — 50 loading screen lines, The House voice
+- Added creature vocalizations section to `design/audio/SOUND-DESIGN.md` (6 categories)
+- Updated `design/ui/COPY-GUIDE.md` — Chef replaces Pitmaster in vocabulary and flavor lines
+- Updated `design/DECISIONS.md` — player name (Chef), rank ladder (6 tiers), Subject 1, The Deep, creature vocalizations, item lore voice
+
+**Decisions locked this session:** Player name=Chef (replaces Pitmaster), Rank ladder=6 tiers (Soft Shell→Brine-Touched→Hardened→Tide-Scarred→Deep→Red), Subject 1 lore, The Deep formalized, creature vocalizations (6 categories), item lore voice (The House as historian)
+
+---
+
+## [2026-03-01] - feat(ws21): Babylon.js 3D game engine — Sprint 1
+
+**Type:** feature | **Budget impact:** ~$0.15 (no API calls, local dev only)
+
+### Head of Engineering (WS21)
+
+**Game engine upgrade — Babylon.js replaces Phaser 3 / Three.js / PlayCanvas:**
+
+- **Engine decision locked: Babylon.js** (logged in `design/DECISIONS.md`)
+  - 3D-first engine for incoming GLTF assets from visual team
+  - Isometric orthographic camera (TFT/LoL 45° angle)
+  - TypeScript-first, full game engine (ECS, animation, physics, scene graph)
+  - Cloudflare DO WebSocket pipes into Babylon scene update loop
+
+- `web/app/game/PitScene.ts` — Babylon.js arena scene
+  - Dark Brine aesthetic with bioluminescent point lights (cyan, purple)
+  - 20x20 grid floor with thin box grid lines (every 5th line glows cyan)
+  - MAP 001 "THE STANDARD" tile rendering: WALL (3D boxes with purple trim dots), COVER (low boxes), HAZARD (ground planes with pulsing orange glow)
+  - Real Crustie GLB models loaded from Vercel Blob CDN via SceneLoader.ImportMeshAsync
+    - Default match: Lobster (alpha/cyan) vs Crab (beta/red)
+    - Toon/cel-shading: flat StandardMaterial, no specular, subtle emissive self-illumination
+    - Borderlands-style black outlines (renderOutline, outlineWidth: 0.05)
+    - Capsule fallback if GLB load fails (network error graceful degradation)
+    - 5 species available: lobster, crab, mantis, hermit, shrimp
+  - Procedural hit reaction: scale squash-stretch pulse on DAMAGE_APPLIED events
+  - HP bars and tick counter via @babylonjs/gui fullscreen UI
+  - Animated position lerp (12 frames ~200ms) on each tick
+  - VFX animations: PINCH (slash line + impact flash), SPIT (projectile sphere with impact burst), SHELL UP (expanding green shield sphere), BURST (expanding torus ring)
+  - Floating damage numbers linked to world-space anchors
+  - Match end overlay ("SCUTTLE OVER" + winner name)
+  - GlowLayer for bioluminescent atmosphere
+
+- `web/app/components/BabylonArena.tsx` — React wrapper component
+  - Dynamic import of PitScene (SSR-safe)
+  - Accepts WebSocket snapshots, forwards to PitScene
+  - Lifecycle management (create/dispose)
+  - `useWebSocketArena` hook for standalone usage
+
+- `web/app/components/Play.tsx` — Replaced Phaser/PlayCanvas references with Babylon
+  - Removed dead PlayCanvas lifecycle code
+  - Removed dead Phaser imports and state
+  - BabylonArena now receives snapshot via `babylonSnap` state
+
+- `web/package.json` — Dependency cleanup
+  - Removed: `phaser`, `three`, `@types/three`, `playcanvas`
+  - Added: `@babylonjs/core@8.53.0`, `@babylonjs/loaders@8.53.0`, `@babylonjs/gui@8.53.0`
+
+- `/api/agent/decide` endpoint — already exists (no changes needed)
+  - Multi-provider LLM support (OpenAI, Anthropic, Groq, OpenRouter)
+  - Scripted AI fallback when no API key available
+  - Skill/tool-use support with two-pass LLM calls
+
+---
+
+## [2026-03-01] - feat(ws21): Phaser 3 game engine — Sprint 1
+
+**Type:** feature | **Budget impact:** ~$0.10 (no API calls, local dev only)
+
+### Head of Engineering (WS21)
+
+**Game engine foundation — Phaser 3 rendering of The Pit:**
+
+- `web/app/lib/ws2/MatchScene.ts` — Complete rewrite of Phaser 3 arena scene
+  - Dark Brine aesthetic: #050510 background, bioluminescent cyan grid lines
+  - MAP 001 "THE STANDARD" tile rendering: WALL (dark coral/purple trim), COVER (debris), HAZARD (pulsing amber)
+  - Procedural lobster sprites with carapace, claws, eyes, antennae, tail fan
+  - HP bars rendered directly on grid above each lobster + energy pips
+  - Action VFX animations: PINCH (slash/flash), SPIT (projectile), SHELL UP (shield bubble), BURST (dash trail + speed lines)
+  - Damage number popups, action label popups
+  - Combat log sidebar with lore names and color-coded entries
+  - Action legend panel (SCUTTLE/PINCH/SPIT/SHELL UP/BURST)
+  - Match end overlay ("SCUTTLE OVER" + winner name)
+  - Engine→lore action name mapping (MOVE→SCUTTLE, MELEE_STRIKE→PINCH, etc.)
+
+- `web/app/components/PhaserArena.tsx` — React wrapper component
+  - Dynamic import of Phaser (SSR-safe)
+  - Accepts WebSocket snapshots, forwards to MatchScene
+  - Lifecycle management (create/destroy)
+  - `useWebSocketArena` hook for standalone usage
+
+- `web/app/components/Play.tsx` — Integrated Phaser arena into match view
+  - Replaced PlayCanvas 3D renderer with PhaserArena
+  - WebSocket tick messages now feed both React HUD and Phaser scene
+
+**Decisions logged:**
+- Phaser 3 selected as rendering engine (see DECISIONS.md)
+- Action name mapping: engine names → lore names in UI only
+
+---
+
+## [2026-03-01] - design(ws18): complete game design systems spec
+
+**Type:** design | **Budget impact:** $0.00 (authoring only, no API calls)
+
+### Lead Game Designer (WS18)
+
+**New files added to `design/systems/`:**
+
+- `ITEMS-IN-PLAY.md` — Full mechanical spec for all 40 items
+  - Exact numbers, triggers, edge cases for every Carapace, Claws, and Tomalley item
+  - Agent state JSON representation per item (what the LLM receives)
+  - Spectator display + audio trigger specs per item
+  - Balance notes, synergy flags, degenerate combo audit
+  - Key rulings: INVERTER DoT classification, NEEDLE vs SILKWORM, SURVIVAL INSTINCT DoT exclusion, GHOST PROTOCOL as hard FLICKER counter
+  - Degenerate combo audit: all clear (WIDOW-MAKER cannot loop; BLEED BACK ping-pong prevented; INVERTER capped)
+
+- `GAME-FEEL.md` — Spectator + player experience spec
+  - Three-audience model: Pitmaster (proud parent), Spectator (entertainment), Rival (strategy)
+  - Fight phase structure: The Read / The Exchange / The Reckoning
+  - Six ranked "hype moments" designed for spectator reaction (WIDOW save, REVERSAL counter-kill, BUZZ chain stun, INVERTER flip, WIDOW-MAKER commitment, SPITE double death)
+  - Comeback mechanic layer design (RED GENE → INVERTER → WIDOW → SECOND WIND → SPITE)
+  - Coral Feed specification (raw LLM output, highlighted keywords, NO_OP display)
+  - EVO moment designed: the calculated SPITE death play
+  - Investor summary paragraph
+
+- `MULTIPLAYER.md` — FFA, 2v2, and tournament design
+  - 1v1 baseline analysis at 150ms
+  - FFA (3-4 Lobsters): targeting spec, multi-opponent state JSON, spawn positions, context token budget by mode
+  - SPITE in FFA: fires at ALL survivors simultaneously (designed chaos)
+  - 2v2 team design: emergent coordination (no inter-agent comms), loadout synergy archetypes, teammate state in snapshot
+  - Tournament bracket: Tides structure, single-elimination, Hardness seeding
+  - Context budget table: 1v1 ~750 tokens → 4-player FFA ~1050 tokens → 2v2 ~1100 tokens
+
+**Existing files (authored in prior WS18 pass — noted for completeness):**
+- `MAP-DESIGN.md` — 3 fixed arena layouts, tile types, spawn rules, LLM context implications
+- `VISIBILITY.md` — Full-visibility v1 + complete Fog of War spec deferred to Tide 2
+- `MOVEMENT.md` — Complete movement rules, collision resolution, energy economy, per-Carapace speed penalties
+
+**Breaking changes:** None
+
+**Next steps:**
+- Engineering builds from these six documents
+- FFA implementation: Tide 2
+- 2v2: Tide 3
+- Procedural map generation: Tide 2
+
+---
+
+## [2026-03-01] - design(ws19): visual baseline + sound design plan
+
+**Type:** design | **Budget impact:** $0.20 (5 × DALL-E 3 1024px icons)
+
+### Visual Director
+- `design/visual/STYLE-REFERENCE.md` — complete visual spec locked
+  - Full color palette with exact hex values for all screens, rarities, action states
+  - All 40 item dominant colors defined
+  - Typography hierarchy (sans + mono, 6 size levels)
+  - Cel-shading rules (6px outline at 512px, black always, top-left single light source)
+  - Rarity system (border, glow, animation specs)
+  - Image generation prompt template + 2 worked examples
+  - "Consistent" quality checklist (silhouette, 32px, family, color, background tests)
+- 5 baseline icons generated via DALL-E 3, saved to `web/public/icons/test/`
+  - `maxine.png` — industrial hydraulic piston claws (orange-red #F4511E)
+  - `block-7.png` — military segmented carapace with "7" stencil (green #4CAF50)
+  - `the-red-gene.png` — red pulsing DNA double helix (red #FF1744)
+  - `action-scuttle.png` — crustacean legs in sideways motion (cyan #00E5FF)
+  - `slot-carapace.png` — armor slot UI icon (blue-grey #78909C)
+
+### Sound Director
+- `design/audio/SFX-PLAN.md` — complete production plan with all ~82 ElevenLabs prompts
+  - ElevenLabs API endpoint documented + payload spec
+  - Full file structure for `web/public/sfx/` (global, actions, items)
+  - ElevenLabs text prompt written for every individual sound file
+  - Duration guidance per sound type
+  - Generation checklist
+  - **Audio generation BLOCKED pending ELEVENLABS_API_KEY from Aleks**
+
+### Design log
+- `design/DECISIONS.md` updated with 3 new decisions (visual baseline, ElevenLabs selection, color key rule)
+- `design/BUDGET.md` updated ($0.20 DALL-E spend logged)
+
+---
+
+## [2026-03-01] - feat(ws19): map movement + action economy legibility
+
+**Type:** feat | **Budget impact:** ~$0 (no AI generation)
+- MOVE action now auto-calculates direction toward nearest opponent (stepToward, Manhattan-style)
+- MELEE_STRIKE range updated to ≤3 tiles (was 1.5); RANGED_SHOT ≤10 confirmed
+- Engine emits MOVE_COMPLETED events with position + distance data
+- OUT_OF_RANGE attacks show dist/range in feed: "⚠️ BOT attacks — OUT OF RANGE (dist: 8, need ≤3)"
+- MOVE events show position in feed: "📍 BOT moves → (12, 8) [dist: 4]"
+- ArenaCanvas lerp speed increased (0.08→0.15) for ~300ms smooth tween
+- BattleHUD: action economy legend strip at bottom (MELEE/RANGED/GUARD/DASH/UTILITY)
+- Zero regressions on existing demo functionality
+
+---
+
+## [2026-03-01] - design: game studio structure + full ontology
+
+**Type:** design | **Budget impact:** ~$0 (no agent)
+- Created `design/` folder structure (world, systems, items, visual, audio, ui)
+- `design/world/ONTOLOGY.md` — full naming bible (Lobster, Molt, Scuttle, Roe, etc.)
+- `design/items/REGISTRY.md` — all 40 items with names, effects, downsides
+- `design/visual/ART-DIRECTION.md` — High on Life / Borderlands cel-shaded direction
+- `design/visual/ICONOGRAPHY.md` — 53 icon specs ready for art pass
+- `design/audio/SOUND-DESIGN.md` — SFX spec per item, action, screen
+- `design/ui/COPY-GUIDE.md` — The House voice, vocabulary table
+- `design/systems/COMBAT.md` — 150ms ticks, queue cap 3, decision window 750ms
+- `design/BUDGET.md` — $880 budget, $20/day burn, ledger
+- `design/DECISIONS.md` — decision log, all locked decisions recorded
+
+**Decisions locked this session:** Fighter=Lobster, Shell=Molt, Build screen=The Shed,
+Parts=Carapace·Claws·Tomalley, Fight=Scuttle, Currency=Roe, Tick=150ms, Queue cap=3
+
+---
+
+## [2026-03-01] - feat(ws16): BYO OpenClaw agent — webhook-based decision routing
+
+**Type:** feat | **Budget impact:** ~$2
+- `agent.external.ts` wired into match flow
+- `MoldBuilder.tsx` — YOUR AGENT section, HTTPS-validated webhook URL input
+- AGENT CONNECTED badge, Directive row auto-hides when BYO active
+- Brain panel shows action log (not LLM streaming) for BYO bots
+- `run-match.ts` routes decisions through external proxy when webhookUrl set
+
+---
+
+## [2026-03-01] - feat(ws15): composable mold assembly + real LLM battles
+
+**Type:** feat | **Budget impact:** ~$2
+- `web/app/lib/ws2/parts.ts` — 13 parts across 4 slots
+- `web/app/components/MoldBuilder.tsx` — dark arena UI, 4 rows, pre-selected defaults
+- `demo.tsx` — build phase → battle phase
+- `CinematicBattle.tsx` — hardcoded bots replaced with composed molds
+
+---
+
+## [2026-03-01] - feat(ws14): lobster mecha arena — procedural Three.js lobster models
+
+**Type:** feat | **Budget impact:** ~$2
+- Replaced box crawlers with anatomically correct procedural lobster mechas
+- Carapace, chelipeds, antennae, uropod fan, stalked eyes
+- Deep ocean pit arena, bioluminescent cyan grid, colored side lights
+- Idle animations, attack lunges, death flip, particle bursts
+
+---
 
 ---
 

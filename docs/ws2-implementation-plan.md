@@ -324,7 +324,7 @@ Return `reasoning` in the API response alongside `action`.
 **Deploy:**
 - [ ] `npm run build` clean, no TypeScript errors
 - [ ] `OPENAI_API_KEY` set in Vercel dashboard
-- [ ] cogcage.com serves the updated `/play` page
+- [ ] themoltpit.com serves the updated `/play` page
 
 ---
 

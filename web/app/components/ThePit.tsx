@@ -249,11 +249,8 @@ export default function ThePit() {
   const { isAuthenticated, isLoading } = useConvexAuth()
   const navigate = useNavigate()
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      navigate({ to: '/sign-in', search: { returnTo: '/play' } })
-    }
-  }, [isAuthenticated, isLoading, navigate])
+  // Redirect is now handled by /play route (shows DemoLoop for unauthenticated)
+  // This component only renders when isAuthenticated = true
 
   const { data: topPlayers } = useQuery({
     ...convexQuery(api.ladder.getTopPlayers, { limit: 10 }),
