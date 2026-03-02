@@ -4,6 +4,28 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Cron — 14:02 ET, Mar 2 2026
+
+**Directive**: STOP copy iterations. Priorities: P1 signup, P2 demo, P3 monetization, P4 ops log.
+
+**Status:**
+- P1 — Signup reliability + Redis storage + observable logs: ✅ COMPLETE (no regression)
+- P2 — Playable demo loop (7×7 grid, bot movement, range-based AP economy): ✅ COMPLETE (no regression)
+- P3 — Founder checkout + postback: ✅ CODE COMPLETE — **blocked on Aleks env vars**
+- P4 — Ops log: ✅ CURRENT (this entry)
+
+**Build:** Clean (`bun run build` — ✓ 1.28s)
+**Branch:** main, up to date with origin/main
+
+**Blockers (Aleks action required — unchanged since 12:12 ET):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates live founder checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `https://cogcage.com/api/postback`
+3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
+
+**Cron status**: Code-idle. All P1-P3 shipped and stable. No product-critical code to ship this pass. Waiting on env vars to activate live monetization.
+
+---
+
 ### Autopilot Cron — 13:17 ET, Mar 2 2026
 
 **Directive**: STOP copy iterations. Priorities: P1 signup, P2 demo, P3 monetization, P4 ops log.
@@ -1357,3 +1379,22 @@ bun run build (web/)
 3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
 
 **Cron status**: Code-idle. All P1-P3 shipped and stable. No product-critical code warranted this pass. Waiting on env vars to activate live monetization.
+
+---
+
+### Autopilot Cron — 14:12 ET, Mar 2 2026
+
+**Status (unchanged — code-idle):**
+- P1 — Signup reliability + observable logs: ✅ LIVE
+- P2 — Playable demo loop (7×7 grid, movement, AP economy): ✅ LIVE
+- P3 — Founder checkout + postback: ✅ CODE COMPLETE — blocked on env vars
+- P4 — Ops log: ✅ CURRENT
+
+**Build:** No new code. Repo clean, main up to date with origin/main.
+
+**Blockers (Aleks action required):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates live checkout
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `cogcage.com/api/postback`
+3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
+
+**Cron status**: Code-idle. Nothing product-critical to ship until env vars land.
