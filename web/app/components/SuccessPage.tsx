@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 
 const PAID_KEY = 'moltpit_paid_conversions'
 const PENDING_KEY = 'moltpit_pending_paid_conversions'
+const CHECKOUT_EVENT_ID_KEY = 'moltpit_last_founder_checkout_event_id'
 
 function rememberPaidConversion(id: string) {
   const known = JSON.parse(localStorage.getItem(PAID_KEY) || '[]')
@@ -72,12 +73,15 @@ async function flushPendingConversions() {
 async function trackPaidConversion() {
   const params = new URLSearchParams(window.location.search)
   const sessionId = params.get('session_id') || params.get('checkout_session_id')
+  const checkoutEventId = localStorage.getItem(CHECKOUT_EVENT_ID_KEY) || undefined
   const email =
     params.get('prefilled_email') ||
     localStorage.getItem('moltpit_email') ||
+    localStorage.getItem('moltpit_signin_email') ||
     undefined
   const conversionId =
     sessionId ||
+    checkoutEventId ||
     `success:${window.location.pathname}:${new Date().toISOString().slice(0, 10)}`
   if (hasPaidConversion(conversionId)) return
 
@@ -100,6 +104,7 @@ async function trackPaidConversion() {
   if (ok) {
     rememberPaidConversion(conversionId)
     clearPending(conversionId)
+    localStorage.removeItem(CHECKOUT_EVENT_ID_KEY)
     return
   }
   rememberPending(payload)
