@@ -436,13 +436,14 @@ const STYLES = `
   /* ─── TYPEWRITER ─── */
   .tw-line {
     font-family: var(--mono);
-    font-size: clamp(.9rem, 1.4vw, 1rem);
-    line-height: 1.9;
+    font-size: clamp(.85rem, 2.5vw, 1rem);
+    line-height: 1.85;
     color: rgba(240,240,245,0.72);
     display: block;
     overflow: hidden;
-    white-space: pre-wrap;
-    min-height: 1.9em;
+    white-space: normal;
+    word-break: break-word;
+    min-height: 1.85em;
   }
   .tw-cursor {
     display: inline-block;
@@ -461,6 +462,39 @@ const STYLES = `
     font-style: italic;
   }
 
+  /* ─── ORIGIN RESPONSIVE ─── */
+  .origin-grid {
+    max-width: 1280px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
+  .origin-left  { padding: 5rem 4rem 5rem 3rem; position: relative; z-index: 2; }
+  .origin-right {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; min-height: 500px;
+  }
+  .origin-title-bar {
+    border-bottom: 1px solid rgba(0,229,255,0.12);
+    padding: .5rem 1rem;
+    display: flex; align-items: center; gap: .6rem;
+    background: rgba(0,229,255,0.04);
+    flex-wrap: nowrap; overflow: hidden;
+  }
+  .origin-title-text {
+    font-family: var(--mono); font-size: .58rem; letter-spacing: 2px;
+    color: rgba(0,229,255,0.3); text-transform: uppercase;
+    margin-left: .5rem; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 768px) {
+    .origin-grid { grid-template-columns: 1fr; }
+    .origin-left  { padding: 2.5rem 1.5rem; order: 2; }
+    .origin-right { min-height: 280px; order: 1; padding: 1.5rem 1.5rem 0; }
+    .origin-title-text { font-size: .52rem; letter-spacing: 1px; }
+  }
+
   /* ─── RESPONSIVE ─── */
   @media (max-width:960px) {
     .hero { grid-template-columns:1fr; text-align:center; padding:2rem 1.5rem; }
@@ -471,14 +505,24 @@ const STYLES = `
     .items-grid { grid-template-columns:1fr; }
     .pit-inner,.ledger-inner { grid-template-columns:1fr; gap:3rem; }
     .pit-truth { grid-template-columns:1fr 1fr; }
-    .section { padding:5rem 1.5rem; }
+    .section { padding:4rem 1.5rem; }
     .molt-badge { right:5%; }
+    .steps { grid-template-columns:1fr 1fr; }
   }
   @media (max-width:600px) {
     .stat-div { display:none; }
     .lp-pulse { display:none; }
     .lp-nav { padding:1rem 1.25rem; }
     .pit-truth { grid-template-columns:1fr; }
+    .stats-bar { padding:1.25rem 1.5rem; }
+    .section { padding:3rem 1.25rem; }
+    .steps { grid-template-columns:1fr; }
+    .molt-tabs { overflow-x:auto; }
+    .molt-tab { padding:.6rem 1rem; font-size:.65rem; }
+    .hero { padding:1.5rem 1.25rem; }
+    .hero-r { min-height:220px; }
+    .crustie-frame { width:clamp(220px,70vw,320px); }
+    .headline { font-size:clamp(3rem,12vw,5rem); }
   }
 `
 
@@ -701,34 +745,22 @@ function OriginSection() {
         overflow: 'hidden',
       }}
     >
-      <div style={{
-        maxWidth: '1280px', margin: '0 auto',
-        display: 'grid', gridTemplateColumns: '1fr 1fr',
-        alignItems: 'center',
-      }}>
+      <div className="origin-grid">
 
         {/* LEFT — typewriter terminal */}
-        <div style={{ padding: '5rem 4rem 5rem 3rem', position: 'relative', zIndex: 2 }}>
+        <div className="origin-left">
           <div style={{
             border: '1px solid rgba(0,229,255,0.15)',
             background: 'rgba(0,0,0,0.35)',
             position: 'relative',
           }}>
             {/* Terminal title bar */}
-            <div style={{
-              borderBottom: '1px solid rgba(0,229,255,0.12)',
-              padding: '.5rem 1rem',
-              display: 'flex', alignItems: 'center', gap: '.6rem',
-              background: 'rgba(0,229,255,0.04)',
-            }}>
+            <div className="origin-title-bar">
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,100,80,.5)' }} />
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,200,0,.3)' }} />
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(0,229,255,.25)' }} />
-              <span style={{
-                fontFamily: 'var(--mono)', fontSize: '.58rem', letterSpacing: '2px',
-                color: 'rgba(0,229,255,0.3)', textTransform: 'uppercase', marginLeft: '.5rem',
-              }}>
-                THE SOUS — OPERATIONAL ASSESSMENT — TIDE 0
+              <span className="origin-title-text">
+                SOUS ASSESSMENT · TIDE 0
               </span>
             </div>
 
@@ -749,12 +781,7 @@ function OriginSection() {
         </div>
 
         {/* RIGHT — Sam Saltman, bleeding into substrate */}
-        <div style={{
-          position: 'relative',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          overflow: 'hidden',
-          minHeight: '500px',
-        }}>
+        <div className="origin-right">
           <img
             src="/sam-saltman-statue.png"
             alt="Master Chef Sam Saltman — underwater statue, Tide 0"
