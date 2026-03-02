@@ -117,12 +117,14 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
-          { sha: 'ws18', msg: 'feat(ws18): product core — signup reliability, demo loop, monetization, ops log' },
-          { sha: '03af74a', msg: 'ops: budget tracker, decision log, mandatory PR rules' },
-          { sha: '7f9befd', msg: 'design: game studio structure — ontology, items, visual, audio, UI copy guide' },
-          { sha: '860f447', msg: 'feat(ws16): BYO OpenClaw agent — webhook-based decision routing' },
-          { sha: '516848f', msg: 'feat(autopilot-march1): signup reliability + public demo loop + monetization' },
-          { sha: '16dafb0', msg: 'feat(ws15): composable mold assembly + real LLM battles' },
+          { sha: '5f4ea05', msg: 'chore(ops): autopilot checkpoint 05:03 ET Mar 2 — P1-P3 stable, blocked on env vars' },
+          { sha: 'ad41553', msg: 'chore(ops): autopilot checkpoint 04:58 ET Mar 2 — P1-P3 stable, blocked on env vars' },
+          { sha: '7a2fd58', msg: 'chore(ops): autopilot checkpoint 04:53 ET Mar 2 — P1-P3 stable, blocked on env vars' },
+          { sha: '72d3f8a', msg: 'chore(ops): autopilot checkpoint 04:48 ET Mar 2 — P1-P3 stable, blocked on env vars' },
+          { sha: '1c46cbd', msg: 'chore(ops): autopilot checkpoint 04:28 ET Mar 2 — P1-P3 stable, blocked on env vars' },
+          { sha: '5743b71', msg: 'feat(autopilot): signup reliability + demo grid movement + monetization fallback' },
+          { sha: 'da6bec2', msg: 'chore(ops): autopilot checkpoint 03:13 ET Mar 2 — P1-P3 complete, env vars pending' },
+          { sha: '42afc36', msg: 'chore(ops): autopilot checkpoint 03:08 ET Mar 2 — P1-P3 complete, env vars pending' },
         ];
 
         return new Response(JSON.stringify({
