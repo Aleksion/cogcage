@@ -1421,6 +1421,27 @@ bun run build (web/)
 
 ---
 
+### Autopilot Cron — 14:47 ET, Mar 2 2026
+
+**Directive received**: STOP landing-page copy iterations. Prioritize P1–P4 in order.
+
+**Status (no change — all P1-P4 already complete):**
+- P1 — Signup reliability + Redis storage + observable logs: ✅ LIVE
+- P2 — Playable demo loop (7×7 grid, bot movement, AP economy, WATCH + PLAY modes): ✅ LIVE
+- P3 — Founder checkout + postback: ✅ CODE COMPLETE — blocked on env vars
+- P4 — Ops log: ✅ CURRENT (this entry)
+
+**No new code.** All features shipped prior to this cron pass. Repo clean, main up to date with origin/main.
+
+**Blockers (Aleks action required — unchanged):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates live Founder Pack checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `cogcage.com/api/postback`
+3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
+
+**Cron status**: Code-idle. Nothing product-critical to ship. Awaiting env vars from Aleks.
+
+---
+
 ### Autopilot Cron — 14:41 ET, Mar 2 2026
 
 **Status (no change — code-idle):**
