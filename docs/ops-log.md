@@ -387,3 +387,42 @@ bun run build (web/)
 **Env vars confirmed in Vercel:**
 - `OPENAI_API_KEY` ✅
 - `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` ✅
+
+---
+
+### Autopilot Cron — 23:28 ET, Mar 1 2026
+
+**Directive**: STOP landing-page copy iterations. Priorities: (1) signup form reliability + storage + observable logs, (2) real playable demo loop + map movement + action economy, (3) monetization path (founder pack + postback), (4) update ops log.
+
+**Agent audit**: All active agents are IDLE — no landing-page copy work in progress.
+
+**Active sessions at cron time** (all idle/complete):
+- `cc-ws17-sprint` — Forge nav + persistent nav (idle)
+- `cc-ws17-lore` / `cc-ws17-lore-bible` — Lore bible / world design (idle, done)
+- `cc-ws18-game-design` — Game design docs (idle, done)
+- `cc-ws19-map` — Map movement + action economy ✅ (idle, done)
+- `cc-ws19-visual-sound` — Visual + sound assets (idle, done)
+- `cc-ws20-rename` — App rename sweep (idle, done)
+- `cc-ws21-game-engine` — 3D BabylonJS engine prototype (idle, done)
+
+**P1-P3 status on `origin/main` (e0119e4):**
+- P1 — Signup reliability + Redis storage + observable logs: ✅ COMPLETE (merged)
+- P2 — Playable demo loop (`/demo` route, CinematicBattle, bot movement, action economy HUD): ✅ COMPLETE — `dcfc3e0` adds map movement + range constraints + action economy legend
+- P3 — Monetization path (founder-intent fallback, postback hardening, .env.example): ✅ COMPLETE (merged)
+
+**Code change this run:**
+- Ops log update only (no product code changed — all P1-P3 already shipped)
+
+**Remaining blockers (Aleks-only):**
+1. Create Stripe payment link → set `PUBLIC_STRIPE_FOUNDER_URL` in Vercel → activates founder checkout CTA
+2. Set `COGCAGE_POSTBACK_KEY` in Vercel + add Stripe webhook → `https://cogcage.com/api/postback`
+3. Set `MOLTPIT_OPS_KEY` in Vercel → secures `/api/ops`
+
+**Non-critical work shipped today (per-workstream, not P1-P3):**
+- WS17 lore bible (world design, chef metaphor, rank ladder)
+- WS18 game design doc (ontology, items, visual spec, studio structure)
+- WS19 visual+sound (40 item icons, 5 species refs, 82 SFX, 200 equipped renders, GLBs on Blob CDN)
+- WS20 rename sweep (Molt Pit branding consistent)
+- WS21 3D engine prototype (BabylonJS, glow layer, HP bars)
+
+These are future-facing design/asset work — not landing-page copy iterations. No directive violation.
