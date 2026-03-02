@@ -14,6 +14,60 @@ function hashEmail(email: string): string {
   return ((h >>> 0) >>> 0).toString(16)
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const OTP_RE = /^[0-9]{6}$/
+const SIGNIN_EMAIL_STORAGE_KEY = 'moltpit_signin_email'
+const AUTH_EVENTS_SOURCE = 'sign-in'
+
+function normalizeEmail(raw: string): string {
+  return raw.trim().toLowerCase()
+}
+
+function readStoredEmail(): string {
+  try {
+    const value = localStorage.getItem(SIGNIN_EMAIL_STORAGE_KEY) ?? ''
+    const normalized = normalizeEmail(value)
+    return EMAIL_RE.test(normalized) ? normalized : ''
+  } catch {
+    return ''
+  }
+}
+
+function storeEmail(email: string) {
+  try {
+    localStorage.setItem(SIGNIN_EMAIL_STORAGE_KEY, normalizeEmail(email))
+  } catch {
+    // Ignore storage failures (private mode / blocked storage).
+  }
+}
+
+async function logAuthTelemetryEvent({
+  eventName,
+  email,
+  meta,
+}: {
+  eventName: string
+  email?: string
+  meta?: Record<string, unknown>
+}) {
+  const payload = {
+    event: eventName,
+    source: AUTH_EVENTS_SOURCE,
+    email,
+    meta,
+  }
+  try {
+    await fetch('/api/events', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    })
+  } catch {
+    // Never block sign-in UX for telemetry errors.
+  }
+}
+
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap');
 
@@ -334,13 +388,25 @@ function GitHubSignIn() {
   const handleGitHub = async () => {
     setError('')
     setLoading(true)
+    void logAuthTelemetryEvent({
+      eventName: 'auth_github_started',
+      meta: { method: 'github' },
+    })
     try {
       await signIn('github')
       void logAuthEvent({ method: 'github', success: true })
+      void logAuthTelemetryEvent({
+        eventName: 'auth_github_succeeded',
+        meta: { method: 'github' },
+      })
     } catch (e: any) {
       const msg = e.message || 'GitHub sign-in failed — try again'
       setError(msg)
       void logAuthEvent({ method: 'github', success: false, errorCode: msg.slice(0, 120) })
+      void logAuthTelemetryEvent({
+        eventName: 'auth_github_failed',
+        meta: { method: 'github', errorCode: msg.slice(0, 120) },
+      })
       setLoading(false)
     }
   }
@@ -369,39 +435,92 @@ function GitHubSignIn() {
 
 function EmailOTPForm() {
   const { signIn } = useAuthActions()
-  const [email, setEmail] = useState('')
+  const [emailInput, setEmailInput] = useState('')
   const [sent, setSent] = useState(false)
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const logAuthEvent = useMutation(api.authLog.logAuthEvent)
+  const normalizedEmail = normalizeEmail(emailInput)
+  const normalizedCode = code.trim()
+  const isEmailValid = EMAIL_RE.test(normalizedEmail)
+  const isCodeValid = OTP_RE.test(normalizedCode)
+
+  useEffect(() => {
+    const saved = readStoredEmail()
+    if (saved) setEmailInput(saved)
+  }, [])
 
   const handleSendCode = async () => {
+    if (loading) return
+    if (!isEmailValid) {
+      setError('Enter a valid email address to receive your code.')
+      void logAuthTelemetryEvent({
+        eventName: 'auth_email_otp_validation_failed',
+        meta: { stage: 'send', reason: 'invalid_email' },
+      })
+      return
+    }
+
     setError('')
     setLoading(true)
     try {
-      await signIn('resend-otp', { email })
+      await signIn('resend-otp', { email: normalizedEmail })
       setSent(true)
-      void logAuthEvent({ method: 'email-otp', success: true, emailHash: hashEmail(email.trim().toLowerCase()) })
+      setEmailInput(normalizedEmail)
+      storeEmail(normalizedEmail)
+      void logAuthEvent({ method: 'email-otp', success: true, emailHash: hashEmail(normalizedEmail) })
+      void logAuthTelemetryEvent({
+        eventName: 'auth_email_otp_sent',
+        email: normalizedEmail,
+        meta: { stage: 'send' },
+      })
     } catch (e: any) {
       const msg = e.message || 'Failed to send code'
       setError(msg)
-      void logAuthEvent({ method: 'email-otp', success: false, emailHash: hashEmail(email.trim().toLowerCase()), errorCode: msg.slice(0, 120) })
+      void logAuthEvent({ method: 'email-otp', success: false, emailHash: hashEmail(normalizedEmail), errorCode: msg.slice(0, 120) })
+      void logAuthTelemetryEvent({
+        eventName: 'auth_email_otp_send_failed',
+        email: normalizedEmail,
+        meta: { stage: 'send', errorCode: msg.slice(0, 120) },
+      })
     } finally {
       setLoading(false)
     }
   }
 
   const handleVerify = async () => {
+    if (loading) return
+    if (!isCodeValid) {
+      setError('Enter the 6-digit code from your email.')
+      void logAuthTelemetryEvent({
+        eventName: 'auth_email_otp_validation_failed',
+        email: isEmailValid ? normalizedEmail : undefined,
+        meta: { stage: 'verify', reason: 'invalid_code' },
+      })
+      return
+    }
+
     setError('')
     setLoading(true)
     try {
-      await signIn('resend-otp', { email, code })
-      void logAuthEvent({ method: 'email-otp', success: true, emailHash: hashEmail(email.trim().toLowerCase()) })
+      await signIn('resend-otp', { email: normalizedEmail, code: normalizedCode })
+      storeEmail(normalizedEmail)
+      void logAuthEvent({ method: 'email-otp', success: true, emailHash: hashEmail(normalizedEmail) })
+      void logAuthTelemetryEvent({
+        eventName: 'auth_email_otp_verified',
+        email: normalizedEmail,
+        meta: { stage: 'verify' },
+      })
     } catch (e: any) {
       const msg = e.message || 'Invalid code — try again'
       setError(msg)
-      void logAuthEvent({ method: 'email-otp', success: false, emailHash: hashEmail(email.trim().toLowerCase()), errorCode: msg.slice(0, 120) })
+      void logAuthEvent({ method: 'email-otp', success: false, emailHash: hashEmail(normalizedEmail), errorCode: msg.slice(0, 120) })
+      void logAuthTelemetryEvent({
+        eventName: 'auth_email_otp_verify_failed',
+        email: normalizedEmail,
+        meta: { stage: 'verify', errorCode: msg.slice(0, 120) },
+      })
     } finally {
       setLoading(false)
     }
@@ -414,14 +533,15 @@ function EmailOTPForm() {
           className="signin-input"
           type="email"
           placeholder="your@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && email && handleSendCode()}
+          value={emailInput}
+          onChange={(e) => setEmailInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && isEmailValid && handleSendCode()}
+          autoComplete="email"
         />
         <button
           className="signin-email-btn"
           onClick={handleSendCode}
-          disabled={!email || loading}
+          disabled={!isEmailValid || loading}
         >
           {loading ? 'Sending...' : 'Send Magic Link'}
         </button>
@@ -433,7 +553,7 @@ function EmailOTPForm() {
   return (
     <div>
       <p className="signin-success-note">
-        Code sent to <strong>{email}</strong>. Check your inbox.
+        Code sent to <strong>{normalizedEmail}</strong>. Check your inbox.
       </p>
       <input
         className="signin-input"
@@ -441,13 +561,16 @@ function EmailOTPForm() {
         placeholder="Enter 6-digit code"
         value={code}
         onChange={(e) => setCode(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && code && handleVerify()}
+        onKeyDown={(e) => e.key === 'Enter' && isCodeValid && handleVerify()}
+        inputMode="numeric"
+        pattern="[0-9]*"
+        maxLength={6}
         autoFocus
       />
       <button
         className="signin-email-btn"
         onClick={handleVerify}
-        disabled={!code || loading}
+        disabled={!isCodeValid || loading}
       >
         {loading ? 'Verifying...' : 'Verify & Enter'}
       </button>
