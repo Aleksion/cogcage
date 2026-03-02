@@ -1,19 +1,28 @@
 import React from 'react'
 
+export interface BotHudEntry {
+  id: string
+  name: string
+  hp: number
+  energy: number
+  color: string
+  isPlayer?: boolean
+}
+
+interface FeedEntry {
+  text: string
+  reasoning?: string
+}
+
 interface BattleHUDProps {
-  botAHp: number
-  botBHp: number
-  botAEnergy: number
-  botBEnergy: number
+  actors: BotHudEntry[]
   tick: number
   tickRate: number
   maxTicks: number
-  feed: Array<{ text: string; reasoning?: string }>
+  feed: FeedEntry[]
   phase: 'playing' | 'ended'
   muted: boolean
   onToggleMute: () => void
-  botAName?: string
-  botBName?: string
 }
 
 const HP_MAX = 100
@@ -23,10 +32,7 @@ const hpColor = (hp: number) =>
   hp > 60 ? '#2ecc71' : hp > 30 ? '#f39c12' : '#eb4d4b'
 
 export default function BattleHUD({
-  botAHp,
-  botBHp,
-  botAEnergy,
-  botBEnergy,
+  actors,
   tick,
   tickRate,
   maxTicks,
@@ -34,13 +40,7 @@ export default function BattleHUD({
   phase,
   muted,
   onToggleMute,
-  botAName = 'BERSERKER',
-  botBName = 'TACTICIAN',
 }: BattleHUDProps) {
-  const hpPctA = Math.max(0, Math.round((botAHp / HP_MAX) * 100))
-  const hpPctB = Math.max(0, Math.round((botBHp / HP_MAX) * 100))
-  const energyPctA = Math.round((botAEnergy / ENERGY_MAX) * 100)
-  const energyPctB = Math.round((botBEnergy / ENERGY_MAX) * 100)
   const timeSec = (tick / tickRate).toFixed(1)
   const matchProgress = Math.min(100, (tick / maxTicks) * 100)
 
@@ -65,49 +65,57 @@ export default function BattleHUD({
           background: 'linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 80%, transparent 100%)',
         }}
       >
-        {/* Bot A side */}
-        <div style={{ flex: 1, maxWidth: 400 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span
-              style={{
-                fontFamily: "'Bangers', display",
-                fontSize: '1.3rem',
-                color: '#EB4D4B',
-                textShadow: '2px 2px 0 #000',
-                letterSpacing: 1,
-              }}
-            >
-              {botAName}
-            </span>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: '#fff', fontWeight: 700 }}>
-              {botAHp} HP
-            </span>
-          </div>
-          {/* HP bar */}
-          <div style={{ height: 10, background: 'rgba(0,0,0,0.6)', borderRadius: 5, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div
-              style={{
-                height: '100%',
-                width: `${hpPctA}%`,
-                background: `linear-gradient(90deg, ${hpColor(botAHp)}, ${hpColor(botAHp)}cc)`,
-                transition: 'width 0.3s ease-out',
-                boxShadow: `0 0 10px ${hpColor(botAHp)}66`,
-                borderRadius: 5,
-              }}
-            />
-          </div>
-          {/* Energy bar */}
-          <div style={{ height: 4, background: 'rgba(0,0,0,0.4)', borderRadius: 2, overflow: 'hidden', marginTop: 3 }}>
-            <div
-              style={{
-                height: '100%',
-                width: `${energyPctA}%`,
-                background: '#EB4D4B',
-                transition: 'width 0.2s ease-out',
-                opacity: 0.7,
-              }}
-            />
-          </div>
+        {/* Actor HP bars — left side */}
+        <div style={{ flex: 1, maxWidth: 400, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {actors.map((actor) => {
+            const hpPct = Math.max(0, Math.round((actor.hp / HP_MAX) * 100))
+            const energyPct = Math.round((actor.energy / ENERGY_MAX) * 100)
+            return (
+              <div key={actor.id}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <span
+                    style={{
+                      fontFamily: "'Bangers', display",
+                      fontSize: '1.1rem',
+                      color: actor.color,
+                      textShadow: '2px 2px 0 #000',
+                      letterSpacing: 1,
+                    }}
+                  >
+                    {actor.name}
+                  </span>
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', color: '#fff', fontWeight: 700 }}>
+                    {actor.hp} HP
+                  </span>
+                </div>
+                {/* HP bar */}
+                <div style={{ height: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${hpPct}%`,
+                      background: `linear-gradient(90deg, ${hpColor(actor.hp)}, ${hpColor(actor.hp)}cc)`,
+                      transition: 'width 0.3s ease-out',
+                      boxShadow: `0 0 10px ${hpColor(actor.hp)}66`,
+                      borderRadius: 4,
+                    }}
+                  />
+                </div>
+                {/* Energy bar */}
+                <div style={{ height: 3, background: 'rgba(0,0,0,0.4)', borderRadius: 2, overflow: 'hidden', marginTop: 2 }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${energyPct}%`,
+                      background: actor.color,
+                      transition: 'width 0.2s ease-out',
+                      opacity: 0.7,
+                    }}
+                  />
+                </div>
+              </div>
+            )
+          })}
         </div>
 
         {/* Center — timer + round */}
@@ -152,48 +160,8 @@ export default function BattleHUD({
           </div>
         </div>
 
-        {/* Bot B side */}
-        <div style={{ flex: 1, maxWidth: 400 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span
-              style={{
-                fontFamily: "'Bangers', display",
-                fontSize: '1.3rem',
-                color: '#00E5FF',
-                textShadow: '2px 2px 0 #000',
-                letterSpacing: 1,
-              }}
-            >
-              {botBName}
-            </span>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: '#fff', fontWeight: 700 }}>
-              {botBHp} HP
-            </span>
-          </div>
-          <div style={{ height: 10, background: 'rgba(0,0,0,0.6)', borderRadius: 5, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div
-              style={{
-                height: '100%',
-                width: `${hpPctB}%`,
-                background: `linear-gradient(90deg, ${hpColor(botBHp)}, ${hpColor(botBHp)}cc)`,
-                transition: 'width 0.3s ease-out',
-                boxShadow: `0 0 10px ${hpColor(botBHp)}66`,
-                borderRadius: 5,
-              }}
-            />
-          </div>
-          <div style={{ height: 4, background: 'rgba(0,0,0,0.4)', borderRadius: 2, overflow: 'hidden', marginTop: 3 }}>
-            <div
-              style={{
-                height: '100%',
-                width: `${energyPctB}%`,
-                background: '#00E5FF',
-                transition: 'width 0.2s ease-out',
-                opacity: 0.7,
-              }}
-            />
-          </div>
-        </div>
+        {/* Right spacer to balance layout */}
+        <div style={{ flex: 1, maxWidth: 400 }} />
 
         {/* Mute button */}
         <button
