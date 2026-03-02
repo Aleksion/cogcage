@@ -7,6 +7,20 @@ Format: date · who decided · what · why · alternatives rejected
 
 ---
 
+## 2026-03-01 — WS21 Game Engine Sprint 1 (Head of Engineering)
+
+**Rendering engine: Phaser 3**
+Decided by: Head of Engineering (WS21)
+Phaser 3 selected as the 2D game rendering engine for The Pit arena. Already installed in web/ (^3.90.0). Largest AI training corpus of any 2D game framework — maximizes copilot efficiency. Purpose-built for 2D grid-based games: tile rendering, sprite animation, tweening, camera effects. Existing MatchScene.ts prototype confirms viability. Phaser runs client-side only — no SSR conflicts with TanStack Start.
+Rejected: PlayCanvas (3D overkill for 20×20 grid, existing PlayCanvasScene.ts is 24KB of complexity for a top-down view), Three.js (same 3D overhead, already tried in ArenaCanvas.tsx), raw Canvas2D (no animation/tween primitives, would require reimplementing what Phaser gives for free), DOM-based grid (already in Play.tsx — scaling issues, no smooth animation between tiles).
+
+**Action name mapping: engine names → lore names in UI**
+Decided by: Head of Engineering (WS21)
+Engine (Cloudflare DO) uses technical action names: MOVE, MELEE_STRIKE, RANGED_SHOT, GUARD, DASH. UI displays locked lore names from COMBAT.md: SCUTTLE, PINCH, SPIT, SHELL UP, BURST. Mapping is frontend-only — engine code unchanged per constraint. Agent.decide endpoint continues to use engine names for compatibility.
+Rejected: Renaming engine actions (violates "Do NOT modify engine/" constraint), displaying engine names in UI (breaks immersion, contradicts locked design spec).
+
+---
+
 ## 2026-03-01 — WS18 Game Design Systems (Lead Game Designer)
 
 **INVERTER: DoT is environmental, does NOT convert to healing**

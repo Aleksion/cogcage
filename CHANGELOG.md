@@ -8,6 +8,42 @@
 
 ---
 
+## [2026-03-01] - feat(ws21): Phaser 3 game engine — Sprint 1
+
+**Type:** feature | **Budget impact:** ~$0.10 (no API calls, local dev only)
+
+### Head of Engineering (WS21)
+
+**Game engine foundation — Phaser 3 rendering of The Pit:**
+
+- `web/app/lib/ws2/MatchScene.ts` — Complete rewrite of Phaser 3 arena scene
+  - Dark Brine aesthetic: #050510 background, bioluminescent cyan grid lines
+  - MAP 001 "THE STANDARD" tile rendering: WALL (dark coral/purple trim), COVER (debris), HAZARD (pulsing amber)
+  - Procedural lobster sprites with carapace, claws, eyes, antennae, tail fan
+  - HP bars rendered directly on grid above each lobster + energy pips
+  - Action VFX animations: PINCH (slash/flash), SPIT (projectile), SHELL UP (shield bubble), BURST (dash trail + speed lines)
+  - Damage number popups, action label popups
+  - Combat log sidebar with lore names and color-coded entries
+  - Action legend panel (SCUTTLE/PINCH/SPIT/SHELL UP/BURST)
+  - Match end overlay ("SCUTTLE OVER" + winner name)
+  - Engine→lore action name mapping (MOVE→SCUTTLE, MELEE_STRIKE→PINCH, etc.)
+
+- `web/app/components/PhaserArena.tsx` — React wrapper component
+  - Dynamic import of Phaser (SSR-safe)
+  - Accepts WebSocket snapshots, forwards to MatchScene
+  - Lifecycle management (create/destroy)
+  - `useWebSocketArena` hook for standalone usage
+
+- `web/app/components/Play.tsx` — Integrated Phaser arena into match view
+  - Replaced PlayCanvas 3D renderer with PhaserArena
+  - WebSocket tick messages now feed both React HUD and Phaser scene
+
+**Decisions logged:**
+- Phaser 3 selected as rendering engine (see DECISIONS.md)
+- Action name mapping: engine names → lore names in UI only
+
+---
+
 ## [2026-03-01] - design(ws18): complete game design systems spec
 
 **Type:** design | **Budget impact:** $0.00 (authoring only, no API calls)

@@ -9,6 +9,8 @@ import {
   TICK_RATE,
 } from '../lib/ws2/index.js';
 import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-types';
+import type { MatchSnapshot as PhaserSnapshot } from '../lib/ws2/MatchScene';
+import { PhaserArena } from './PhaserArena';
 
 const ENGINE_WS_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_ENGINE_WS_URL) ||
@@ -429,7 +431,10 @@ const Play = () => {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [ffaBusy, setFfaBusy] = useState(false);
 
-  // --- PlayCanvas ---
+  // --- Phaser Arena ---
+  const [phaserSnap, setPhaserSnap] = useState<PhaserSnapshot | null>(null);
+
+  // --- PlayCanvas (legacy, kept for fallback) ---
   const [pcActive, setPcActive] = useState(false);
   const playCanvasRef = useRef<HTMLCanvasElement>(null);
   const [vfxWord, setVfxWord] = useState<{ text: string; color: string; id: number } | null>(null);
@@ -770,13 +775,21 @@ const Play = () => {
           try { msg = JSON.parse(e.data); } catch { return; }
 
           if (msg.type === 'tick') {
+            const events = msg.events ?? msg.state?.events ?? [];
             const snap: MatchSnapshot = {
-              state: { ...msg.state, events: msg.events ?? msg.state?.events ?? [] },
+              state: { ...msg.state, events },
               tick: msg.tick,
               ended: false,
               winnerId: null,
             };
             handleSnapshot(snap);
+
+            // Feed Phaser arena
+            setPhaserSnap({
+              state: msg.state,
+              decisions: [],
+              newEvents: events,
+            });
 
             // Fire agent decisions at every DECISION_WINDOW_TICKS boundary
             // (DECISION_WINDOW_TICKS = 3 → every 600ms at 200ms/tick)
@@ -1354,22 +1367,16 @@ const Play = () => {
             </div>
           </div>
 
-          {/* PlayCanvas 3D arena — always 560px so canvas has dimensions when scene initialises */}
-          <div style={{ position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto 1rem', height: '560px', overflow: 'hidden', borderRadius: '14px', border: '4px solid #1A1A1A', boxShadow: '8px 8px 0 #1A1A1A', background: '#F9F7F2' }}>
-            <canvas
-              ref={playCanvasRef}
-              style={{ width: '100%', height: '100%', display: 'block' }}
+          {/* Phaser 3 Arena — The Pit */}
+          <div style={{ position: 'relative', width: '100%', maxWidth: '920px', margin: '0 auto 1rem' }}>
+            <PhaserArena
+              snapshot={phaserSnap}
+              botNames={{ botA: aName, botB: bName }}
+              onMatchEnd={(wId) => {
+                if (wId) setWinnerId(wId);
+              }}
             />
-            {/* Loading placeholder until PlayCanvas scene starts */}
-            {!pcActive && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', background: '#F9F7F2' }}>
-                <div style={{ fontFamily: 'Bangers, display', fontSize: '2rem', color: '#1A1A1A', letterSpacing: '2px' }}>LOADING ARENA...</div>
-                <div style={{ width: '120px', height: '8px', background: '#e0e0e0', borderRadius: '999px', border: '2px solid #1A1A1A', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', background: '#00E5FF', width: '60%', animation: 'vfx-burst-in 1s ease-in-out infinite alternate' }} />
-                </div>
-              </div>
-            )}
-            {/* Comic art VFX overlay — POW!/BANG! words over the 3D canvas */}
+            {/* Comic art VFX overlay — POW!/BANG! words over Phaser canvas */}
             {vfxEvents.map((v) => (
               <div
                 key={v.id}
@@ -1392,26 +1399,6 @@ const Play = () => {
                 {v.text}
               </div>
             ))}
-            {/* Canvas VFX word overlay (from PlayCanvas DOM events) */}
-            {vfxWord && (
-              <div style={{
-                position: 'absolute', inset: 0, display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-                pointerEvents: 'none', zIndex: 10,
-              }}>
-                <span style={{
-                  fontFamily: 'Bangers, display',
-                  fontSize: '5rem',
-                  color: vfxWord.color,
-                  WebkitTextStroke: '4px #111',
-                  textShadow: '4px 4px 0 #111, -4px -4px 0 #111, 4px -4px 0 #111, -4px 4px 0 #111',
-                  animation: 'vfxPop 0.7s ease-out forwards',
-                  letterSpacing: '0.05em',
-                }}>
-                  {vfxWord.text}
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Below-canvas controls: tick/seed + abort — always visible */}
