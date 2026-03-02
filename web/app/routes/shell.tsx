@@ -24,7 +24,7 @@ const SHELL_GATE_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:wght@400;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap');
   .shell-gate {
     min-height: 60vh;
-    background: #1A1A1A;
+    background: #050510;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -39,7 +39,7 @@ const SHELL_GATE_STYLES = `
     font-weight: 600;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: #FFD600;
+    color: #00E5FF;
     margin: 0 0 0.6rem;
   }
   .shell-gate-title {
@@ -69,9 +69,9 @@ const SHELL_GATE_STYLES = `
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: #fff;
-    background: #EB4D4B;
+    background: #FF1744;
     border: none;
-    border-radius: 10px;
+    border-radius: 0;
     cursor: pointer;
     transition: background 0.15s, transform 0.1s;
   }
@@ -94,9 +94,9 @@ function ShellAuthGate({ returnTo }: { returnTo: string }) {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '60vh', background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '60vh', background: '#050510', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.8rem', letterSpacing: 2, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase' }}>
-          Loading...
+          ENTERING THE BRINE...
         </span>
       </div>
     )
@@ -107,16 +107,16 @@ function ShellAuthGate({ returnTo }: { returnTo: string }) {
       <>
         <style dangerouslySetInnerHTML={{ __html: SHELL_GATE_STYLES }} />
         <div className="shell-gate">
-          <div className="shell-gate-eyebrow">Access Restricted</div>
-          <h2 className="shell-gate-title">BUILD YOUR CRAWLER</h2>
+          <div className="shell-gate-eyebrow">THE SOUS — ACCESS REQUIRED</div>
+          <h2 className="shell-gate-title">BUILD YOUR CRUSTIE</h2>
           <p className="shell-gate-sub">
-            Sign in to save your shells and take them into the arena.
+            Descend to save your shells and take them into the arena.
           </p>
           <button className="shell-gate-gh-btn" onClick={() => void signIn('github')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
             </svg>
-            Continue with GitHub
+            DESCEND WITH GITHUB
           </button>
           <Link to="/sign-in" className="shell-gate-more">More sign-in options →</Link>
         </div>

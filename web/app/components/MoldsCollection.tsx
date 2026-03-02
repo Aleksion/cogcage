@@ -12,7 +12,7 @@ import type { Card, CardType } from '../lib/cards'
 
 /* ── Constants ─────────────────────────────────────────── */
 
-const ACTIVE_MOLD_KEY = 'moltpit_active_mold'
+const ACTIVE_MOLD_KEY = 'moltpit_active_molt'
 const MAX_DIRECTIVE_CHARS = 2000
 
 const MODELS = [
@@ -29,9 +29,9 @@ const ARMOR_TIERS = [
 ]
 
 const CARD_TYPE_COLORS: Record<string, string> = {
-  'weapon-melee': '#EB4D4B',
+  'weapon-melee': '#FF1744',
   'weapon-ranged': '#00E5FF',
-  armor: '#FFD600',
+  armor: '#00E5FF',
   tool: '#FF9F1C',
 }
 
@@ -47,7 +47,7 @@ function encodeDirective(model: string, text: string): string {
   return `[model:${model}]\n${text}`
 }
 
-function getMoldType(cards: string[]): string {
+function getMoltType(cards: string[]): string {
   const cardData = cards.map(getCard).filter((c): c is Card => !!c)
   const hasMelee = cardData.some((c) => c.type === 'weapon' && c.subtype === 'melee')
   const hasRanged = cardData.some((c) => c.type === 'weapon' && c.subtype === 'ranged')
@@ -65,15 +65,15 @@ function getArmorLabel(armorValue: number): string {
 
 function getCardTypeColor(card: Card): string {
   if (card.type === 'weapon')
-    return CARD_TYPE_COLORS[`weapon-${card.subtype}`] || '#EB4D4B'
+    return CARD_TYPE_COLORS[`weapon-${card.subtype}`] || '#FF1744'
   return CARD_TYPE_COLORS[card.type] || '#666'
 }
 
 function getComplexity(cardCount: number) {
   if (cardCount <= 2) return { label: 'LOW', color: '#2ecc71', desc: 'Easy decisions' }
-  if (cardCount === 3) return { label: 'MEDIUM', color: '#FFD600', desc: 'Normal' }
+  if (cardCount === 3) return { label: 'MEDIUM', color: '#00E5FF', desc: 'Normal' }
   if (cardCount === 4) return { label: 'HIGH', color: '#FF9F1C', desc: 'Hard for LLM' }
-  return { label: 'OVERLOADED', color: '#EB4D4B', desc: 'Expect NO_OPs' }
+  return { label: 'OVERLOADED', color: '#FF1744', desc: 'Expect NO_OPs' }
 }
 
 function clamp01(v: number): number {
@@ -83,14 +83,14 @@ function clamp01(v: number): number {
 /* ── Styles ────────────────────────────────────────────── */
 
 const STYLES = `
-  .molds-root {
+  .molts-root {
     min-height: 100vh;
-    background: #1A1A1A;
+    background: #050510;
     color: #f0f0f5;
     font-family: 'Kanit', sans-serif;
   }
 
-  .molds-header {
+  .molts-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -98,7 +98,7 @@ const STYLES = `
     border-bottom: 2px solid rgba(255,255,255,0.08);
   }
 
-  .molds-title {
+  .molts-title {
     font-family: 'Bangers', cursive;
     font-size: 2.4rem;
     letter-spacing: 2px;
@@ -107,7 +107,7 @@ const STYLES = `
     margin: 0;
   }
 
-  .btn-new-mold {
+  .btn-new-molt {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
@@ -115,36 +115,36 @@ const STYLES = `
     font-family: 'Bangers', cursive;
     font-size: 1.1rem;
     letter-spacing: 1px;
-    color: #1A1A1A;
-    background: #FFD600;
+    color: #050510;
+    background: #00E5FF;
     border: 3px solid #000;
-    border-radius: 8px;
+    border-radius: 0;
     box-shadow: 4px 4px 0 #000;
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
     text-transform: uppercase;
   }
-  .btn-new-mold:hover {
+  .btn-new-molt:hover {
     transform: translate(-2px, -2px);
     box-shadow: 6px 6px 0 #000;
   }
-  .btn-new-mold:active {
+  .btn-new-molt:active {
     transform: translate(2px, 2px);
     box-shadow: 2px 2px 0 #000;
   }
 
-  .molds-active-indicator {
+  .molts-active-indicator {
     padding: 0.8rem 2rem;
     font-size: 0.9rem;
     color: rgba(255,255,255,0.5);
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
-  .molds-active-indicator strong {
-    color: #FFD600;
+  .molts-active-indicator strong {
+    color: #00E5FF;
     font-weight: 700;
   }
 
-  .molds-filters {
+  .molts-filters {
     display: flex;
     gap: 0.5rem;
     padding: 1rem 2rem;
@@ -170,47 +170,47 @@ const STYLES = `
     border-color: rgba(255,255,255,0.2);
   }
   .filter-pill.active {
-    color: #1A1A1A;
-    background: #FFD600;
-    border-color: #FFD600;
+    color: #050510;
+    background: #00E5FF;
+    border-color: #00E5FF;
   }
 
-  .molds-grid {
+  .molts-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
     padding: 1.5rem 2rem;
   }
   @media (max-width: 1024px) {
-    .molds-grid { grid-template-columns: repeat(2, 1fr); }
+    .molts-grid { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 640px) {
-    .molds-grid { grid-template-columns: 1fr; }
-    .molds-header { padding: 1rem 1.2rem; }
-    .molds-filters { padding: 0.8rem 1.2rem; }
-    .molds-grid { padding: 1rem 1.2rem; }
+    .molts-grid { grid-template-columns: 1fr; }
+    .molts-header { padding: 1rem 1.2rem; }
+    .molts-filters { padding: 0.8rem 1.2rem; }
+    .molts-grid { padding: 1rem 1.2rem; }
   }
 
-  /* ── Mold Card ──────────────────────────────────── */
+  /* ── Molt Card ──────────────────────────────────── */
 
-  .mold-card {
+  .molt-card {
     background: rgba(20, 20, 28, 0.9);
     border: 2px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
+    border-radius: 0;
     padding: 1.2rem;
     position: relative;
     transition: border-color 0.15s, transform 0.15s;
   }
-  .mold-card:hover {
+  .molt-card:hover {
     border-color: rgba(255,255,255,0.2);
     transform: translateY(-2px);
   }
-  .mold-card.active {
-    border: 3px solid #FFD600;
+  .molt-card.active {
+    border: 3px solid #00E5FF;
     box-shadow: 0 0 20px rgba(255,214,0,0.15);
   }
 
-  .mold-card-badge {
+  .molt-card-badge {
     position: absolute;
     top: 0.8rem;
     left: 0.8rem;
@@ -218,16 +218,16 @@ const STYLES = `
     font-family: 'Bangers', cursive;
     font-size: 0.75rem;
     letter-spacing: 1px;
-    color: #1A1A1A;
-    background: #FFD600;
+    color: #050510;
+    background: #00E5FF;
     border-radius: 4px;
   }
 
-  .mold-card-art {
+  .molt-card-art {
     width: 100%;
     height: 100px;
     background: linear-gradient(135deg, rgba(255,214,0,0.08), rgba(0,229,255,0.08));
-    border-radius: 8px;
+    border-radius: 0;
     margin-bottom: 0.8rem;
     display: flex;
     align-items: center;
@@ -236,7 +236,7 @@ const STYLES = `
     opacity: 0.5;
   }
 
-  .mold-card-name {
+  .molt-card-name {
     font-family: 'Bangers', cursive;
     font-size: 1.3rem;
     letter-spacing: 1px;
@@ -245,13 +245,13 @@ const STYLES = `
     margin: 0 0 0.3rem;
   }
 
-  .mold-card-meta {
+  .molt-card-meta {
     font-size: 0.8rem;
     color: rgba(255,255,255,0.45);
     margin-bottom: 0.1rem;
   }
 
-  .mold-card-model {
+  .molt-card-model {
     font-size: 0.8rem;
     color: rgba(255,255,255,0.4);
     margin-bottom: 0.8rem;
@@ -296,7 +296,7 @@ const STYLES = `
     font-size: 0.7rem;
   }
 
-  .mold-card-actions {
+  .molt-card-actions {
     display: flex;
     gap: 0.5rem;
     margin-top: 1rem;
@@ -313,7 +313,7 @@ const STYLES = `
     color: #fff;
     background: rgba(255,255,255,0.1);
     border: 2px solid rgba(255,255,255,0.15);
-    border-radius: 6px;
+    border-radius: 0;
     cursor: pointer;
     transition: background 0.15s;
   }
@@ -327,10 +327,10 @@ const STYLES = `
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #1A1A1A;
+    color: #050510;
     background: #00E5FF;
     border: 2px solid #00E5FF;
-    border-radius: 6px;
+    border-radius: 0;
     cursor: pointer;
     transition: opacity 0.15s;
   }
@@ -338,13 +338,13 @@ const STYLES = `
   .btn-equip.equipped {
     background: rgba(255,214,0,0.15);
     border-color: rgba(255,214,0,0.3);
-    color: #FFD600;
+    color: #00E5FF;
     cursor: default;
   }
 
   /* ── Empty State ────────────────────────────────── */
 
-  .molds-empty {
+  .molts-empty {
     grid-column: 1 / -1;
     display: flex;
     flex-direction: column;
@@ -354,7 +354,7 @@ const STYLES = `
     text-align: center;
   }
 
-  .molds-empty-title {
+  .molts-empty-title {
     font-family: 'Bangers', cursive;
     font-size: 2rem;
     letter-spacing: 2px;
@@ -362,7 +362,7 @@ const STYLES = `
     margin-bottom: 0.5rem;
   }
 
-  .molds-empty-sub {
+  .molts-empty-sub {
     font-size: 0.95rem;
     color: rgba(255,255,255,0.25);
     margin-bottom: 1.5rem;
@@ -373,10 +373,10 @@ const STYLES = `
     font-family: 'Bangers', cursive;
     font-size: 1.3rem;
     letter-spacing: 2px;
-    color: #1A1A1A;
-    background: #FFD600;
+    color: #050510;
+    background: #00E5FF;
     border: 3px solid #000;
-    border-radius: 10px;
+    border-radius: 0;
     box-shadow: 4px 4px 0 #000;
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
@@ -402,7 +402,7 @@ const STYLES = `
   .editor-panel {
     width: 100%;
     max-width: 1200px;
-    background: #1A1A1A;
+    background: #050510;
     min-height: 100vh;
   }
 
@@ -451,10 +451,10 @@ const STYLES = `
     font-family: 'Bangers', cursive;
     font-size: 1rem;
     letter-spacing: 1px;
-    color: #1A1A1A;
-    background: #FFD600;
+    color: #050510;
+    background: #00E5FF;
     border: 2px solid #000;
-    border-radius: 6px;
+    border-radius: 0;
     box-shadow: 3px 3px 0 #000;
     cursor: pointer;
     transition: transform 0.1s;
@@ -528,7 +528,7 @@ const STYLES = `
     padding: 0.7rem;
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 6px;
+    border-radius: 0;
     border-left: 3px solid;
     transition: background 0.15s;
   }
@@ -568,16 +568,16 @@ const STYLES = `
     font-family: 'Kanit', sans-serif;
   }
   .claw-btn.add {
-    color: #1A1A1A;
+    color: #050510;
     background: #00E5FF;
   }
   .claw-btn.equipped-badge {
-    color: #FFD600;
+    color: #00E5FF;
     background: rgba(255,214,0,0.1);
     cursor: default;
   }
 
-  /* ── Mold Config ────────────────────────────────── */
+  /* ── Molt Config ────────────────────────────────── */
 
   .config-input {
     width: 100%;
@@ -587,7 +587,7 @@ const STYLES = `
     font-weight: 700;
     background: rgba(255,255,255,0.05);
     border: 2px solid rgba(255,255,255,0.12);
-    border-radius: 6px;
+    border-radius: 0;
     color: #fff;
     outline: none;
     margin-bottom: 1rem;
@@ -609,14 +609,14 @@ const STYLES = `
     padding: 0.5rem 0.7rem;
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 6px;
+    border-radius: 0;
     font-size: 0.85rem;
   }
 
   .equipped-remove {
     font-size: 0.7rem;
     font-weight: 700;
-    color: #EB4D4B;
+    color: #FF1744;
     background: none;
     border: none;
     cursor: pointer;
@@ -639,14 +639,14 @@ const STYLES = `
     padding: 0.5rem 0.7rem;
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 6px;
+    border-radius: 0;
     cursor: pointer;
     font-size: 0.85rem;
     transition: border-color 0.15s;
   }
   .armor-option:hover { border-color: rgba(255,255,255,0.2); }
   .armor-option.selected {
-    border-color: #FFD600;
+    border-color: #00E5FF;
     background: rgba(255,214,0,0.05);
   }
 
@@ -661,13 +661,13 @@ const STYLES = `
     flex-shrink: 0;
   }
   .armor-option.selected .armor-radio {
-    border-color: #FFD600;
+    border-color: #00E5FF;
   }
   .armor-option.selected .armor-radio::after {
     content: '';
     width: 8px;
     height: 8px;
-    background: #FFD600;
+    background: #00E5FF;
     border-radius: 50%;
   }
 
@@ -683,7 +683,7 @@ const STYLES = `
     line-height: 1.5;
     background: rgba(255,255,255,0.04);
     border: 2px solid rgba(255,255,255,0.1);
-    border-radius: 6px;
+    border-radius: 0;
     color: #fff;
     outline: none;
     resize: vertical;
@@ -701,7 +701,7 @@ const STYLES = `
     margin-bottom: 0.6rem;
   }
   .directive-counter.warn { color: #FF9F1C; }
-  .directive-counter.over { color: #EB4D4B; }
+  .directive-counter.over { color: #FF1744; }
 
   .directive-tips {
     font-size: 0.75rem;
@@ -724,7 +724,7 @@ const STYLES = `
     padding: 0.5rem 0.7rem;
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 6px;
+    border-radius: 0;
     cursor: pointer;
     font-size: 0.82rem;
     transition: border-color 0.15s;
@@ -796,7 +796,7 @@ const STYLES = `
     padding: 0.8rem;
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 6px;
+    border-radius: 0;
     font-size: 0.75rem;
     color: rgba(255,255,255,0.35);
     line-height: 1.6;
@@ -813,7 +813,7 @@ const STYLES = `
 
   /* ── Toast ──────────────────────────────────────── */
 
-  .molds-toast {
+  .molts-toast {
     position: fixed;
     bottom: 2rem;
     right: 2rem;
@@ -821,16 +821,16 @@ const STYLES = `
     background: #2ecc71;
     color: #fff;
     font-weight: 700;
-    border-radius: 8px;
+    border-radius: 0;
     box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
     z-index: 200;
-    animation: molds-toast-in 0.3s ease-out;
+    animation: molts-toast-in 0.3s ease-out;
     font-family: 'Kanit', sans-serif;
     font-size: 0.9rem;
   }
-  .molds-toast.error { background: #EB4D4B; }
+  .molts-toast.error { background: #FF1744; }
 
-  @keyframes molds-toast-in {
+  @keyframes molts-toast-in {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
@@ -863,8 +863,8 @@ const STYLES = `
       font-family: 'Kanit', sans-serif;
     }
     .editor-tab.active {
-      color: #FFD600;
-      border-bottom-color: #FFD600;
+      color: #00E5FF;
+      border-bottom-color: #00E5FF;
     }
 
     .editor-col.mobile-hidden { display: none; }
@@ -879,10 +879,10 @@ const STYLES = `
     font-size: 0.8rem;
     font-weight: 700;
     text-transform: uppercase;
-    color: #EB4D4B;
+    color: #FF1744;
     background: rgba(235, 77, 75, 0.08);
     border: 1px solid rgba(235, 77, 75, 0.2);
-    border-radius: 6px;
+    border-radius: 0;
     cursor: pointer;
     transition: background 0.15s;
   }
@@ -891,13 +891,13 @@ const STYLES = `
 
 /* ── Main Component ────────────────────────────────── */
 
-export default function MoldsCollection() {
+export default function MoltsCollection() {
   const shells = useQuery(api.shells.list)
   const createShell = useMutation(api.shells.create)
   const updateShell = useMutation(api.shells.update)
   const removeShell = useMutation(api.shells.remove)
 
-  const [activeMoldId, setActiveMoldId] = useState<string>(() => {
+  const [activeMoltId, setActiveMoltId] = useState<string>(() => {
     try {
       return localStorage.getItem(ACTIVE_MOLD_KEY) || ''
     } catch {
@@ -908,8 +908,8 @@ export default function MoldsCollection() {
   const [editorShellId, setEditorShellId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null)
 
-  const setActiveMold = useCallback((id: string) => {
-    setActiveMoldId(id)
+  const setActiveMolt = useCallback((id: string) => {
+    setActiveMoltId(id)
     try {
       localStorage.setItem(ACTIVE_MOLD_KEY, id)
     } catch {
@@ -925,7 +925,7 @@ export default function MoldsCollection() {
   const filteredShells = useMemo(() => {
     if (!shells) return []
     if (filter === 'all') return shells
-    return shells.filter((s) => getMoldType(s.cards).toLowerCase() === filter)
+    return shells.filter((s) => getMoltType(s.cards).toLowerCase() === filter)
   }, [shells, filter])
 
   const handleSave = useCallback(
@@ -939,58 +939,58 @@ export default function MoldsCollection() {
       try {
         if (editorShellId === 'new') {
           const id = await createShell(data)
-          if (!activeMoldId && id) setActiveMold(id as string)
-          showToast('Mold created!')
+          if (!activeMoltId && id) setActiveMolt(id as string)
+          showToast('Molt created!')
         } else if (editorShellId) {
           await updateShell({ shellId: editorShellId as any, ...data })
-          showToast('Mold saved!')
+          showToast('Molt saved!')
         }
         setEditorShellId(null)
       } catch (e: any) {
         showToast(e.message || 'Save failed', true)
       }
     },
-    [editorShellId, createShell, updateShell, activeMoldId, setActiveMold, showToast],
+    [editorShellId, createShell, updateShell, activeMoltId, setActiveMolt, showToast],
   )
 
   const handleDelete = useCallback(
     async (id: string) => {
       try {
         await removeShell({ shellId: id as any })
-        if (activeMoldId === id) setActiveMold('')
-        showToast('Mold deleted')
+        if (activeMoltId === id) setActiveMolt('')
+        showToast('Molt deleted')
         setEditorShellId(null)
       } catch (e: any) {
         showToast(e.message || 'Delete failed', true)
       }
     },
-    [removeShell, activeMoldId, setActiveMold, showToast],
+    [removeShell, activeMoltId, setActiveMolt, showToast],
   )
 
-  const activeMold = shells?.find((s) => (s as any)._id === activeMoldId)
+  const activeMolt = shells?.find((s) => (s as any)._id === activeMoltId)
   const isLoading = shells === undefined
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
-      <div className="molds-root">
+      <div className="molts-root">
         {/* Header */}
-        <div className="molds-header">
-          <h1 className="molds-title">MY MOLDS</h1>
-          <button className="btn-new-mold" onClick={() => setEditorShellId('new')}>
-            + NEW MOLD
+        <div className="molts-header">
+          <h1 className="molts-title">YOUR MOLTS</h1>
+          <button className="btn-new-molt" onClick={() => setEditorShellId('new')}>
+            + NEW MOLT
           </button>
         </div>
 
-        {/* Active mold indicator */}
-        {activeMold && (
-          <div className="molds-active-indicator">
-            Active Mold: <strong>{(activeMold as any).name}</strong>
+        {/* Active molt indicator */}
+        {activeMolt && (
+          <div className="molts-active-indicator">
+            Active Molt: <strong>{(activeMolt as any).name}</strong>
           </div>
         )}
 
         {/* Filter pills */}
-        <div className="molds-filters">
+        <div className="molts-filters">
           {['all', 'melee', 'ranged', 'hybrid'].map((f) => (
             <button
               key={f}
@@ -1003,9 +1003,9 @@ export default function MoldsCollection() {
         </div>
 
         {/* Grid */}
-        <div className="molds-grid">
+        <div className="molts-grid">
           {isLoading ? (
-            <div className="molds-empty">
+            <div className="molts-empty">
               <div
                 style={{
                   color: 'rgba(255,255,255,0.25)',
@@ -1015,39 +1015,39 @@ export default function MoldsCollection() {
                   textTransform: 'uppercase',
                 }}
               >
-                Loading molds...
+                Loading molts...
               </div>
             </div>
           ) : filteredShells.length === 0 && filter === 'all' ? (
-            <div className="molds-empty">
-              <div className="molds-empty-title">NO MOLDS YET</div>
-              <div className="molds-empty-sub">
-                Create your first mold to start fighting.
+            <div className="molts-empty">
+              <div className="molts-empty-title">NO MOLTS REGISTERED.</div>
+              <div className="molts-empty-sub">
+                The Sous is waiting. Register your first Molt.
               </div>
               <button
                 className="btn-create-first"
                 onClick={() => setEditorShellId('new')}
               >
-                + CREATE YOUR FIRST MOLD
+                REGISTER YOUR FIRST MOLT
               </button>
             </div>
           ) : filteredShells.length === 0 ? (
-            <div className="molds-empty">
-              <div className="molds-empty-title">
+            <div className="molts-empty">
+              <div className="molts-empty-title">
                 NO {filter.toUpperCase()} MOLDS
               </div>
-              <div className="molds-empty-sub">
-                Try a different filter or create a new mold.
+              <div className="molts-empty-sub">
+                Try a different filter or create a new molt.
               </div>
             </div>
           ) : (
             filteredShells.map((shell: any) => (
-              <MoldCard
+              <MoltCard
                 key={shell._id}
                 shell={shell}
-                isActive={shell._id === activeMoldId}
+                isActive={shell._id === activeMoltId}
                 onEdit={() => setEditorShellId(shell._id)}
-                onEquip={() => setActiveMold(shell._id)}
+                onEquip={() => setActiveMolt(shell._id)}
               />
             ))
           )}
@@ -1055,7 +1055,7 @@ export default function MoldsCollection() {
 
         {/* Editor overlay */}
         {editorShellId !== null && (
-          <MoldEditor
+          <MoltEditor
             shellId={editorShellId}
             shells={shells || []}
             onClose={() => setEditorShellId(null)}
@@ -1066,7 +1066,7 @@ export default function MoldsCollection() {
 
         {/* Toast */}
         {toast && (
-          <div className={`molds-toast ${toast.error ? 'error' : ''}`}>
+          <div className={`molts-toast ${toast.error ? 'error' : ''}`}>
             {toast.msg}
           </div>
         )}
@@ -1075,9 +1075,9 @@ export default function MoldsCollection() {
   )
 }
 
-/* ── Mold Card ─────────────────────────────────────── */
+/* ── Molt Card ─────────────────────────────────────── */
 
-function MoldCard({
+function MoltCard({
   shell,
   isActive,
   onEdit,
@@ -1089,7 +1089,7 @@ function MoldCard({
   onEquip: () => void
 }) {
   const { model } = parseDirective(shell.directive || '')
-  const moldType = getMoldType(shell.cards || [])
+  const moltType = getMoltType(shell.cards || [])
   const armorLabel = getArmorLabel(shell.stats?.armorValue || 0)
   const modelInfo = MODELS.find((m) => m.id === model) || MODELS[0]
 
@@ -1098,24 +1098,24 @@ function MoldCard({
   const iqPct = 80
 
   return (
-    <div className={`mold-card ${isActive ? 'active' : ''}`}>
-      {isActive && <div className="mold-card-badge">{'\u2605'} ACTIVE</div>}
+    <div className={`molt-card ${isActive ? 'active' : ''}`}>
+      {isActive && <div className="molt-card-badge">{'\u2605'} ACTIVE</div>}
 
-      <div className="mold-card-art">{'\u{1F916}'}</div>
+      <div className="molt-card-art">{'\u{1F916}'}</div>
 
-      <div className="mold-card-name">{shell.name || 'Unnamed'}</div>
-      <div className="mold-card-meta">
-        {moldType} / {armorLabel}
+      <div className="molt-card-name">{shell.name || 'Unnamed'}</div>
+      <div className="molt-card-meta">
+        {moltType} / {armorLabel}
       </div>
-      <div className="mold-card-model">
+      <div className="molt-card-model">
         {modelInfo.name} {modelInfo.bolt}
       </div>
 
-      <StatBar label="AGG" pct={aggPct} color="#EB4D4B" />
-      <StatBar label="ARM" pct={armPct} color="#FFD600" />
+      <StatBar label="AGG" pct={aggPct} color="#FF1744" />
+      <StatBar label="ARM" pct={armPct} color="#00E5FF" />
       <StatBar label="IQ" pct={iqPct} color="#00E5FF" />
 
-      <div className="mold-card-actions">
+      <div className="molt-card-actions">
         <button className="btn-edit" onClick={onEdit}>
           {'\u270F\uFE0F'} EDIT
         </button>
@@ -1156,9 +1156,9 @@ function StatBar({
   )
 }
 
-/* ── Mold Editor ───────────────────────────────────── */
+/* ── Molt Editor ───────────────────────────────────── */
 
-function MoldEditor({
+function MoltEditor({
   shellId,
   shells,
   onClose,
@@ -1268,7 +1268,7 @@ function MoldEditor({
         {/* Header */}
         <div className="editor-header">
           <button className="editor-back" onClick={onClose}>
-            {'\u2190'} Back to Molds
+            {'\u2190'} Back to Molts
           </button>
           <div className="editor-title">
             {shellId === 'new' ? 'NEW MOLD' : name || 'EDIT MOLD'}
@@ -1370,16 +1370,16 @@ function MoldEditor({
             </div>
           </div>
 
-          {/* Panel 2: Mold Config */}
+          {/* Panel 2: Molt Config */}
           <div
             className={`editor-col ${mobileTab === 'config' ? 'mobile-visible' : 'mobile-hidden'}`}
           >
-            <div className="editor-section-title">Mold Configuration</div>
+            <div className="editor-section-title">Molt Configuration</div>
 
             <input
               className="config-input"
               type="text"
-              placeholder="Mold Name..."
+              placeholder="Molt Name..."
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={40}
@@ -1452,7 +1452,7 @@ function MoldEditor({
             </div>
             <textarea
               className="directive-area"
-              placeholder="You are a ranged specialist. ALWAYS prioritize RANGED_SHOT when dist 2-10..."
+              placeholder="You are a ranged specialist. ALWAYS prioritize SPIT-FIRST_SHOT when dist 2-10..."
               value={directiveText}
               onChange={(e) => setDirectiveText(e.target.value)}
               maxLength={MAX_DIRECTIVE_CHARS}
@@ -1502,7 +1502,7 @@ function MoldEditor({
               <div className="live-stat-bar">
                 <div
                   className="live-stat-bar-fill"
-                  style={{ width: `${aggPct}%`, background: '#EB4D4B' }}
+                  style={{ width: `${aggPct}%`, background: '#FF1744' }}
                 />
               </div>
               <div className="live-stat-pct">{aggPct}%</div>
@@ -1513,7 +1513,7 @@ function MoldEditor({
               <div className="live-stat-bar">
                 <div
                   className="live-stat-bar-fill"
-                  style={{ width: `${armPct}%`, background: '#FFD600' }}
+                  style={{ width: `${armPct}%`, background: '#00E5FF' }}
                 />
               </div>
               <div className="live-stat-pct">{armPct}%</div>

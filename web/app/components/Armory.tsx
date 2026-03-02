@@ -33,19 +33,19 @@ const MAX_BRAIN_CHARS = 600;
 const BRAIN_PRESETS: Record<string, { label: string; prompt: string }> = {
   aggressive: {
     label: 'Aggressive',
-    prompt: 'You are an aggressive melee fighter. ALWAYS close distance toward the enemy. Use MELEE_STRIKE when dist <= 1.5 and it\'s usable. Use DASH to close distance fast. Never retreat.',
+    prompt: 'You are an aggressive close-range fighter. ALWAYS close distance toward the enemy. Use CLOSE-RANGE_STRIKE when dist <= 1.5 and it\'s usable. Use DASH to close distance fast. Never retreat.',
   },
   defensive: {
     label: 'Defensive',
-    prompt: 'You are a defensive fighter. Prioritize GUARD when your HP is below 50%. Stay at range 3-5. Use RANGED_SHOT when available. Only engage in melee as a last resort.',
+    prompt: 'You are a defensive fighter. Prioritize GUARD when your HP is below 50%. Stay at range 3-5. Use SPIT_SHOT when available. Only engage in close-range as a last resort.',
   },
   sniper: {
     label: 'Sniper',
-    prompt: 'You are a ranged specialist. ALWAYS maintain distance 3-8 from enemy. Use RANGED_SHOT when dist 2-8 and usable. MOVE away if enemy gets within range 2. Never use melee.',
+    prompt: 'You are a spit specialist. ALWAYS maintain distance 3-8 from enemy. Use SPIT_SHOT when dist 2-8 and usable. MOVE away if enemy gets within range 2. Never use close-range.',
   },
   balanced: {
     label: 'Balanced',
-    prompt: 'You are a balanced tactical fighter. Use RANGED_SHOT at range 3-6. Close to melee when enemy HP is below 40%. Use GUARD when your HP < 40% and energy is low.',
+    prompt: 'You are a balanced tactical fighter. Use SPIT_SHOT at range 3-6. Close to close-range when enemy HP is below 40%. Use GUARD when your HP < 40% and energy is low.',
   },
   glass_cannon: {
     label: 'Glass Cannon',
@@ -56,7 +56,7 @@ const BRAIN_PRESETS: Record<string, { label: string; prompt: string }> = {
 const SKILL_CATEGORY_COLORS: Record<string, string> = {
   intel: '#00E5FF',
   combat: '#EB4D4B',
-  utility: '#FFD600',
+  utility: '#00E5FF',
   control: '#7C3AED',
 };
 
@@ -70,7 +70,7 @@ const armoryStyles = `
   .armory-back-link {
     display: inline-flex; align-items: center; gap: 0.4rem;
     font-family: var(--f-display); font-size: 1rem; text-decoration: none;
-    color: #FFD600; text-shadow: 1px 1px 0 #000;
+    color: #00E5FF; text-shadow: 1px 1px 0 #000;
     padding: 0.4rem 0; margin-bottom: 0.75rem;
   }
   .armory-back-link:hover { opacity: 0.8; }
@@ -86,7 +86,7 @@ const armoryStyles = `
     background: #111;
     border: 3px solid #000;
     box-shadow: 4px 4px 0 #000;
-    border-radius: 12px; padding: 1.2rem;
+    border-radius: 0; padding: 1.2rem;
   }
 
   .panel-title {
@@ -106,7 +106,7 @@ const armoryStyles = `
   }
   .filter-tab:hover { border-color: rgba(255,255,255,0.4); color: #fff; }
   .filter-tab.active {
-    background: #FFD600; color: #000;
+    background: #00E5FF; color: #050510;
     border: 3px solid #000; box-shadow: 3px 3px 0 #000;
     font-family: var(--f-display); font-size: 1rem;
   }
@@ -126,7 +126,7 @@ const armoryStyles = `
     margin-bottom: 1rem;
   }
   .slot {
-    width: 120px; height: 180px; border-radius: 10px;
+    width: 120px; height: 180px; border-radius: 0;
     border: 3px dashed rgba(255,255,255,0.25);
     display: grid; place-items: center;
     cursor: pointer; transition: border-color 0.15s;
@@ -180,14 +180,14 @@ const armoryStyles = `
     color: #fff; font-family: var(--f-body); font-weight: 800; font-size: 1rem;
     outline: none; transition: border-color 0.15s;
   }
-  .save-input:focus { border-color: #FFD600; }
+  .save-input:focus { border-color: #00E5FF; }
   .save-input::placeholder { color: rgba(255,255,255,0.25); }
 
   .save-btn {
     font-family: var(--f-display); font-size: 1.3rem; text-transform: uppercase;
     padding: 0.6rem 2rem; background: #EB4D4B; color: #fff;
     border: 3px solid #000; box-shadow: 4px 4px 0 #000;
-    border-radius: 8px; cursor: pointer;
+    border-radius: 0; cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
   }
   .save-btn:active { transform: translateY(4px); box-shadow: none; }
@@ -204,7 +204,7 @@ const armoryStyles = `
     flex-shrink: 0; width: 240px; padding: 0.8rem;
     background: #111; border: 3px solid #000;
     box-shadow: 4px 4px 0 #000;
-    border-radius: 10px; position: relative;
+    border-radius: 0; position: relative;
   }
   .saved-card-name {
     font-family: var(--f-display); font-size: 1.1rem; color: #fff;
@@ -243,7 +243,7 @@ const armoryStyles = `
     background: #111;
     border: 3px solid #000;
     box-shadow: 4px 4px 0 #000;
-    border-radius: 12px; padding: 1.2rem;
+    border-radius: 0; padding: 1.2rem;
     margin-top: 1.5rem;
   }
 
@@ -262,8 +262,8 @@ const armoryStyles = `
   }
   .skill-chip:hover { background: #222; }
   .skill-chip.equipped {
-    color: #000;
-    border-color: #000;
+    color: #050510;
+    border-color: #050510;
   }
   .skill-chip .skill-icon { font-size: 1.1rem; }
   .skill-chip .skill-meta {
@@ -331,14 +331,14 @@ const armoryStyles = `
 
 const TIER_LABELS: Record<ComplexityTier, { label: string; color: string }> = {
   lean: { label: 'Lean', color: '#2ecc71' },
-  tactical: { label: 'Tactical', color: '#FFD600' },
+  tactical: { label: 'Tactical', color: '#00E5FF' },
   heavy: { label: 'Heavy', color: '#FF9F1C' },
   overloaded: { label: 'Overloaded', color: '#eb4d4b' },
 };
 
 function weightColor(w: number): string {
   if (w <= 6) return '#2ecc71';
-  if (w <= 12) return '#FFD600';
+  if (w <= 12) return '#00E5FF';
   if (w <= 18) return '#FF9F1C';
   return '#eb4d4b';
 }
@@ -623,7 +623,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
                 <span className="stat-label">Move Cost</span>
                 <div style={{ flex: 1 }} />
                 <span className="stat-value" style={{
-                  color: stats.moveCost <= 4 ? '#2ecc71' : stats.moveCost <= 6 ? '#FFD600' : '#eb4d4b',
+                  color: stats.moveCost <= 4 ? '#2ecc71' : stats.moveCost <= 6 ? '#00E5FF' : '#eb4d4b',
                 }}>
                   {stats.moveCost}e/move
                 </span>
@@ -661,7 +661,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
                 style={{
                   display: 'block', marginTop: '0.8rem', textAlign: 'center',
                   fontFamily: "'Bangers', display", fontSize: '1.1rem', textTransform: 'uppercase',
-                  padding: '0.6rem 1.2rem', background: '#FFD600', color: '#111',
+                  padding: '0.6rem 1.2rem', background: '#00E5FF', color: '#111',
                   borderRadius: '8px', textDecoration: 'none',
                 }}
               >
@@ -749,7 +749,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
 
           <textarea
             className="brain-textarea"
-            placeholder="Write your crawler's directive... (or click a preset above)"
+            placeholder="Write your crustie's directive... (or click a preset above)"
             value={brainPrompt}
             onChange={(e) => setBrainPrompt(e.target.value.slice(0, MAX_BRAIN_CHARS))}
             maxLength={MAX_BRAIN_CHARS}
