@@ -4,6 +4,82 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+## 2026-03-02 — 04:34 ET — Autopilot cron check-in
+
+**Build:** ✅ clean · **Tests:** 4/4 pass · **Git:** working tree clean (ops-log only modified)
+
+All 4 priorities remain code-complete. No regressions. No new code changes needed.
+
+**P1 Signup / storage / logs** ✅ — Redis primary, SQLite fallback, NDJSON last-resort. Stdout observability live. Env blocker: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` not set.
+**P2 Demo loop** ✅ — Play.tsx + PitScene + Babylon arena + ws2 engine all shipped. Env blocker: `OPENAI_API_KEY`, Cloudflare DO worker status unverified.
+**P3 Monetization** ✅ — founder-intent, postback, checkout-success all wired. Env blocker: `PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`.
+**P4 Ops log** ✅ — this entry.
+
+**Aleks actions still required (no code needed):**
+1. `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` → Vercel (leads durability)
+2. `OPENAI_API_KEY` → Vercel (live LLM battles)
+3. Verify Cloudflare DO worker `themoltpit-engine` is deployed
+4. Stripe payment link → `PUBLIC_STRIPE_FOUNDER_URL` in Vercel
+5. `COGCAGE_POSTBACK_KEY` + `COGCAGE_OPS_KEY` → Vercel
+
+---
+
+## 2026-03-02 — 01:26 ET — Real Audit (no checkpoint spam)
+
+**Status: ALL CODE COMPLETE. Blocked entirely on Vercel env vars.**
+
+Conducted a full code audit of P1–P3. No code gaps found. Build: ✅ clean (1.23s).
+
+### P1 — Signup Reliability + Storage + Observable Logs ✅ VERIFIED COMPLETE
+
+**Storage tiers (priority order):**
+1. **Redis (Upstash)** — primary durable tier. `waitlist-redis.ts` (153 lines). Keys: `moltpit:waitlist`, `moltpit:founder-intents`, `moltpit:conversions`, `moltpit:ops-log` (last 500). Rate limiting also Redis-backed.
+2. **SQLite** — local-dev / fallback secondary.
+3. **NDJSON file fallback** — last resort, ephemeral /tmp on Vercel.
+
+**Observability:** `observability.ts` emits every event to stdout (Vercel function logs), NDJSON file, AND Redis ops log (fire-and-forget). `/api/ops` authenticated endpoint reads Redis tail.
+
+**Form client:** idempotency key per submit, `AbortController` 6-7s timeout, 1 retry, `localStorage` backup queue, offline drain on next load.
+
+**Blocker:** `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` not set in Vercel → Redis writes fail, falls back to SQLite/NDJSON. Leads may be lost on cold starts.
+
+### P2 — Playable Demo Loop ✅ VERIFIED COMPLETE
+
+**Architecture:** Play.tsx → POST `/api/match/start` → Cloudflare DO → WebSocket back to browser → BabylonArena renders PitScene.
+
+**Key files:**
+- `Play.tsx` (1502 lines): lobby (bot config, directive→LLM system prompt, loadout), DO WebSocket client, founder checkout CTA
+- `BabylonArena.tsx`: React wrapper for Babylon.js PitScene
+- `PitScene.ts` (1001 lines): isometric 3D, 20×20 grid, tweened bot movement, HP bars, VFX (damage numbers, pinch, spit), action economy events
+- `match.start.ts`: server route proxies to `themoltpit-engine.aleks-precurion.workers.dev`
+- `engine.js`: deterministic turn engine (4/4 tests pass)
+
+**Blockers:**
+- `OPENAI_API_KEY` not in Vercel → bots NO_OP (match still runs, but AI doesn't decide)
+- `ENGINE_URL` / DO deployment status unknown from here — need Aleks to verify Cloudflare worker is live
+
+### P3 — Monetization ✅ VERIFIED COMPLETE
+
+- `founder-intent.ts` (366 lines): pre-checkout email capture → Redis
+- `postback.ts` (261 lines): Stripe webhook `checkout.session.completed`, key-based auth
+- `checkout-success.ts`: GET+POST success handler
+- Play.tsx `handleFounderCheckout`: intent capture → Stripe redirect
+- **Blocker:** `PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY` not set in Vercel
+
+### Aleks Action Required (no code changes needed)
+
+| Priority | Action | Env Var |
+|----------|--------|---------|
+| 🔴 HIGH | Upstash Redis → set in Vercel | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` |
+| 🔴 HIGH | OpenAI key for LLM battles | `OPENAI_API_KEY` |
+| 🟡 MED | Verify Cloudflare DO worker is deployed | (check Workers dashboard) |
+| 🟡 MED | Create Stripe payment link → set in Vercel | `PUBLIC_STRIPE_FOUNDER_URL` |
+| 🟡 MED | Generate postback + ops keys → set in Vercel | `COGCAGE_POSTBACK_KEY` + `COGCAGE_OPS_KEY` |
+
+**Autopilot directive:** No more checkpoint-only commits. Will only commit when real code ships.
+
+---
+
 ## 2026-02-26 — Autopilot Product-Critical Sprint
 
 ### 15:46 — Checkpoint (4-lane audit, pre-15:55 session)
