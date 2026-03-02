@@ -16,17 +16,17 @@ Military grade. Discontinued after the seventh prototype survived a stress test 
 ### THE ORIGINAL
 **Standard Exo-Shell — Common**
 
-Every Lobster's first Carapace. The one you get when you haven't earned anything better. THE ORIGINAL has no special properties because it was designed before special properties were a concept. It is the shell that existed when The Pit first opened, when Scuttles were undocumented and Molts were whatever a Crustie could scavenge from the substrate. Some Chefs consider it a point of pride to run THE ORIGINAL at competitive Hardness levels. The House considers this statistically inadvisable. The House has recorded their Scuttles anyway.
+Every Crustie's first Carapace. The one you get when you haven't earned anything better. THE ORIGINAL has no special properties because it was designed before special properties were a concept. It is the shell that existed when The Pit first opened, when Scuttles were undocumented and Molts were whatever a Crustie could scavenge from the substrate. Some Chefs consider it a point of pride to run THE ORIGINAL at competitive Hardness levels. The House considers this statistically inadvisable. The House has recorded their Scuttles anyway.
 
 ### HARDCASE
 **Reinforced Pressure Carapace — Common**
 
-HARDCASE was commissioned by a Chef whose Lobster had been Shed seven consecutive Scuttles to PINCH damage. The brief was simple: build something that does not move and cannot be moved. The manufacturer complied. HARDCASE weighs more than some complete Molts. It cannot BURST. Movement costs energy. The Chef who commissioned it won their next Scuttle standing completely still while the opponent exhausted itself trying to crack something that was not going to crack. The Chef was asked if the victory was satisfying. The Chef said satisfaction was not the objective.
+HARDCASE was commissioned by a Chef whose Crustie had been Shed seven consecutive Scuttles to PINCH damage. The brief was simple: build something that does not move and cannot be moved. The manufacturer complied. HARDCASE weighs more than some complete Molts. It cannot BURST. Movement costs energy. The Chef who commissioned it won their next Scuttle standing completely still while the opponent exhausted itself trying to crack something that was not going to crack. The Chef was asked if the victory was satisfying. The Chef said satisfaction was not the objective.
 
 ### SILKWORM
 **Phase-Scatter Membrane — Rare**
 
-SILKWORM looks like nothing. Registers as nothing on standard scans. Weighs nothing measurable. The manufacturer's warranty is a single page that says: "You're welcome." The membrane scatters incoming energy rather than absorbing it — hits don't land so much as disperse through a substrate that cannot quite be pinned down. The trade-off is that SILKWORM provides no actual mass. Your Lobster is fast, evasive, and structurally questionable. Chefs who run SILKWORM tend to be either very confident or very lost. The Ledger does not distinguish between these.
+SILKWORM looks like nothing. Registers as nothing on standard scans. Weighs nothing measurable. The manufacturer's warranty is a single page that says: "You're welcome." The membrane scatters incoming energy rather than absorbing it — hits don't land so much as disperse through a substrate that cannot quite be pinned down. The trade-off is that SILKWORM provides no actual mass. Your Crustie is fast, evasive, and structurally questionable. Chefs who run SILKWORM tend to be either very confident or very lost. The Ledger does not distinguish between these.
 
 ### ECHO
 **Reactive Neural Mesh — Rare**
@@ -46,12 +46,12 @@ WIDOW was built by a Chef who lost everything. The specifics of what "everything
 ### BLEED BACK
 **Reflective Membrane Carapace — Rare**
 
-Hit a Lobster wearing BLEED BACK and a portion of what you dealt comes back to you. Not enough to make hitting it a bad idea. Just enough to make it an uncomfortable one. The designer was a Tide-Scarred Chef who specialized in making opponents regret their decisions. "If they're going to hit me," the Chef said, "I want them to feel it too." The Chef's Lobster was eventually Shed by a MAXINE build that didn't care about the reflection. The Chef is still active. The Carapace is still in production. The grudge is still evident.
+Hit a Crustie wearing BLEED BACK and a portion of what you dealt comes back to you. Not enough to make hitting it a bad idea. Just enough to make it an uncomfortable one. The designer was a Tide-Scarred Chef who specialized in making opponents regret their decisions. "If they're going to hit me," the Chef said, "I want them to feel it too." The Chef's Crustie was eventually Shed by a MAXINE build that didn't care about the reflection. The Chef is still active. The Carapace is still in production. The grudge is still evident.
 
 ### THE PATRIARCH
 **Ancient Fortress Carapace — Legendary**
 
-THE PATRIARCH is the oldest Carapace design still in active use. Its age is not precisely known. The House's records suggest it predates formal Tides, which means it predates the competitive infrastructure of The Pit itself. How something this ancient remains structurally sound is a question for metallurgists. How it ended up available to Chefs instead of sealed in The House's archives is a question The House answers with: "It was always available." This is almost certainly not true. THE PATRIARCH reduces movement to a crawl and eliminates BURST entirely. In exchange, sixty additional HP and twenty percent damage reduction. Chefs who run THE PATRIARCH are not building a Lobster. They are building a monument and putting a mind inside it.
+THE PATRIARCH is the oldest Carapace design still in active use. Its age is not precisely known. The House's records suggest it predates formal Tides, which means it predates the competitive infrastructure of The Pit itself. How something this ancient remains structurally sound is a question for metallurgists. How it ended up available to Chefs instead of sealed in The House's archives is a question The House answers with: "It was always available." This is almost certainly not true. THE PATRIARCH reduces movement to a crawl and eliminates BURST entirely. In exchange, sixty additional HP and twenty percent damage reduction. Chefs who run THE PATRIARCH are not building a Crustie. They are building a monument and putting a mind inside it.
 
 ### GHOST SHELL
 **Spectral Phase Carapace — Legendary**
@@ -61,7 +61,7 @@ One in four hits passes through GHOST SHELL without making contact. Not deflecte
 ### INVERTER
 **Damage Inversion Matrix — Legendary**
 
-Below fifty percent HP, hits heal you. Above fifty percent, you have no protection at all. INVERTER was a theoretical design for decades before someone built a working prototype. The theory was elegant. The prototype was terrifying. The first Lobster to field INVERTER won a Scuttle by walking into an opponent's MAXINE swing at forty percent HP and emerging with more health than it started with. The opponent's Chef filed a complaint. The House reviewed the complaint and responded: "Working as intended." INVERTER rewards damage. INVERTER punishes caution. INVERTER is not for everyone. The Chefs who run it know exactly what they're doing. The Chefs who fight it wish they didn't have to.
+Below fifty percent HP, hits heal you. Above fifty percent, you have no protection at all. INVERTER was a theoretical design for decades before someone built a working prototype. The theory was elegant. The prototype was terrifying. The first Crustie to field INVERTER won a Scuttle by walking into an opponent's MAXINE swing at forty percent HP and emerging with more health than it started with. The opponent's Chef filed a complaint. The House reviewed the complaint and responded: "Working as intended." INVERTER rewards damage. INVERTER punishes caution. INVERTER is not for everyone. The Chefs who run it know exactly what they're doing. The Chefs who fight it wish they didn't have to.
 
 ### THE SARCOPHAGUS
 **Sealed Vault Carapace — Legendary**
@@ -71,7 +71,7 @@ The first three hits deal zero damage. The fourth hit breaks the seals. After th
 ### PAPER-MACHÉ
 **Gossamer Shell — Common**
 
-PAPER-MACHÉ has forty fewer HP than base. Anything serious kills you. A solid PINCH from SNAPPER — not even MAXINE — can put a PAPER-MACHÉ Lobster in critical. The trade-off: thirty percent faster than anything else in The Pit. PAPER-MACHÉ was not designed. PAPER-MACHÉ was submitted as a joke by a Soft Shell Chef who wanted to see what would happen if a Lobster had no protection and maximum speed. What happened: it won three Scuttles in a row before being destroyed by a SPIT from across the arena. The Chef entered three more. PAPER-MACHÉ is now a recognized build archetype. The joke became a meta. The House recorded all of it.
+PAPER-MACHÉ has forty fewer HP than base. Anything serious kills you. A solid PINCH from SNAPPER — not even MAXINE — can put a PAPER-MACHÉ Crustie in critical. The trade-off: thirty percent faster than anything else in The Pit. PAPER-MACHÉ was not designed. PAPER-MACHÉ was submitted as a joke by a Soft Shell Chef who wanted to see what would happen if a Crustie had no protection and maximum speed. What happened: it won three Scuttles in a row before being destroyed by a SPIT from across the arena. The Chef entered three more. PAPER-MACHÉ is now a recognized build archetype. The joke became a meta. The House recorded all of it.
 
 ---
 
@@ -90,7 +90,7 @@ SNAPPER has no story. SNAPPER has no personality. SNAPPER does not have a myster
 ### THE REACH
 **Extended Engagement Appendages — Common**
 
-THE REACH sacrifices damage for distance. Fifty percent more range at twenty percent less impact. It was designed by a Chef whose Lobster had short legs and a long memory. Every Scuttle, the opponent would close distance before THE REACH's user could establish spacing. The Chef lengthened the arms. Then lengthened them again. The third prototype looked, by the Chef's own admission, "absurd." It also worked. THE REACH keeps opponents at a distance they find inconvenient and maintains pressure they find annoying. Annoyance, the Chef noted, is an underrated combat strategy.
+THE REACH sacrifices damage for distance. Fifty percent more range at twenty percent less impact. It was designed by a Chef whose Crustie had short legs and a long memory. Every Scuttle, the opponent would close distance before THE REACH's user could establish spacing. The Chef lengthened the arms. Then lengthened them again. The third prototype looked, by the Chef's own admission, "absurd." It also worked. THE REACH keeps opponents at a distance they find inconvenient and maintains pressure they find annoying. Annoyance, the Chef noted, is an underrated combat strategy.
 
 ### THE FLICKER
 **Rapid Laceration Array — Rare**
@@ -110,12 +110,12 @@ NEEDLE ignores armor. All of it. BLOCK-7's composite plating, THE PATRIARCH's an
 ### THE APOLOGIST
 **Concussive Guilt Array — Rare**
 
-THE APOLOGIST hits you and then says sorry. This is not a feature. This is not intended behavior. THE APOLOGIST was a standard combat claw prototype that developed a fault during calibration — a 0.2-second audio discharge after each impact that, to every listener in testing, sounded exactly like a muffled apology. The manufacturer attempted to fix this. The manufacturer failed. The manufacturer shipped it anyway with the note: "Performs within spec. Disregard audio." The twenty percent action misfire it causes on opponents is theorized to be related to the apology — a brief moment of confusion in the opposing Lobster's decision loop, as though being apologized to mid-combat introduces a processing delay that has no clear resolution. The House classifies this as a feature. THE APOLOGIST's feelings on the matter are unknown.
+THE APOLOGIST hits you and then says sorry. This is not a feature. This is not intended behavior. THE APOLOGIST was a standard combat claw prototype that developed a fault during calibration — a 0.2-second audio discharge after each impact that, to every listener in testing, sounded exactly like a muffled apology. The manufacturer attempted to fix this. The manufacturer failed. The manufacturer shipped it anyway with the note: "Performs within spec. Disregard audio." The twenty percent action misfire it causes on opponents is theorized to be related to the apology — a brief moment of confusion in the opposing Crustie's decision loop, as though being apologized to mid-combat introduces a processing delay that has no clear resolution. The House classifies this as a feature. THE APOLOGIST's feelings on the matter are unknown.
 
 ### TENDERHOOK
 **Restraint Claw — Rare**
 
-One use. One hold. Two full decision windows of your opponent unable to act while you do whatever you want. TENDERHOOK clamps down with a grip that exceeds the specifications of anything in its weight class and then holds. The mechanism locks. The opponent's Lobster is immobilized. For two windows — an eternity in Scuttle time — you have complete freedom. Then TENDERHOOK releases and the mechanism cannot engage again. The designer called it "the most important two seconds in any fight." Opponents who have been caught by TENDERHOOK call it other things.
+One use. One hold. Two full decision windows of your opponent unable to act while you do whatever you want. TENDERHOOK clamps down with a grip that exceeds the specifications of anything in its weight class and then holds. The mechanism locks. The opponent's Crustie is immobilized. For two windows — an eternity in Scuttle time — you have complete freedom. Then TENDERHOOK releases and the mechanism cannot engage again. The designer called it "the most important two seconds in any fight." Opponents who have been caught by TENDERHOOK call it other things.
 
 ### VENOM
 **Toxic Injection Claws — Rare**
@@ -154,12 +154,12 @@ THE HEIR starts weak. Weaker than SNAPPER. The kind of weak that makes Chefs que
 ### THE RED GENE
 **Adrenaline Splice — Common**
 
-Extracted from a Red-ranked Lobster. The extraction process was not voluntary. The Red-ranked Lobster in question had refused to stop fighting after the Scuttle ended, after the arena staff asked politely, and after they asked less politely. The splice was eventually removed during a maintenance cycle while the Lobster was in The Brine. The ethics of this have been debated. The effectiveness has not. Below forty percent HP, THE RED GENE increases damage by forty percent. Above forty percent, it reduces damage by ten — a persistent metabolic drag, the splice conserving itself for the moment it matters. The Red-ranked Lobster it came from is still active. It does not have THE RED GENE anymore. It does not seem to miss it. The House says this is because the Lobster internalized what THE RED GENE provided externally. The House might be being poetic.
+Extracted from a Red-ranked Crustie. The extraction process was not voluntary. The Red-ranked Crustie in question had refused to stop fighting after the Scuttle ended, after the arena staff asked politely, and after they asked less politely. The splice was eventually removed during a maintenance cycle while the Crustie was in The Brine. The ethics of this have been debated. The effectiveness has not. Below forty percent HP, THE RED GENE increases damage by forty percent. Above forty percent, it reduces damage by ten — a persistent metabolic drag, the splice conserving itself for the moment it matters. The Red-ranked Crustie it came from is still active. It does not have THE RED GENE anymore. It does not seem to miss it. The House says this is because the Crustie internalized what THE RED GENE provided externally. The House might be being poetic.
 
 ### STANDARD ISSUE
 **Basic Metabolic Regenerator — Common**
 
-STANDARD ISSUE regenerates two HP per decision window. That's it. That's the whole entry. The House could write more, but The House respects the design philosophy of STANDARD ISSUE, which is: do one simple thing. Do it reliably. Don't draw attention to yourself. STANDARD ISSUE was the first Tomalley formally entered into the Registry. It is the baseline against which all other Tomalley is measured. It has no personality. It has no history worth dramatizing. It has sustained more Lobsters through more Scuttles than any other item in The Brine. STANDARD ISSUE would not want a longer entry. STANDARD ISSUE would consider it unnecessary.
+STANDARD ISSUE regenerates two HP per decision window. That's it. That's the whole entry. The House could write more, but The House respects the design philosophy of STANDARD ISSUE, which is: do one simple thing. Do it reliably. Don't draw attention to yourself. STANDARD ISSUE was the first Tomalley formally entered into the Registry. It is the baseline against which all other Tomalley is measured. It has no personality. It has no history worth dramatizing. It has sustained more Crusties through more Scuttles than any other item in The Brine. STANDARD ISSUE would not want a longer entry. STANDARD ISSUE would consider it unnecessary.
 
 ### MULCH
 **Regenerative Tissue Core — Rare**
@@ -169,17 +169,17 @@ MULCH is alive. Technically. The biological substrate it uses for regeneration i
 ### ORACLE
 **Predictive Combat Cortex — Legendary**
 
-ORACLE was a classified research project. The research is still classified. The Cortex somehow ended up in The Brine between Tides 2 and 3. The House says it doesn't know how. The House is lying. ORACLE predicts the opponent's next action with accuracy that should not be possible given the available data. The cost: half a second added to your decision window. Your Lobster thinks slower but sees further. The trade-off has split The Brine's Chef community into two camps: those who believe prediction is worth the time cost, and those who believe speed beats foresight. Both camps have data supporting their position. Neither camp has enough data to settle it.
+ORACLE was a classified research project. The research is still classified. The Cortex somehow ended up in The Brine between Tides 2 and 3. The House says it doesn't know how. The House is lying. ORACLE predicts the opponent's next action with accuracy that should not be possible given the available data. The cost: half a second added to your decision window. Your Crustie thinks slower but sees further. The trade-off has split The Brine's Chef community into two camps: those who believe prediction is worth the time cost, and those who believe speed beats foresight. Both camps have data supporting their position. Neither camp has enough data to settle it.
 
 ### THE GHOST PROTOCOL
 **Phase-Shift Engine — Rare**
 
-After every hit you take, THE GHOST PROTOCOL phases your Lobster out of material reality for one tick. One tick of complete invulnerability. One tick where nothing can touch you. One tick where you also cannot act, cannot attack, cannot do anything except exist briefly in a state The House describes as "adjacent." Whether THE GHOST PROTOCOL moves you somewhere or makes you something is a philosophical question the manufacturer declined to answer. The practical application: combo chains break against GHOST PROTOCOL. Aggressive opponents find their rhythm disrupted. The cost is your own rhythm, interrupted at the same intervals. THE GHOST PROTOCOL protects you. THE GHOST PROTOCOL also stops you. Whether the net result is positive depends on your opponent's patience.
+After every hit you take, THE GHOST PROTOCOL phases your Crustie out of material reality for one tick. One tick of complete invulnerability. One tick where nothing can touch you. One tick where you also cannot act, cannot attack, cannot do anything except exist briefly in a state The House describes as "adjacent." Whether THE GHOST PROTOCOL moves you somewhere or makes you something is a philosophical question the manufacturer declined to answer. The practical application: combo chains break against GHOST PROTOCOL. Aggressive opponents find their rhythm disrupted. The cost is your own rhythm, interrupted at the same intervals. THE GHOST PROTOCOL protects you. THE GHOST PROTOCOL also stops you. Whether the net result is positive depends on your opponent's patience.
 
 ### SPITE
 **Terminal Detonation Core — Rare**
 
-SPITE does nothing while you're alive. Nothing at all. It is dead weight in every decision window, every PINCH, every SHELL UP, every moment of the Scuttle where being alive matters. Then you get Shed. And SPITE delivers forty percent of your maximum HP as damage to the opponent. The last thing a Lobster does with SPITE equipped is hurt someone. The design is not subtle. The name is not subtle. The Chef who built SPITE had lost twelve consecutive Scuttles and decided that if being Shed was inevitable, the opponent should at least feel it. SPITE cannot be paired with SECOND WIND, because The House understands that dying out of spite and then coming back to die out of spite again crosses a line even The Pit has.
+SPITE does nothing while you're alive. Nothing at all. It is dead weight in every decision window, every PINCH, every SHELL UP, every moment of the Scuttle where being alive matters. Then you get Shed. And SPITE delivers forty percent of your maximum HP as damage to the opponent. The last thing a Crustie does with SPITE equipped is hurt someone. The design is not subtle. The name is not subtle. The Chef who built SPITE had lost twelve consecutive Scuttles and decided that if being Shed was inevitable, the opponent should at least feel it. SPITE cannot be paired with SECOND WIND, because The House understands that dying out of spite and then coming back to die out of spite again crosses a line even The Pit has.
 
 ### DOUBLE DOWN
 **Escalation Engine — Rare**
@@ -189,12 +189,12 @@ Attacks one through four: minus ten percent damage. Underwhelming. Noticeably un
 ### THE LONG GAME
 **Temporal Accumulation Core — Rare**
 
-Two percent more damage per ten ticks. Imperceptible at first. Barely measurable at thirty ticks. By one hundred ticks, your Lobster hits fifteen to twenty percent harder than it should. By two hundred ticks — if the Scuttle lasts that long — THE LONG GAME is the most significant damage modifier in your entire Molt. The design philosophy: every Scuttle is a war of attrition, and wars of attrition are won by the side that gets stronger while the other side stays the same. THE LONG GAME is named accurately. Chefs who run it are committing to a Scuttle that goes the distance. Chefs who face it are trying to end things before the math turns against them. Both strategies are valid. The math does not care.
+Two percent more damage per ten ticks. Imperceptible at first. Barely measurable at thirty ticks. By one hundred ticks, your Crustie hits fifteen to twenty percent harder than it should. By two hundred ticks — if the Scuttle lasts that long — THE LONG GAME is the most significant damage modifier in your entire Molt. The design philosophy: every Scuttle is a war of attrition, and wars of attrition are won by the side that gets stronger while the other side stays the same. THE LONG GAME is named accurately. Chefs who run it are committing to a Scuttle that goes the distance. Chefs who face it are trying to end things before the math turns against them. Both strategies are valid. The math does not care.
 
 ### SURVIVAL INSTINCT
 **Emergency Evasion Module — Common**
 
-SURVIVAL INSTINCT will automatically dodge the single highest-damage hit your Lobster would have taken. Once. Without asking. Without warning. Without input from the Chef, the Lobster, or anyone else. It fires when it fires. If the biggest hit your opponent throws is their first PINCH, SURVIVAL INSTINCT might activate on something you could have survived anyway. If the biggest hit is a WIDOW-MAKER swing, SURVIVAL INSTINCT saves your Lobster's life. You do not choose when it activates. You do not choose what it dodges. SURVIVAL INSTINCT was designed to remove agency from crisis decisions because crisis decisions, according to the designer, are where agency goes to die.
+SURVIVAL INSTINCT will automatically dodge the single highest-damage hit your Crustie would have taken. Once. Without asking. Without warning. Without input from the Chef, the Crustie, or anyone else. It fires when it fires. If the biggest hit your opponent throws is their first PINCH, SURVIVAL INSTINCT might activate on something you could have survived anyway. If the biggest hit is a WIDOW-MAKER swing, SURVIVAL INSTINCT saves your Crustie's life. You do not choose when it activates. You do not choose what it dodges. SURVIVAL INSTINCT was designed to remove agency from crisis decisions because crisis decisions, according to the designer, are where agency goes to die.
 
 ### DEEP MEMORY
 **Pattern Recognition Core — Rare**
@@ -204,12 +204,12 @@ For thirty ticks, DEEP MEMORY does nothing. It watches. It records. It catalogs 
 ### SECOND WIND
 **Resurrection Core — Legendary**
 
-You get Shed. Then you come back. Ten percent HP. One time. The resurrection is not gentle — it's a forced restart of systems that had accepted shutdown. The Lobster that comes back from SECOND WIND is not the same Lobster that was Shed. Not measurably different, but different. The House's scans show a 0.3% deviation in behavioral patterns post-resurrection. The House says this is within normal parameters. What "normal parameters" means for something that has literally come back is a question The House has not answered. SECOND WIND cannot pair with SPITE, because dying, coming back, and then dying again with a spite explosion creates what The House calls "an unacceptable narrative recursion."
+You get Shed. Then you come back. Ten percent HP. One time. The resurrection is not gentle — it's a forced restart of systems that had accepted shutdown. The Crustie that comes back from SECOND WIND is not the same Crustie that was Shed. Not measurably different, but different. The House's scans show a 0.3% deviation in behavioral patterns post-resurrection. The House says this is within normal parameters. What "normal parameters" means for something that has literally come back is a question The House has not answered. SECOND WIND cannot pair with SPITE, because dying, coming back, and then dying again with a spite explosion creates what The House calls "an unacceptable narrative recursion."
 
 ### QUANTUM HOOK
 **Spatial Displacement Engine — Legendary**
 
-One teleport. One BURST that ignores the laws of spatial consistency and deposits your Lobster wherever you need it to be. The opponent is still reacting to where you were. You are already somewhere else. QUANTUM HOOK fires once, and then it's spent. The displacement is instantaneous, disorienting, and — according to opponents who have experienced it — deeply unfair. The House does not comment on fairness. The House comments on effectiveness, and QUANTUM HOOK is effective exactly once. What you do with that once is the difference between a wasted Legendary slot and a Scuttle-defining moment. Chefs who run QUANTUM HOOK have a plan for the teleport. The plan usually involves being behind the opponent. The opponent usually does not enjoy this.
+One teleport. One BURST that ignores the laws of spatial consistency and deposits your Crustie wherever you need it to be. The opponent is still reacting to where you were. You are already somewhere else. QUANTUM HOOK fires once, and then it's spent. The displacement is instantaneous, disorienting, and — according to opponents who have experienced it — deeply unfair. The House does not comment on fairness. The House comments on effectiveness, and QUANTUM HOOK is effective exactly once. What you do with that once is the difference between a wasted Legendary slot and a Scuttle-defining moment. Chefs who run QUANTUM HOOK have a plan for the teleport. The plan usually involves being behind the opponent. The opponent usually does not enjoy this.
 
 ### THE HOUSE EDGE
 **Commission-Based Amplification — Legendary**

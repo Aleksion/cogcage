@@ -47,13 +47,13 @@ If both agents simultaneously BURST to each other's tiles: both take 8 damage, b
 
 ## Simultaneous Collision Resolution
 
-Two Lobsters cannot occupy the same tile.
+Two Crusties cannot occupy the same tile.
 
 | Scenario | Resolution |
 |----------|-----------|
 | Both SCUTTLE to same tile | Both stay in place. No damage. Mutual block. |
 | Both BURST to same tile | Both take 8 BURST HIT damage, both return to origin. |
-| One SCUTTLE + one BURST to same tile | BURST wins. BURST Lobster lands. SCUTTLE Lobster stays. |
+| One SCUTTLE + one BURST to same tile | BURST wins. BURST Crustie lands. SCUTTLE Crustie stays. |
 
 **Why mutual block for SCUTTLE?** Forces commitment — if you want to take a contested tile, pay 2 energy for BURST.
 

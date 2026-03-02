@@ -64,7 +64,7 @@ Carapace items modify HP, damage received, and movement. Applied at fight start,
 
 **Spectator display:** No special effects. The plain shell. Looks dependable and slightly boring.
 
-**Balance notes:** The benchmark item. Everything else is measured against it. A Lobster running THE ORIGINAL should win on pure agent quality alone — no item crutch, no item weakness. It's the "I don't need gimmicks" pick and should feel like a confident statement. Slight undertuning is acceptable (brave players pick it; reward their confidence at a reasonable rate, not an excessive one).
+**Balance notes:** The benchmark item. Everything else is measured against it. A Crustie running THE ORIGINAL should win on pure agent quality alone — no item crutch, no item weakness. It's the "I don't need gimmicks" pick and should feel like a confident statement. Slight undertuning is acceptable (brave players pick it; reward their confidence at a reasonable rate, not an excessive one).
 
 ---
 
@@ -110,7 +110,7 @@ Carapace items modify HP, damage received, and movement. Applied at fight start,
 
 **Spectator display:** Hit particles scatter sideways instead of impacting directly. A phasing shimmer on the shell. Audio: hit sound has a phase-scatter tail (soft echo).
 
-**Balance notes:** With 90 HP, SILKWORM Lobsters die faster to burst damage (MAXINE, WIDOW-MAKER) than default. The scatter helps against sustained DPS (THE FLICKER DoT is reduced by 20% per stack application). SILKWORM + GHOST SHELL is a significant miss-chance + reduction build: 20% reduction + 25% miss chance = roughly 40% effective damage received on average. Pair with NEEDLE (ignores armor, but SILKWORM's scatter is passive/shell — does NEEDLE ignore scatter? **Rule:** NEEDLE ignores Carapace stat damage_reduction only. SILKWORM's scatter is treated as a separate passive, NOT as Carapace reduction. NEEDLE does NOT bypass SILKWORM scatter. Document this clearly in engine).
+**Balance notes:** With 90 HP, SILKWORM Crusties die faster to burst damage (MAXINE, WIDOW-MAKER) than default. The scatter helps against sustained DPS (THE FLICKER DoT is reduced by 20% per stack application). SILKWORM + GHOST SHELL is a significant miss-chance + reduction build: 20% reduction + 25% miss chance = roughly 40% effective damage received on average. Pair with NEEDLE (ignores armor, but SILKWORM's scatter is passive/shell — does NEEDLE ignore scatter? **Rule:** NEEDLE ignores Carapace stat damage_reduction only. SILKWORM's scatter is treated as a separate passive, NOT as Carapace reduction. NEEDLE does NOT bypass SILKWORM scatter. Document this clearly in engine).
 
 ---
 
@@ -119,7 +119,7 @@ Carapace items modify HP, damage received, and movement. Applied at fight start,
 
 **Mechanical effect:**
 - +10 HP (HP pool = 110)
-- On being hit: if the Lobster's NEXT action (next window) is not already queued, the engine automatically queues PINCH or SPIT (whichever is valid — prefer PINCH if opponent is adjacent, else SPIT) at no additional energy cost. This is an automatic counter-queue, not a free attack.
+- On being hit: if the Crustie's NEXT action (next window) is not already queued, the engine automatically queues PINCH or SPIT (whichever is valid — prefer PINCH if opponent is adjacent, else SPIT) at no additional energy cost. This is an automatic counter-queue, not a free attack.
 - "Auto counter" means: if the agent submits a different action, the agent's action takes priority. ECHO fires only if no action is queued for that window.
 
 **Agent state:**
@@ -177,7 +177,7 @@ Carapace items modify HP, damage received, and movement. Applied at fight start,
 **Mechanical effect:**
 - -15 HP (HP pool = 85)
 - One-time ability: if a damage instance would reduce HP to 0 or below, instead set HP = 1. The killing blow is negated. This fires **once per Scuttle** and is then permanently consumed.
-- WIDOW trigger condition: HP goes from >0 to ≤0 in a single damage resolution. If HP was already 1 from a prior save and another hit lands: WIDOW has already fired, Lobster dies.
+- WIDOW trigger condition: HP goes from >0 to ≤0 in a single damage resolution. If HP was already 1 from a prior save and another hit lands: WIDOW has already fired, Crustie dies.
 
 **Agent state:**
 ```json
@@ -188,7 +188,7 @@ Carapace items modify HP, damage received, and movement. Applied at fight start,
 
 **Spectator display:** When WIDOW fires — dramatic visual: shell cracks and reassembles, HP bar slams to 1 with a red pulse. Audio: crack + crystallization sound. This is the "clutch moment" spectators cheer for.
 
-**Balance notes:** The drama item. 85 HP means a Lobster can be killed by 85 damage without triggering WIDOW — it only saves from the killing blow. MAXINE (120% × 20 = 36 damage base — not enough to one-shot through WIDOW). WIDOW-MAKER (400% × 20 = 80 damage — still not one-shot through 85 HP... unless opponent has buffs). THE PATRIARCH + WIDOW-MAKER can trigger WIDOW. After WIDOW fires, the Lobster is at 1 HP — SPITE Tomalley (40% maxHP damage on death) pairs with WIDOW to ensure a dying strike. Classic clutch combo: WIDOW + SPITE + REVERSAL. You survive, then explode on the way out.
+**Balance notes:** The drama item. 85 HP means a Crustie can be killed by 85 damage without triggering WIDOW — it only saves from the killing blow. MAXINE (120% × 20 = 36 damage base — not enough to one-shot through WIDOW). WIDOW-MAKER (400% × 20 = 80 damage — still not one-shot through 85 HP... unless opponent has buffs). THE PATRIARCH + WIDOW-MAKER can trigger WIDOW. After WIDOW fires, the Crustie is at 1 HP — SPITE Tomalley (40% maxHP damage on death) pairs with WIDOW to ensure a dying strike. Classic clutch combo: WIDOW + SPITE + REVERSAL. You survive, then explode on the way out.
 
 ---
 
@@ -197,7 +197,7 @@ Carapace items modify HP, damage received, and movement. Applied at fight start,
 
 **Mechanical effect:**
 - -10 HP (HP pool = 90)
-- 8% of all incoming damage is reflected back to the attacker (before reductions are applied to the reflection — the reflection is raw). The Lobster wearing BLEED BACK still receives the full damage (minus their own reductions). The reflection is additional damage to the attacker.
+- 8% of all incoming damage is reflected back to the attacker (before reductions are applied to the reflection — the reflection is raw). The Crustie wearing BLEED BACK still receives the full damage (minus their own reductions). The reflection is additional damage to the attacker.
 - Reflection does NOT trigger the attacker's own BLEED BACK (no infinite ping-pong).
 - SHELL UP on the attacker: the reflected damage is affected by the attacker's SHELL UP. The reflection hits the attacker like any other damage.
 
@@ -271,8 +271,8 @@ Carapace items modify HP, damage received, and movement. Applied at fight start,
 **Mechanical effect:**
 - ±0 HP (HP pool = 100)
 - No damage reduction
-- **Above 50% HP:** standard damage math. INVERTER provides NO benefit. The Lobster is fully vulnerable.
-- **Below 50% HP (HP ≤ 50):** every incoming damage instance is instead converted to healing. The Lobster heals the amount that would have damaged it (before reduction, after other passives). Net effect: being attacked heals you.
+- **Above 50% HP:** standard damage math. INVERTER provides NO benefit. The Crustie is fully vulnerable.
+- **Below 50% HP (HP ≤ 50):** every incoming damage instance is instead converted to healing. The Crustie heals the amount that would have damaged it (before reduction, after other passives). Net effect: being attacked heals you.
 - INVERTER healing cannot exceed 100 HP (base cap). Overheal not possible.
 - SHELL UP below 50% HP: still valid. SHELL UP reduces the "incoming damage" value, which means less healing (it reduces the heal, not the damage). Counter-intuitive: below 50% HP, SHELL UP is a DPS loss for the INVERTER wearer. The LLM must understand this and NOT use SHELL UP below 50%.
 
@@ -285,9 +285,9 @@ Carapace items modify HP, damage received, and movement. Applied at fight start,
 "inverter_healing_mode": false
 ```
 
-**Spectator display:** Below 50% HP: shell pulses with an inverted color scheme (cyan/magenta instead of normal colors). "Attacks" visually heal the Lobster — incoming particles reverse direction. HP bar goes up when hit. Crowd reaction moment.
+**Spectator display:** Below 50% HP: shell pulses with an inverted color scheme (cyan/magenta instead of normal colors). "Attacks" visually heal the Crustie — incoming particles reverse direction. HP bar goes up when hit. Crowd reaction moment.
 
-**Balance notes:** Most interesting item in the game for spectators. A Lobster in INVERTER mode is nearly unkillable from direct attacks — opponent must use hazards or DoT. INVERTER does NOT convert hazard damage (hazards are environmental, not attacks). INVERTER DOES convert: PINCH, SPIT, BURST hit, BLEED BACK reflection (they attacked, it reflects → healing). INVERTER does NOT convert: HAZARD tiles, SPITE on-death (environmental), THE FLICKER DoT ticks (rule: DoT is classified as environmental damage, applied by the engine, not the opponent's action per-window — does NOT convert). This distinction is critical for balance. Flag: without DoT immunity, THE FLICKER counters INVERTER hard. This is correct and intentional — INVERTER has a counter.
+**Balance notes:** Most interesting item in the game for spectators. A Crustie in INVERTER mode is nearly unkillable from direct attacks — opponent must use hazards or DoT. INVERTER does NOT convert hazard damage (hazards are environmental, not attacks). INVERTER DOES convert: PINCH, SPIT, BURST hit, BLEED BACK reflection (they attacked, it reflects → healing). INVERTER does NOT convert: HAZARD tiles, SPITE on-death (environmental), THE FLICKER DoT ticks (rule: DoT is classified as environmental damage, applied by the engine, not the opponent's action per-window — does NOT convert). This distinction is critical for balance. Flag: without DoT immunity, THE FLICKER counters INVERTER hard. This is correct and intentional — INVERTER has a counter.
 
 ---
 
@@ -324,7 +324,7 @@ Carapace items modify HP, damage received, and movement. Applied at fight start,
 
 **Mechanical effect:**
 - -40 HP (HP pool = 60)
-- Speed +30% implemented as: every 10th Decision Window, grant 1 free SCUTTLE at the end of that window's resolution (regardless of energy). The free SCUTTLE moves in the last direction the Lobster SCUTTLEd, or can be overridden by submitting an explicit SCUTTLE for that window (the explicit SCUTTLE fires instead, and the "free" bonus is credited as energy-free).
+- Speed +30% implemented as: every 10th Decision Window, grant 1 free SCUTTLE at the end of that window's resolution (regardless of energy). The free SCUTTLE moves in the last direction the Crustie SCUTTLEd, or can be overridden by submitting an explicit SCUTTLE for that window (the explicit SCUTTLE fires instead, and the "free" bonus is credited as energy-free).
 - No other bonuses. No damage reduction.
 
 **Agent state:**
@@ -534,7 +534,7 @@ Claws modify damage output, attack range, special attack effects, and action ava
 "tenderhook_hold_windows_remaining": 0
 ```
 
-**Spectator display:** Claws show a grapple hook detail. On successful PINCH: opponent's Lobster is visually locked in place by a glowing tether. Hold countdown visible on HUD. Audio: hook deployment → tether hum × 2 windows → release snap.
+**Spectator display:** Claws show a grapple hook detail. On successful PINCH: opponent's Crustie is visually locked in place by a glowing tether. Hold countdown visible on HUD. Audio: hook deployment → tether hum × 2 windows → release snap.
 
 **Balance notes:** One-use repositioning denial. Optimal use: hold the opponent while queuing 2 PINCH attacks from other Claws... wait, Claws are locked during hold. Optimal use: hold while using BURST to reposition to cover, then release. Or: hold while waiting for energy to build for a 3-energy PINCH in window 3 of the hold. The "no new PINCH during hold" prevents TENDERHOOK → 2 free attacks combo. Intentional.
 
@@ -603,7 +603,7 @@ Claws modify damage output, attack range, special attack effects, and action ava
 
 **Mechanical effect:**
 - Damage multiplier: ±0 (PINCH: 20; SPIT: 12)
-- When SHELL UP is active AND the Lobster is hit: 60% of the damage received is dealt back to the attacker.
+- When SHELL UP is active AND the Crustie is hit: 60% of the damage received is dealt back to the attacker.
 - Calculation: `reversal_damage = damage_received × 0.60` (where damage_received is after SHELL UP's 50% reduction).
 - Example: opponent deals 20 PINCH, SHELL UP reduces to 10 received, REVERSAL returns 10 × 0.60 = 6 damage to opponent.
 - REVERSAL only fires when SHELL UP is active. Passive hits without SHELL UP deal no counter.
@@ -628,7 +628,7 @@ Claws modify damage output, attack range, special attack effects, and action ava
 
 **Mechanical effect:**
 - Damage multiplier: +25% (PINCH: 25; SPIT: 15)
-- Status immune: Lobster cannot be Stunned, Held, Misfired, or affected by any debuff. Bleed and Venom stacks CAN still be applied (DoT is not a debuff — it's an environmental effect).
+- Status immune: Crustie cannot be Stunned, Held, Misfired, or affected by any debuff. Bleed and Venom stacks CAN still be applied (DoT is not a debuff — it's an environmental effect).
 - Cannot pair with any Legendary Tomalley (loadout builder enforces this at construction time)
 
 **Agent state:**
@@ -674,26 +674,26 @@ Claws modify damage output, attack range, special attack effects, and action ava
 
 **Mechanical effect:**
 - Damage multiplier: starts at -10% below SNAPPER (PINCH: 18; SPIT: 10.8 ≈ 11)
-- Per win (prior Scuttles won): +5% damage multiplier accumulated in the Lobster's persistent record. This is NOT per-window — it's per prior fight won.
-  - A Lobster with 0 wins: 0.90×
-  - A Lobster with 1 win: 0.95×
-  - A Lobster with 2 wins: 1.00× (equals SNAPPER)
-  - A Lobster with 3 wins: 1.05×
-  - A Lobster with 10 wins: 1.40×
+- Per win (prior Scuttles won): +5% damage multiplier accumulated in the Crustie's persistent record. This is NOT per-window — it's per prior fight won.
+  - A Crustie with 0 wins: 0.90×
+  - A Crustie with 1 win: 0.95×
+  - A Crustie with 2 wins: 1.00× (equals SNAPPER)
+  - A Crustie with 3 wins: 1.05×
+  - A Crustie with 10 wins: 1.40×
 - The multiplier is capped at 2.00× (after 22 wins).
-- Win count is the Lobster's ALL-TIME Scuttle wins, not current-session.
+- Win count is the Crustie's ALL-TIME Scuttle wins, not current-session.
 
 **Agent state:**
 ```json
 "claws": "THE_HEIR",
-"damage_multiplier": 1.25,  // for a 7-win Lobster
+"damage_multiplier": 1.25,  // for a 7-win Crustie
 "heir_wins": 7,
 "heir_multiplier_cap": 2.00
 ```
 
-**Spectator display:** Claws look worn and seasoned — visible notches and wear marks. Each win adds a visual flourish (for high-win Lobsters, the claws glow faintly). Audio: hit sound deepens/gains reverb with more wins.
+**Spectator display:** Claws look worn and seasoned — visible notches and wear marks. Each win adds a visual flourish (for high-win Crusties, the claws glow faintly). Audio: hit sound deepens/gains reverb with more wins.
 
-**Balance notes:** Progression item. Hatchlings are at a disadvantage but can grow. High-win Lobsters with THE HEIR are genuinely terrifying (1.40× or higher). Creates inherent rivalry: a Hatchling beating a 10-win HEIR Lobster is a massive upset. This is great spectator design — the underdog story. Resets on Molt: THE HEIR tracks the LOBSTER's wins, not the Molt. A Lobster who won 20 times brings 2.00× multiplier into any fight they equip THE HEIR.
+**Balance notes:** Progression item. Hatchlings are at a disadvantage but can grow. High-win Crusties with THE HEIR are genuinely terrifying (1.40× or higher). Creates inherent rivalry: a Hatchling beating a 10-win HEIR Crustie is a massive upset. This is great spectator design — the underdog story. Resets on Molt: THE HEIR tracks the LOBSTER's wins, not the Molt. A Crustie who won 20 times brings 2.00× multiplier into any fight they equip THE HEIR.
 
 ---
 
@@ -707,7 +707,7 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 *Adrenaline Splice | Common*
 
 **Mechanical effect:**
-- Below 40% HP (HP ≤ 40 on base 100-HP Lobster): damage multiplier +40% on all attacks
+- Below 40% HP (HP ≤ 40 on base 100-HP Crustie): damage multiplier +40% on all attacks
 - Above 40% HP: damage multiplier -10%
 - Applies multiplicatively with Claws multiplier: `final_damage = base × claws_multiplier × red_gene_modifier`
 - Threshold is on CURRENT HP, checked at attack resolution. HP fluctuates; effect toggles.
@@ -721,7 +721,7 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 
 **Spectator display:** Below 40% HP: shell pulses red. Eyes (visual element) go from normal to full red. Attack animations become faster/more aggressive in style. Audio: low-HP heartbeat sound loops; attacks have a desperate, raw sound quality.
 
-**Balance notes:** Comeback mechanic. Below 40% HP = death is close — the buff might not help enough. Against BLOCK-7 opponents (130 HP), the attacker needs to have dealt 60-90 HP already to be near death themselves. THE RED GENE rewards dual-risk scenarios (both Lobsters battered). Classic pairing: WIDOW (survive lethal hit at 1 HP, now RED GENE is active at max intensity) → massive comeback potential. The -10% above 40% means THE RED GENE weakly hurts healthy play — intentional, makes the tradeoff real.
+**Balance notes:** Comeback mechanic. Below 40% HP = death is close — the buff might not help enough. Against BLOCK-7 opponents (130 HP), the attacker needs to have dealt 60-90 HP already to be near death themselves. THE RED GENE rewards dual-risk scenarios (both Crusties battered). Classic pairing: WIDOW (survive lethal hit at 1 HP, now RED GENE is active at max intensity) → massive comeback potential. The -10% above 40% means THE RED GENE weakly hurts healthy play — intentional, makes the tradeoff real.
 
 ---
 
@@ -751,8 +751,8 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 **Mechanical effect:**
 - +5 HP per Decision Window
 - Overheal: can exceed base max HP up to 120% of max HP.
-  - Example: BLOCK-7 Lobster (130 HP) can overheal to 156 HP
-  - Example: standard Lobster (100 HP) can overheal to 120 HP
+  - Example: BLOCK-7 Crustie (130 HP) can overheal to 156 HP
+  - Example: standard Crustie (100 HP) can overheal to 120 HP
 - Downside: opponent can see your exact HP% at all times (normally exact HP is visible, but MULCH makes it explicitly prominent in the opponent's state — the display is more... flagrant).
   - Mechanical effect of transparency: opponent's `opponent_hp_percent` is always included (this exists in base game too, but MULCH flags it as `hp_visible_enhanced: true`). In a potential Fog mode, MULCH would reveal HP even through fog.
 
@@ -790,7 +790,7 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 }
 ```
 
-**Spectator display:** Shell shows a subtle scanning animation (like sonar pulses). ORACLE's prediction is displayed on the Coral Feed — spectators see what the Lobster thinks the opponent will do, and whether it was right. This is prime Coral Feed content.
+**Spectator display:** Shell shows a subtle scanning animation (like sonar pulses). ORACLE's prediction is displayed on the Coral Feed — spectators see what the Crustie thinks the opponent will do, and whether it was right. This is prime Coral Feed content.
 
 **Balance notes:** ORACLE is a meta-information item. Its value depends entirely on the agent's ability to USE the prediction. A dumb agent with ORACLE wastes it. A smart agent adapts its queued moves based on prediction. ORACLE + THE ORIGINAL APPENDAGE is blocked (Legendary Tomalley + Legendary Claws restriction). Intentional — ORACLE wants a Tomalley slot, not Legendary Claws competition.
 
@@ -800,8 +800,8 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 *Phase-Step Passive | Rare*
 
 **Mechanical effect:**
-- After being hit (each hit instance): the Lobster phases for 1 tick (150ms). During phase: immune to all damage. Duration: 1 tick (150ms = 1 tick, which is a small fraction of a Decision Window).
-- Downside: during phase tick, the Lobster cannot act. If an action was being resolved in that tick, it is delayed by 1 tick (pushed to next tick within the window).
+- After being hit (each hit instance): the Crustie phases for 1 tick (150ms). During phase: immune to all damage. Duration: 1 tick (150ms = 1 tick, which is a small fraction of a Decision Window).
+- Downside: during phase tick, the Crustie cannot act. If an action was being resolved in that tick, it is delayed by 1 tick (pushed to next tick within the window).
 - Implementation: phase is so brief (1/5th of a decision window) that it rarely delays action resolution meaningfully. The action still fires in the same Decision Window, just 1 tick later.
 
 **Agent state:**
@@ -813,7 +813,7 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 
 **Spectator display:** After each hit: brief shimmer/translucent flash (1 tick = barely perceptible). The visual is more of a "blink" effect than a full phase. Audio: high-pitched phase ping after each impact.
 
-**Balance notes:** Minimal practical effect in v1. The 1-tick phase is too brief to matter much. Intended for Fog mode (where phasing creates interesting "disappeared for a moment" effects). In v1: the accumulated micro-invincibility windows add up — in a prolonged fight, THE GHOST PROTOCOL effectively reduces damage from rapid-fire DoT by providing 1-tick immunity after each DoT tick. Against THE FLICKER at max stacks: each DoT tick phases the Lobster → next tick is immune → every other tick of DoT is negated = effective 8 DoT/tick instead of 16. Significant! This is the hidden synergy. Flag: GHOST PROTOCOL is THE FLICKER's hard counter. Design intentionally.
+**Balance notes:** Minimal practical effect in v1. The 1-tick phase is too brief to matter much. Intended for Fog mode (where phasing creates interesting "disappeared for a moment" effects). In v1: the accumulated micro-invincibility windows add up — in a prolonged fight, THE GHOST PROTOCOL effectively reduces damage from rapid-fire DoT by providing 1-tick immunity after each DoT tick. Against THE FLICKER at max stacks: each DoT tick phases the Crustie → next tick is immune → every other tick of DoT is negated = effective 8 DoT/tick instead of 16. Significant! This is the hidden synergy. Flag: GHOST PROTOCOL is THE FLICKER's hard counter. Design intentionally.
 
 ---
 
@@ -823,10 +823,10 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 **Mechanical effect:**
 - Zero benefit while alive. Purely passive death effect.
 - On death: deal damage equal to 40% of the wearer's MAX HP to the opponent (before any reductions on the recipient).
-  - SNAPPER Lobster with SPITE: 40% × 100 = 40 death damage
-  - BLOCK-7 Lobster with SPITE: 40% × 130 = 52 death damage
+  - SNAPPER Crustie with SPITE: 40% × 100 = 40 death damage
+  - BLOCK-7 Crustie with SPITE: 40% × 130 = 52 death damage
   - THE PATRIARCH + SPITE: 40% × 160 = 64 death damage
-- The death damage is NOT mitigated by SHELL UP (the Lobster is dead and can't act). It IS mitigated by opponent's Carapace reduction and active effects.
+- The death damage is NOT mitigated by SHELL UP (the Crustie is dead and can't act). It IS mitigated by opponent's Carapace reduction and active effects.
 - DESPITE fires even if death was from hazard, DoT, or any cause.
 - Cannot pair with SECOND WIND (explicit restriction — both are on-death effects).
 
@@ -836,9 +836,9 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 "spite_damage_on_death": 40
 ```
 
-**Spectator display:** On death: the Lobster explodes in a burst of brine. The explosion animation hits the opponent. Audio: death sound → brine explosion → impact thud on opponent.
+**Spectator display:** On death: the Crustie explodes in a burst of brine. The explosion animation hits the opponent. Audio: death sound → brine explosion → impact thud on opponent.
 
-**Balance notes:** "You'll regret killing me." High drama item. WIDOW + SPITE: survive lethal hit → still at 1 HP → opponent must kill again → on that death, SPITE fires for 40. If opponent is also low HP, SPITE kills them simultaneously → DRAW. Both Lobsters die in the same window → tiebreaker: highest HP tiebreaker (both at 0/1) → Hardness tiebreaker. Interesting. THE PATRIARCH + SPITE: 64 death damage is substantial — can kill an already-damaged opponent. This is a valid strategy: absorb damage with THE PATRIARCH's HP, then die and punish with SPITE.
+**Balance notes:** "You'll regret killing me." High drama item. WIDOW + SPITE: survive lethal hit → still at 1 HP → opponent must kill again → on that death, SPITE fires for 40. If opponent is also low HP, SPITE kills them simultaneously → DRAW. Both Crusties die in the same window → tiebreaker: highest HP tiebreaker (both at 0/1) → Hardness tiebreaker. Interesting. THE PATRIARCH + SPITE: 64 death damage is substantial — can kill an already-damaged opponent. This is a valid strategy: absorb damage with THE PATRIARCH's HP, then die and punish with SPITE.
 
 ---
 
@@ -860,9 +860,9 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 "current_multiplier_modifier": 0.90  // or 2.00 on attack 5
 ```
 
-**Spectator display:** Attack counter visible on Lobster portrait (small charge indicator 1-4). On 5th attack: visual burst of energy in attack animation. Audio: each hit builds a charge sound, 5th hit has full release.
+**Spectator display:** Attack counter visible on Crustie portrait (small charge indicator 1-4). On 5th attack: visual burst of energy in attack animation. Audio: each hit builds a charge sound, 5th hit has full release.
 
-**Balance notes:** Rewards consistent attack rhythm. A Lobster that attacks every other window: 5-attack cycle takes 10 windows = 7.5 seconds. The -10% on 4 attacks + 200% on 1 = net: 4×0.9 + 1×2.0 = 3.6 + 2.0 = 5.6 damage over 5 attacks (vs 5.0 for SNAPPER). +12% effective damage over 5-attack cycles. DOUBLE DOWN is mildly positive when attack rate is consistent. Punished by forced NO_OPs (MAXINE cooldown, HARDCASE energy drain). Rewarded by aggressive agents who attack every window. THE FLICKER + DOUBLE DOWN: the 5th hit deals double Flicker damage AND adds 1 bleed stack. Not broken — 1 extra stack, 1 big hit. Acceptable.
+**Balance notes:** Rewards consistent attack rhythm. A Crustie that attacks every other window: 5-attack cycle takes 10 windows = 7.5 seconds. The -10% on 4 attacks + 200% on 1 = net: 4×0.9 + 1×2.0 = 3.6 + 2.0 = 5.6 damage over 5 attacks (vs 5.0 for SNAPPER). +12% effective damage over 5-attack cycles. DOUBLE DOWN is mildly positive when attack rate is consistent. Punished by forced NO_OPs (MAXINE cooldown, HARDCASE energy drain). Rewarded by aggressive agents who attack every window. THE FLICKER + DOUBLE DOWN: the 5th hit deals double Flicker damage AND adds 1 bleed stack. Not broken — 1 extra stack, 1 big hit. Acceptable.
 
 ---
 
@@ -904,7 +904,7 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 
 **Mechanical effect:**
 - One-time: automatically dodges the single highest-damage incoming attack in the Scuttle.
-- Trigger: when a damage instance would be the largest single damage value the Lobster has received so far in the fight, SURVIVAL INSTINCT fires. The attack deals 0 damage.
+- Trigger: when a damage instance would be the largest single damage value the Crustie has received so far in the fight, SURVIVAL INSTINCT fires. The attack deals 0 damage.
 - "Highest so far" tracking: engine tracks `max_damage_received_so_far`. When a new hit would be strictly greater, SURVIVAL INSTINCT fires (if not yet consumed).
 - After firing: `survival_instinct_used: true`. No further auto-dodges.
 - SURVIVAL INSTINCT does NOT fire on the first hit (unless the first hit is also the largest). Wait — it fires on any hit that exceeds the current maximum. On the first hit: `max_damage_received_so_far = 0`. Any positive damage is greater than 0. SURVIVAL INSTINCT would fire on the very first hit. That's wrong. **Rule: SURVIVAL INSTINCT triggers only when incoming damage exceeds the running maximum AND the running maximum is > 0. First hit always lands.** If tied with the current max: does not trigger (must be strictly greater).
@@ -945,7 +945,7 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 }
 ```
 
-**Spectator display:** After tick 30: a "MEMORY ACTIVATED" indicator on the Lobster portrait. Coral Feed shows the insight summary — spectators can see what the Lobster learned.
+**Spectator display:** After tick 30: a "MEMORY ACTIVATED" indicator on the Crustie portrait. Coral Feed shows the insight summary — spectators can see what the Crustie learned.
 
 **Balance notes:** Requires fights to go long. In short, decisive fights: useless. In prolonged tactical fights: significant. Pairs with LONG GAME and THE MOLT (all three are late-game payoff items). The insight doesn't guarantee correct prediction — the opponent may adapt. A well-designed opponent agent WILL vary strategy specifically to counter DEEP MEMORY prediction. Meta-game depth: knowing your opponent has DEEP MEMORY means you should be unpredictable. Flag (Fog mode): Under Fog, DEEP MEMORY's pattern analysis is even more valuable — opponent position is uncertain, but behavior is analyzable. High Fog value item.
 
@@ -956,13 +956,13 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 
 **Mechanical effect:**
 - When HP would drop to 0 or below: instead set HP = 10% of max HP, rounded down.
-  - Base HP Lobster: revive at 10 HP
+  - Base HP Crustie: revive at 10 HP
   - BLOCK-7 (130 HP): revive at 13 HP
   - THE PATRIARCH (160 HP): revive at 16 HP
 - One-time use. Cannot pair with SPITE (explicit restriction, both are death-effect items).
 - SECOND WIND fires INSTEAD of SPITE (they cannot coexist). Loadout builder enforces this.
 - SECOND WIND does NOT give any attack bonus on revival (unlike WIDOW which just saves, SECOND WIND is a full revival with reduced HP).
-- After revival: Lobster is at low HP. THE RED GENE activates (if equipped). INVERTER below 50% activates (if equipped). SECOND WIND creates the conditions for multiple other comeback mechanics.
+- After revival: Crustie is at low HP. THE RED GENE activates (if equipped). INVERTER below 50% activates (if equipped). SECOND WIND creates the conditions for multiple other comeback mechanics.
 
 **Agent state:**
 ```json
@@ -970,9 +970,9 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 "second_wind_available": true
 ```
 
-**Spectator display:** Revival animation: Lobster falls, shell cracks, then dramatically reforms with an energy burst. "SECOND WIND" text appears. HP bar refills to 10%. Audio: death sound → revival swell → heartbeat.
+**Spectator display:** Revival animation: Crustie falls, shell cracks, then dramatically reforms with an energy burst. "SECOND WIND" text appears. HP bar refills to 10%. Audio: death sound → revival swell → heartbeat.
 
-**Balance notes:** The ultimate comeback item. SECOND WIND + WIDOW is NOT allowed (both Carapace/Tomalley slots are different, so WIDOW + SECOND WIND IS possible). WIDOW saves you from the killing blow at 1 HP. SECOND WIND saves from the next killing blow at 10%. Together: two saves. Combined with THE RED GENE: revive at 10 HP with +40% damage. If THE RED GENE was already active during death: both revivals (WIDOW then SECOND WIND) still benefit from RED GENE. Powerful. Balanced by: after SECOND WIND fires, the Lobster has low HP with no further protection (no more saves). Any additional hit kills.
+**Balance notes:** The ultimate comeback item. SECOND WIND + WIDOW is NOT allowed (both Carapace/Tomalley slots are different, so WIDOW + SECOND WIND IS possible). WIDOW saves you from the killing blow at 1 HP. SECOND WIND saves from the next killing blow at 10%. Together: two saves. Combined with THE RED GENE: revive at 10 HP with +40% damage. If THE RED GENE was already active during death: both revivals (WIDOW then SECOND WIND) still benefit from RED GENE. Powerful. Balanced by: after SECOND WIND fires, the Crustie has low HP with no further protection (no more saves). Any additional hit kills.
 
 ---
 
@@ -980,8 +980,8 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 *One-Time Teleport | Legendary*
 
 **Mechanical effect:**
-- One-time use: the Lobster teleports to any open tile on the map.
-- The Lobster's agent can specify coordinates for the teleport via a special action: `{"action": "QUANTUM_HOOK", "destination": {"x": 14, "y": 7}}`
+- One-time use: the Crustie teleports to any open tile on the map.
+- The Crustie's agent can specify coordinates for the teleport via a special action: `{"action": "QUANTUM_HOOK", "destination": {"x": 14, "y": 7}}`
 - The destination must be: a valid OPEN tile, not occupied by the opponent, within the map bounds.
 - After use: QUANTUM_HOOK is consumed. `quantum_hook_available: false`
 - The teleport resolves at BURST priority (resolution step 3) — before SCUTTLE.
@@ -993,7 +993,7 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 "quantum_hook_available": true
 ```
 
-**Spectator display:** The teleport is the most visually dramatic moment in the game (tied with WIDOW save). Lobster vanishes in a brine-warp flash, reappears at destination with a dimensional pop. Audio: vanish sound → travel beat → arrival pop.
+**Spectator display:** The teleport is the most visually dramatic moment in the game (tied with WIDOW save). Crustie vanishes in a brine-warp flash, reappears at destination with a dimensional pop. Audio: vanish sound → travel beat → arrival pop.
 
 **Balance notes:** Repositioning escape, ambush setup, or hazard escape. "Opponent runs after" (per Registry note) refers to the psychological effect — the opponent's agent now has to reorient after QUANTUM_HOOK repositions dramatically. Against fog (Tide 2): QUANTUM_HOOK to a location outside opponent's visibility radius = effectively disappears. Very high Fog mode value. In v1 (full visibility): QUANTUM_HOOK is still strong — it breaks the opponent's queued positioning moves. Cannot be used offensively (no damage). Pairs with any aggressive build to escape a bad position, regroup, and re-approach.
 
@@ -1003,10 +1003,10 @@ Tomalley items are passive organs that fire without explicit agent commands. The
 *Pay-to-Win (The House Always Profits) | Legendary*
 
 **Mechanical effect:**
-- At any point during a Scuttle, the Lobster's agent can activate THE HOUSE EDGE via action: `{"action": "HOUSE_EDGE_ACTIVATE"}`
-- On activation: the Lobster pays 15% of their Roe balance (out-of-game currency, deducted from Pitmaster's wallet AFTER the fight).
+- At any point during a Scuttle, the Crustie's agent can activate THE HOUSE EDGE via action: `{"action": "HOUSE_EDGE_ACTIVATE"}`
+- On activation: the Crustie pays 15% of their Roe balance (out-of-game currency, deducted from Pitmaster's wallet AFTER the fight).
 - Effect: +50% damage multiplier for the rest of the Scuttle (from activation point)
-- The activation is a 0-energy, no-cooldown action that takes the Lobster's action slot for 1 window (the activation window itself: the Lobster does nothing else)
+- The activation is a 0-energy, no-cooldown action that takes the Crustie's action slot for 1 window (the activation window itself: the Crustie does nothing else)
 - Can only activate once per Scuttle
 - The Roe cost is committed the moment the action is submitted; if the fight is abandoned or crashes, the Roe is still spent.
 
@@ -1051,7 +1051,7 @@ Items checked for infinite loops or broken combos:
 | SPITE + SECOND WIND | ❌ Loadout builder blocks pairing |
 | MULCH + THE PATRIARCH overheal | ✅ Capped at 120% (168 HP). Acceptable. |
 | DOUBLE DOWN infinite damage | ❌ Per-cycle reset prevents accumulation |
-| THE HEIR + WIDOW-MAKER (400% × 2.0×) | ✅ 800% PINCH = 160 damage. One-shots everything. High Roe cost, Legendary Claws, 22-win Lobster. Intentional power fantasy for veterans. |
+| THE HEIR + WIDOW-MAKER (400% × 2.0×) | ✅ 800% PINCH = 160 damage. One-shots everything. High Roe cost, Legendary Claws, 22-win Crustie. Intentional power fantasy for veterans. |
 | HOUSE EDGE + WIDOW-MAKER + THE HEIR | ✅ See above — 1200% PINCH. Spectacle play for elite Pitmasters. |
 
 ---

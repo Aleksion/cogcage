@@ -17,9 +17,9 @@ Cartoon violence with genuine menace. Think: the Saturday morning cartoon that a
 - Generic sci-fi blue-grey. That's not The Brine. That's an airport.
 - Cute. Adjacent to cute but never cute.
 
-## The Lobster
+## The Crustie
 
-Mechanized crustacean. Lobster anatomy is real and present — carapace, claws, antennae, rostrum, uropod tail fan — but everything is armored, articulated, and slightly too large. Think: if a lobster was designed by someone who had only ever heard lobsters described over the phone, and that person also worked in military hardware.
+Mechanized crustacean. Crustie anatomy is real and present — carapace, claws, antennae, rostrum, uropod tail fan — but everything is armored, articulated, and slightly too large. Think: if a lobster was designed by someone who had only ever heard lobsters described over the phone, and that person also worked in military hardware.
 
 Eyes: stalked compound eyes with emissive glow. They have opinions.
 

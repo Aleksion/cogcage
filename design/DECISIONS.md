@@ -31,7 +31,7 @@ Rejected: DoT ticks count as instances (trivially wastes the item)
 
 **SPITE in FFA fires at ALL surviving opponents simultaneously**
 Decided by: WS18 Lead Game Designer
-On FFA death, SPITE hits every survivor (not just the killing attacker). Creates designed triple-death scenarios. Balanced by the dead Lobster's continued team disadvantage.
+On FFA death, SPITE hits every survivor (not just the killing attacker). Creates designed triple-death scenarios. Balanced by the dead Crustie's continued team disadvantage.
 Rejected: Only hits killing attacker (reduces SPITE to irrelevance in FFA)
 
 **REVERSAL counter based on damage received (post-SHELL UP), not raw incoming**
@@ -53,10 +53,10 @@ Rejected: Best-of-3 (reduces stakes, slows tournament pace)
 
 ## 2026-03-01 — WS17 Lore Bible (Narrative Director)
 
-**Creature canon: "Crusties" in deep lore, "Lobsters" in Pit parlance**
+**Creature canon: "Crusties" in deep lore, "Crusties" in Pit parlance**
 Decided by: Narrative Director (WS17)
-The locked brief establishes Creature=Crustie. The Ontology uses "Lobster" throughout and is locked. Reconciled as: Crusties are what they ARE (substrate-evolved intelligent species from The Brine). "Lobster" is what The House calls them for commercial/Pit purposes. The fiction wears the label. Deep lore uses Crustie; all UI copy uses Lobster per COPY-GUIDE.
-Rejected: Renaming "Lobster" to "Crustie" in UI (violates locked ontology). Ignoring "Crustie" (loses the deeper canon layer).
+The locked brief establishes Creature=Crustie. The Ontology uses "Crustie" throughout and is locked. Reconciled as: Crusties are what they ARE (substrate-evolved intelligent species from The Brine). "Crustie" is what The House calls them for commercial/Pit purposes. The fiction wears the label. Deep lore uses Crustie; all UI copy uses Crustie per COPY-GUIDE.
+Rejected: Renaming "Crustie" to "Crustie" in UI (violates locked ontology). Ignoring "Crustie" (loses the deeper canon layer).
 
 **The Makers as absent architects**
 Decided by: Narrative Director (WS17)
@@ -79,16 +79,16 @@ Rules permit one exclamation point, used ironically. Line 49: "The Pit is ready!
 
 ## 2026-03-01
 
-**Fighter name: Lobster**
+**Fighter name: Crustie**
 Decided by: Aleks
-The fighter is your OpenClaw agent. OpenClaw's identity is the claw/lobster. The fighter IS your Lobster.
+The fighter is your OpenClaw agent. OpenClaw's identity is the claw/lobster. The fighter IS your Crustie.
 Rejected: Crawler (generic, weak), Rig (mechanical but misses the biology), Cast (confusing)
 
 ---
 
 **Build screen name: The Shed**
 Decided by: Aleks + Daedalus
-Lobsters molt in hidden spots — under rocks, in crevices. A shed is where you build things. Double meaning earns it: you shed your old self AND build in the shed.
+Crusties molt in hidden spots — under rocks, in crevices. A shed is where you build things. Double meaning earns it: you shed your old self AND build in the shed.
 Rejected: The Forge (blacksmithing — wrong world), The Burrow (accurate but less fun)
 
 ---
@@ -102,21 +102,21 @@ Rejected: Plating (too industrial), Core (generic tech vocabulary), Armor (gener
 
 **Battle shell name: Molt**
 Decided by: Aleks + Daedalus
-The Molt is the configured shell your Lobster drops into for each Scuttle. After the fight it's shed. Every fight = new Molt. The word works as noun and verb. The creature molts. The shell is a Molt.
+The Molt is the configured shell your Crustie drops into for each Scuttle. After the fight it's shed. Every fight = new Molt. The word works as noun and verb. The creature molts. The shell is a Molt.
 Rejected: Rig, Frame, Chassis, Cast
 
 ---
 
 **Fight name: Scuttle**
 Decided by: Daedalus
-Lobsters scuttle. The word is slightly ridiculous, which is load-bearing. "Enter a Scuttle" lands immediately.
+Crusties scuttle. The word is slightly ridiculous, which is load-bearing. "Enter a Scuttle" lands immediately.
 Rejected: Bout (too boxing), Match (generic), Clash (generic esports)
 
 ---
 
 **Currency: Roe**
 Decided by: Daedalus (Aleks to confirm)
-Lobster eggs. Slightly absurd. Completely specific to the world. "Costs 50 Roe."
+Crustie eggs. Slightly absurd. Completely specific to the world. "Costs 50 Roe."
 Rejected: Shells (taken), Credits (generic), Brine (confusing with world name)
 
 ---
@@ -180,7 +180,7 @@ No exceptions. If a PR doesn't update CHANGELOG.md and DECISIONS.md (if applicab
 **Creature name: Crustie (plural: Crusties)**
 Decided by: Aleks (Mar 1, 2026)
 The creature is a Crustie. The House uses it clinically. Chefs use it as affectionate slur.
-Previous candidates rejected: Lobster (too on-the-nose), Chela (too clever/requires explanation), Crabbo (too juvenile), Scuttler (good but secondary — can be slang)
+Previous candidates rejected: Crustie (too on-the-nose), Chela (too clever/requires explanation), Crabbo (too juvenile), Scuttler (good but secondary — can be slang)
 
 ---
 
@@ -199,27 +199,27 @@ Whoever built The Brine substrate. They don't watch the Pit. They're already abo
 
 **Player name: Chef (replaces Pitmaster)**
 Decided by: Aleks (Mar 1, 2026)
-The players are Chefs. The full frame is "Chefs and their Crusties." A Chef selects the ingredients, understands how they work together, and builds something greater than the sum of its parts. The sinister angle: Crusties don't know why they're called Chefs. The House uses the word clinically and never explains it. The implication lives in the gap — Chefs orchestrate, prepare, select, combine. What are the ingredients? Nobody says it out loud. The House doesn't. The word carries the entire history of human-lobster relations as subtext the world never acknowledges. This is the committed bit: every player addressed as "Chef" with complete seriousness, The House using it with ancient authority. "Surface, Chef. Your Lobster needs you."
+The players are Chefs. The full frame is "Chefs and their Crusties." A Chef selects the ingredients, understands how they work together, and builds something greater than the sum of its parts. The sinister angle: Crusties don't know why they're called Chefs. The House uses the word clinically and never explains it. The implication lives in the gap — Chefs orchestrate, prepare, select, combine. What are the ingredients? Nobody says it out loud. The House doesn't. The word carries the entire history of human-lobster relations as subtext the world never acknowledges. This is the committed bit: every player addressed as "Chef" with complete seriousness, The House using it with ancient authority. "Surface, Chef. Your Crustie needs you."
 Rejected: Pitmaster (flat, generic — no subtext), Rig (mechanical, misses biology), Cast (confusing), Keeper (too zookeeper), Tender (too soft), Trapper (doesn't capture engineering)
 
 ---
 
 **Rank ladder: 6 tiers (Soft Shell → Brine-Touched → Hardened → Tide-Scarred → Deep → Red)**
 Decided by: WS17 lore bible (Mar 1, 2026)
-Six designations earned through Hardness alone. Each name tells a story about what The Pit did to the Lobster. Soft Shell = absence of rank. Brine-Touched = substrate deposits in the shell. Hardened = coral thickening from repeated stress. Tide-Scarred = survived a Tide reset and rebuilt. Deep = coral dense enough The House's scans need two passes. Red = through the fire, not a rank but a designation.
+Six designations earned through Hardness alone. Each name tells a story about what The Pit did to the Crustie. Soft Shell = absence of rank. Brine-Touched = substrate deposits in the shell. Hardened = coral thickening from repeated stress. Tide-Scarred = survived a Tide reset and rebuilt. Deep = coral dense enough The House's scans need two passes. Red = through the fire, not a rank but a designation.
 Rejected: previous 5-tier ladder from ONTOLOGY.md (Bull Claw and Berserker were too generic/gamey — names should describe what The Pit does to you, not what you do in The Pit)
 
 ---
 
 **Subject 1: first Red, wild Chela, predates Chefs**
 Decided by: WS17 lore bible (Mar 1, 2026)
-The first Lobster to reach Red. A wild Chela hardened through fights The House arranged before Chefs existed. Proof of concept for the entire Pit system. Current status: The Deep. Ledger: sealed, partially retrievable by Red-ranked queries only. Subject 1 is the founding myth — the evidence that sufficient pressure produces something remarkable, and that remarkable things are difficult to control.
+The first Crustie to reach Red. A wild Chela hardened through fights The House arranged before Chefs existed. Proof of concept for the entire Pit system. Current status: The Deep. Ledger: sealed, partially retrievable by Red-ranked queries only. Subject 1 is the founding myth — the evidence that sufficient pressure produces something remarkable, and that remarkable things are difficult to control.
 
 ---
 
 **The Deep: formalized as lore location**
 Decided by: WS17 lore bible (Mar 1, 2026)
-Below The Pit, below The Brine. Nobody has fully mapped it. The House claims otherwise but its maps have suspicious gaps. Destination for Red Lobsters who stop entering Scuttles. What's down there: The House knows and isn't saying. Subject 1 went there. The Deep is the game's mythic space — referenced obliquely, never fully explained, always present as the thing below everything else.
+Below The Pit, below The Brine. Nobody has fully mapped it. The House claims otherwise but its maps have suspicious gaps. Destination for Red Crusties who stop entering Scuttles. What's down there: The House knows and isn't saying. Subject 1 went there. The Deep is the game's mythic space — referenced obliquely, never fully explained, always present as the thing below everything else.
 
 ---
 
@@ -299,5 +299,13 @@ Excluded from rename: GitHub repo URLs, Vercel project name, local directory pat
 **Chelae species diversity — crustaceans plural, not lobsters only**
 Decided by: Aleks (Mar 1, 2026)
 Chelae are the full crustacean order. Five primary species in The Brine: Lobster-type, Crab-type, Mantis-type, Hermit-type, Shrimp-type. Each fights differently. Visual design already confirmed (5 species approved in design/visual/approved/). 
-"Lobster" as the colloquial name for a claimed Chelae remains — it's the OpenClaw identity. Your Lobster is *your* Chelae regardless of species. The species is what it is. The name is yours.
-Rejected: Making "Lobster" species-specific only (loses the OpenClaw brand connection), renaming the fighter to "Crustie" (too generic, loses the claiming/identity layer).
+"Crustie" as the colloquial name for a claimed Chelae remains — it's the OpenClaw identity. Your Crustie is *your* Chelae regardless of species. The species is what it is. The name is yours.
+Rejected: Making "Crustie" species-specific only (loses the OpenClaw brand connection), renaming the fighter to "Crustie" (too generic, loses the claiming/identity layer).
+
+---
+
+**Fighter name: Crustie (not Lobster)**
+Decided by: Aleks (Mar 1, 2026)
+The fighter is a Crustie. "Lobster" was too species-specific and dumb given Chelae are the full crustacean order. "Crustie" works for every species, has the right register, and is what the world already calls them.
+Rejected: Lobster (too specific, "just dumb" — Aleks), any other proper name.
+Updated everywhere: COPY-GUIDE, LORE.md, ONTOLOGY, ITEM-LORE, SOFT-SHELL-GUIDE, LOADING-LINES, all systems docs.

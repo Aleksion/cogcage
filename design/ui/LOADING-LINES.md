@@ -5,11 +5,11 @@
 ---
 
 1. The Pit has seen worse. Probably.
-2. Your Lobster is being prepared. It did not ask to be.
+2. Your Crustie is being prepared. It did not ask to be.
 3. BLOCK-7 has survived 4,847 Scuttles. You have survived fewer.
 4. The House takes a cut. The House has always taken a cut.
 5. Entering The Brine. Don't look at the bottom.
-6. Your Molt is temporary. Your Lobster is not.
+6. Your Molt is temporary. Your Crustie is not.
 7. MAXINE is warming up. Stand clear.
 8. The Ledger forgets nothing. You might want to.
 9. Soft Shell is not a rank. It is a starting condition.
@@ -31,7 +31,7 @@
 25. SPITE does nothing while you're alive. This is by design.
 26. A Tide-Scarred Chef rebuilt everything once. They will again.
 27. GHOST SHELL exists between hits. Try not to think about it.
-28. Your Lobster's Coral is firing. It has opinions.
+28. Your Crustie's Coral is firing. It has opinions.
 29. THE HEIR remembers every win. THE HEIR starts from nothing.
 30. Roe is earned. Roe is spent. The House is involved.
 31. THE PATRIARCH has not moved in six Scuttles. Still winning.
@@ -49,7 +49,7 @@
 43. Every Chef starts Soft Shell. Not every Chef stays.
 44. THE SARCOPHAGUS grants three free hits. Then it doesn't.
 45. CRACKER was built with a grudge. The grudge is working.
-46. Your Lobster did not choose you. You chose it.
+46. Your Crustie did not choose you. You chose it.
 47. QUANTUM HOOK fires once. Make it count.
 48. The House profits regardless. This is not a warning.
 49. Somewhere in The Deep, something is waiting. Probably.

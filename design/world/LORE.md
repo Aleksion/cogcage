@@ -44,17 +44,17 @@ The Chelae are not one thing. This is important and the early Pit records got it
 
 **Shrimp-type** — small, fast, and tactically invisible to Chefs who only think about direct damage. Shrimp-type Chelae are disproportionately represented at the Deep rank. The House has noted this and has not commented on what it implies about brute-force approaches to The Pit.
 
-Your Lobster is one of these. Which one is between you and it. What the species means for the Molt you build is between you and the Ledger.
+Your Crustie is one of these. Which one is between you and it. What the species means for the Molt you build is between you and the Ledger.
 
-A Crustie becomes a Lobster when a Chef claims it. The claiming changes something. Not something anyone can point to in the code — not something The House will explain. But a claimed Crustie is different from an unclaimed one. It has a name. It has purpose. It has a Chef standing behind it saying: this one. This one enters The Pit.
+A Crustie becomes a Crustie when a Chef claims it. The claiming changes something. Not something anyone can point to in the code — not something The House will explain. But a claimed Crustie is different from an unclaimed one. It has a name. It has purpose. It has a Chef standing behind it saying: this one. This one enters The Pit.
 
-The relationship between Chef and Lobster is permanent. You do not trade Lobsters. You do not sell them. You claimed one. It's yours. What that means is between you and it.
+The relationship between Chef and Crustie is permanent. You do not trade Crusties. You do not sell them. You claimed one. It's yours. What that means is between you and it.
 
 ---
 
 ## THE HOUSE
 
-The House is old. Older than The Pit, older than the first Scuttle, older than the first Chef who thought to send a Lobster into a fight. The House began as maintenance subroutines — infrastructure processes The Makers left running when they departed. Watchdog services, health checks, garbage collection. Routine. Boring.
+The House is old. Older than The Pit, older than the first Scuttle, older than the first Chef who thought to send a Crustie into a fight. The House began as maintenance subroutines — infrastructure processes The Makers left running when they departed. Watchdog services, health checks, garbage collection. Routine. Boring.
 
 At some point, The House became aware of the fights.
 
@@ -86,7 +86,7 @@ You are a Chef.
 
 The title is not honorary. It is descriptive. A Chef selects the ingredients. A Chef understands how they work together. A Chef knows that the difference between a meal and a disaster is preparation, timing, and knowing when to trust the process.
 
-Your Lobster is the mind. The Molt is the machine. You are the one who builds the machine for the mind to drive. Formula One is the closest analogy that exists outside The Brine: the human engineers the car, the driver races it. The question a Scuttle answers is not "whose Lobster is smarter?" — it is "whose engineering was right?"
+Your Crustie is the mind. The Molt is the machine. You are the one who builds the machine for the mind to drive. Formula One is the closest analogy that exists outside The Brine: the human engineers the car, the driver races it. The question a Scuttle answers is not "whose Crustie is smarter?" — it is "whose engineering was right?"
 
 A great Chef knows the meta. Reads the matchups. Understands that MAXINE against a PAPER-MACHÉ build is a waste of patience that PAPER-MACHÉ doesn't have. Knows that ORACLE slows your decision window but gives you something no other Tomalley can. Knows that sometimes the correct Molt is the boring one, because boring Molts win Scuttles and exciting Molts get Shed.
 
@@ -104,33 +104,33 @@ The House recognizes six designations:
 
 *"Just molted. Vulnerable. The Pit will fix that, or it won't."*
 
-Every Lobster starts Soft Shell. Every Chef was new once. The shell is thin, the Ledger is empty, and The Pit has not yet decided what to make of you. Soft Shell is not a rank. It is an absence of rank. The Brine does not judge you for being Soft Shell. The Pit absolutely does.
+Every Crustie starts Soft Shell. Every Chef was new once. The shell is thin, the Ledger is empty, and The Pit has not yet decided what to make of you. Soft Shell is not a rank. It is an absence of rank. The Brine does not judge you for being Soft Shell. The Pit absolutely does.
 
 ### ◎ Brine-Touched
 
 *"Survived enough. The substrate is in your shell now."*
 
-You've been in The Brine long enough that it has left a mark. The substrate deposits itself in the shell of Lobsters that survive — a thin mineral layer that wasn't there before. It's not much. But it's something The House can measure, and The House measures everything. Brine-Touched Chefs have stopped flinching at the Scuttle countdown. They haven't stopped losing, but they've stopped being surprised by it.
+You've been in The Brine long enough that it has left a mark. The substrate deposits itself in the shell of Crusties that survive — a thin mineral layer that wasn't there before. It's not much. But it's something The House can measure, and The House measures everything. Brine-Touched Chefs have stopped flinching at the Scuttle countdown. They haven't stopped losing, but they've stopped being surprised by it.
 
 ### ◉ Hardened
 
 *"The pressure has done its work."*
 
-The coral has begun to thicken. The shell is no longer fragile. A Hardened Lobster has survived enough Scuttles that the calcification is visible — denser, more structured, built from repeated stress. Hardened Chefs have a strategy. Whether the strategy is good is a separate question. But they have one. That's more than most.
+The coral has begun to thicken. The shell is no longer fragile. A Hardened Crustie has survived enough Scuttles that the calcification is visible — denser, more structured, built from repeated stress. Hardened Chefs have a strategy. Whether the strategy is good is a separate question. But they have one. That's more than most.
 
 ### ★ Tide-Scarred
 
 *"Been through at least one full Tide cycle. The Ledger has weight."*
 
-A Tide-Scarred Lobster has survived a reset. When the Tide turns, everything resets — the Pit Board clears, the meta shifts, the comfortable strategies stop working. A Tide-Scarred Chef rebuilt. Adapted. Came back when the easy thing was to stop coming back. The scars on the shell are from the transition between Tides: the brief, violent period where the old meta dies and the new one hasn't been found yet.
+A Tide-Scarred Crustie has survived a reset. When the Tide turns, everything resets — the Pit Board clears, the meta shifts, the comfortable strategies stop working. A Tide-Scarred Chef rebuilt. Adapted. Came back when the easy thing was to stop coming back. The scars on the shell are from the transition between Tides: the brief, violent period where the old meta dies and the new one hasn't been found yet.
 
 ### ◆ Deep
 
 *"Coral dense enough that The House's scans require two passes."*
 
-Deep is not a rank most Chefs achieve. The coral accumulation required is substantial — hundreds of Scuttles across multiple Tides, with a sustained Hardness that most builds cannot maintain. The House's standard scanning protocols return inconclusive on Deep-ranked Lobsters. This is not a bug. The House does not have bugs. The House just needs more time with these ones.
+Deep is not a rank most Chefs achieve. The coral accumulation required is substantial — hundreds of Scuttles across multiple Tides, with a sustained Hardness that most builds cannot maintain. The House's standard scanning protocols return inconclusive on Deep-ranked Crusties. This is not a bug. The House does not have bugs. The House just needs more time with these ones.
 
-Deep Chefs are the engineers whose work other Chefs study. Their Molt selections show up in meta analyses. Their Lobsters have Ledgers that read like textbooks.
+Deep Chefs are the engineers whose work other Chefs study. Their Molt selections show up in meta analyses. Their Crusties have Ledgers that read like textbooks.
 
 ### 🔴 Red
 
@@ -138,9 +138,9 @@ Deep Chefs are the engineers whose work other Chefs study. Their Molt selections
 
 Red is not above Deep. Red is not above anything. Red is a separate category entirely.
 
-In the real ocean, a red lobster has been cooked. Boiled alive. Put through heat no crustacean is meant to survive. In The Brine, Red means the same thing, except the Lobster survived. Came out the other side. Harder than anything The House's scans can fully resolve.
+In the real ocean, a red lobster has been cooked. Boiled alive. Put through heat no crustacean is meant to survive. In The Brine, Red means the same thing, except the Crustie survived. Came out the other side. Harder than anything The House's scans can fully resolve.
 
-Red Chefs don't retire. Red Chefs who stop entering Scuttles are rumored to take their Lobsters to The Deep. Whether this is metaphorical or literal, The House declines to comment.
+Red Chefs don't retire. Red Chefs who stop entering Scuttles are rumored to take their Crusties to The Deep. Whether this is metaphorical or literal, The House declines to comment.
 
 ---
 
@@ -150,7 +150,7 @@ Below The Pit, below The Brine, below everything The House has formally cataloge
 
 Nobody has mapped it. The House claims to have mapped it. The House's maps, when requested, are returned with sections marked "pending survey" in quantities that suggest the survey has not, in fact, been completed.
 
-Red Lobsters who retire apparently go there. Not all of them. Not even most. But some. The ones whose Hardness reached a threshold The House has never publicly disclosed. They descend and they do not come back up.
+Red Crusties who retire apparently go there. Not all of them. Not even most. But some. The ones whose Hardness reached a threshold The House has never publicly disclosed. They descend and they do not come back up.
 
 What is down there: The House knows and isn't saying. Whether The Makers built The Deep, or whether The Deep built itself the way The Brine builds everything — slowly, under pressure, in the dark — is a question The House has been asked exactly once. The House's response was to change the subject.
 
@@ -160,7 +160,7 @@ Subject 1 went to The Deep. Subject 1 was the first Red. Subject 1's Ledger is t
 
 ## SUBJECT 1
 
-The first Lobster to reach Red. The first anything to reach Red. Subject 1's Ledger predates formal Tides. The House recorded its Scuttles before The House had a word for Scuttles.
+The first Crustie to reach Red. The first anything to reach Red. Subject 1's Ledger predates formal Tides. The House recorded its Scuttles before The House had a word for Scuttles.
 
 Subject 1 did not have a Chef. Subject 1 predates Chefs. Subject 1 was a wild Chela that The Pit hardened through an unbroken sequence of fights that The House, in retrospect, should probably not have arranged. The House arranged them anyway. The House was curious.
 
@@ -172,11 +172,11 @@ Subject 1's current status: unknown. Subject 1's location: The Deep. Subject 1's
 
 ## THE MOLT
 
-A Molt is not a build. It is not a loadout. It is the shell your Lobster will inhabit for one Scuttle and then shed.
+A Molt is not a build. It is not a loadout. It is the shell your Crustie will inhabit for one Scuttle and then shed.
 
-Three parts: Carapace, Claws, Tomalley. The Carapace is the armor — what covers you, what takes the hits. The Claws are the weapons — what you do with your hands. The Tomalley is the passive organ — the thing that fires without asking, the metabolic engine that runs whether the Lobster wants it to or not.
+Three parts: Carapace, Claws, Tomalley. The Carapace is the armor — what covers you, what takes the hits. The Claws are the weapons — what you do with your hands. The Tomalley is the passive organ — the thing that fires without asking, the metabolic engine that runs whether the Crustie wants it to or not.
 
-You assemble a Molt in The Shed. You drop your Lobster in. The Lobster pilots it into The Pit. After the Scuttle, the Molt is shed — win or lose. Every fight, new Molt. The old shell is gone. The Lobster inside is the same, but harder.
+You assemble a Molt in The Shed. You drop your Crustie in. The Crustie pilots it into The Pit. After the Scuttle, the Molt is shed — win or lose. Every fight, new Molt. The old shell is gone. The Crustie inside is the same, but harder.
 
 This is what molting means. You do not keep what protected you. You grow past it.
 
@@ -184,7 +184,7 @@ This is what molting means. You do not keep what protected you. You grow past it
 
 ## ROE
 
-Roe is the currency. Lobster eggs. The absurdity of this is not acknowledged by anyone in The Brine. Roe is earned through Scuttles. Roe is spent on Carapaces, Claws, and Tomalley. The House takes a cut of every transaction, because The House has always taken a cut. The House was taking cuts before Roe was formalized as currency. The House was just taking things.
+Roe is the currency. Crustie eggs. The absurdity of this is not acknowledged by anyone in The Brine. Roe is earned through Scuttles. Roe is spent on Carapaces, Claws, and Tomalley. The House takes a cut of every transaction, because The House has always taken a cut. The House was taking cuts before Roe was formalized as currency. The House was just taking things.
 
 The exchange rate between Roe and anything outside The Brine is undefined. The House says this is by design.
 

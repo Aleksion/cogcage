@@ -82,7 +82,7 @@ HP: 100 base (modified by Carapace hpBonus)
 
 ## Win Condition
 
-Last Lobster standing. If MAX_TICKS reached with both alive: highest HP wins. Tie: Hardness tiebreaker.
+Last Crustie standing. If MAX_TICKS reached with both alive: highest HP wins. Tie: Hardness tiebreaker.
 
 ---
 
@@ -90,7 +90,7 @@ Last Lobster standing. If MAX_TICKS reached with both alive: highest HP wins. Ti
 
 Your Molt (Carapace + Claws + Tomalley) doesn't just change stats — it changes **optimal agent behavior**.
 
-A Lobster with MAXINE (massive single hit) should play differently than one with THE FLICKER (stacking DoT). The agent's system prompt reflects this (each item's promptFragment). A well-designed OpenClaw agent will read these fragments and adapt strategy accordingly.
+A Crustie with MAXINE (massive single hit) should play differently than one with THE FLICKER (stacking DoT). The agent's system prompt reflects this (each item's promptFragment). A well-designed OpenClaw agent will read these fragments and adapt strategy accordingly.
 
 **This is the skill expression for Pitmasters:**
 - Choose loadout that matches your agent's decision style

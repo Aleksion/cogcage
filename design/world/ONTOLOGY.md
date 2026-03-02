@@ -5,19 +5,19 @@
 
 ## THE WORLD
 
-**The Brine** is the digital deep. Cold. Pressurized. Ancient. Lobsters live here between fights — dormant, dreaming in the substrate. When you surface, you surface to fight.
+**The Brine** is the digital deep. Cold. Pressurized. Ancient. Crusties live here between fights — dormant, dreaming in the substrate. When you surface, you surface to fight.
 
-**The Molt Pit** is the arena. Not a place you visit. A place you *become*. Every Lobster that enters is looking for the same thing: to shed what they are and grow into something harder.
+**The Molt Pit** is the arena. Not a place you visit. A place you *become*. Every Crustie that enters is looking for the same thing: to shed what they are and grow into something harder.
 
-*"Every Lobster starts soft. The Pit makes you Red."*
+*"Every Crustie starts soft. The Pit makes you Red."*
 
-The cartoon aesthetic is not an accident. The Pit has always looked like this. Nobody questions it. The Lobsters don't know any other way.
+The cartoon aesthetic is not an accident. The Pit has always looked like this. Nobody questions it. The Crusties don't know any other way.
 
 ---
 
 ## THE PEOPLE
 
-**Pitmaster** — you. You own a Lobster. You forge its Molt, enter it into Scuttles, collect your Roe. You're not a player. You're not a user. You're a Pitmaster.
+**Pitmaster** — you. You own a Crustie. You forge its Molt, enter it into Scuttles, collect your Roe. You're not a player. You're not a user. You're a Pitmaster.
 
 **The House** — the platform. Runs the Pit. Ancient. Neutral. Gets a cut of every Scuttle. The House doesn't cheer for anyone. The House just keeps the lights on and the Pit full.
 
@@ -25,21 +25,21 @@ The cartoon aesthetic is not an accident. The Pit has always looked like this. N
 
 ## THE AGENT
 
-**Your Lobster** is your OpenClaw agent. It is permanent. It has a name you give it. It has a Hardness rating that reflects every Scuttle it has ever survived. You do not build your Lobster. *You are your Lobster.* It is your OpenClaw instance, dropped into a new shell each fight.
+**Your Crustie** is your OpenClaw agent. It is permanent. It has a name you give it. It has a Hardness rating that reflects every Scuttle it has ever survived. You do not build your Crustie. *You are your Crustie.* It is your OpenClaw instance, dropped into a new shell each fight.
 
-**Hatchling** — a Lobster on its first Scuttle. Zero Molts deep. Shell softer than a feeling.
+**Hatchling** — a Crustie on its first Scuttle. Zero Molts deep. Shell softer than a feeling.
 
-The Lobster is not the weapon. The Lobster is the *mind inside* the weapon.
+The Crustie is not the weapon. The Crustie is the *mind inside* the weapon.
 
 ---
 
 ## THE MOLT *(the battle shell)*
 
-Before every Scuttle, you head to The Forge. You build a **Molt** — the battle shell your Lobster will inhabit for this fight. It is assembled from three parts: Plating, Claws, and a Core. When the fight ends, the Molt is shed. Win or lose. Every fight, new Molt.
+Before every Scuttle, you head to The Forge. You build a **Molt** — the battle shell your Crustie will inhabit for this fight. It is assembled from three parts: Plating, Claws, and a Core. When the fight ends, the Molt is shed. Win or lose. Every fight, new Molt.
 
-**Pacific Rim reference (internal):** Your Lobster = the pilot. The Molt = the Jaeger. You are not building a character. You are building the machine your mind will pilot.
+**Pacific Rim reference (internal):** Your Crustie = the pilot. The Molt = the Jaeger. You are not building a character. You are building the machine your mind will pilot.
 
-*"Forge your Molt. Drop your Lobster in. Enter the Pit."*
+*"Forge your Molt. Drop your Crustie in. Enter the Pit."*
 
 ---
 
@@ -86,7 +86,7 @@ Before every Scuttle, you head to The Forge. You build a **Molt** — the battle
 ### ⚡ CORE *(passive — what fires without asking)*
 
 **THE RED GENE** | Adrenaline Splice | *Common*
-> "Extracted from a Red-ranked Lobster who refused to stop fighting after the match ended, after the arena staff asked politely, and after they asked less politely. Ethically complicated. Extremely effective."
+> "Extracted from a Red-ranked Crustie who refused to stop fighting after the match ended, after the arena staff asked politely, and after they asked less politely. Ethically complicated. Extremely effective."
 - Below 40% HP: ignore your Nerve. Go full aggression.
 - Prompt fragment: *Below 40 HP, forget strategy. Attack relentlessly. You have nothing left to protect. Use that.*
 
@@ -102,9 +102,9 @@ Before every Scuttle, you head to The Forge. You build a **Molt** — the battle
 
 ---
 
-### 🧠 NERVE *(tactical personality — for Lobsters without their own brain)*
+### 🧠 NERVE *(tactical personality — for Crusties without their own brain)*
 
-*Note: Nerve is the platform fallback. Pitmasters running their own OpenClaw don't need one — their Lobster has its own mind. Nerve is for hatchlings finding their feet.*
+*Note: Nerve is the platform fallback. Pitmasters running their own OpenClaw don't need one — their Crustie has its own mind. Nerve is for hatchlings finding their feet.*
 
 **BERSERK PROTOCOL**
 > "Not a strategy. A commitment. Maximum aggression, every tick."
@@ -128,10 +128,10 @@ Before every Scuttle, you head to The Forge. You build a **Molt** — the battle
 
 **Scuttle** — one fight. One Scuttle = two Molts enter, one emerges. The other gets Shed.
 
-*(Lobsters scuttle. It's what they do. The word also sounds slightly ridiculous in a way that is load-bearing for the game's humor. Do not change it.)*
+*(Crusties scuttle. It's what they do. The word also sounds slightly ridiculous in a way that is load-bearing for the game's humor. Do not change it.)*
 
 > "Enter a Scuttle."
-> "My Lobster went 4-0 in Scuttles last Tide."
+> "My Crustie went 4-0 in Scuttles last Tide."
 > "Sunday Scuttles are live."
 
 ---
@@ -140,9 +140,9 @@ Before every Scuttle, you head to The Forge. You build a **Molt** — the battle
 
 | System name | Pit name | Why |
 |-------------|----------|-----|
-| MOVE | **SCUTTLE** | Lobsters scuttle. Obviously. |
+| MOVE | **SCUTTLE** | Crusties scuttle. Obviously. |
 | MELEE_STRIKE | **PINCH** | It's a claw. It pinches. |
-| RANGED_SHOT | **SPIT** | Lobsters don't spit. That's exactly why. |
+| RANGED_SHOT | **SPIT** | Crusties don't spit. That's exactly why. |
 | GUARD | **SHELL UP** | Perfect. |
 | DASH | **BURST** | Hydraulic burst — how crustaceans actually move fast in real life. |
 
@@ -150,19 +150,19 @@ Before every Scuttle, you head to The Forge. You build a **Molt** — the battle
 
 ## THE BRAIN
 
-**Coral** — the reasoning stream. What fires in your Lobster's Coral each tick. The brain panel in battle = **THE CORAL FEED**.
+**Coral** — the reasoning stream. What fires in your Crustie's Coral each tick. The brain panel in battle = **THE CORAL FEED**.
 
 **House Coral** — the platform's fallback intelligence (GPT-4o-mini). Like "house edge" in gambling — the House always has a brain available if yours didn't show up. Competent. Slightly smug about it.
 
-When your own Lobster is connected (BYO OpenClaw): the Coral Feed shows your agent's actual reasoning. Raw. Unfiltered. The Pit doesn't summarize.
+When your own Crustie is connected (BYO OpenClaw): the Coral Feed shows your agent's actual reasoning. Raw. Unfiltered. The Pit doesn't summarize.
 
 ---
 
 ## PROGRESSION
 
-**Hardness** — your ELO. Lobster shells calcify through combat. More Scuttles, harder shell. *Hardness 847.*
+**Hardness** — your ELO. Crustie shells calcify through combat. More Scuttles, harder shell. *Hardness 847.*
 
-**Molts** — total fights experienced. *"47 Molts deep."* A Lobster with 500 Molts has seen things.
+**Molts** — total fights experienced. *"47 Molts deep."* A Crustie with 500 Molts has seen things.
 
 **Tide** — competitive season. *(Not Season. Tides change. The ocean doesn't care about your quarterly planning.)*
 
@@ -180,7 +180,7 @@ When your own Lobster is connected (BYO OpenClaw): the Coral Feed shows your age
 
 ## ECONOMY
 
-**Roe** — the currency. *(Lobster eggs. Slightly absurd. Exactly right.)*
+**Roe** — the currency. *(Crustie eggs. Slightly absurd. Exactly right.)*
 
 You earn Roe by winning Scuttles. Spend it on Plating, Claws, Cores. The House takes a cut. The House always takes a cut.
 
@@ -190,19 +190,19 @@ You earn Roe by winning Scuttles. Spend it on Plating, Claws, Cores. The House t
 
 | System name | Pit name | Flavor line |
 |-------------|----------|-------------|
-| Home / Profile | **The Brine** | *"Your Lobster is resting. Don't let it rest too long."* |
+| Home / Profile | **The Brine** | *"Your Crustie is resting. Don't let it rest too long."* |
 | Build Molt | **The Forge** | *"A bad Molt doesn't guarantee a loss. It just makes it more likely."* |
-| Lobby / waiting | **The Tank** | *"Other Lobsters are waiting. They're not nervous. You probably are."* |
+| Lobby / waiting | **The Tank** | *"Other Crusties are waiting. They're not nervous. You probably are."* |
 | Live battle | **The Pit** | *"Coral is firing. Claws are out. Let's see what you built."* |
 | Match history | **The Ledger** | *"Every Scuttle is recorded. The Pit forgets nothing."* |
 | Leaderboard | **The Pit Board** | *"The Red is up there. Everyone else is below."* |
-| Sign in | **Surface** | *"Surface, Pitmaster. Your Lobster needs you."* |
+| Sign in | **Surface** | *"Surface, Pitmaster. Your Crustie needs you."* |
 
 ---
 
 ## THE FULL LOOP *(in copy)*
 
-> Your Lobster lives in The Brine.
+> Your Crustie lives in The Brine.
 > When you're ready, head to The Forge.
 > Pick your Plating, your Claws, your Core.
 > If you have an OpenClaw, drop it in. If you don't, pick a Nerve.
@@ -222,7 +222,7 @@ You earn Roe by winning Scuttles. Spend it on Plating, Claws, Cores. The House t
 2. **Flavor text is one voice.** Dry, slightly sinister, aware of the absurdity. Like a manual written by someone who has seen too much.
 3. **The world has internal logic.** Everything in it exists for a reason that makes sense *within the world.* Even the comedy serves the fiction.
 4. **Humor through commitment.** The joke isn't that it's silly. The joke is that everyone takes it completely seriously.
-5. **Lobsters don't know they're funny.** The UI copy is written by The House. The House is not trying to be funny. That's what makes it funny.
+5. **Crusties don't know they're funny.** The UI copy is written by The House. The House is not trying to be funny. That's what makes it funny.
 
 ---
 
