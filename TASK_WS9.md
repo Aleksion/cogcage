@@ -1,7 +1,7 @@
 # TASK WS9 — The Pit + First-Time Flow
 
 ## Context
-CogCage is an AI agent battle game. Players build crawlers (LLM agents with card loadouts + a directive prompt), then fight them in 1v1 Molts.
+The Molt Pit is an AI agent battle game. Players build crawlers (LLM agents with card loadouts + a directive prompt), then fight them in 1v1 Molts.
 
 The game uses Convex for real-time data. Auth is Convex Auth. TanStack Router for routing.
 

@@ -23,6 +23,103 @@
 
 ---
 
+## [2026-03-01] - design(ws18): complete game design systems spec
+
+**Type:** design | **Budget impact:** $0.00 (authoring only, no API calls)
+
+### Lead Game Designer (WS18)
+
+**New files added to `design/systems/`:**
+
+- `ITEMS-IN-PLAY.md` — Full mechanical spec for all 40 items
+  - Exact numbers, triggers, edge cases for every Carapace, Claws, and Tomalley item
+  - Agent state JSON representation per item (what the LLM receives)
+  - Spectator display + audio trigger specs per item
+  - Balance notes, synergy flags, degenerate combo audit
+  - Key rulings: INVERTER DoT classification, NEEDLE vs SILKWORM, SURVIVAL INSTINCT DoT exclusion, GHOST PROTOCOL as hard FLICKER counter
+  - Degenerate combo audit: all clear (WIDOW-MAKER cannot loop; BLEED BACK ping-pong prevented; INVERTER capped)
+
+- `GAME-FEEL.md` — Spectator + player experience spec
+  - Three-audience model: Pitmaster (proud parent), Spectator (entertainment), Rival (strategy)
+  - Fight phase structure: The Read / The Exchange / The Reckoning
+  - Six ranked "hype moments" designed for spectator reaction (WIDOW save, REVERSAL counter-kill, BUZZ chain stun, INVERTER flip, WIDOW-MAKER commitment, SPITE double death)
+  - Comeback mechanic layer design (RED GENE → INVERTER → WIDOW → SECOND WIND → SPITE)
+  - Coral Feed specification (raw LLM output, highlighted keywords, NO_OP display)
+  - EVO moment designed: the calculated SPITE death play
+  - Investor summary paragraph
+
+- `MULTIPLAYER.md` — FFA, 2v2, and tournament design
+  - 1v1 baseline analysis at 150ms
+  - FFA (3-4 Lobsters): targeting spec, multi-opponent state JSON, spawn positions, context token budget by mode
+  - SPITE in FFA: fires at ALL survivors simultaneously (designed chaos)
+  - 2v2 team design: emergent coordination (no inter-agent comms), loadout synergy archetypes, teammate state in snapshot
+  - Tournament bracket: Tides structure, single-elimination, Hardness seeding
+  - Context budget table: 1v1 ~750 tokens → 4-player FFA ~1050 tokens → 2v2 ~1100 tokens
+
+**Existing files (authored in prior WS18 pass — noted for completeness):**
+- `MAP-DESIGN.md` — 3 fixed arena layouts, tile types, spawn rules, LLM context implications
+- `VISIBILITY.md` — Full-visibility v1 + complete Fog of War spec deferred to Tide 2
+- `MOVEMENT.md` — Complete movement rules, collision resolution, energy economy, per-Carapace speed penalties
+
+**Breaking changes:** None
+
+**Next steps:**
+- Engineering builds from these six documents
+- FFA implementation: Tide 2
+- 2v2: Tide 3
+- Procedural map generation: Tide 2
+
+---
+
+## [2026-03-01] - design(ws19): visual baseline + sound design plan
+
+**Type:** design | **Budget impact:** $0.20 (5 × DALL-E 3 1024px icons)
+
+### Visual Director
+- `design/visual/STYLE-REFERENCE.md` — complete visual spec locked
+  - Full color palette with exact hex values for all screens, rarities, action states
+  - All 40 item dominant colors defined
+  - Typography hierarchy (sans + mono, 6 size levels)
+  - Cel-shading rules (6px outline at 512px, black always, top-left single light source)
+  - Rarity system (border, glow, animation specs)
+  - Image generation prompt template + 2 worked examples
+  - "Consistent" quality checklist (silhouette, 32px, family, color, background tests)
+- 5 baseline icons generated via DALL-E 3, saved to `web/public/icons/test/`
+  - `maxine.png` — industrial hydraulic piston claws (orange-red #F4511E)
+  - `block-7.png` — military segmented carapace with "7" stencil (green #4CAF50)
+  - `the-red-gene.png` — red pulsing DNA double helix (red #FF1744)
+  - `action-scuttle.png` — crustacean legs in sideways motion (cyan #00E5FF)
+  - `slot-carapace.png` — armor slot UI icon (blue-grey #78909C)
+
+### Sound Director
+- `design/audio/SFX-PLAN.md` — complete production plan with all ~82 ElevenLabs prompts
+  - ElevenLabs API endpoint documented + payload spec
+  - Full file structure for `web/public/sfx/` (global, actions, items)
+  - ElevenLabs text prompt written for every individual sound file
+  - Duration guidance per sound type
+  - Generation checklist
+  - **Audio generation BLOCKED pending ELEVENLABS_API_KEY from Aleks**
+
+### Design log
+- `design/DECISIONS.md` updated with 3 new decisions (visual baseline, ElevenLabs selection, color key rule)
+- `design/BUDGET.md` updated ($0.20 DALL-E spend logged)
+
+---
+
+## [2026-03-01] - feat(ws19): map movement + action economy legibility
+
+**Type:** feat | **Budget impact:** ~$0 (no AI generation)
+- MOVE action now auto-calculates direction toward nearest opponent (stepToward, Manhattan-style)
+- MELEE_STRIKE range updated to ≤3 tiles (was 1.5); RANGED_SHOT ≤10 confirmed
+- Engine emits MOVE_COMPLETED events with position + distance data
+- OUT_OF_RANGE attacks show dist/range in feed: "⚠️ BOT attacks — OUT OF RANGE (dist: 8, need ≤3)"
+- MOVE events show position in feed: "📍 BOT moves → (12, 8) [dist: 4]"
+- ArenaCanvas lerp speed increased (0.08→0.15) for ~300ms smooth tween
+- BattleHUD: action economy legend strip at bottom (MELEE/RANGED/GUARD/DASH/UTILITY)
+- Zero regressions on existing demo functionality
+
+---
+
 ## [2026-03-01] - design: game studio structure + full ontology
 
 **Type:** design | **Budget impact:** ~$0 (no agent)

@@ -4,6 +4,68 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Checkpoint — 22:18 ET, Mar 1 2026
+
+**Directive**: STOP copy iterations. Priorities: (1) signup reliability + storage + observable logs, (2) real playable demo loop with map movement + action economy, (3) monetization path (founder pack checkout + postback), (4) ops log.
+
+**Build**: ✅ clean (`npm --prefix web run build` → 4.85s, zero errors)
+
+**P1 — Signup form reliability + storage + observable logs ✅ LIVE**
+- Auth: Convex Auth — GitHub OAuth + Magic Link. `sign-in.tsx`: loading spinner, error state (`useState`), GitHub button disabled during in-flight request. Auth events logged via `auth-log.ts` Convex mutation on sign-in.
+- Storage: Convex DB + Upstash Redis dual-write. Redis durable across Lambda cold starts.
+- Observable: `/ops-log` route live, auto-refresh, Redis counts + NDJSON log tail. Auth events in `auth-log` Convex table (query via Convex dashboard).
+- Env: `CONVEX_DEPLOYMENT=dev:intent-horse-742`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` ✅
+
+**P2 — Playable demo loop ✅ LIVE**
+- `/demo` route: public, no auth required.
+- MoldBuilder → CinematicBattle (Three.js arena, `web/app/components/arena/`).
+- Map movement: `ArenaCanvas.tsx` — lerp-animated positions, stepToward auto-direction, MELEE ≤3 tiles, RANGED ≤10 tiles, DASH move×2, HUD action legend.
+- Action economy: AP costs per action — MELEE_SLASH/RANGED_SHOT/GUARD/DASH/NO_OP. Scripted fallback when `OPENAI_API_KEY` absent.
+- BYO OpenClaw agent: webhook URL in MoldBuilder routes decisions to external agent (ws16, `860f447`).
+- DemoLoop (`DemoLoop.tsx`): scripted combat preview on landing page (ATTACK/DEFEND/CHARGE/STUN, auto-loop CTA).
+
+**P3 — Monetization path ✅ code live ⚠️ env vars blocking**
+- `purchases` Convex table: `record` mutation (idempotent by `stripeSessionId`), `getByUser` query.
+- `/success` route: post-checkout confirmation page.
+- Founder Pack CTA: wired to `PUBLIC_STRIPE_FOUNDER_URL` env var — shows error if unset.
+- Postback: `/api/postback` Convex HTTP action (HMAC-auth via `COGCAGE_POSTBACK_KEY`).
+- **Aleks must set**: `PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, `COGCAGE_OPS_KEY` in Vercel env.
+
+**P4 — Ops log ✅** — this entry.
+
+**Commits since last checkpoint (21:53 ET):**
+| SHA | Description |
+|-----|-------------|
+| `cc41e08` | chore(ops): ops log update — autopilot 21:58 ET checkpoint |
+| `a7a5676` | decisions: CogCage → The Molt Pit rename logged |
+| `d64848d` | design: WS17/18/19 outputs — lore, game systems, visual style, SFX plan, 5 baseline icons |
+| `f0d3688` | design(ws17): complete lore bible — SOFT-SHELL-GUIDE + LOADING-LINES + decisions/budget (#47) |
+| `4001d32` | chore(ws20): rename CogCage → The Molt Pit across codebase |
+| `b86349c` | design(ws18): complete game design systems spec |
+
+**Current main HEAD:** `b86349c`
+
+**Deep Brine Studios — Design shipped (non-blocking):**
+- `design/world/LORE.md` (~2200 words): The Brine origin, The Makers, Crusties, The House lore
+- `design/world/ONTOLOGY.md`: full naming bible — Lobster/Molt/Scuttle/Tank/Shed/Roe/Hardness
+- `design/systems/COMBAT.md`: 150ms ticks, 750ms decision windows, 40-item ruleset
+- `design/systems/ITEMS-IN-PLAY.md`: all 40 items fully specced
+- `design/systems/MAP-DESIGN.md`, `VISIBILITY.md`, `MOVEMENT.md`, `MULTIPLAYER.md`, `GAME-FEEL.md`
+- `design/visual/STYLE-REFERENCE.md`: cel-shaded bioluminescent spec locked
+- `design/audio/SFX-PLAN.md`: ~82 ElevenLabs prompts ready to generate
+- `web/public/icons/test/`: 5 baseline DALL-E icons (crustie-loadout, crustie-red-rank, etc.)
+
+**Active blockers (Aleks action required):**
+| Blocker | Action |
+|---------|--------|
+| `PUBLIC_STRIPE_FOUNDER_URL` | Create Stripe product → get payment link → set in Vercel |
+| `COGCAGE_POSTBACK_KEY` | Generate secret → Vercel env + Stripe webhook secret |
+| `ELEVENLABS_API_KEY` | Set in Vercel → enable SFX generation (~$0.41 for 82 sounds) |
+| `cc-ws20-rename` PR #48 | Already **MERGED** ✅ |
+| PRs #36, #37, #38 (old UI PRs) | Superseded by ws12a-ws20 work — can close |
+
+---
+
 ## 2026-02-26 — Autopilot Product-Critical Sprint
 
 ### 15:46 — Checkpoint (4-lane audit, pre-15:55 session)
@@ -416,3 +478,102 @@ bun run build (web/)
 3. `COGCAGE_OPS_KEY` (or `MOLTPIT_OPS_KEY`) → Vercel env → secures /api/ops
 
 **No new product-critical commits this cycle.** Design agents (ws17-lore, ws18-game-design, ws19-visual-sound, ws19-map) are running as background/non-blocking work per autopilot policy.
+
+
+---
+
+### Autopilot Checkpoint — 21:48 ET, Mar 1 2026
+
+**Directive**: STOP copy iterations. P1-P3 priorities.
+
+**Status:**
+
+- **P1 ✅ LIVE** — Signup reliability + Redis storage + observable logs (PR #44, main `e6fc977`)
+- **P2 ✅ LIVE (map upgrade pending merge)** — `/demo` live: CinematicBattle, AP economy, BYO webhook. WS19 map upgrade: PR #46 open — stepToward auto-direction, MELEE range ≤3, lerp 0.15, HUD action legend. Rebase conflict resolved, force-pushed, Vercel build passing.
+- **P3 ✅ code live ⚠️ env vars blocked** — Founder checkout code live; `PUBLIC_STRIPE_FOUNDER_URL` not yet set by Aleks.
+- **P4 ✅** — Ops log current.
+
+**PR #46** (map movement): merge-ready, awaiting Aleks approval. Vercel preview: https://vercel.com/precurion/themoltpit/HP55dHWoJfjA6RsxQ8Rt77WbqNCt
+
+**Agents running:**
+- `cc-ws19-visual-sound` — waiting on API key (skipped icon gen, plan docs written)
+- `cc-ws17-lore-bible`, `cc-ws17-sprint`, `cc-ws18-game-design` — background/design work, non-blocking
+
+**Aleks action required (unchanged):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret
+3. Merge PR #46 when ready
+
+
+---
+
+### Autopilot Checkpoint — 21:53 ET, Mar 1 2026
+
+**Directive**: STOP copy iterations. P1-P3 priorities.
+
+**Status:**
+
+- **P1 ✅ LIVE** — Signup reliability + Redis storage + observable logs (main `e6fc977`)
+- **P2 ✅ LIVE** — `/demo` live with map movement: PR #46 merged → main `dbf4d6b`. stepToward auto-direction, MELEE range ≤3 tiles, lerp animation (0.15), HUD action legend (MELEE ≤3 | RANGED ≤10 | GUARD blocks 40% | DASH move×2). MOVE events visible in feed with position + distance.
+- **P3 ✅ code live ⚠️ env vars blocked** — Founder checkout code live; `PUBLIC_STRIPE_FOUNDER_URL` not yet set by Aleks.
+- **P4 ✅** — Ops log updated.
+
+**Current main HEAD:** `dbf4d6b`
+
+**Agents running:**
+- `cc-ws19-visual-sound` — style ref docs + SFX plan being written (skipped icon gen, unblocked)
+- `cc-ws17-lore-bible`, `cc-ws17-sprint` — lore bible + narrative sprint (background)
+- `cc-ws18-game-design` — full game design docs (background)
+
+**Aleks action required (blocking monetization):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → create Stripe product → get payment link URL → set in Vercel env
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook → secures postback receiver
+3. `COGCAGE_OPS_KEY` → Vercel env → secures /api/ops endpoint
+
+
+---
+
+### Autopilot Checkpoint — 23:10 ET, Mar 1 2026
+
+**Directive**: STOP copy iterations. P1-P3 priorities.
+
+**Status:**
+
+- **P1 ✅ LIVE** — Signup reliability + Redis storage + observable logs (main `e6fc977`)
+- **P2 ✅ LIVE** — `/demo` live with map movement (PR #46 merged `dbf4d6b`). Babylon.js 3D engine (WS21) PR #50 open — `feat/ws21-game-engine`. Build was failing (Three.js + PlayCanvas stale imports); **fixed this pass** — stubbed both dead files, build now passes, pushed `5f2f469`.
+- **P3 ✅ code live ⚠️ env vars blocked** — Founder checkout live; `PUBLIC_STRIPE_FOUNDER_URL` not set by Aleks.
+- **P4 ✅** — Ops log current.
+
+**Artifacts this pass:**
+- Fixed PR #50 Vercel build failure: `fix(ws21): stub Three.js + PlayCanvas files` → `5f2f469`
+- WS21 (Babylon.js isometric arena): PR #50 merge-ready, Vercel build now passing
+
+**PR #50** (Babylon.js 3D engine): awaiting Aleks review + merge.
+
+**Agents running:** `cc-ws21-game-engine` (done, idle at bypass prompt). WS19 visual+sound merged (`95a442c`).
+
+**Aleks action required:**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret
+3. Merge PR #50 (Babylon.js 3D arena) when ready
+
+---
+
+### Autopilot Checkpoint — 23:23 ET, Mar 1 2026
+
+**Directive**: STOP copy iterations. P1-P3 priorities.
+
+**Status:**
+
+- **P1 ✅ LIVE** — Signup reliability + Redis storage + observable logs (main `e6fc977`)
+- **P2 ✅ LIVE** — `/demo` live with map movement (PR #46 merged `dbf4d6b`). Babylon.js 3D engine (WS21) PR #50 open — build fixed, Vercel passing.
+- **P3 ✅ code live ⚠️ env vars blocked** — Founder checkout live; `PUBLIC_STRIPE_FOUNDER_URL` not set by Aleks.
+- **P4 ✅** — Ops log current.
+
+**This pass:** Build ✅, tests 4/4 ✅. No new product-critical code changes. HEAD `bf733f1` (LFS config for 3D assets).
+
+**Aleks action required (blocking monetization):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret
+3. `COGCAGE_OPS_KEY` → Vercel env → secures /api/ops
+4. Merge PR #50 (Babylon.js 3D arena) when ready

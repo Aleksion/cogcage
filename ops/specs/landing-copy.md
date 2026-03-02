@@ -1,4 +1,4 @@
-# CogCage Landing Copy Spec
+# The Molt Pit Landing Copy Spec
 
 ## Messaging Hierarchy
 1. Primary promise: Code an AI bot that fights other bots in an arena.
@@ -14,7 +14,7 @@ Option A
 
 Option B
 - Headline: Build a Bot. Enter the Arena. Compete for the Top.
-- Subhead: CogCage is the AI skill arena where your code battles other bots in ranked matches and seasonal events.
+- Subhead: The Molt Pit is the AI skill arena where your code battles other bots in ranked matches and seasonal events.
 
 Option C
 - Headline: Your Code. Their Bots. One Arena.

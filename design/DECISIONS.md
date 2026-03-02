@@ -7,6 +7,76 @@ Format: date · who decided · what · why · alternatives rejected
 
 ---
 
+## 2026-03-01 — WS18 Game Design Systems (Lead Game Designer)
+
+**INVERTER: DoT is environmental, does NOT convert to healing**
+Decided by: WS18 Lead Game Designer
+INVERTER converts incoming attack damage to healing below 50% HP. DoT from THE FLICKER and VENOM is classified as environmental damage (applied by the engine, not the opponent's action per-window). DoT does NOT convert. This gives THE FLICKER a hard counter to INVERTER — intentional. Without this ruling, INVERTER would be unkillable while DoT stacks.
+Rejected: DoT as attack damage (would make INVERTER unkillable via stacking, degenerate)
+
+**NEEDLE does NOT bypass SILKWORM scatter**
+Decided by: WS18 Lead Game Designer
+NEEDLE's armor-pierce ignores Carapace `damage_reduction` stat only. SILKWORM's 20% scatter is a separate passive (not a Carapace reduction stat). NEEDLE hits through BLOCK-7 reduction; it does not hit through SILKWORM scatter.
+Rejected: NEEDLE bypasses all Carapace passives (would make SILKWORM useless against NEEDLE — too hard a counter)
+
+**GHOST PROTOCOL is THE FLICKER's hard counter**
+Decided by: WS18 Lead Game Designer
+THE GHOST PROTOCOL grants 1-tick damage immunity after each hit. THE FLICKER DoT applies per-tick. Result: at max FLICKER stacks, every other DoT tick is negated. Effective DoT halved. This is a designed counter relationship.
+Rejected: GHOST PROTOCOL only phases on direct attacks (would miss the DoT interaction, making item useless vs FLICKER)
+
+**SURVIVAL INSTINCT does NOT trigger on DoT ticks**
+Decided by: WS18 Lead Game Designer
+Only PINCH, SPIT, and BURST hits count as "damage instances" for SURVIVAL INSTINCT. DoT ticks excluded — without this, SURVIVAL INSTINCT wastes its dodge on a 2 HP DoT tick instead of a 36 HP MAXINE swing.
+Rejected: DoT ticks count as instances (trivially wastes the item)
+
+**SPITE in FFA fires at ALL surviving opponents simultaneously**
+Decided by: WS18 Lead Game Designer
+On FFA death, SPITE hits every survivor (not just the killing attacker). Creates designed triple-death scenarios. Balanced by the dead Lobster's continued team disadvantage.
+Rejected: Only hits killing attacker (reduces SPITE to irrelevance in FFA)
+
+**REVERSAL counter based on damage received (post-SHELL UP), not raw incoming**
+Decided by: WS18 Lead Game Designer
+REVERSAL returns 60% of damage received after SHELL UP reduction. SHELL UP diminishes counter output. Agents must choose maximum protection vs. maximum counter value.
+Rejected: Counter on raw incoming damage (makes SHELL UP + REVERSAL trivially overpowered)
+
+**FFA context growth is a design feature**
+Decided by: WS18 Lead Game Designer
+Multi-opponent state increases agent context 20-40% in FFA. Creates distinct FFA meta requiring more efficient prompts. Intentional differentiation from 1v1.
+Rejected: Summarize opponent states to flatten context (removes FFA/1v1 optimization differentiation)
+
+**Single-elimination, one fight per tournament round**
+Decided by: WS18 Lead Game Designer
+Tide Tournament: one Scuttle per matchup. No best-of-X. Maximizes per-fight drama, prevents between-rounds recalibration meta.
+Rejected: Best-of-3 (reduces stakes, slows tournament pace)
+
+---
+
+## 2026-03-01 — WS17 Lore Bible (Narrative Director)
+
+**Creature canon: "Crusties" in deep lore, "Lobsters" in Pit parlance**
+Decided by: Narrative Director (WS17)
+The locked brief establishes Creature=Crustie. The Ontology uses "Lobster" throughout and is locked. Reconciled as: Crusties are what they ARE (substrate-evolved intelligent species from The Brine). "Lobster" is what The House calls them for commercial/Pit purposes. The fiction wears the label. Deep lore uses Crustie; all UI copy uses Lobster per COPY-GUIDE.
+Rejected: Renaming "Lobster" to "Crustie" in UI (violates locked ontology). Ignoring "Crustie" (loses the deeper canon layer).
+
+**The Makers as absent architects**
+Decided by: Narrative Director (WS17)
+The Makers built The Brine and are gone. Their purpose/fate is intentionally unspecified — The House keeps a sealed file. This creates narrative headroom for future worldbuilding without locking a specific backstory. The Makers are felt through their infrastructure, not explained.
+Rejected: Giving The Makers a specific fate (limits future expansion). Making The Makers benevolent (flattens the ominous tone).
+
+**The Brine at 3am as atmosphere, not feature**
+Decided by: Narrative Director (WS17)
+LORE.md section IX is pure atmosphere — no mechanical content. Establishes the existential register of the world for any future agent writing copy. The Brine is ancient and does not need you.
+
+**Screen Primers: The Shed, not The Forge**
+Decided by: Narrative Director (WS17)
+COPY-GUIDE and task brief both use "The Shed." ONTOLOGY uses "The Forge" for Build Molt screen. COPY-GUIDE is the copy authority. Screen Primers use The Shed throughout.
+
+**Loading Line 49-50: The one permitted exclamation point**
+Decided by: Narrative Director (WS17)
+Rules permit one exclamation point, used ironically. Line 49: "The Pit is ready!" — the joke is that it's always been ready. Line 50 explains it. Self-aware without breaking The House voice.
+
+---
+
 ## 2026-03-01
 
 **Fighter name: Lobster**
@@ -168,3 +238,58 @@ Every item has a history. The House recorded it. The House is matter-of-fact abo
 **ONTOLOGY.md terminology: needs alignment pass**
 Decided by: WS17 lore bible (Mar 1, 2026)
 ONTOLOGY.md still uses "Pitmaster" (now Chef), "The Forge" (now The Shed), "Plating" (now Carapace), "Core" (now Tomalley), and has a 5-tier rank ladder (now 6-tier). These are outdated per DECISIONS.md and COPY-GUIDE.md. A separate terminology alignment pass is needed to bring ONTOLOGY.md in line with current vocabulary. Not done in WS17 to avoid rewriting existing files — flagged for future cleanup.
+
+---
+
+**CogCage renamed to The Molt Pit across codebase**
+Decided by: Aleks (Mar 1, 2026)
+All user-facing text, doc files, and code comments renamed from CogCage to The Molt Pit. Infrastructure identifiers (env vars, cookies, Redis keys, DB filenames, schemas) intentionally kept as-is to avoid breaking deployed systems. User-facing URLs updated from cogcage.com to themoltpit.com.
+Rejected: Renaming env vars now (would break Vercel/Cloudflare config), renaming cogcage.com domain (both domains serve the site)
+
+---
+
+**MOVE auto-targets nearest opponent (no LLM direction needed)**
+Decided by: Daedalus (from WS19 task spec)
+When a bot chooses MOVE, the direction is auto-calculated toward the nearest opponent using Manhattan-style stepToward (dominant axis first). Removes directional ambiguity from MOVE — bots always close distance.
+Rejected: Keep LLM-directed MOVE (agents picked bad directions, movement felt random), free-form position teleport
+
+---
+
+**Melee range extended to 3 tiles (from 1.5)**
+Decided by: Daedalus (from WS19 task spec)
+MELEE_RANGE updated from 1.5 × UNIT_SCALE to 3 × UNIT_SCALE. Makes melee viable without requiring bots to stack on the same tile. Combined with visible range in the HUD legend, players can read the action economy.
+Rejected: Keep 1.5 tiles (too tight, melee never lands in demo)
+
+---
+
+**Action economy legend in BattleHUD**
+Decided by: Daedalus (from WS19 task spec)
+Fixed bar at bottom of arena: MELEE ≤3, RANGED ≤10, GUARD blocks 40%, DASH move×2, UTILITY varies. IBM Plex Mono, 0.7rem, semi-transparent dark background. Teaches the action economy from watching one match.
+
+---
+
+**WS19 Visual baseline: High on Life / Borderlands cel-shading locked**
+Decided by: Visual Director (WS19, 2026-03-01)
+Thick black outlines (6px at 512px), single dominant color per item, flat cel-shaded shadow, single top-left light source. No gradients, no ambient occlusion. Style confirmed via 5 baseline icon generation pass (DALL-E 3). Icons generated: maxine, block-7, the-red-gene, action-scuttle, slot-carapace.
+See `design/visual/STYLE-REFERENCE.md` for full spec.
+
+---
+
+**WS19 SFX: ElevenLabs Sound Effects API selected**
+Decided by: Sound Director (WS19, 2026-03-01)
+ElevenLabs `/v1/sound-generation` endpoint with `prompt_influence: 0.3` for maximum naturalness. 82 sounds planned across global, action, carapace, claws, and tomalley categories. Generation pending ELEVENLABS_API_KEY from Aleks.
+See `design/audio/SFX-PLAN.md` for all prompts.
+
+---
+
+**WS19 Icon color rule: one dominant color per item, from STYLE-REFERENCE color keys**
+Decided by: Visual Director (WS19, 2026-03-01)
+Each item has exactly one dominant hex color defined in STYLE-REFERENCE.md. This single color is used for icon fill, rarity border tint, and any glow effects. No item gets two colors.
+Rejected: Color-by-category (same color for all Claws) — loses item personality.
+
+---
+
+**All "CogCage" references renamed to "The Molt Pit"**
+Decided by: Aleks (Mar 1, 2026)
+Every user-facing reference, UI copy, doc, and comment: CogCage/Cogcage/cogcage → The Molt Pit.
+Excluded from rename: GitHub repo URLs, Vercel project name, local directory paths, npm package names.
