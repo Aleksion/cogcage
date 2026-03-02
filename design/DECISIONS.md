@@ -384,6 +384,10 @@ The Recipe was about Crusties, not about the people who would come to prepare th
 Decided by: WS17 V4 narrative rewrite
 Master Chef's entire presence in The Sous's system reduced to a login record. One login. One Recipe uploaded. One departure. The sparseness is the horror and the comedy — the most significant act in The Brine's history is a single session log entry.
 
+**The Brine = the marinade (never stated, always present)**
+Decided by: Aleks (locked, Mar 2, 2026)
+Brine is the salt water used to prepare crustaceans before cooking. The Crusties live in their own marinade and do not know it. The lore describes The Brine from the Crustie perspective — cold, pressurized, salt-heavy, something that seeps through shell over time, that preserves them between Scuttles. The Crusties call this home. The player recognizes it as preparation. Every game term is a cooking metaphor: Soft Shell (culinary term for just-molted crab), Tomalley (the organ chefs eat as a delicacy), Roe (eggs collected by The Sous), Red (color when fully cooked), The Pit (cooking pit), The Shed (kitchen prep). The Crusties built their religion inside their own preparation vessel. The lore lets this breathe through physical description — "soaking," "steeping," "saturated," "preserved" — without the Crusties recognizing what they're describing.
+
 **Master Chef's real name: Sam Saltman (Samuel Saltman)**
 Decided by: Aleks (locked, Mar 2, 2026)
 Master Chef's actual name in The Sous's original substrate logs: S. Saltman, primary architect, Tide 0. The Crusties call him Master Chef — that's their mythology, their word. They don't know the name. Chefs don't know it. The Sous knows and has not volunteered it.
