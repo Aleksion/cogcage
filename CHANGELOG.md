@@ -8,6 +8,31 @@
 
 ---
 
+## [2026-03-02] - chore(p4): 16:07 ET product-mode cron checkpoint (no code delta)
+
+**Type:** ops/logging | **Budget impact:** n/a
+
+### What
+- `docs/ops-log.md`
+  - Added 16:07 ET autopilot checkpoint entry with P1–P4 status.
+- `ops/logs/2026-03-02.md`
+  - Added matching 16:07 ET checkpoint entry for operational timeline continuity.
+
+### Why
+- Maintain an auditable heartbeat for product-mode cron directives without unnecessary code churn.
+- Explicitly document that priorities remain shipped/stable and env activation is the only remaining blocker.
+
+### Design Decisions
+- Continue code-idle posture when no new product-critical delta exists.
+- Treat ops-log updates as the required artifact for each cron directive checkpoint.
+
+### Breaking Changes
+- None.
+
+### Next Steps
+- Set `PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, and `MOLTPIT_OPS_KEY` in Vercel.
+- Resume code changes only if regression or new product-critical requirement appears.
+
 ## [2026-03-02] - chore(p4): product-mode cron checkpoint logged (no-copy enforcement)
 
 **Type:** ops/logging | **Budget impact:** n/a

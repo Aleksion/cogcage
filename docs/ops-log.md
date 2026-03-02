@@ -1477,3 +1477,22 @@ bun run build (web/)
 3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
 
 **Cron status**: Code-idle. Nothing product-critical to ship until env vars land.
+
+### Autopilot Cron — 16:07 ET, Mar 2 2026
+
+**Directive received**: STOP landing-page copy iterations. Prioritize P1–P4.
+
+**Status (unchanged, production-stable):**
+- P1 — Signup reliability + Redis storage + observable logs: ✅ LIVE
+- P2 — Playable demo loop (map movement + AP/action economy, WATCH + PLAY): ✅ LIVE
+- P3 — Founder checkout + postback: ✅ CODE COMPLETE — blocked on env vars
+- P4 — Ops log: ✅ CURRENT (this entry)
+
+**No new product-critical code delta this cycle.** Existing P1–P3 implementation remains live and verified.
+
+**Blockers (Aleks-owned env vars):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → activates live Founder Pack checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → secures `/api/postback` webhook auth
+3. `MOLTPIT_OPS_KEY` → secures `/api/ops`
+
+**Cron status**: code-idle pending env activation.
