@@ -144,3 +144,10 @@ Rejected: Keep 1.5 tiles (too tight, melee never lands in demo)
 **Action economy legend in BattleHUD**
 Decided by: Daedalus (from WS19 task spec)
 Fixed bar at bottom of arena: MELEE ≤3, RANGED ≤10, GUARD blocks 40%, DASH move×2, UTILITY varies. IBM Plex Mono, 0.7rem, semi-transparent dark background. Teaches the action economy from watching one match.
+
+---
+
+**All "CogCage" references renamed to "The Molt Pit"**
+Decided by: Aleks (Mar 1, 2026)
+Every user-facing reference, UI copy, doc, and comment: CogCage/Cogcage/cogcage → The Molt Pit.
+Excluded from rename: GitHub repo URLs, Vercel project name, local directory paths, npm package names.
