@@ -115,6 +115,14 @@ export const Route = createFileRoute('/api/founder-intent')({
         let source = '';
         let intentId = '';
         let honeypot = '';
+        appendOpsLog({
+          route,
+          level: 'info',
+          event: 'founder_intent_request_received',
+          requestId,
+          contentType,
+          hasIdempotencyKey: Boolean(idempotencyKey),
+        });
 
         const respond = async (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
           if (idempotencyKey) {

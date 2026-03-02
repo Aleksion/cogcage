@@ -50,6 +50,18 @@ function normalizeEmail(value: unknown): string | undefined {
   return email;
 }
 
+function pickMetadataString(metadata: unknown, keys: string[]): string | undefined {
+  if (!metadata || typeof metadata !== 'object') return undefined;
+  const record = metadata as Record<string, unknown>;
+  for (const key of keys) {
+    const raw = record[key];
+    if (typeof raw !== 'string') continue;
+    const normalized = raw.trim();
+    if (normalized) return normalized;
+  }
+  return undefined;
+}
+
 function getClientIp(request: Request) {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const realIp = request.headers.get('x-real-ip')?.trim();
@@ -118,6 +130,50 @@ function safeMetaJson(meta: Record<string, unknown>) {
   } catch {
     return JSON.stringify({ invalidMeta: true });
   }
+}
+
+function resolveIdentityFromPayload(payload: CheckoutPostback): {
+  email?: string;
+  source: string;
+  objectMetadata: Record<string, unknown>;
+  payloadMetadata: Record<string, unknown>;
+} {
+  const object = payload.data?.object;
+  const objectMetadata = (object?.metadata && typeof object.metadata === 'object')
+    ? (object.metadata as Record<string, unknown>)
+    : {};
+  const payloadMetadata = (payload.metadata && typeof payload.metadata === 'object')
+    ? (payload.metadata as Record<string, unknown>)
+    : {};
+
+  const metadataEmail =
+    normalizeEmail(pickMetadataString(objectMetadata, ['email', 'customer_email', 'prefilled_email']))
+    ?? normalizeEmail(pickMetadataString(payloadMetadata, ['email', 'customer_email', 'prefilled_email']));
+  const email =
+    normalizeEmail(payload.email)
+    ?? normalizeEmail(object?.customer_email)
+    ?? normalizeEmail(object?.customer_details?.email)
+    ?? metadataEmail;
+
+  const sourceFromMetadata =
+    pickMetadataString(objectMetadata, ['source', 'checkout_source'])
+    ?? pickMetadataString(payloadMetadata, ['source', 'checkout_source']);
+  const source =
+    (typeof payload.source === 'string' && payload.source.trim())
+    || sourceFromMetadata
+    || 'postback';
+
+  return {
+    email,
+    source,
+    objectMetadata,
+    payloadMetadata,
+  };
+}
+
+export const __postbackTest = {
+  normalizePostbackType,
+  resolveIdentityFromPayload,
 }
 
 export const Route = createFileRoute('/api/postback')({
@@ -307,16 +363,16 @@ export const Route = createFileRoute('/api/postback')({
         }
 
         const object = payload.data?.object;
-        const email =
-          normalizeEmail(payload.email)
-          ?? normalizeEmail(object?.customer_email)
-          ?? normalizeEmail(object?.customer_details?.email);
-
-        const source = typeof payload.source === 'string' && payload.source.trim() ? payload.source.trim() : 'postback';
+        const {
+          email,
+          source,
+          objectMetadata,
+          payloadMetadata,
+        } = resolveIdentityFromPayload(payload);
         const meta = {
           eventType,
           created: payload.created,
-          metadata: payload.metadata ?? object?.metadata ?? {},
+          metadata: payload.metadata ?? objectMetadata ?? payloadMetadata,
         };
 
         const eventId =

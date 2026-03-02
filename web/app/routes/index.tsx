@@ -753,12 +753,14 @@ type WaitlistReplayItem = {
   email: string
   source: string
   game: string
+  idempotencyKey?: string
 }
 
 type FounderReplayItem = {
   email: string
   source: string
   intentId: string
+  idempotencyKey?: string
 }
 
 function readStored(key: string): string | null {
@@ -782,6 +784,13 @@ function writeStored(key: string, value: string) {
 function createIdempotencyKey() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
   return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+function withReplayIdempotencyKey<T extends { idempotencyKey?: string }>(item: T): T & { idempotencyKey: string } {
+  return {
+    ...item,
+    idempotencyKey: item.idempotencyKey || createIdempotencyKey(),
+  }
 }
 
 async function postJson(
@@ -857,15 +866,17 @@ function writeQueue<T>(key: string, queue: T[], maxItems: number) {
 
 function enqueueWaitlistReplay(item: WaitlistReplayItem) {
   const current = readQueue<WaitlistReplayItem>(WAITLIST_QUEUE_KEY)
-  const deduped = current.filter((entry) => !(entry.email === item.email && entry.source === item.source))
-  deduped.push(item)
+  const normalized = withReplayIdempotencyKey(item)
+  const deduped = current.filter((entry) => !(entry.email === normalized.email && entry.source === normalized.source))
+  deduped.push(normalized)
   writeQueue(WAITLIST_QUEUE_KEY, deduped, 20)
 }
 
 function enqueueFounderReplay(item: FounderReplayItem) {
   const current = readQueue<FounderReplayItem>(FOUNDER_QUEUE_KEY)
-  const deduped = current.filter((entry) => entry.intentId !== item.intentId)
-  deduped.push(item)
+  const normalized = withReplayIdempotencyKey(item)
+  const deduped = current.filter((entry) => entry.intentId !== normalized.intentId)
+  deduped.push(normalized)
   writeQueue(FOUNDER_QUEUE_KEY, deduped, 20)
 }
 
@@ -875,9 +886,13 @@ async function flushWaitlistQueue() {
   if (queue.length === 0) return
   const kept: WaitlistReplayItem[] = []
   for (const row of queue) {
-    const result = await postJson('/api/waitlist', row, { timeoutMs: 7000, idempotencyKey: createIdempotencyKey() })
+    const queued = withReplayIdempotencyKey(row)
+    const result = await postJson('/api/waitlist', queued, {
+      timeoutMs: 7000,
+      idempotencyKey: queued.idempotencyKey,
+    })
     if (!result.ok || result.body.ok !== true) {
-      if (shouldQueue(result.status)) kept.push(row)
+      if (shouldQueue(result.status)) kept.push(queued)
     }
   }
   writeQueue(WAITLIST_QUEUE_KEY, kept, 20)
@@ -889,9 +904,13 @@ async function flushFounderQueue() {
   if (queue.length === 0) return
   const kept: FounderReplayItem[] = []
   for (const row of queue) {
-    const result = await postJson('/api/founder-intent', row, { timeoutMs: 7000, idempotencyKey: createIdempotencyKey() })
+    const queued = withReplayIdempotencyKey(row)
+    const result = await postJson('/api/founder-intent', queued, {
+      timeoutMs: 7000,
+      idempotencyKey: queued.idempotencyKey,
+    })
     if (!result.ok || result.body.ok !== true) {
-      if (shouldQueue(result.status)) kept.push(row)
+      if (shouldQueue(result.status)) kept.push(queued)
     }
   }
   writeQueue(FOUNDER_QUEUE_KEY, kept, 20)
@@ -1124,10 +1143,11 @@ function LandingPage() {
       email: normalizedEmail,
       game: 'Unspecified',
       source: 'moltpit-index-hero',
+      idempotencyKey: createIdempotencyKey(),
     }
     const result = await postJson('/api/waitlist', payload, {
       timeoutMs: 7000,
-      idempotencyKey: createIdempotencyKey(),
+      idempotencyKey: payload.idempotencyKey,
     })
 
     if (result.ok && result.body.ok === true) {
@@ -1204,11 +1224,12 @@ function LandingPage() {
       email: normalizedEmail,
       source: intentSource,
       intentId,
+      idempotencyKey: createIdempotencyKey(),
     }
 
     const intentResult = await postJson('/api/founder-intent', intentPayload, {
       timeoutMs: 7000,
-      idempotencyKey: createIdempotencyKey(),
+      idempotencyKey: intentPayload.idempotencyKey,
     })
 
     if (!intentResult.ok || intentResult.body.ok !== true) {

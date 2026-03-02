@@ -156,8 +156,8 @@ function chooseAffordableAction(
   return 'WAIT'
 }
 
-function rollDamage() {
-  return 15 + Math.floor(Math.random() * 11)
+function rollDamage(randomFn: () => number = Math.random) {
+  return 15 + Math.floor(randomFn() * 11)
 }
 
 const MAX_TURNS = 15
@@ -171,6 +171,7 @@ function resolveTurn(
   p2: BotState,
   turnNum: number,
   moveIntent: { p1Dir?: MoveDir; p2Dir?: MoveDir } = {},
+  randomFn: () => number = Math.random,
 ): TurnResult {
   let p1Dmg = 0
   let p2Dmg = 0
@@ -189,9 +190,9 @@ function resolveTurn(
         break
       case 'ATTACK':
         if (dist <= 2) {
-          let dmg = rollDamage()
+          let dmg = rollDamage(randomFn)
           if (p1.charged) { dmg = Math.floor(dmg * 1.4); p1.charged = false }
-          if (p1.stunned && Math.random() < 0.5) dmg = 0
+          if (p1.stunned && randomFn() < 0.5) dmg = 0
           if (p2Act === 'DEFEND') dmg = Math.floor(dmg * 0.5)
           p1Dmg = dmg
         }
@@ -214,9 +215,9 @@ function resolveTurn(
         break
       case 'ATTACK':
         if (dist2 <= 2) {
-          let dmg = rollDamage()
+          let dmg = rollDamage(randomFn)
           if (p2.charged) { dmg = Math.floor(dmg * 1.4); p2.charged = false }
-          if (p2.stunned && Math.random() < 0.5) dmg = 0
+          if (p2.stunned && randomFn() < 0.5) dmg = 0
           if (p1Act === 'DEFEND') dmg = Math.floor(dmg * 0.5)
           p2Dmg = dmg
         }
@@ -1234,6 +1235,22 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
 }
 
 // ── Root component ──
+export const __demoCore = {
+  GRID_SIZE,
+  MAX_TURNS,
+  ACTION_AP_COST,
+  AP_BAR_MAX,
+  MIN_ACTION_AP,
+  BERSERKER,
+  TACTICIAN,
+  manhattan,
+  moveInDirection,
+  canAffordAction,
+  chooseAffordableAction,
+  resolveTurn,
+  makeInitialLiveState,
+}
+
 export default function DemoLoop() {
   const [mode, setMode] = useState<GameMode>('watch')
 

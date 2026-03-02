@@ -2,6 +2,23 @@
 
 ---
 
+## Product-Mode Ship — 18:22 ET Mar 2
+
+Directive executed: hold landing copy; enforce product-critical order P1 reliability/logging, P2 demo loop movement/action economy, P3 founder checkout + postback, P4 ops artifacts.
+
+### Shipped artifacts
+- `app/routes/api/waitlist.ts`
+  - Added request-received observability event with content-type/idempotency metadata for intake traceability.
+- `app/routes/api/founder-intent.ts`
+  - Added matching request-received observability event for founder intent intake parity.
+- `app/components/DemoLoop.tsx`
+  - Extracted deterministic demo-loop core exports and random injection hooks for testable movement + AP/action resolution.
+- `scripts/demo-loop-core.test.mjs`
+  - Added product-mode regression coverage for map movement, AP gating, and defend mitigation semantics.
+
+### Verification
+- `npm run test:product` ✅ (13/13 pass)
+
 ## Product-Mode Ship — 18:12 ET Mar 2
 
 Directive executed in strict order: (1) signup reliability + durable storage + observable logs, (2) playable demo loop movement + action economy, (3) founder checkout + postback path, (4) ops artifact update.

@@ -111,6 +111,14 @@ export const Route = createFileRoute('/api/waitlist')({
         let game = '';
         let source = '';
         let honeypot = '';
+        appendOpsLog({
+          route,
+          level: 'info',
+          event: 'waitlist_request_received',
+          requestId,
+          contentType,
+          hasIdempotencyKey: Boolean(idempotencyKey),
+        });
 
         const respond = async (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
           if (idempotencyKey) {
