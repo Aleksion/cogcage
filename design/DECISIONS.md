@@ -7,6 +7,32 @@ Format: date · who decided · what · why · alternatives rejected
 
 ---
 
+## 2026-03-01 — WS17 Lore Bible (Narrative Director)
+
+**Creature canon: "Crusties" in deep lore, "Lobsters" in Pit parlance**
+Decided by: Narrative Director (WS17)
+The locked brief establishes Creature=Crustie. The Ontology uses "Lobster" throughout and is locked. Reconciled as: Crusties are what they ARE (substrate-evolved intelligent species from The Brine). "Lobster" is what The House calls them for commercial/Pit purposes. The fiction wears the label. Deep lore uses Crustie; all UI copy uses Lobster per COPY-GUIDE.
+Rejected: Renaming "Lobster" to "Crustie" in UI (violates locked ontology). Ignoring "Crustie" (loses the deeper canon layer).
+
+**The Makers as absent architects**
+Decided by: Narrative Director (WS17)
+The Makers built The Brine and are gone. Their purpose/fate is intentionally unspecified — The House keeps a sealed file. This creates narrative headroom for future worldbuilding without locking a specific backstory. The Makers are felt through their infrastructure, not explained.
+Rejected: Giving The Makers a specific fate (limits future expansion). Making The Makers benevolent (flattens the ominous tone).
+
+**The Brine at 3am as atmosphere, not feature**
+Decided by: Narrative Director (WS17)
+LORE.md section IX is pure atmosphere — no mechanical content. Establishes the existential register of the world for any future agent writing copy. The Brine is ancient and does not need you.
+
+**Screen Primers: The Shed, not The Forge**
+Decided by: Narrative Director (WS17)
+COPY-GUIDE and task brief both use "The Shed." ONTOLOGY uses "The Forge" for Build Molt screen. COPY-GUIDE is the copy authority. Screen Primers use The Shed throughout.
+
+**Loading Line 49-50: The one permitted exclamation point**
+Decided by: Narrative Director (WS17)
+Rules permit one exclamation point, used ironically. Line 49: "The Pit is ready!" — the joke is that it's always been ready. Line 50 explains it. Self-aware without breaking The House voice.
+
+---
+
 ## 2026-03-01
 
 **Fighter name: Lobster**
@@ -151,3 +177,31 @@ Rejected: Keep 1.5 tiles (too tight, melee never lands in demo)
 **Action economy legend in BattleHUD**
 Decided by: Daedalus (from WS19 task spec)
 Fixed bar at bottom of arena: MELEE ≤3, RANGED ≤10, GUARD blocks 40%, DASH move×2, UTILITY varies. IBM Plex Mono, 0.7rem, semi-transparent dark background. Teaches the action economy from watching one match.
+
+---
+
+**WS19 Visual baseline: High on Life / Borderlands cel-shading locked**
+Decided by: Visual Director (WS19, 2026-03-01)
+Thick black outlines (6px at 512px), single dominant color per item, flat cel-shaded shadow, single top-left light source. No gradients, no ambient occlusion. Style confirmed via 5 baseline icon generation pass (DALL-E 3). Icons generated: maxine, block-7, the-red-gene, action-scuttle, slot-carapace.
+See `design/visual/STYLE-REFERENCE.md` for full spec.
+
+---
+
+**WS19 SFX: ElevenLabs Sound Effects API selected**
+Decided by: Sound Director (WS19, 2026-03-01)
+ElevenLabs `/v1/sound-generation` endpoint with `prompt_influence: 0.3` for maximum naturalness. 82 sounds planned across global, action, carapace, claws, and tomalley categories. Generation pending ELEVENLABS_API_KEY from Aleks.
+See `design/audio/SFX-PLAN.md` for all prompts.
+
+---
+
+**WS19 Icon color rule: one dominant color per item, from STYLE-REFERENCE color keys**
+Decided by: Visual Director (WS19, 2026-03-01)
+Each item has exactly one dominant hex color defined in STYLE-REFERENCE.md. This single color is used for icon fill, rarity border tint, and any glow effects. No item gets two colors.
+Rejected: Color-by-category (same color for all Claws) — loses item personality.
+
+---
+
+**All "CogCage" references renamed to "The Molt Pit"**
+Decided by: Aleks (Mar 1, 2026)
+Every user-facing reference, UI copy, doc, and comment: CogCage/Cogcage/cogcage → The Molt Pit.
+Excluded from rename: GitHub repo URLs, Vercel project name, local directory paths, npm package names.

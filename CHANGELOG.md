@@ -8,27 +8,38 @@
 
 ---
 
-## [2026-03-01] - chore(ws20): rename CogCage → The Molt Pit across codebase
+## [2026-03-01] - design(ws19): visual baseline + sound design plan
 
-**Type:** chore | **Budget impact:** ~$2
+**Type:** design | **Budget impact:** $0.20 (5 × DALL-E 3 1024px icons)
 
-### Summary
-Comprehensive rename: all user-facing references to CogCage/cogcage replaced with The Molt Pit across 34 files (UI display text, page titles, meta descriptions, headings, copy, code comments, doc files). User-facing URLs updated from `cogcage.com` to `themoltpit.com`.
+### Visual Director
+- `design/visual/STYLE-REFERENCE.md` — complete visual spec locked
+  - Full color palette with exact hex values for all screens, rarities, action states
+  - All 40 item dominant colors defined
+  - Typography hierarchy (sans + mono, 6 size levels)
+  - Cel-shading rules (6px outline at 512px, black always, top-left single light source)
+  - Rarity system (border, glow, animation specs)
+  - Image generation prompt template + 2 worked examples
+  - "Consistent" quality checklist (silhouette, 32px, family, color, background tests)
+- 5 baseline icons generated via DALL-E 3, saved to `web/public/icons/test/`
+  - `maxine.png` — industrial hydraulic piston claws (orange-red #F4511E)
+  - `block-7.png` — military segmented carapace with "7" stencil (green #4CAF50)
+  - `the-red-gene.png` — red pulsing DNA double helix (red #FF1744)
+  - `action-scuttle.png` — crustacean legs in sideways motion (cyan #00E5FF)
+  - `slot-carapace.png` — armor slot UI icon (blue-grey #78909C)
 
-### What changed
-- **UI**: demo page title, CinematicBattle share URL and branding text
-- **Docs**: all task specs, architecture docs, ops logs, plans, roadmap
-- **Ops**: operating system doc, PEM plan, landing copy spec
+### Sound Director
+- `design/audio/SFX-PLAN.md` — complete production plan with all ~82 ElevenLabs prompts
+  - ElevenLabs API endpoint documented + payload spec
+  - Full file structure for `web/public/sfx/` (global, actions, items)
+  - ElevenLabs text prompt written for every individual sound file
+  - Duration guidance per sound type
+  - Generation checklist
+  - **Audio generation BLOCKED pending ELEVENLABS_API_KEY from Aleks**
 
-### What did NOT change (by design)
-- Environment variable names (`COGCAGE_ENGINE_SECRET`, `COGCAGE_POSTBACK_KEY`, etc.)
-- Cookie/localStorage keys (`cogcage_pid`, `cogcage_email`, etc.)
-- Redis key prefixes (`cogcage:*`)
-- Database filename (`cogcage.db`)
-- Schema identifiers (`cogcage.turn.v1`, `cogcage.action.v1`)
-- DNS zone config (`zone_name = "cogcage.com"`)
-- File/component names (`CogCageLanding.jsx`)
-- GitHub repo paths, npm package names, Vercel project names
+### Design log
+- `design/DECISIONS.md` updated with 3 new decisions (visual baseline, ElevenLabs selection, color key rule)
+- `design/BUDGET.md` updated ($0.20 DALL-E spend logged)
 
 ---
 
@@ -456,7 +467,7 @@ This is Phase 2's core deliverable. Without this skill, players can only watch m
 
 ### Next Steps
 - Publish to ClawHub: `clawhub publish ./skills/themoltpit --slug themoltpit --name "The Molt Pit" --version 0.1.0`
-- Wire `themoltpit.com/play` to show "Connect your OpenClaw" CTA after match starts
+- Wire `cogcage.com/play` to show "Connect your OpenClaw" CTA after match starts
 - TASK-014: Wrap LLM calls in Electric Durable Streams for mobile resilience
 
 ---
@@ -576,7 +587,7 @@ Documented the full architecture decision for the game engine tick loop. Three o
 
 ### Notes
 - **Phase 1 (now):** client-side engine, get demo working — acceptable for Friday gameday
-- **Phase 2 (next week):** build `MatchEngine` Durable Object, deploy `engine.themoltpit.com`
+- **Phase 2 (next week):** build `MatchEngine` Durable Object, deploy `engine.cogcage.com`
 - **Phase 3:** OpenClaw plugin SKILL.md + Electric Durable Transport for resilient agent streams
 - Key constraint: Vercel has NO Durable Objects — that's a Cloudflare Workers primitive. Tick loop cannot live in Vercel serverless functions (stateless, can't hold a loop).
 - QStash minimum tick interval is 500ms — too slow for 150–300ms target. DO alarm API achieves ~10ms precision.
@@ -610,12 +621,12 @@ All API routes using Redis were silently crashing on Vercel with a module-level 
 
 ---
 
-## [2026-02-27] - feat(skills): agent skills — LLM tool-use for The Molt Pit bots
+## [2026-02-27] - feat(skills): agent skills — LLM tool-use for CogCage bots
 
 **Type:** feat
 
 ### Summary
-Added LLM tool-use skill system for The Molt Pit bots. Bots can now invoke typed skills (intel, attack, defense) as discrete LLM tool calls, with results feeding back into decision context. Armory wired to skill selection.
+Added LLM tool-use skill system for CogCage bots. Bots can now invoke typed skills (intel, attack, defense) as discrete LLM tool calls, with results feeding back into decision context. Armory wired to skill selection.
 
 ### Changes
 - `web/src/lib/skills.ts` — Skill definitions and registry (intel, combat, utility types)
