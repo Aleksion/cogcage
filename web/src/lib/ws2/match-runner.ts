@@ -138,6 +138,7 @@ async function fetchDecision(
         systemPrompt,
         loadout,
         messages,
+        tick: gameState?.tick ?? 0,
       }),
       signal: controller.signal,
     });

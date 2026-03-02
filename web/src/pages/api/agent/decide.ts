@@ -353,12 +353,89 @@ function extractContent(data: any, provider: string): string | null {
   return data?.choices?.[0]?.message?.content ?? null;
 }
 
+/* ── Rule-based bot AI (demo fallback when no API key) ───── */
+
+const DIRS_8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
+type Dir8 = typeof DIRS_8[number];
+
+const DIR_DELTA: Record<Dir8, { dx: number; dy: number }> = {
+  N: { dx: 0, dy: -1 }, NE: { dx: 1, dy: -1 }, E: { dx: 1, dy: 0 }, SE: { dx: 1, dy: 1 },
+  S: { dx: 0, dy: 1 }, SW: { dx: -1, dy: 1 }, W: { dx: -1, dy: 0 }, NW: { dx: -1, dy: -1 },
+};
+
+function closestDir(from: { x: number; y: number }, to: { x: number; y: number }): Dir8 {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  let best: Dir8 = 'N';
+  let bestDot = -Infinity;
+  for (const dir of DIRS_8) {
+    const d = DIR_DELTA[dir];
+    const dot = d.dx * dx + d.dy * dy;
+    if (dot > bestDot) { bestDot = dot; best = dir; }
+  }
+  return best;
+}
+
+function canUse(action: string, actor: any, tick: number, loadout: string[]): boolean {
+  if (!loadout.includes(action)) return false;
+  const cost = ACTION_COST[action] ?? 0;
+  if (actor.energy < cost) return false;
+  const cdEndsAt = actor.cooldowns?.[action] ?? 0;
+  if (cdEndsAt > tick) return false;
+  return true;
+}
+
+function ruleBasedDecide(
+  gameState: any,
+  actorId: string,
+  opponentIds: string[],
+  loadout: string[],
+  tick: number,
+): { type: string; dir?: string; targetId?: string; reasoning?: string } {
+  const me = gameState.actors?.[actorId];
+  if (!me) return { type: 'NO_OP' };
+
+  // Find nearest opponent
+  let nearestOpp: string | null = null;
+  let nearestDist = Infinity;
+  for (const oppId of opponentIds) {
+    const opp = gameState.actors?.[oppId];
+    if (!opp || opp.hp <= 0) continue;
+    const d = distanceTenths(me.position, opp.position);
+    if (d < nearestDist) { nearestDist = d; nearestOpp = oppId; }
+  }
+
+  if (!nearestOpp) return { type: 'NO_OP' };
+  const opp = gameState.actors[nearestOpp];
+
+  // Aggro priority: melee → ranged → dash → move → guard → no_op
+  if (nearestDist <= MELEE_RANGE && canUse('MELEE_STRIKE', me, tick, loadout)) {
+    return { type: 'MELEE_STRIKE', targetId: nearestOpp, reasoning: 'in melee range — strike' };
+  }
+  if (nearestDist >= RANGED_MIN && nearestDist <= RANGED_MAX && canUse('RANGED_SHOT', me, tick, loadout)) {
+    return { type: 'RANGED_SHOT', targetId: nearestOpp, reasoning: 'in ranged range — shoot' };
+  }
+  // Close the gap
+  const dir = closestDir(me.position, opp.position);
+  if (nearestDist > MELEE_RANGE * 2 && canUse('DASH', me, tick, loadout)) {
+    return { type: 'DASH', dir, reasoning: 'closing gap with dash' };
+  }
+  if (canUse('MOVE', me, tick, loadout)) {
+    return { type: 'MOVE', dir, reasoning: 'moving toward opponent' };
+  }
+  // Low energy — guard
+  if (canUse('GUARD', me, tick, loadout)) {
+    return { type: 'GUARD', reasoning: 'regenerating energy' };
+  }
+  return { type: 'NO_OP', reasoning: 'waiting for energy' };
+}
+
 /* ── POST handler ────────────────────────────────────────── */
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { gameState, actorId, systemPrompt, loadout, opponentIds, messages: incomingMessages } = body;
+    const { gameState, actorId, systemPrompt, loadout, opponentIds, messages: incomingMessages, tick = 0 } = body;
 
     if (!gameState || !actorId || !loadout) {
       return new Response(JSON.stringify({ action: { type: 'NO_OP' } }), {
@@ -382,10 +459,12 @@ export const POST: APIRoute = async ({ request }) => {
     const apiKey = llmKey || (llmProvider === 'openai' ? serverKey : '');
 
     if (!apiKey) {
-      console.error(`[agent/decide] No API key for provider ${llmProvider}`);
-      return new Response(JSON.stringify({ action: { type: 'NO_OP' } }), {
+      // No API key — use rule-based bot so the demo is playable without env vars
+      const ruleAction = ruleBasedDecide(gameState, actorId, opponentIds || [], loadout, tick);
+      console.log(`[agent/decide] rule-based fallback for ${actorId}: ${JSON.stringify(ruleAction)}`);
+      return new Response(JSON.stringify({ action: ruleAction }), {
         status: 200,
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'x-decision-mode': 'rule-based' },
       });
     }
 
