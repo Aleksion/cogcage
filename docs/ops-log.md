@@ -359,3 +359,37 @@ bun run build (web/)
 **Env vars confirmed set in Vercel:**
 - `OPENAI_API_KEY` ✅ (LLM bot decisions active)
 - `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` ✅ (Redis storage active)
+
+
+---
+
+### Autopilot Directive — 20:33 ET, Mar 1 2026
+
+**Directive**: STOP landing-page copy iterations. Priorities: (1) signup form reliability + storage + observable logs, (2) real playable demo loop with map movement + action economy, (3) monetization path (founder pack checkout + postback), (4) update ops log.
+
+**Audit against HEAD `2daaef1`:**
+
+**P1 — Signup form reliability + storage + observable logs ✅ COMPLETE**
+- Form: idempotency key, AbortController timeout, 1 retry, localStorage offline backup, rate-limit replay
+- Storage: Redis primary (Upstash) — waitlist + founder-intents + conversions + ops-log-tail all durable across Lambda invocations
+- Observable: OpsLogPage expanded this pass — Redis counts, reliability snapshot, fallback queue backlog, raw NDJSON log tail with severity color-coding
+- Env confirmed: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` ✅
+
+**P2 — Playable demo loop with map movement + action economy ✅ COMPLETE**
+- `/demo` route: MoldBuilder (part assembly, BYO webhook) → CinematicBattle (Three.js arena)
+- Map movement: `ArenaCanvas.updatePositions` → `crawlerA.position.lerp(targetA, 0.08)` per animation frame — smooth lerp
+- Action economy: AP system in ws2 — MOVE, RANGED_SHOT, MELEE_SLASH, GUARD, DASH, NO_OP each have AP costs + range constraints
+- ws16: BYO OpenClaw agent support — provide webhook URL in MoldBuilder, your agent drives decisions
+
+**P3 — Monetization path ✅ (code) ⚠️ (env action required)**
+- Founder pack CTA → `PUBLIC_STRIPE_FOUNDER_URL` → Stripe → `/success?session_id=...` → `/api/checkout-success` → Redis + SQLite
+- Postback: `POST /api/postback` (Stripe webhook) → auth → Redis + SQLite
+- **Aleks action required**: `PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, `COGCAGE_OPS_KEY`
+
+**Build:** ✅ clean · **Tests:** 4/4 ✅
+
+**Commits this cycle (Mar 1):**
+- `81ca9ca` — test path fix (TanStack Start migration)
+- `516848f` — autopilot-march1: signup error UX + expanded OpsLogPage + BYO webhook groundwork
+- `860f447` — ws16: BYO OpenClaw agent — webhook-based decision routing
+- `0af749a`, `2daaef1` — manifest chores

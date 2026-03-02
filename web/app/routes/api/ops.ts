@@ -117,15 +117,12 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
-          { sha: 'ws18-01', msg: 'feat(ws18): signup reliability + GitHub loading/error + auth event logging' },
-          { sha: 'ws18-02', msg: 'feat(ws18): DemoLoop component — scripted combat with action economy' },
-          { sha: 'ws18-03', msg: 'feat(ws18): purchases table + checkout-success wiring + postback hardening' },
-          { sha: 'ws18-04', msg: 'feat(ws18): shell persistence via Convex + ops log sprint update' },
-          { sha: '516848f', msg: 'feat(autopilot-march1): signup reliability + public demo loop + monetization [MERGED]' },
-          { sha: 'e9c7541', msg: 'fix: resolve demo.tsx conflict — use CinematicBattle/MoldBuilder from main' },
-          { sha: '5fb078b', msg: 'fix: demo link visibility (dark text on light hero) + DEMO nav link for visitors' },
-          { sha: '2625b59', msg: 'feat(p3): founder checkout fallback + postback hardening + env docs' },
-          { sha: '70e3932', msg: 'fix(p1): signup form reliability + ops log auto-refresh + recent commits' },
+          { sha: 'ws18', msg: 'feat(ws18): product core — signup reliability, demo loop, monetization, ops log' },
+          { sha: '03af74a', msg: 'ops: budget tracker, decision log, mandatory PR rules' },
+          { sha: '7f9befd', msg: 'design: game studio structure — ontology, items, visual, audio, UI copy guide' },
+          { sha: '860f447', msg: 'feat(ws16): BYO OpenClaw agent — webhook-based decision routing' },
+          { sha: '516848f', msg: 'feat(autopilot-march1): signup reliability + public demo loop + monetization' },
+          { sha: '16dafb0', msg: 'feat(ws15): composable mold assembly + real LLM battles' },
         ];
 
         return new Response(JSON.stringify({
