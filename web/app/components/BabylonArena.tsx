@@ -85,8 +85,10 @@ export function BabylonArena({ snapshot, botNames, onMatchEnd, playerBotId, canv
       width={900}
       height={640}
       style={{
-        width: 900,
-        height: 640,
+        width: '100%',
+        maxWidth: 900,
+        height: 'auto',
+        aspectRatio: '900 / 640',
         background: '#050510',
         borderRadius: 8,
         overflow: 'hidden',
