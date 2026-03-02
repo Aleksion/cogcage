@@ -490,8 +490,8 @@ const STYLES = `
 
   @media (max-width: 768px) {
     .origin-grid { grid-template-columns: 1fr; }
-    .origin-left  { padding: 2.5rem 1.5rem; order: 2; }
-    .origin-right { min-height: 280px; order: 1; padding: 1.5rem 1.5rem 0; }
+    .origin-left  { padding: 2.5rem 1.5rem; order: 1; }
+    .origin-right { min-height: 280px; order: 2; padding: 0 1.5rem 1.5rem; }
     .origin-title-text { font-size: .52rem; letter-spacing: 1px; }
   }
 
