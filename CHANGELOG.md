@@ -8,6 +8,328 @@
 
 ---
 
+## [2026-03-02] - design(ws18): hand-slot swap pass + context-driven balance lock
+
+**Type:** design/systems | **Budget impact:** n/a (docs alignment pass)
+
+### What
+- `design/systems/MOVEMENT.md`
+  - Added locked timing constants section (`150ms`, `750ms`, queue cap `3`).
+  - Added `SWAP_HAND` action spec with payload, duration, and failure rules.
+  - Added hand state schema and a tick-accurate swap resolution example.
+- `design/systems/ITEMS-IN-PLAY.md`
+  - Added canonical hand system (`main_hand` + `off_hand`, reserve carry, timed swaps).
+  - Added concise `BALANCE PRINCIPLES` section (combos good, no universal best item).
+  - Added hand class assignment table (weapon/shield + melee/ranged tags).
+  - Added swap-to-combo example with queue interaction.
+- `design/systems/MULTIPLAYER.md`
+  - Synced state snapshots from `claws` to `hands`.
+  - Added multiplayer swap determinism rules.
+  - Corrected decision-window rate math and item-count reference.
+- `design/systems/GAME-FEEL.md`
+  - Added combo doctrine and swap-telegraph spectator requirement.
+- `design/items/REGISTRY.md`
+  - Reframed registry around hand weapons + hand shields.
+  - Added weapon delivery tags and updated total item count to 41.
+- `design/world/ONTOLOGY.md`
+  - Updated Molt composition to include `main_hand` + `off_hand`.
+  - Added swap action to battle vocabulary and preserved THE ROLL naming joke.
+- `design/DECISIONS.md`
+  - Logged Aleks-directed WS18 hand-slot/swap/balance decisions.
+  - Marked conflicting 250ms/queue-5 experiment as superseded.
+
+### Why
+- Current docs had drift around slot model and timing constants.
+- New direction requires combo-positive, matchup-driven balance and explicit hand-swap tempo.
+- Engineers needed unambiguous action/state specs for implementation.
+
+### Design Decisions
+- Keep 150ms ticks, 750ms windows (5 ticks), queue cap 3 as canonical lock.
+- Make swaps costly but readable: one full decision window.
+- Preserve tone: The House stays deadpan, including THE ROLL joke.
+
+## [2026-03-02] - fix(product-autopilot): signup throttle isolation + playable checkout event lineage + postback reconciliation
+
+**Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)
+
+### What
+- `web/app/lib/waitlist-redis.ts`
+  - Added namespace support to Redis rate-limit keys so independent product routes do not share the same throttle bucket.
+- `web/app/routes/api/waitlist.ts`
+  - Scoped Redis rate-limit consumption to `waitlist`.
+- `web/app/routes/api/founder-intent.ts`
+  - Scoped Redis rate-limit consumption to `founder-intent`.
+- `web/app/components/Play.tsx`
+  - Added deterministic founder checkout `eventId` creation and propagation.
+  - Persisted checkout lineage keys in local storage (`checkout_source`, `intent_source`, `checkout_event_id`).
+  - Enriched Stripe redirect URL with `client_reference_id`, `checkout_source`, and `checkout_event_id`.
+  - Attached checkout `eventId` to founder checkout lifecycle telemetry events.
+- `web/app/components/DemoLoop.tsx`
+  - Added `checkout_event_id` query propagation on founder checkout URL for reconciliation parity with play flow.
+- `web/app/routes/api/postback.ts`
+  - Added reconciliation support for Stripe `client_reference_id` and metadata-derived checkout IDs/sources.
+  - Source resolution now prefers explicit payload source, then postback metadata, then default fallback.
+- `web/app/components/SuccessPage.tsx`
+  - Conversion tracking now accepts `event_id`, `checkout_event_id`, and `client_reference_id` from success URL before local-storage fallback.
+- `web/app/routes/api/checkout-success.ts`
+  - Expanded accepted conversion ID inputs for both POST and GET (`event_id`, `checkout_event_id`, `client_reference_id`).
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added a route-namespace isolation test for rate limiting.
+
+### Why
+- Signup reliability needed strict separation between waitlist and founder-intent throttling; shared Redis buckets could block valid submits across routes.
+- Monetization reconciliation needed a stable, deterministic checkout identity across redirect, success page, and postback processing to prevent drift between client and server conversion records.
+- Observable logs and conversion analytics are only useful if event lineage remains consistent across all happy-path and fallback paths.
+
+### Design Decisions
+- Preserve existing API contracts and storage layering; harden behavior through keying, propagation, and parsing only.
+- Prefer deterministic, portable checkout IDs (`client_reference_id` lineage) over route-local derivations whenever upstream payloads provide them.
+- Keep fallback behavior unchanged (Redis → SQLite → file queue), but improve identifier continuity through each stage.
+
+### Verification
+- `cd web && npm run test:product` ✅ (10 pass / 0 fail)
+- `cd web && npm run build` ✅
+
+## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
+
+**Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)
+
+### What
+- `web/app/lib/waitlist-redis.ts`
+  - Fixed Redis rate-limit metadata to return **remaining milliseconds** (not absolute epoch), so API `Retry-After` headers and rate-limit telemetry are correct.
+  - Added Redis dedupe keys for product-critical storage paths:
+    - waitlist leads deduped by normalized email (`moltpit:waitlist:email:*`)
+    - founder intents deduped by `intentId` (or deterministic derived id)
+    - conversion events deduped by `eventId` when present (webhook/idempotent flow)
+  - Preserved existing storage layering and fallback architecture.
+- `web/app/components/OpsLogPage.tsx`
+  - Fixed funnel cards to read the current `/api/ops` payload fields (`counts` and `redisCounts`) instead of stale keys, restoring real-time observability for waitlist/founder/conversion metrics.
+
+### Why
+- Redis rate-limit responses were using absolute window timestamps while handlers expected relative durations; this could emit incorrect `Retry-After` values for signup/founder APIs.
+- Redis list-only writes could inflate core funnel counts under retried submissions or webhook retries.
+- Ops dashboard cards were reading deprecated field names, which could hide shipped reliability/monetization metrics.
+
+### Design Decisions
+- Keep Redis as primary durable store, but apply deterministic dedupe keys at write-time to maintain reliability under retries without changing API contracts.
+- Apply dedupe only where product semantics are idempotent (email/intentId/eventId); keep event streams without `eventId` append-only.
+- Treat `/api/ops` as the source of truth for product observability and align UI bindings to current server schema.
+
+### Verification
+- `cd web && npm run test:product` ✅ (9 pass / 0 fail)
+- `cd web && npm run build` ✅
+
+## [2026-03-02] - fix(product-mode): redis idempotency + redis-first monetization persistence
+
+**Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)
+
+### What
+- `web/app/lib/waitlist-redis.ts`
+  - Added Redis-backed idempotency receipt store/read (`redisWriteApiRequestReceipt`, `redisReadApiRequestReceipt`) with 3-day TTL.
+- `web/app/routes/api/waitlist.ts`
+  - Idempotency replay now checks Redis first, then SQLite.
+  - Idempotency write now persists to Redis + SQLite (best-effort on both) with explicit failure logs per store.
+- `web/app/routes/api/founder-intent.ts`
+  - Applied the same Redis-first idempotency replay/write behavior as waitlist.
+- `web/app/routes/api/postback.ts`
+  - Switched paid conversion persistence to Redis-first, SQLite-second, file-fallback-last.
+  - Added founder-intent persistence fallback chain inside postback (`Redis -> SQLite -> founder-intent fallback queue`).
+- `web/app/routes/api/checkout-success.ts`
+  - Switched conversion confirmation persistence to Redis-first with SQLite/file fallback.
+  - Response now surfaces `degraded` when Redis fails but fallback storage succeeds.
+
+### Why
+- Waitlist and founder-intent idempotency previously depended on SQLite receipts; in serverless runtimes where SQLite is unavailable this could replay duplicate submissions.
+- Monetization postback/success handlers previously wrote SQLite first, which could skip durable Redis writes during SQLite runtime failures.
+
+### Design
+- Storage order is now consistent across product-critical write paths:
+  - **Primary:** Upstash Redis (durable across invocations)
+  - **Secondary:** SQLite (local/dev + best-effort safety net)
+  - **Tertiary:** NDJSON fallback queue (for replay/drain)
+- Idempotency replay logs now include `idempotencyStore` (`redis` or `sqlite`) for observability.
+- Fallback paths emit explicit structured events so `/api/ops` can distinguish Redis outages from SQLite degradation.
+
+### Breaking
+- None.
+
+### Next Steps
+- Add integration tests for idempotent replay behavior through route handlers (Redis-enabled test environment).
+- Backfill `/api/ops` summary cards with idempotency replay counts split by store.
+
+## [2026-03-02] - fix(product-mode): signup durability, playable loop checks, founder checkout telemetry, postback observability
+
+**Type:** fix/feature/ops | **Budget impact:** n/a (product-mode stabilization)
+
+### Why
+- Product-mode directive required reliability-first shipping in strict order: signup hardening, real playable loop validation, monetization lifecycle, and ops verification artifacts.
+
+### P1 — Signup reliability + storage + observable logs
+- `web/app/lib/waitlist-db.ts`
+  - ESM-safe SQLite loading via `createRequire(import.meta.url)` so local/server runtimes can use SQLite fallback when available.
+  - Fixed index migration for `founder_intents.intent_id` and `conversion_events.event_id` so `ON CONFLICT(...)` works reliably.
+- `web/app/routes/api/waitlist.ts`
+  - Added SQLite fallback write path when Redis is unavailable before file-queue fallback.
+  - Added explicit structured logs + conversion telemetry for sqlite-fallback success/failure.
+- `web/app/routes/api/founder-intent.ts`
+  - Fixed missing `redisInsertConversionEvent` import in telemetry path (runtime reliability bug).
+  - Added SQLite fallback write path when Redis is unavailable before file-queue fallback.
+  - Added explicit structured logs + conversion telemetry for sqlite-fallback success/failure.
+
+### P2 — Playable demo loop with map movement + action economy
+- `web/scripts/ws2-core.test.mjs`
+  - Added movement smoke test (`MOVE_COMPLETED` + position delta).
+  - Added action-economy smoke test (energy spend on accepted move action).
+
+### P3 — Founder pack checkout + postback confirmation lifecycle
+- `web/app/components/Play.tsx`
+  - Founder checkout now emits observable lifecycle events (`clicked`, validation failure, intent submitted/failed, redirect success/failure).
+  - Founder intent is captured before redirect (with idempotency header + request timeout) and stores checkout source keys used by `/success`.
+- `web/app/routes/api/postback.ts`
+  - Added structured lifecycle logs for request received, invalid payload, and unsupported event type.
+- `web/app/routes/api/checkout-success.ts`
+  - Added structured lifecycle logs for POST/GET receive and invalid email paths.
+
+### P4 — Ops and verification artifacts
+- `web/scripts/product-mode-reliability.test.mjs` (new)
+  - Persistence/idempotency/rate-limit checks for signup + monetization storage path.
+- `web/package.json`
+  - Added `test:product` command for product-mode smoke coverage.
+- `web/scripts/replay-fallback.mjs`
+  - Updated SQLite unique-index migration to match `ON CONFLICT` usage for replay reliability.
+
+## [2026-03-02] - feat(autopilot): signup reliability + demo grid movement + monetization fallback
+
+**Type:** feature/ops | **Budget impact:** ~$2 (agent)
+
+### P1 — Signup form reliability + observable logs
+- `web/app/lib/observability.ts` — Redis ops log failures now warn to stderr instead of silently swallowing; added `appendSessionSummary()` structured entry type
+- `web/app/routes/api/waitlist.ts` — success response now returns `{ ok: true, message: "You're on the list!" }`; added `waitlist_health_check` log entry on every successful submit
+- `web/app/lib/fallback-drain.ts` — drain now replays to Redis (fire-and-forget) alongside SQLite inserts, closing the durability gap
+
+### P2 — Demo grid movement + spatial tactics
+- `web/app/components/DemoLoop.tsx` — complete rewrite:
+  - 7×7 arena grid with CSS grid visualization
+  - Added `MOVE` action: bots move 1 tile toward enemy each turn (unless stunned)
+  - Position tracking (`{x, y}`) in bot state, bots start at opposite corners (0,0) vs (6,6)
+  - Range-based combat: ATTACK and STUN only work at Manhattan distance ≤ 2, CHARGE at any range
+  - Smart action selection: bots prefer MOVE when out of range, prefer combat when close
+  - Colored bot markers (B = red BERSERKER, T = cyan TACTICIAN) on grid
+  - 800ms per turn auto-play, loops 3 matches then restarts
+  - Action legend with range indicator
+  - Side-by-side grid + turn log layout
+
+### P3 — Monetization fallback path
+- `web/app/components/MoltPitLanding.jsx` — Founder Pack button now captures email via `/api/founder-intent` when Stripe URL is not configured (zero revenue lost)
+- `web/app/routes/api/postback.ts` — added `?test=1` stub mode returning `{ok:true,mode:"test"}` for deploy verification
+
+---
+
+## [2026-03-01] - feat(lore): WS17 lore bible — item lore, soft shell guide, loading lines, creature sounds, rank ladder
+
+**Type:** design/lore | **Budget impact:** ~$3 (agent)
+- `design/world/LORE.md` — full lore bible: The Brine, The Makers, The Chelae, The House, The Pit, The Chef, rank ladder (6 tiers), The Deep, Subject 1
+- `design/items/ITEM-LORE.md` — full paragraph lore for all 40 items, The House voice
+- `design/ui/SOFT-SHELL-GUIDE.md` — onboarding written by The House for new Chefs
+- `design/ui/LOADING-LINES.md` — 50 loading screen lines, The House voice
+- Added creature vocalizations section to `design/audio/SOUND-DESIGN.md` (6 categories)
+- Updated `design/ui/COPY-GUIDE.md` — Chef replaces Pitmaster in vocabulary and flavor lines
+- Updated `design/DECISIONS.md` — player name (Chef), rank ladder (6 tiers), Subject 1, The Deep, creature vocalizations, item lore voice
+
+**Decisions locked this session:** Player name=Chef (replaces Pitmaster), Rank ladder=6 tiers (Soft Shell→Brine-Touched→Hardened→Tide-Scarred→Deep→Red), Subject 1 lore, The Deep formalized, creature vocalizations (6 categories), item lore voice (The House as historian)
+
+---
+
+## [2026-03-01] - feat(ws21): Babylon.js 3D game engine — Sprint 1
+
+**Type:** feature | **Budget impact:** ~$0.15 (no API calls, local dev only)
+
+### Head of Engineering (WS21)
+
+**Game engine upgrade — Babylon.js replaces Phaser 3 / Three.js / PlayCanvas:**
+
+- **Engine decision locked: Babylon.js** (logged in `design/DECISIONS.md`)
+  - 3D-first engine for incoming GLTF assets from visual team
+  - Isometric orthographic camera (TFT/LoL 45° angle)
+  - TypeScript-first, full game engine (ECS, animation, physics, scene graph)
+  - Cloudflare DO WebSocket pipes into Babylon scene update loop
+
+- `web/app/game/PitScene.ts` — Babylon.js arena scene
+  - Dark Brine aesthetic with bioluminescent point lights (cyan, purple)
+  - 20x20 grid floor with thin box grid lines (every 5th line glows cyan)
+  - MAP 001 "THE STANDARD" tile rendering: WALL (3D boxes with purple trim dots), COVER (low boxes), HAZARD (ground planes with pulsing orange glow)
+  - Real Crustie GLB models loaded from Vercel Blob CDN via SceneLoader.ImportMeshAsync
+    - Default match: Lobster (alpha/cyan) vs Crab (beta/red)
+    - Toon/cel-shading: flat StandardMaterial, no specular, subtle emissive self-illumination
+    - Borderlands-style black outlines (renderOutline, outlineWidth: 0.05)
+    - Capsule fallback if GLB load fails (network error graceful degradation)
+    - 5 species available: lobster, crab, mantis, hermit, shrimp
+  - Procedural hit reaction: scale squash-stretch pulse on DAMAGE_APPLIED events
+  - HP bars and tick counter via @babylonjs/gui fullscreen UI
+  - Animated position lerp (12 frames ~200ms) on each tick
+  - VFX animations: PINCH (slash line + impact flash), SPIT (projectile sphere with impact burst), SHELL UP (expanding green shield sphere), BURST (expanding torus ring)
+  - Floating damage numbers linked to world-space anchors
+  - Match end overlay ("SCUTTLE OVER" + winner name)
+  - GlowLayer for bioluminescent atmosphere
+
+- `web/app/components/BabylonArena.tsx` — React wrapper component
+  - Dynamic import of PitScene (SSR-safe)
+  - Accepts WebSocket snapshots, forwards to PitScene
+  - Lifecycle management (create/dispose)
+  - `useWebSocketArena` hook for standalone usage
+
+- `web/app/components/Play.tsx` — Replaced Phaser/PlayCanvas references with Babylon
+  - Removed dead PlayCanvas lifecycle code
+  - Removed dead Phaser imports and state
+  - BabylonArena now receives snapshot via `babylonSnap` state
+
+- `web/package.json` — Dependency cleanup
+  - Removed: `phaser`, `three`, `@types/three`, `playcanvas`
+  - Added: `@babylonjs/core@8.53.0`, `@babylonjs/loaders@8.53.0`, `@babylonjs/gui@8.53.0`
+
+- `/api/agent/decide` endpoint — already exists (no changes needed)
+  - Multi-provider LLM support (OpenAI, Anthropic, Groq, OpenRouter)
+  - Scripted AI fallback when no API key available
+  - Skill/tool-use support with two-pass LLM calls
+
+---
+
+## [2026-03-01] - feat(ws21): Phaser 3 game engine — Sprint 1
+
+**Type:** feature | **Budget impact:** ~$0.10 (no API calls, local dev only)
+
+### Head of Engineering (WS21)
+
+**Game engine foundation — Phaser 3 rendering of The Pit:**
+
+- `web/app/lib/ws2/MatchScene.ts` — Complete rewrite of Phaser 3 arena scene
+  - Dark Brine aesthetic: #050510 background, bioluminescent cyan grid lines
+  - MAP 001 "THE STANDARD" tile rendering: WALL (dark coral/purple trim), COVER (debris), HAZARD (pulsing amber)
+  - Procedural lobster sprites with carapace, claws, eyes, antennae, tail fan
+  - HP bars rendered directly on grid above each lobster + energy pips
+  - Action VFX animations: PINCH (slash/flash), SPIT (projectile), SHELL UP (shield bubble), BURST (dash trail + speed lines)
+  - Damage number popups, action label popups
+  - Combat log sidebar with lore names and color-coded entries
+  - Action legend panel (SCUTTLE/PINCH/SPIT/SHELL UP/BURST)
+  - Match end overlay ("SCUTTLE OVER" + winner name)
+  - Engine→lore action name mapping (MOVE→SCUTTLE, MELEE_STRIKE→PINCH, etc.)
+
+- `web/app/components/PhaserArena.tsx` — React wrapper component
+  - Dynamic import of Phaser (SSR-safe)
+  - Accepts WebSocket snapshots, forwards to MatchScene
+  - Lifecycle management (create/destroy)
+  - `useWebSocketArena` hook for standalone usage
+
+- `web/app/components/Play.tsx` — Integrated Phaser arena into match view
+  - Replaced PlayCanvas 3D renderer with PhaserArena
+  - WebSocket tick messages now feed both React HUD and Phaser scene
+
+**Decisions logged:**
+- Phaser 3 selected as rendering engine (see DECISIONS.md)
+- Action name mapping: engine names → lore names in UI only
+
+---
+
 ## [2026-03-01] - design(ws18): complete game design systems spec
 
 **Type:** design | **Budget impact:** $0.00 (authoring only, no API calls)
@@ -809,4 +1131,3 @@ Project renamed from CogCage to The Molt Pit throughout docs, task specs, and ar
 - `cogcage.com` domain: keep for now, evaluate `themoltpit.com` separately
 - Redis key prefixes (`cogcage_pid`, `armory:*`, `lobby:*`) — follow-up rename PR
 - GitHub repo URL: `Aleksion/themoltpit` — can rename repo in GitHub settings when ready
-

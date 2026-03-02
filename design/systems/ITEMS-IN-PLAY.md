@@ -1,7 +1,7 @@
 # ITEMS IN PLAY
 *How Every Item Actually Affects the Game State*
 *Deep Brine Studios | WS18 | Lead Game Designer*
-*Locked: March 1, 2026*
+*Locked: March 2, 2026 (WS18.1 hand update)*
 
 ---
 
@@ -13,13 +13,92 @@ Each item entry specifies four things:
 3. **Spectator display** — what viewers see (visual + sound trigger)
 4. **Balance notes** — synergies, degenerate combos, tuning flags
 
-Items are organized by slot: Carapace (13) → Claws (14) → Tomalley (13).
+Items are organized by slot: Carapace (14) → Hands (14) → Tomalley (13).
 
-All damage values are **pre-reduction** unless otherwise specified. Reduction chain is always: base damage × Claws modifier → apply Carapace reduction → apply SHELL UP → apply other passives.
+All damage values are **pre-reduction** unless otherwise specified. Reduction chain is always: base damage × active-hand weapon modifier → apply Carapace reduction → apply SHELL UP → apply other passives.
 
 ---
 
-## CARAPACE (13 items)
+## WS18.1 Hand System (Canonical)
+
+- Every Crustie has **two equipped hand slots**: `main_hand` and `off_hand`.
+- Hand items are classed as `weapon` or `shield`.
+- Weapons must carry `weapon_tag: melee | ranged`.
+- Crusties can carry up to **4 hand items total**: 2 equipped + up to 2 reserve.
+- `main_hand` must always hold a weapon.
+- `PINCH` and `SPIT` use the active weapon in `main_hand`.
+- `off_hand` contributes shield effects while equipped.
+- If `off_hand` holds a weapon, that weapon is stowed (inactive) until swapped into `main_hand`.
+- Mid-fight swap action:
+  - `SWAP_HAND(slot, item_id)` where `slot ∈ {main_hand, off_hand}` and `item_id` is carried.
+  - Validation: swapping a shield into `main_hand` is invalid and resolves as NO_OP.
+  - Duration: **1 decision window = 5 ticks = 750ms**.
+  - Swap commits at end-of-window. During that window, old hand gear is still active.
+  - Queue cap remains **3**; swap occupies one queue slot like any other action.
+- Legacy note: historical snippets below use `"claws"` in example JSON. Runtime canonical path is `hands.main_hand.item_id` and `hands.off_hand.item_id`.
+
+### Hand Class Assignment (v1)
+
+| Item | Class | Weapon Tag |
+|------|-------|------------|
+| MAXINE | Weapon | Melee |
+| SNAPPER | Weapon | Melee |
+| THE REACH | Weapon | Ranged |
+| THE FLICKER | Weapon | Melee |
+| BUZZ | Weapon | Ranged |
+| NEEDLE | Weapon | Melee |
+| THE APOLOGIST | Weapon | Melee |
+| TENDERHOOK | Weapon | Melee |
+| VENOM | Weapon | Ranged |
+| WIDOW-MAKER | Weapon | Melee |
+| CRACKER | Weapon | Melee |
+| THE HEIR | Weapon | Melee |
+| REVERSAL | Shield | N/A |
+| THE ORIGINAL APPENDAGE | Shield | N/A |
+
+---
+
+## BALANCE PRINCIPLES
+
+1. **Combos are good.** Strong interactions are a feature, not a bug, as long as they have readable counterplay.
+2. **No universal best item.** Power is matchup-, map-, and timing-dependent. Any item that dominates all contexts is a balance bug.
+3. **Downsides are mandatory.** Every item has a real cost in tempo, reliability, range, or survivability.
+4. **Swap decisions are strategic tax.** Hand swapping creates intentional 750ms vulnerability windows that opponents can punish.
+
+---
+
+## Example Turn: Timed Swap into Combo
+
+Pre-window state:
+
+```json
+{
+  "current_tick": 150,
+  "hands": {
+    "main_hand": {"item_id": "THE_REACH", "class": "weapon", "weapon_tag": "ranged"},
+    "off_hand": {"item_id": "REVERSAL", "class": "shield"},
+    "reserve": ["MAXINE", "WIDOW_MAKER"],
+    "swap_pending": {"active": false}
+  },
+  "queued_actions": [
+    "SWAP_HAND(slot=main_hand,item_id=WIDOW_MAKER)",
+    "BURST_E",
+    "PINCH"
+  ]
+}
+```
+
+Resolution:
+- Window 31 (ticks 150-154): swap starts and consumes the window.
+- End of tick 154: `main_hand` becomes `WIDOW_MAKER`; old `THE_REACH` goes to reserve.
+- Window 32 (ticks 155-159): `BURST_E` resolves using movement rules.
+- Window 33 (ticks 160-164): `PINCH` resolves with WIDOW-MAKER damage.
+
+The combo is strong, but the 750ms swap window gave the opponent one whole decision cycle to punish it.
+
+---
+
+## CARAPACE (14 items)
 
 Carapace items modify HP, damage received, and movement. Applied at fight start, locked for the Scuttle.
 
@@ -342,9 +421,10 @@ Carapace items modify HP, damage received, and movement. Applied at fight start,
 
 ---
 
-## CLAWS (14 items)
+## HAND ITEMS (14 total: 12 weapons + 2 shields)
 
-Claws modify damage output, attack range, special attack effects, and action availability. The damage multiplier applies to all attack actions (PINCH and SPIT) unless otherwise specified.
+Unless explicitly marked as a shield, entries in this section are weapon-class hand items.
+Weapon damage multipliers apply to PINCH/SPIT from `main_hand` unless otherwise specified.
 
 ---
 
@@ -602,6 +682,7 @@ Claws modify damage output, attack range, special attack effects, and action ava
 *Counter-Strike Claws | Legendary*
 
 **Mechanical effect:**
+- Item class: **Shield**
 - Damage multiplier: ±0 (PINCH: 20; SPIT: 12)
 - When SHELL UP is active AND the Lobster is hit: 60% of the damage received is dealt back to the attacker.
 - Calculation: `reversal_damage = damage_received × 0.60` (where damage_received is after SHELL UP's 50% reduction).
@@ -613,6 +694,7 @@ Claws modify damage output, attack range, special attack effects, and action ava
 **Agent state:**
 ```json
 "claws": "REVERSAL",
+"hand_item_class": "shield",
 "damage_multiplier": 1.00,
 "reversal_active_when_guarding": true
 ```
@@ -627,6 +709,7 @@ Claws modify damage output, attack range, special attack effects, and action ava
 *Legendary Baseline | Legendary*
 
 **Mechanical effect:**
+- Item class: **Shield**
 - Damage multiplier: +25% (PINCH: 25; SPIT: 15)
 - Status immune: Lobster cannot be Stunned, Held, Misfired, or affected by any debuff. Bleed and Venom stacks CAN still be applied (DoT is not a debuff — it's an environmental effect).
 - Cannot pair with any Legendary Tomalley (loadout builder enforces this at construction time)
@@ -634,6 +717,7 @@ Claws modify damage output, attack range, special attack effects, and action ava
 **Agent state:**
 ```json
 "claws": "THE_ORIGINAL_APPENDAGE",
+"hand_item_class": "shield",
 "damage_multiplier": 1.25,
 "status_immune": true,
 "legendary_tomalley_locked": true
@@ -1056,6 +1140,6 @@ Items checked for infinite loops or broken combos:
 
 ---
 
-*ITEMS-IN-PLAY locked: March 1, 2026*
+*ITEMS-IN-PLAY locked: March 2, 2026 (WS18.1 hand update)*
 *Author: WS18 Lead Game Designer, Deep Brine Studios*
-*40 items specified. Every edge case resolved. No ambiguity.*
+*41 items specified. Every edge case resolved. No ambiguity.*
