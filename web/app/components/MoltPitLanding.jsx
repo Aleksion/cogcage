@@ -1188,6 +1188,21 @@ const NavBar = ({ onNavClick }) => {
       </div>
       <div className="nav-controls">
         <a
+          href="/demo"
+          style={{
+            display: 'inline-block',
+            padding: '0.4rem 1rem',
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            color: 'rgba(255,255,255,0.75)',
+            textDecoration: 'none',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Demo
+        </a>
+        <a
           href="/sign-in"
           style={{
             display: 'inline-block',
@@ -1476,7 +1491,8 @@ const HeroSection = ({ sectionRef }) => {
           <a
             href="/demo"
             style={{
-              color: 'rgba(255,255,255,0.65)',
+              color: 'var(--c-dark)',
+              opacity: 0.6,
               fontSize: '0.9rem',
               textDecoration: 'underline',
               textUnderlineOffset: '3px',
