@@ -1338,6 +1338,26 @@ bun run build (web/)
 
 ---
 
+### Autopilot Cron — 14:36 ET, Mar 2 2026
+
+**Status:**
+- P1 — Signup reliability + Redis storage + observable logs: ✅ LIVE — minor fix: suppress expected Vercel ESM sqlite binary noise from ops log output (`f044752`)
+- P2 — Playable demo loop (7×7 grid, bot movement, AP economy): ✅ LIVE
+- P3 — Founder checkout + postback: ✅ CODE COMPLETE — blocked on env vars
+- P4 — Ops log: ✅ CURRENT
+
+**Build:** `bun run build` clean.
+**Branch:** main, up to date with origin/main.
+
+**Blockers (Aleks action required):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates live checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `cogcage.com/api/postback`
+3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
+
+**Cron status**: Code-idle on product-critical features. Env vars are the unlock for live monetization.
+
+---
+
 ### Autopilot Cron — 13:12 ET, Mar 2 2026
 
 **Directive**: STOP copy iterations. Priorities: P1 signup, P2 demo, P3 monetization, P4 ops log.
