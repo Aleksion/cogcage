@@ -117,10 +117,11 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
+          { sha: 'ws18', msg: 'feat(ws18): product core — signup reliability, demo loop, monetization, ops log' },
+          { sha: '03af74a', msg: 'ops: budget tracker, decision log, mandatory PR rules' },
+          { sha: '7f9befd', msg: 'design: game studio structure — ontology, items, visual, audio, UI copy guide' },
           { sha: '860f447', msg: 'feat(ws16): BYO OpenClaw agent — webhook-based decision routing' },
-          { sha: '0af749a', msg: 'chore(ops): update shipped artifacts — autopilot-march1 merged 516848f' },
           { sha: '516848f', msg: 'feat(autopilot-march1): signup reliability + public demo loop + monetization' },
-          { sha: '81ca9ca', msg: 'fix(test): update ws2-core.test.mjs import paths src→app after TanStack Start migration' },
           { sha: '16dafb0', msg: 'feat(ws15): composable mold assembly + real LLM battles' },
         ];
 

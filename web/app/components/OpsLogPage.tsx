@@ -108,6 +108,29 @@ export function OpsLogPage() {
         </span>
       </h1>
 
+      {/* ── WS18 Product Core Sprint ── */}
+      <div
+        style={{
+          background: '#0a0a1e',
+          border: '1px solid #5d6bff',
+          borderRadius: 6,
+          padding: '1rem 1.5rem',
+          marginBottom: '1.2rem',
+        }}
+      >
+        <div style={{ color: '#5d6bff', fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
+          WS18 PRODUCT CORE SPRINT — 2026-03-01
+        </div>
+        <ul style={{ margin: 0, padding: '0 0 0 1.2rem', color: '#ccc', fontSize: 12, lineHeight: 1.8 }}>
+          <li>Signup form reliability fixes (GitHub loading/error states, spinner)</li>
+          <li>Auth event logging (Convex authEvents table + stats query)</li>
+          <li>Shell persistence via Convex (shells.ts already wired)</li>
+          <li>DemoLoop component (scripted BERSERKER vs TACTICIAN, action economy)</li>
+          <li>Founder Pack checkout + postback wiring (checkout-success + postback routes)</li>
+          <li>Purchases table in Convex (deduplication by stripeSessionId)</li>
+        </ul>
+      </div>
+
       {/* ── Signups (Redis) — primary durable count ── */}
       {redisWaitlistCount !== null && (
         <div

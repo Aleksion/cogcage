@@ -73,4 +73,25 @@ export default defineSchema({
     source: v.optional(v.string()),
     signedUpAt: v.number(),
   }).index("by_email", ["email"]),
+
+  // Auth event log — observability for sign-in reliability
+  authEvents: defineTable({
+    emailHash: v.optional(v.string()),
+    method: v.union(v.literal("github"), v.literal("email-otp"), v.literal("guest")),
+    success: v.boolean(),
+    errorCode: v.optional(v.string()),
+    timestamp: v.number(),
+  }).index("by_timestamp", ["timestamp"]),
+
+  // Purchases — founder pack and future monetization
+  purchases: defineTable({
+    userId: v.optional(v.string()),
+    email: v.optional(v.string()),
+    stripeSessionId: v.string(),
+    amount: v.number(),
+    status: v.union(v.literal("completed"), v.literal("pending"), v.literal("refunded")),
+    createdAt: v.number(),
+  })
+    .index("by_stripeSessionId", ["stripeSessionId"])
+    .index("by_email", ["email"]),
 });

@@ -126,13 +126,13 @@ export function SuccessPage() {
       >
         <p
           style={{
-            color: '#9ca5ff',
+            color: '#FFD600',
             fontSize: '0.78rem',
             letterSpacing: '0.12em',
             fontWeight: 700,
           }}
         >
-          PAYMENT CONFIRMED
+          FOUNDER PACK UNLOCKED
         </p>
         <h1
           style={{
@@ -144,9 +144,9 @@ export function SuccessPage() {
           You're in — Founder spot reserved.
         </h1>
         <p style={{ color: '#d0d5ef', lineHeight: 1.55 }}>
-          Thanks for backing The Molt Pit early. We're preparing your founder
-          onboarding email with alpha queue details, rank-season kickoff timing,
-          and tournament invite priority.
+          Thanks for backing The Molt Pit early. Your Founder Pack is active.
+          We're preparing your onboarding email with alpha queue priority,
+          rank-season kickoff timing, and exclusive tournament invites.
         </p>
 
         <div
