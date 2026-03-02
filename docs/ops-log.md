@@ -4,6 +4,28 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Checkpoint — 00:43 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Priorities: (1) signup form reliability + storage + observable logs, (2) real playable demo loop with map movement + action economy, (3) monetization path (founder pack checkout + postback), (4) update ops log.
+
+**Status — no new code changes required this pass:**
+
+- **P1 ✅ COMPLETE** — Signup reliability + Redis storage + observable logs: live on main
+- **P2 ✅ COMPLETE** — Playable demo loop (map movement, bot AI, action economy, `/demo`): live on main
+- **P3 ✅ CODE COMPLETE ⚠️ ENV BLOCKED** — Founder checkout CTA wired; postback endpoint secured. Blocked on Aleks setting 3 Vercel env vars.
+- **P4 ✅** — This entry.
+
+**BabylonJS 3D engine (ws21)** — merged last pass: real Crustie GLB models, `PitScene.ts`, `MatchScene.ts`, Vercel Blob CDN. Build clean.
+
+**No uncommitted changes.** State verified: `git status` clean, `git pull` up-to-date.
+
+**Aleks action required (still blocking monetization activation):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates founder checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `https://cogcage.com/api/postback`
+3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
+
+---
+
 ### Autopilot Checkpoint — 22:18 ET, Mar 1 2026
 
 **Directive**: STOP copy iterations. Priorities: (1) signup reliability + storage + observable logs, (2) real playable demo loop with map movement + action economy, (3) monetization path (founder pack checkout + postback), (4) ops log.
