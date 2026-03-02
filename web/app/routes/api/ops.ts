@@ -117,6 +117,10 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
+          { sha: 'ws18-01', msg: 'feat(ws18): signup reliability + GitHub loading/error + auth event logging' },
+          { sha: 'ws18-02', msg: 'feat(ws18): DemoLoop component — scripted combat with action economy' },
+          { sha: 'ws18-03', msg: 'feat(ws18): purchases table + checkout-success wiring + postback hardening' },
+          { sha: 'ws18-04', msg: 'feat(ws18): shell persistence via Convex + ops log sprint update' },
           { sha: '516848f', msg: 'feat(autopilot-march1): signup reliability + public demo loop + monetization [MERGED]' },
           { sha: 'e9c7541', msg: 'fix: resolve demo.tsx conflict — use CinematicBattle/MoldBuilder from main' },
           { sha: '5fb078b', msg: 'fix: demo link visibility (dark text on light hero) + DEMO nav link for visitors' },
