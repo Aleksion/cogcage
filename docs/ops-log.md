@@ -393,3 +393,26 @@ bun run build (web/)
 - `516848f` — autopilot-march1: signup error UX + expanded OpsLogPage + BYO webhook groundwork
 - `860f447` — ws16: BYO OpenClaw agent — webhook-based decision routing
 - `0af749a`, `2daaef1` — manifest chores
+
+
+---
+
+### Autopilot Checkpoint — 21:43 ET, Mar 1 2026
+
+**Directive**: STOP landing-page copy iterations. Priorities: (1) signup form reliability + storage + observable logs, (2) real playable demo loop, (3) monetization path, (4) ops log.
+
+**Status — all P1-P3 shipped to main (PR #44 + subsequent commits):**
+
+- **P1 ✅** — Signup form: idempotency, retry, localStorage offline backup, error UX. Redis primary storage (Upstash) — durable across Lambda cold starts. OpsLogPage: auto-refresh, Redis counts, shipped artifacts manifest.
+- **P2 ✅** — `/demo` route live (public, no auth). CinematicBattle (Three.js arena) + MoldBuilder. AP economy: MOVE/RANGED_SHOT/MELEE_SLASH/GUARD/DASH each with AP cost + range constraints. Scripted AI fallback when OPENAI_API_KEY absent. BYO OpenClaw agent webhook (ws16).
+- **P3 ✅ (code) ⚠️ (env)** — Founder checkout: when `PUBLIC_STRIPE_FOUNDER_URL` unset, captures intent via `/api/founder-intent` and shows confirmation. Postback: Redis-backed, HMAC-auth, ops-log event on receipt. `.env.example` updated with all required vars.
+- **P4 ✅** — Ops log updated each cron cycle with shipped artifact SHAs.
+
+**HEAD:** `af4b02a` (decisions: Crustie locked, narrative-first, The Makers confirmed)
+
+**Aleks action required (blocking monetization):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Vercel env → activates Stripe checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook → secures postback
+3. `COGCAGE_OPS_KEY` (or `MOLTPIT_OPS_KEY`) → Vercel env → secures /api/ops
+
+**No new product-critical commits this cycle.** Design agents (ws17-lore, ws18-game-design, ws19-visual-sound, ws19-map) are running as background/non-blocking work per autopilot policy.
