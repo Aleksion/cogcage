@@ -243,6 +243,78 @@ const STYLES = `
   }
 `
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const AUTH_PENDING_METHOD_KEY = 'moltpit_auth_pending_method'
+const AUTH_PENDING_EMAIL_KEY = 'moltpit_auth_pending_email'
+
+type AuthMethod = 'github' | 'email-otp' | 'guest'
+
+function normalizeErrorCode(error: unknown) {
+  const message = (error as any)?.message
+  const code = (error as any)?.code
+  const raw = typeof code === 'string' ? code : typeof message === 'string' ? message : 'auth_failed'
+  const normalized = raw.toLowerCase()
+  if (normalized.includes('network')) return 'network_error'
+  if (normalized.includes('rate')) return 'rate_limited'
+  if (normalized.includes('email')) return 'invalid_email'
+  if (normalized.includes('oauth')) return 'oauth_error'
+  if (normalized.includes('invalid')) return 'invalid_request'
+  return normalized.replace(/[^a-z0-9_:-]/g, '_').slice(0, 64) || 'auth_failed'
+}
+
+function userFacingAuthError(method: AuthMethod, errorCode: string) {
+  if (errorCode === 'network_error') return 'Network issue. Check connection and retry.'
+  if (errorCode === 'rate_limited') return 'Too many attempts. Wait a minute and retry.'
+  if (errorCode === 'invalid_email') return 'Enter a valid email address.'
+  if (method === 'github') return 'GitHub sign-in failed. Retry in a moment.'
+  return 'Could not send magic link. Retry in a moment.'
+}
+
+function setPendingAuth(method: AuthMethod, email?: string) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(AUTH_PENDING_METHOD_KEY, method)
+  if (email) window.localStorage.setItem(AUTH_PENDING_EMAIL_KEY, email.toLowerCase())
+}
+
+function consumePendingAuth() {
+  if (typeof window === 'undefined') return { method: null as AuthMethod | null, email: undefined as string | undefined }
+  const method = window.localStorage.getItem(AUTH_PENDING_METHOD_KEY) as AuthMethod | null
+  const email = window.localStorage.getItem(AUTH_PENDING_EMAIL_KEY) ?? undefined
+  window.localStorage.removeItem(AUTH_PENDING_METHOD_KEY)
+  window.localStorage.removeItem(AUTH_PENDING_EMAIL_KEY)
+  return { method, email }
+}
+
+function clearPendingAuth() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(AUTH_PENDING_METHOD_KEY)
+  window.localStorage.removeItem(AUTH_PENDING_EMAIL_KEY)
+}
+
+async function reportAuthEvent(args: {
+  method: AuthMethod
+  success: boolean
+  email?: string
+  errorCode?: string
+}) {
+  const payload = JSON.stringify(args)
+  try {
+    const sent = navigator.sendBeacon?.(
+      '/api/auth-event',
+      new Blob([payload], { type: 'application/json' }),
+    )
+    if (sent) return
+  } catch {
+    // Fall through to fetch.
+  }
+  await fetch('/api/auth-event', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: payload,
+    keepalive: true,
+  }).catch(() => undefined)
+}
+
 export const Route = createFileRoute('/sign-in')({
   head: () => ({
     meta: [{ title: 'The Molt Pit — Enter the Pit' }],
@@ -256,6 +328,15 @@ function SignInPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
+      const pending = consumePendingAuth()
+      if (pending.method) {
+        void reportAuthEvent({
+          method: pending.method,
+          success: true,
+          email: pending.email,
+          errorCode: 'session_authenticated',
+        })
+      }
       // Auto-redirect after a beat
       const t = setTimeout(() => navigate({ to: '/forge' }), 1200)
       return () => clearTimeout(t)
@@ -318,10 +399,23 @@ function GitHubSignIn() {
   const handleGitHub = async () => {
     setError('')
     setLoading(true)
+    setPendingAuth('github')
     try {
-      await signIn('github')
+      await reportAuthEvent({
+        method: 'github',
+        success: true,
+        errorCode: 'oauth_redirect_started',
+      })
+      await signIn('github', { redirectTo: '/forge' })
     } catch (e: any) {
-      setError(e.message || 'GitHub sign-in failed — try again')
+      clearPendingAuth()
+      const errorCode = normalizeErrorCode(e)
+      void reportAuthEvent({
+        method: 'github',
+        success: false,
+        errorCode,
+      })
+      setError(userFacingAuthError('github', errorCode))
       setLoading(false)
     }
   }
@@ -332,7 +426,7 @@ function GitHubSignIn() {
         {loading ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(0,0,0,0.2)', borderTop: '2px solid #000', borderRadius: '50%', animation: 'signin-spin 0.6s linear infinite' }} />
-            Connecting...
+            Redirecting...
           </span>
         ) : (
           <>
@@ -352,30 +446,38 @@ function EmailOTPForm() {
   const { signIn } = useAuthActions()
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
-  const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleSendCode = async () => {
+  const normalizedEmail = email.trim().toLowerCase()
+
+  const handleSendMagicLink = async () => {
     setError('')
+    if (!EMAIL_RE.test(normalizedEmail)) {
+      setError('Enter a valid email address.')
+      return
+    }
     setLoading(true)
+    setPendingAuth('email-otp', normalizedEmail)
     try {
-      await signIn('resend-otp', { email })
+      await signIn('resend', { email: normalizedEmail, redirectTo: '/forge' })
+      void reportAuthEvent({
+        method: 'email-otp',
+        success: true,
+        email: normalizedEmail,
+        errorCode: 'magic_link_sent',
+      })
       setSent(true)
     } catch (e: any) {
-      setError(e.message || 'Failed to send code')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleVerify = async () => {
-    setError('')
-    setLoading(true)
-    try {
-      await signIn('resend-otp', { email, code })
-    } catch (e: any) {
-      setError(e.message || 'Invalid code — try again')
+      clearPendingAuth()
+      const errorCode = normalizeErrorCode(e)
+      void reportAuthEvent({
+        method: 'email-otp',
+        success: false,
+        email: normalizedEmail,
+        errorCode,
+      })
+      setError(userFacingAuthError('email-otp', errorCode))
     } finally {
       setLoading(false)
     }
@@ -390,12 +492,12 @@ function EmailOTPForm() {
           placeholder="your@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && email && handleSendCode()}
+          onKeyDown={(e) => e.key === 'Enter' && normalizedEmail && handleSendMagicLink()}
         />
         <button
           className="signin-email-btn"
-          onClick={handleSendCode}
-          disabled={!email || loading}
+          onClick={handleSendMagicLink}
+          disabled={!normalizedEmail || loading}
         >
           {loading ? 'Sending...' : 'Send Magic Link'}
         </button>
@@ -407,27 +509,18 @@ function EmailOTPForm() {
   return (
     <div>
       <p className="signin-success-note">
-        Code sent to <strong>{email}</strong>. Check your inbox.
+        Magic link sent to <strong>{normalizedEmail}</strong>. Open it on this device to finish sign-in.
       </p>
-      <input
-        className="signin-input"
-        type="text"
-        placeholder="Enter 6-digit code"
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && code && handleVerify()}
-        autoFocus
-      />
       <button
         className="signin-email-btn"
-        onClick={handleVerify}
-        disabled={!code || loading}
+        onClick={handleSendMagicLink}
+        disabled={loading}
       >
-        {loading ? 'Verifying...' : 'Verify & Enter'}
+        {loading ? 'Sending...' : 'Resend Magic Link'}
       </button>
       {error && <div className="signin-error">{error}</div>}
       <button
-        onClick={() => { setSent(false); setCode(''); setError('') }}
+        onClick={() => { setSent(false); setError(''); clearPendingAuth() }}
         style={{ marginTop: '0.75rem', background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', cursor: 'pointer', fontFamily: "'Kanit', sans-serif" }}
       >
         ← Use a different email
@@ -442,9 +535,17 @@ function GuestSignIn() {
 
   const handleGuestSignIn = async () => {
     setLoading(true)
+    setPendingAuth('guest')
     try {
+      void reportAuthEvent({ method: 'guest', success: true, errorCode: 'guest_signin_started' })
       await signIn('anonymous')
     } catch (e) {
+      clearPendingAuth()
+      void reportAuthEvent({
+        method: 'guest',
+        success: false,
+        errorCode: normalizeErrorCode(e),
+      })
       // Anonymous auth shouldn't fail in practice
       console.error('Guest sign-in failed:', e)
       setLoading(false)

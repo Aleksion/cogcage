@@ -7,7 +7,15 @@ export const record = mutation({
     email: v.optional(v.string()),
     stripeSessionId: v.string(),
     amount: v.number(),
-    status: v.union(v.literal("completed"), v.literal("pending"), v.literal("refunded")),
+    currency: v.optional(v.string()),
+    source: v.optional(v.string()),
+    eventType: v.optional(v.string()),
+    status: v.union(
+      v.literal("completed"),
+      v.literal("pending"),
+      v.literal("refunded"),
+      v.literal("failed"),
+    ),
   },
   handler: async (ctx, args) => {
     // Deduplicate by stripeSessionId
@@ -16,14 +24,25 @@ export const record = mutation({
       .withIndex("by_stripeSessionId", (q) => q.eq("stripeSessionId", args.stripeSessionId))
       .unique();
 
+    const now = Date.now();
     if (existing) {
-      await ctx.db.patch(existing._id, { status: args.status });
+      await ctx.db.patch(existing._id, {
+        userId: args.userId ?? existing.userId,
+        email: args.email ?? existing.email,
+        amount: args.amount ?? existing.amount,
+        currency: args.currency ?? existing.currency,
+        source: args.source ?? existing.source,
+        eventType: args.eventType ?? existing.eventType,
+        status: args.status,
+        updatedAt: now,
+      });
       return existing._id;
     }
 
     return await ctx.db.insert("purchases", {
       ...args,
-      createdAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     });
   },
 });

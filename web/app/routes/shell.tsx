@@ -1,8 +1,10 @@
 import { createFileRoute, useSearch, Link } from '@tanstack/react-router'
 import { useConvexAuth } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
+import { useEffect, useState } from 'react'
 import { ClientOnly } from '~/components/ClientOnly'
 import Armory from '~/components/Armory'
+import { calculateLoadoutStats } from '~/lib/cards'
 
 export const Route = createFileRoute('/shell')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -88,9 +90,127 @@ const SHELL_GATE_STYLES = `
   .shell-gate-more:hover { color: rgba(255,255,255,0.5); }
 `
 
+const LOCAL_SHELLS_KEY = 'moltpit_shells_cache_v1'
+
+type ShellPayload = {
+  id: string
+  name: string
+  cards: string[]
+  brainPrompt: string
+  skills: string[]
+  createdAt: number
+  stats: { totalWeight: number; totalOverhead: number; armorValue: number }
+}
+
+function normalizeShell(raw: any): ShellPayload | null {
+  if (!raw || typeof raw !== 'object') return null
+  const name = typeof raw.name === 'string' ? raw.name.trim() : ''
+  const cards = Array.isArray(raw.cards) ? raw.cards.filter((x) => typeof x === 'string') : []
+  if (!name || cards.length === 0) return null
+  const stats = raw.stats && typeof raw.stats === 'object'
+    ? {
+        totalWeight: Number(raw.stats.totalWeight) || 0,
+        totalOverhead: Number(raw.stats.totalOverhead) || 0,
+        armorValue: Number(raw.stats.armorValue) || 0,
+      }
+    : calculateLoadoutStats(cards)
+
+  return {
+    id: String(raw.id ?? raw._id ?? crypto.randomUUID()),
+    name,
+    cards,
+    brainPrompt: String(raw.brainPrompt ?? raw.directive ?? ''),
+    skills: Array.isArray(raw.skills) ? raw.skills.filter((x) => typeof x === 'string').slice(0, 3) : [],
+    createdAt: Number(raw.createdAt) || Date.now(),
+    stats,
+  }
+}
+
+function readLocalShells(): ShellPayload[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LOCAL_SHELLS_KEY) || '[]')
+    if (!Array.isArray(parsed)) return []
+    return parsed.map(normalizeShell).filter(Boolean) as ShellPayload[]
+  } catch {
+    return []
+  }
+}
+
+function writeLocalShells(shells: ShellPayload[]) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(LOCAL_SHELLS_KEY, JSON.stringify(shells.slice(0, 50)))
+}
+
+async function fetchServerShells(): Promise<ShellPayload[]> {
+  const res = await fetch('/api/shell')
+  const data = await res.json()
+  const items = Array.isArray(data?.loadouts) ? data.loadouts : []
+  return items.map(normalizeShell).filter(Boolean) as ShellPayload[]
+}
+
+function mergeServerWins(serverShells: ShellPayload[], localShells: ShellPayload[]) {
+  const byFingerprint = new Map<string, ShellPayload>()
+  for (const shell of serverShells) {
+    const key = `${shell.name.toLowerCase()}::${shell.cards.join(',')}`
+    byFingerprint.set(key, shell)
+  }
+  const missingLocal = localShells.filter((shell) => {
+    const key = `${shell.name.toLowerCase()}::${shell.cards.join(',')}`
+    return !byFingerprint.has(key)
+  })
+  return { canonical: serverShells, missingLocal }
+}
+
 function ShellAuthGate({ returnTo }: { returnTo: string }) {
   const { isAuthenticated, isLoading } = useConvexAuth()
   const { signIn } = useAuthActions()
+  const [syncing, setSyncing] = useState(false)
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    let cancelled = false
+
+    const syncShells = async () => {
+      setSyncing(true)
+      try {
+        const [serverShells, localShells] = await Promise.all([
+          fetchServerShells(),
+          Promise.resolve(readLocalShells()),
+        ])
+
+        const { canonical, missingLocal } = mergeServerWins(serverShells, localShells)
+
+        for (const shell of missingLocal) {
+          await fetch('/api/shell', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              name: shell.name,
+              cards: shell.cards,
+              brainPrompt: shell.brainPrompt,
+              skills: shell.skills,
+              stats: shell.stats,
+            }),
+          })
+        }
+
+        const latest = missingLocal.length > 0 ? await fetchServerShells() : canonical
+        if (!cancelled) {
+          writeLocalShells(latest)
+        }
+      } catch {
+        // Non-fatal: Armory still loads from server route when available.
+      } finally {
+        if (!cancelled) setSyncing(false)
+      }
+    }
+
+    void syncShells()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated])
 
   if (isLoading) {
     return (
@@ -121,6 +241,16 @@ function ShellAuthGate({ returnTo }: { returnTo: string }) {
           <Link to="/sign-in" className="shell-gate-more">More sign-in options →</Link>
         </div>
       </>
+    )
+  }
+
+  if (syncing) {
+    return (
+      <div style={{ minHeight: '60vh', background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.8rem', letterSpacing: 2, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>
+          Syncing shells...
+        </span>
+      </div>
     )
   }
 

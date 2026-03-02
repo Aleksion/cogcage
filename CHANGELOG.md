@@ -8,6 +8,68 @@
 
 ---
 
+## [2026-03-02] - feat(ws18): product core sprint — auth reliability, playable demo loop, monetization wiring
+
+**Type:** feat | **Budget impact:** ~$2
+
+### Summary
+Delivers WS18 product-critical scope only: hardened sign-in flow (GitHub + magic link), persistent Convex auth observability, shell persistence merge after auth, a real pre-auth playable demo loop on `/play`, and end-to-end purchase recording from checkout success + postback into Convex.
+
+### Changes
+- `web/app/routes/sign-in.tsx`
+  - Replaced invalid `signIn('resend-otp')` calls with `signIn('resend')`.
+  - Added explicit loading/error/success UX for GitHub redirect and magic-link send/resend flow.
+  - Added auth attempt telemetry hooks to `/api/auth-event` with error-code normalization.
+- `web/convex/auth.ts`
+  - Explicit provider materialization for GitHub + Resend with env-backed config.
+  - Set default `AUTH_EMAIL_FROM` fallback for Resend.
+- `web/app/routes/api/auth-event.ts` (new)
+  - Public endpoint that hashes email server-side and writes Convex `authEvents`.
+  - Captures `timestamp` (server-side in mutation), `method`, `success`, `errorCode`, `emailHash`.
+- `web/app/routes/api/ops.ts`
+  - Added Convex-backed auth stats/recent-event and purchase-event snapshots in ops payload.
+- `web/app/components/OpsLogPage.tsx`
+  - Added WS18 shipped artifact details and new Auth Reliability / Purchases panels.
+- `web/app/routes/shell.tsx`
+  - Added post-auth shell sync: merge local cache + server with server precedence.
+  - Persists canonical merged shells back to local cache.
+- `web/app/components/Armory.tsx`
+  - Added shell cache read/write (`moltpit_shells_cache_v1`).
+  - Normalized API payload mapping (`_id`/`directive` → `id`/`brainPrompt`) and cache updates after save/delete.
+- `web/app/routes/api/shell.ts`
+  - Normalized shell API response shape to app expectations (`id`, `brainPrompt`, computed stats fallback).
+- `web/app/routes/api/shell.$id.ts`
+  - Normalized delete-response payload shape to match shell API.
+- `web/app/components/DemoLoop.tsx`
+  - Rebuilt into a real autoplay match loop with map movement + action economy (`ATTACK/DEFEND/CHARGE/STUN/WAIT`), energy costs/regen, health + energy bars, ticker, winner CTA, and ~30s round pacing.
+  - Added Founder checkout CTA with explicit placeholder behavior when `PUBLIC_STRIPE_FOUNDER_URL` is missing.
+- `web/convex/schema.ts`
+  - Expanded `purchases` schema with `currency`, `source`, `eventType`, `updatedAt`, `failed` status, and `by_status` index.
+- `web/convex/purchases.ts`
+  - Upgraded mutation to upsert-and-patch by `stripeSessionId` with richer metadata and `updatedAt`.
+- `web/app/lib/convex-purchases.ts` (new)
+  - Shared server helper for recording purchases into Convex by function reference.
+- `web/app/routes/api/checkout-success.ts`
+  - Added purchase recording on success-route confirmation (session-aware).
+- `web/app/routes/api/postback.ts`
+  - Added `checkout.session.completed` purchase recording into Convex.
+- `web/ops/log.md`
+  - Added WS18 shipped artifact entry.
+
+### Design Decisions
+- Kept Convex as the persistent source for auth and purchase telemetry; Redis/SQLite remain auxiliary fallback channels.
+- Chose server-side email hashing in `/api/auth-event` to guarantee hash-only persistence regardless of client behavior.
+- Chose server-wins merge for shell persistence to avoid local stale state overwriting authenticated canonical data.
+- Kept checkout conversion responses non-blocking even when Convex purchase writes fail; failures are logged to ops stream.
+
+### Breaking Changes
+- Convex `purchases` schema changed (`updatedAt`, extra fields, expanded status union, new index). Deploy requires a Convex schema push.
+
+### Next Steps
+1. Add request signing/rate limiting for `/api/auth-event` once initial auth reliability burn-in is complete.
+2. Add automated integration test coverage for `/api/checkout-success` + `/api/postback` purchase writes.
+3. Add server-side validation for currency/amount normalization per Stripe semantics.
+
 ## [2026-03-01] - design: game studio structure + full ontology
 
 **Type:** design | **Budget impact:** ~$0 (no agent)
@@ -712,4 +774,3 @@ Project renamed from CogCage to The Molt Pit throughout docs, task specs, and ar
 - `cogcage.com` domain: keep for now, evaluate `themoltpit.com` separately
 - Redis key prefixes (`cogcage_pid`, `armory:*`, `lobby:*`) — follow-up rename PR
 - GitHub repo URL: `Aleksion/themoltpit` — can rename repo in GitHub settings when ready
-

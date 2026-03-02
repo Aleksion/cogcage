@@ -2,8 +2,29 @@ import { createFileRoute } from '@tanstack/react-router'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '../../../convex/_generated/api'
 import { getCookie } from '~/lib/cookies'
+import { calculateLoadoutStats } from '~/lib/cards'
 
 const convex = new ConvexHttpClient(process.env.CONVEX_URL || 'https://intent-horse-742.convex.cloud')
+
+function normalizeShell(raw: any) {
+  const cards = Array.isArray(raw?.cards) ? raw.cards.filter((x: unknown) => typeof x === 'string') : []
+  const stats = raw?.stats && typeof raw.stats === 'object'
+    ? {
+        totalWeight: Number(raw.stats.totalWeight) || 0,
+        totalOverhead: Number(raw.stats.totalOverhead) || 0,
+        armorValue: Number(raw.stats.armorValue) || 0,
+      }
+    : calculateLoadoutStats(cards)
+  return {
+    id: String(raw?._id),
+    name: String(raw?.name ?? 'Unnamed Shell'),
+    cards,
+    brainPrompt: String(raw?.directive ?? ''),
+    skills: Array.isArray(raw?.skills) ? raw.skills.filter((x: unknown) => typeof x === 'string').slice(0, 3) : [],
+    createdAt: Number(raw?.createdAt) || Date.now(),
+    stats,
+  }
+}
 
 export const Route = createFileRoute('/api/shell')({
   server: {
@@ -22,7 +43,7 @@ export const Route = createFileRoute('/api/shell')({
         try {
           convex.setAuth(token)
           const shells = await convex.query(api.shells.list)
-          return new Response(JSON.stringify({ loadouts: shells }), {
+          return new Response(JSON.stringify({ loadouts: shells.map(normalizeShell) }), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           })
@@ -61,11 +82,11 @@ export const Route = createFileRoute('/api/shell')({
             cards,
             directive: brainPrompt || '',
             skills: Array.isArray(skills) ? skills : [],
-            stats: stats || { totalWeight: 0, totalOverhead: 0, armorValue: 0 },
+            stats: stats || calculateLoadoutStats(cards),
           })
 
           const shells = await convex.query(api.shells.list)
-          return new Response(JSON.stringify({ loadouts: shells }), {
+          return new Response(JSON.stringify({ loadouts: shells.map(normalizeShell) }), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           })

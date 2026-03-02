@@ -25,6 +25,45 @@ interface SavedLoadout {
   stats: { totalWeight: number; totalOverhead: number; armorValue: number };
 }
 
+const LOCAL_SHELLS_KEY = 'moltpit_shells_cache_v1';
+
+function normalizeServerLoadout(raw: any): SavedLoadout | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+  const cards = Array.isArray(raw.cards) ? raw.cards.filter((x: unknown) => typeof x === 'string') : [];
+  if (!name || cards.length === 0) return null;
+  const stats = raw.stats && typeof raw.stats === 'object'
+    ? {
+        totalWeight: Number(raw.stats.totalWeight) || 0,
+        totalOverhead: Number(raw.stats.totalOverhead) || 0,
+        armorValue: Number(raw.stats.armorValue) || 0,
+      }
+    : calculateLoadoutStats(cards);
+  return {
+    id: String(raw.id ?? raw._id ?? crypto.randomUUID()),
+    name,
+    cards,
+    brainPrompt: String(raw.brainPrompt ?? raw.directive ?? ''),
+    skills: Array.isArray(raw.skills) ? raw.skills.filter((x: unknown) => typeof x === 'string').slice(0, 3) : [],
+    createdAt: Number(raw.createdAt) || Date.now(),
+    stats,
+  };
+}
+
+function readCachedShells(): SavedLoadout[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_SHELLS_KEY) || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeServerLoadout).filter(Boolean) as SavedLoadout[];
+  } catch {
+    return [];
+  }
+}
+
+function writeCachedShells(shells: SavedLoadout[]) {
+  localStorage.setItem(LOCAL_SHELLS_KEY, JSON.stringify(shells.slice(0, 50)));
+}
+
 /* ── Brain presets ────────────────────────────────────────────── */
 
 const MAX_SKILLS = 3;
@@ -390,6 +429,11 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
       const rt = params.get('returnTo');
       if (rt) setResolvedReturnTo(rt);
     }
+
+    const cached = readCachedShells();
+    if (cached.length > 0) {
+      setSavedLoadouts(cached);
+    }
   }, [returnTo]);
 
   // Fetch saved shells
@@ -397,7 +441,11 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
     try {
       const res = await fetch('/api/shell');
       const data = await res.json();
-      setSavedLoadouts(data.loadouts ?? []);
+      const normalized = (Array.isArray(data.loadouts) ? data.loadouts : [])
+        .map(normalizeServerLoadout)
+        .filter(Boolean) as SavedLoadout[];
+      setSavedLoadouts(normalized);
+      writeCachedShells(normalized);
     } catch { /* ignore */ }
   }, []);
 
@@ -467,7 +515,11 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
       if (data.error) {
         setError(data.error);
       } else {
-        setSavedLoadouts(data.loadouts);
+        const normalized = (Array.isArray(data.loadouts) ? data.loadouts : [])
+          .map(normalizeServerLoadout)
+          .filter(Boolean) as SavedLoadout[];
+        setSavedLoadouts(normalized);
+        writeCachedShells(normalized);
         setLoadoutName('');
         setLoadout([]);
         setBrainPrompt('');
@@ -487,7 +539,11 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
     try {
       const res = await fetch(`/api/shell/${loadoutId}`, { method: 'DELETE' });
       const data = await res.json();
-      setSavedLoadouts(data.loadouts ?? []);
+      const normalized = (Array.isArray(data.loadouts) ? data.loadouts : [])
+        .map(normalizeServerLoadout)
+        .filter(Boolean) as SavedLoadout[];
+      setSavedLoadouts(normalized);
+      writeCachedShells(normalized);
     } catch { /* ignore */ }
   };
 

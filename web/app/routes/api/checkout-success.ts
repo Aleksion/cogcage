@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { insertConversionEvent } from '~/lib/waitlist-db'
 import { appendEventsFallback, appendOpsLog } from '~/lib/observability'
 import { redisInsertConversionEvent } from '~/lib/waitlist-redis'
+import { recordPurchaseInConvex } from '~/lib/convex-purchases'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -22,6 +23,15 @@ function normalizeString(value: unknown, maxLen = 300) {
 function optionalString(value: unknown, maxLen = 300) {
   const normalized = normalizeString(value, maxLen);
   return normalized.length > 0 ? normalized : undefined;
+}
+
+function parseAmount(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.floor(value));
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return Math.max(0, Math.floor(parsed));
+  }
+  return 0;
 }
 
 function hashString(input: string) {
@@ -152,10 +162,15 @@ export const Route = createFileRoute('/api/checkout-success')({
         const href = optionalString(payload.href, 600);
         const source = optionalString(payload.source, 120);
         const tier = optionalString(payload.tier, 60);
+        const sessionId =
+          optionalString(payload.session_id, 180)
+          ?? optionalString(payload.checkout_session_id, 180)
+          ?? optionalString(payload.sessionId, 180);
+        const amount = parseAmount(payload.amount ?? payload.amount_total ?? payload.amountTotal);
+        const currency = optionalString(payload.currency, 12);
         const eventId =
           optionalString(payload.eventId, 180)
-          ?? optionalString(payload.session_id, 180)
-          ?? optionalString(payload.checkout_session_id, 180)
+          ?? sessionId
           ?? deriveFallbackEventId({ source, email, href, page, tier });
         const meta = payload.meta && typeof payload.meta === 'object' ? (payload.meta as Record<string, unknown>) : undefined;
 
@@ -170,6 +185,29 @@ export const Route = createFileRoute('/api/checkout-success')({
             meta,
             request,
           });
+
+          if (sessionId) {
+            try {
+              await recordPurchaseInConvex({
+                stripeSessionId: sessionId,
+                amount,
+                currency,
+                status: 'completed',
+                email,
+                source: source ?? 'checkout-success',
+                eventType: 'checkout.success',
+              });
+            } catch (error) {
+              appendOpsLog({
+                route: '/api/checkout-success',
+                level: 'warn',
+                event: 'purchase_record_failed',
+                requestId: result.requestId,
+                sessionId,
+                error: error instanceof Error ? error.message : 'unknown',
+              });
+            }
+          }
 
           return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined }), {
             status: result.queued ? 202 : 200,
@@ -196,6 +234,8 @@ export const Route = createFileRoute('/api/checkout-success')({
           optionalString(url.searchParams.get('event_id'), 180)
           ?? optionalString(url.searchParams.get('session_id'), 180)
           ?? optionalString(url.searchParams.get('checkout_session_id'), 180);
+        const amount = parseAmount(url.searchParams.get('amount_total') ?? url.searchParams.get('amount'));
+        const currency = optionalString(url.searchParams.get('currency'), 12);
         const page = optionalString(url.searchParams.get('page'), 120) ?? url.pathname;
         const href = optionalString(url.searchParams.get('href'), 600) ?? request.url;
         const source = optionalString(url.searchParams.get('source'), 120);
@@ -215,6 +255,29 @@ export const Route = createFileRoute('/api/checkout-success')({
             },
             request,
           });
+
+          if (eventId) {
+            try {
+              await recordPurchaseInConvex({
+                stripeSessionId: eventId,
+                amount,
+                currency,
+                status: 'completed',
+                email,
+                source: source ?? 'checkout-success',
+                eventType: 'checkout.success',
+              });
+            } catch (error) {
+              appendOpsLog({
+                route: '/api/checkout-success',
+                level: 'warn',
+                event: 'purchase_record_failed',
+                requestId: result.requestId,
+                sessionId: eventId,
+                error: error instanceof Error ? error.message : 'unknown',
+              });
+            }
+          }
 
           return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined }), {
             status: result.queued ? 202 : 200,

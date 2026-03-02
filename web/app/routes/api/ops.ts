@@ -1,12 +1,18 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { createFileRoute } from '@tanstack/react-router'
+import { ConvexHttpClient } from 'convex/browser'
+import { makeFunctionReference } from 'convex/server'
 import { getFunnelCounts, getReliabilitySnapshot, getStorageHealth } from '~/lib/waitlist-db'
 import { drainFallbackQueues } from '~/lib/fallback-drain'
 import { getRuntimeDir } from '~/lib/runtime-paths'
 import { redisGetOpsLogTail, redisGetFunnelCounts } from '~/lib/waitlist-redis'
 
 const LOG_DIR = process.env.MOLTPIT_LOG_DIR ?? getRuntimeDir();
+const convex = new ConvexHttpClient(process.env.CONVEX_URL || 'https://intent-horse-742.convex.cloud')
+const authStatsRef = makeFunctionReference<'query'>('auth-log:stats')
+const authRecentEventsRef = makeFunctionReference<'query'>('auth-log:recentEvents')
+const purchaseListRef = makeFunctionReference<'query'>('purchases:list')
 
 type RuntimeFile = {
   file: string;
@@ -109,6 +115,24 @@ export const Route = createFileRoute('/api/ops')({
           // Redis unavailable — degrade gracefully, SQLite counts still show
         }
 
+        // Convex auth/purchase observability (persistent)
+        let authEvents: { stats: unknown; recent: unknown[] } | null = null;
+        let purchaseEvents: unknown[] = [];
+        try {
+          const [statsSnapshot, authRecent, purchasesRecent] = await Promise.all([
+            convex.query(authStatsRef, {} as any),
+            convex.query(authRecentEventsRef, { limit: 50 } as any),
+            convex.query(purchaseListRef, { limit: 50 } as any),
+          ]);
+          authEvents = {
+            stats: statsSnapshot,
+            recent: Array.isArray(authRecent) ? authRecent : [],
+          };
+          purchaseEvents = Array.isArray(purchasesRecent) ? purchasesRecent : [];
+        } catch {
+          // Convex unavailable — ops endpoint should still serve local/Redis diagnostics.
+        }
+
         const queueBacklog = {
           waitlistFallbackLines: files.find((file) => file.file === 'waitlist-fallback.ndjson')?.lines ?? 0,
           founderIntentFallbackLines: files.find((file) => file.file === 'founder-intent-fallback.ndjson')?.lines ?? 0,
@@ -117,7 +141,7 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
-          { sha: 'ws18', msg: 'feat(ws18): product core — signup reliability, demo loop, monetization, ops log' },
+          { sha: 'ws18', msg: 'feat(ws18): auth reliability + shell sync + playable demo + purchases + ops visibility' },
           { sha: '03af74a', msg: 'ops: budget tracker, decision log, mandatory PR rules' },
           { sha: '7f9befd', msg: 'design: game studio structure — ontology, items, visual, audio, UI copy guide' },
           { sha: '860f447', msg: 'feat(ws16): BYO OpenClaw agent — webhook-based decision routing' },
@@ -133,6 +157,8 @@ export const Route = createFileRoute('/api/ops')({
           redisOpsLog,
           reliability,
           storage,
+          authEvents,
+          purchaseEvents,
           runtimeDir: LOG_DIR,
           queueBacklog,
           files,

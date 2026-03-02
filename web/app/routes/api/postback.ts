@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { appendEventsFallback, appendOpsLog } from '~/lib/observability'
 import { insertConversionEvent, insertFounderIntent } from '~/lib/waitlist-db'
 import { redisInsertConversionEvent, redisInsertFounderIntent } from '~/lib/waitlist-redis'
+import { recordPurchaseInConvex } from '~/lib/convex-purchases'
 
 type CheckoutPostback = {
   type?: string;
@@ -69,6 +70,15 @@ function safeMetaJson(meta: Record<string, unknown>) {
   } catch {
     return JSON.stringify({ invalidMeta: true });
   }
+}
+
+function parseAmount(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.floor(value));
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return Math.max(0, Math.floor(parsed));
+  }
+  return 0;
 }
 
 export const Route = createFileRoute('/api/postback')({
@@ -187,6 +197,42 @@ export const Route = createFileRoute('/api/postback')({
             insertFounderIntent(founderIntentPayload);
             void redisInsertFounderIntent(founderIntentPayload).catch((e: unknown) => {
               appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_redis_founder_intent_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
+            });
+          }
+
+          const amount = parseAmount(
+            object?.metadata?.amount_total
+            ?? (payload.metadata as any)?.amount_total
+            ?? (object as any)?.amount_total
+            ?? (payload as any).amount_total
+            ?? 0,
+          );
+          const currency = normalizeString(
+            object?.metadata?.currency
+            ?? (payload.metadata as any)?.currency
+            ?? (object as any)?.currency,
+            12,
+          ) || undefined;
+
+          try {
+            await recordPurchaseInConvex({
+              stripeSessionId: eventId,
+              amount,
+              currency,
+              status: eventType === 'checkout.session.completed' ? 'completed' : 'pending',
+              email,
+              source,
+              eventType,
+            });
+          } catch (error) {
+            appendOpsLog({
+              route: '/api/postback',
+              level: 'warn',
+              event: 'postback_purchase_record_failed',
+              requestId,
+              eventType,
+              eventId,
+              error: error instanceof Error ? error.message : 'unknown',
             });
           }
 

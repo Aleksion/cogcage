@@ -89,9 +89,19 @@ export default defineSchema({
     email: v.optional(v.string()),
     stripeSessionId: v.string(),
     amount: v.number(),
-    status: v.union(v.literal("completed"), v.literal("pending"), v.literal("refunded")),
+    currency: v.optional(v.string()),
+    source: v.optional(v.string()),
+    eventType: v.optional(v.string()),
+    status: v.union(
+      v.literal("completed"),
+      v.literal("pending"),
+      v.literal("refunded"),
+      v.literal("failed"),
+    ),
     createdAt: v.number(),
+    updatedAt: v.number(),
   })
     .index("by_stripeSessionId", ["stripeSessionId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_status", ["status"]),
 });

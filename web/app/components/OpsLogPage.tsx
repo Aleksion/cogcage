@@ -122,12 +122,12 @@ export function OpsLogPage() {
           WS18 PRODUCT CORE SPRINT — 2026-03-01
         </div>
         <ul style={{ margin: 0, padding: '0 0 0 1.2rem', color: '#ccc', fontSize: 12, lineHeight: 1.8 }}>
-          <li>Signup form reliability fixes (GitHub loading/error states, spinner)</li>
-          <li>Auth event logging (Convex authEvents table + stats query)</li>
-          <li>Shell persistence via Convex (shells.ts already wired)</li>
-          <li>DemoLoop component (scripted BERSERKER vs TACTICIAN, action economy)</li>
-          <li>Founder Pack checkout + postback wiring (checkout-success + postback routes)</li>
-          <li>Purchases table in Convex (deduplication by stripeSessionId)</li>
+          <li>Sign-in reliability for GitHub + Resend magic link with explicit loading/success/error states</li>
+          <li>Persistent Convex auth logging (`/api/auth-event` → `authEvents`) exposed in `/api/ops`</li>
+          <li>Shell persistence migration: local cache + Convex merge on `/shell` (server wins)</li>
+          <li>Real demo loop on `/play` pre-auth: map movement + ATTACK/DEFEND/CHARGE/STUN + ticker + ~30s autoplay</li>
+          <li>Founder checkout fallback placeholder when Stripe URL env is missing</li>
+          <li>Purchases recording wired from `/api/checkout-success` and `/api/postback` into Convex</li>
         </ul>
       </div>
 
@@ -209,6 +209,84 @@ export function OpsLogPage() {
                   >
                     <span style={{ color: '#27d9e8' }}>{c.sha}</span>{' '}
                     <span style={{ color: '#e0e0e0' }}>{c.msg}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* ── Auth Reliability ── */}
+          {data.authEvents && (
+            <>
+              <h2
+                style={{
+                  fontSize: '0.85rem',
+                  color: '#27d9e8',
+                  margin: '1.5rem 0 0.5rem',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Auth Reliability (Convex)
+              </h2>
+              <div
+                style={{
+                  background: '#1a1a1a',
+                  border: '1px solid #2a2a2a',
+                  borderRadius: 4,
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                <div style={{ color: '#9aa', marginBottom: 6, fontSize: 12 }}>
+                  Last 24h: {data.authEvents.stats?.successes ?? 0} success · {data.authEvents.stats?.failures ?? 0} fail · {data.authEvents.stats?.total ?? 0} total
+                </div>
+                {(data.authEvents.recent as any[] | undefined)?.slice(0, 8).map((event, i) => (
+                  <div key={String(event?._id ?? i)} style={{ color: '#d7d7d7', fontSize: 12, borderTop: i === 0 ? 'none' : '1px solid #232323', padding: '4px 0' }}>
+                    <span style={{ color: '#888' }}>{event?.method}</span>
+                    {' · '}
+                    <span style={{ color: event?.success ? '#2ecc71' : '#eb4d4b' }}>{event?.success ? 'ok' : 'fail'}</span>
+                    {event?.errorCode ? ` · ${event.errorCode}` : ''}
+                    {' · '}
+                    <span style={{ color: '#666' }}>{event?.timestamp ? new Date(event.timestamp).toISOString() : ''}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* ── Purchases ── */}
+          {Array.isArray(data.purchaseEvents) && data.purchaseEvents.length > 0 && (
+            <>
+              <h2
+                style={{
+                  fontSize: '0.85rem',
+                  color: '#27d9e8',
+                  margin: '1.5rem 0 0.5rem',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Purchases (Convex)
+              </h2>
+              <div
+                style={{
+                  background: '#1a1a1a',
+                  border: '1px solid #2a2a2a',
+                  borderRadius: 4,
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                {(data.purchaseEvents as any[]).slice(0, 10).map((purchase, i) => (
+                  <div key={String(purchase?._id ?? i)} style={{ color: '#d7d7d7', fontSize: 12, borderTop: i === 0 ? 'none' : '1px solid #232323', padding: '4px 0' }}>
+                    <span style={{ color: '#27d9e8' }}>{purchase?.stripeSessionId ?? 'session-missing'}</span>
+                    {' · '}
+                    <span style={{ color: '#ffd600' }}>{purchase?.amount ?? 0} {purchase?.currency ?? 'usd'}</span>
+                    {' · '}
+                    <span style={{ color: purchase?.status === 'completed' ? '#2ecc71' : '#f39c12' }}>{purchase?.status ?? 'pending'}</span>
+                    {' · '}
+                    <span style={{ color: '#666' }}>{purchase?.createdAt ? new Date(purchase.createdAt).toISOString() : ''}</span>
                   </div>
                 ))}
               </div>
