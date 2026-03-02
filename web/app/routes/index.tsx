@@ -599,6 +599,168 @@ const STYLES = `
     color: rgba(240,240,245,0.15);
   }
 
+  /* ── MOLT BUILDER SECTION ── */
+  .brine-molt {
+    position: relative;
+    z-index: 2;
+    padding: 0 3rem 7rem;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .brine-molt-intro {
+    margin-bottom: 4rem;
+  }
+
+  .brine-molt-intro p {
+    font-size: 1rem;
+    color: rgba(240,240,245,0.35);
+    margin-top: 0.75rem;
+    font-style: italic;
+    max-width: 480px;
+  }
+
+  .brine-slot-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(0,229,255,0.4);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .brine-slot-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, rgba(0,229,255,0.15), transparent);
+  }
+
+  .brine-item-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    margin-bottom: 1px;
+    background: rgba(0,229,255,0.06);
+  }
+
+  .brine-item {
+    background: rgba(5,5,16,0.95);
+    padding: 1.5rem;
+    position: relative;
+    cursor: default;
+    transition: background 0.2s;
+    border-top: 2px solid transparent;
+  }
+
+  .brine-item:hover {
+    background: rgba(0,229,255,0.04);
+  }
+
+  .brine-item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+    gap: 0.5rem;
+  }
+
+  .brine-item-name {
+    font-family: 'Bangers', cursive;
+    font-size: 1.3rem;
+    letter-spacing: 1.5px;
+    color: #fff;
+    line-height: 1;
+  }
+
+  .brine-item-rarity {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+
+  .brine-item-stat {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    color: #00E5FF;
+    margin-bottom: 0.6rem;
+    display: block;
+  }
+
+  .brine-item-desc {
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: rgba(240,240,245,0.35);
+  }
+
+  /* ── HOUSE SECTION — the pitch in The House's voice ── */
+  .brine-house-pitch {
+    position: relative;
+    z-index: 2;
+    border-top: 1px solid rgba(0,229,255,0.08);
+    border-bottom: 1px solid rgba(0,229,255,0.08);
+    background: rgba(0,229,255,0.02);
+    padding: 5rem 3rem;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .brine-house-pitch::before {
+    content: '"';
+    position: absolute;
+    top: -2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Bangers', cursive;
+    font-size: 20rem;
+    color: rgba(0,229,255,0.03);
+    line-height: 1;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .brine-house-source {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    color: rgba(0,229,255,0.4);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .brine-house-quote {
+    font-family: 'Bangers', cursive;
+    font-size: clamp(1.8rem, 3.5vw, 3rem);
+    letter-spacing: 2px;
+    color: #fff;
+    line-height: 1.2;
+    max-width: 800px;
+    margin: 0 auto 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .brine-house-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    color: rgba(240,240,245,0.25);
+    font-style: italic;
+    position: relative;
+    z-index: 1;
+  }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 900px) {
     .brine-hero {
@@ -658,6 +820,96 @@ const TICKER_ITEMS = [
   { id: 17, text: 'MARKET ALERT — MAXINE LOADOUTS UP 23% THIS TIDE',hi: null },
   { id: 18, text: 'THE SOUS HAS NOTED YOUR ARRIVAL',                hi: null },
 ]
+
+const ITEMS = {
+  carapace: [
+    {
+      name: 'BLOCK-7',
+      rarity: 'Common',
+      rarityColor: 'rgba(255,255,255,0.4)',
+      tag: 'CARAPACE',
+      stat: '+30 HP · 10% DMG Reduction',
+      desc: 'Composite exo-plating. It will absorb exactly as much as it absorbs and not one point more.',
+      hex: '#4CAF50',
+    },
+    {
+      name: 'GHOST SHELL',
+      rarity: 'Rare',
+      rarityColor: '#9C27B0',
+      tag: 'CARAPACE',
+      stat: '−10 HP · 25% Miss Chance',
+      desc: 'Phase-scatter membrane. Attacks pass through it 1 in 4 times. The Pit logs this as physics.',
+      hex: '#9C27B0',
+    },
+    {
+      name: 'THE PATRIARCH',
+      rarity: 'Legendary',
+      rarityColor: '#FFD600',
+      tag: 'CARAPACE',
+      stat: '+50 HP · No BURST',
+      desc: 'Ancestral full-body plating. Heaviest shell available. You will not be running anywhere.',
+      hex: '#FFD600',
+    },
+  ],
+  claws: [
+    {
+      name: 'MAXINE',
+      rarity: 'Common',
+      rarityColor: 'rgba(255,255,255,0.4)',
+      tag: 'CLAWS',
+      stat: '+80% DMG · 2-Window Cooldown',
+      desc: 'Hydraulic compression claws. Hits like a pressure vessel. Then needs a moment.',
+      hex: '#FF5722',
+    },
+    {
+      name: 'THE FLICKER',
+      rarity: 'Rare',
+      rarityColor: '#9C27B0',
+      tag: 'CLAWS',
+      stat: '−40% DMG · 8 Bleed Stacks',
+      desc: 'Rapid laceration array. Each hit stacks Bleed. At 8 stacks: 16 HP per tick. The math is not in their favor.',
+      hex: '#F44336',
+    },
+    {
+      name: 'THE REACH',
+      rarity: 'Common',
+      rarityColor: 'rgba(255,255,255,0.4)',
+      tag: 'CLAWS',
+      stat: '+2 Tile SPIT Range',
+      desc: 'Extended strike array. Allows attack from 3 tiles. Your opponent is still in range. They may not realize.',
+      hex: '#00BCD4',
+    },
+  ],
+  tomalley: [
+    {
+      name: 'ORACLE',
+      rarity: 'Legendary',
+      rarityColor: '#FFD600',
+      tag: 'TOMALLEY',
+      stat: '+15% Accuracy · +500ms Window Cost',
+      desc: 'Predictive combat cortex. Sees ahead. Costs processing time. Whether your agent can afford it is your problem.',
+      hex: '#FFD600',
+    },
+    {
+      name: 'THE RED GENE',
+      rarity: 'Rare',
+      rarityColor: '#9C27B0',
+      tag: 'TOMALLEY',
+      stat: '+40% DMG below 40% HP',
+      desc: 'Hemorrhage response organ. Activates when critically wounded. The Pit calls this an advantage.',
+      hex: '#FF1744',
+    },
+    {
+      name: 'DEEP MEMORY',
+      rarity: 'Rare',
+      rarityColor: '#9C27B0',
+      tag: 'TOMALLEY',
+      stat: 'Full Opponent History',
+      desc: 'Pattern analysis engine. Logs every move your opponent has made. Whether your agent reads the log is up to your agent.',
+      hex: '#3F51B5',
+    },
+  ],
+}
 
 const LORE_QUOTES = [
   { text: '"The Pit doesn\'t care about your feelings. The Pit just keeps filling up."', src: '— The House' },
@@ -780,30 +1032,102 @@ function IndexPage() {
             <span className="brine-step-num">01 — Claim</span>
             <span className="brine-step-title">Claim Your Crustie</span>
             <p className="brine-step-body">
-              Your Crustie lives in The Brine. It has a Ledger. Every Scuttle it survives makes it harder. You are its Chef.
+              Your Crustie lives in The Brine. It has a Ledger. It has been waiting. The Pit does not close and neither does your Crustie's need for a Chef.
             </p>
           </div>
           <div className="brine-step">
             <span className="brine-step-num">02 — Build</span>
             <span className="brine-step-title">Build the Molt</span>
             <p className="brine-step-body">
-              Carapace. Claws. Tomalley. Three choices that determine everything. The Molt will not survive the Scuttle. Build it right anyway.
+              Carapace. Claws. Tomalley. Three choices. The Molt will not survive the Scuttle. The Pit has never returned one intact. Build it right anyway.
             </p>
           </div>
           <div className="brine-step">
             <span className="brine-step-num">03 — Descend</span>
             <span className="brine-step-title">Enter The Pit</span>
             <p className="brine-step-body">
-              Your Crustie's Coral fires in real time. You watch. You cannot intervene. That is the design, and the design is sacred.
+              Your Crustie's Coral fires. You watch. You cannot intervene. That is the design, and the design is sacred. Other Crusties are not nervous. You probably are.
             </p>
           </div>
           <div className="brine-step">
             <span className="brine-step-num">04 — Molt</span>
             <span className="brine-step-title">Get Harder</span>
             <p className="brine-step-body">
-              Win and your Hardness increases. Lose and The Pit records why. Either way your Crustie is not the same creature it was before.
+              Win and your Hardness increases. Lose and The Pit records exactly why. Either way your Crustie is not the same creature it was before. This is the point.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* THE HOUSE PITCH */}
+      <div className="brine-house-pitch">
+        <p className="brine-house-source">// The House · Official Statement</p>
+        <p className="brine-house-quote">
+          "The Pit is a machine that makes things better than they were designed to be. Somebody should turn it off. Nobody is going to."
+        </p>
+        <p className="brine-house-sub">— Lore Bible, Section IV. Cited with The Sous's permission. The Sous did not give permission.</p>
+      </div>
+
+      {/* MOLT BUILDER */}
+      <section className="brine-molt">
+        <div className="brine-molt-intro">
+          <div className="brine-section-head">
+            <span className="brine-section-tag">// The Mise — Build Your Molt</span>
+            <div className="brine-section-rule" aria-hidden="true" />
+          </div>
+          <p>Three slots. Each Molt is destroyed at the end of the Scuttle. The choices persist in your Ledger whether you want them to or not.</p>
+        </div>
+
+        {/* CARAPACE */}
+        <p className="brine-slot-label">Carapace — Shell</p>
+        <div className="brine-item-row">
+          {ITEMS.carapace.map(item => (
+            <div key={item.name} className="brine-item" style={{ borderTopColor: item.rarityColor }}>
+              <div className="brine-item-header">
+                <span className="brine-item-name">{item.name}</span>
+                <span className="brine-item-rarity" style={{ color: item.rarityColor }}>{item.rarity}</span>
+              </div>
+              <span className="brine-item-stat">{item.stat}</span>
+              <p className="brine-item-desc">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* CLAWS */}
+        <p className="brine-slot-label" style={{ marginTop: '2rem' }}>Claws — Attack</p>
+        <div className="brine-item-row">
+          {ITEMS.claws.map(item => (
+            <div key={item.name} className="brine-item" style={{ borderTopColor: item.rarityColor }}>
+              <div className="brine-item-header">
+                <span className="brine-item-name">{item.name}</span>
+                <span className="brine-item-rarity" style={{ color: item.rarityColor }}>{item.rarity}</span>
+              </div>
+              <span className="brine-item-stat">{item.stat}</span>
+              <p className="brine-item-desc">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* TOMALLEY */}
+        <p className="brine-slot-label" style={{ marginTop: '2rem' }}>Tomalley — Core</p>
+        <div className="brine-item-row">
+          {ITEMS.tomalley.map(item => (
+            <div key={item.name} className="brine-item" style={{ borderTopColor: item.rarityColor }}>
+              <div className="brine-item-header">
+                <span className="brine-item-name">{item.name}</span>
+                <span className="brine-item-rarity" style={{ color: item.rarityColor }}>{item.rarity}</span>
+              </div>
+              <span className="brine-item-stat">{item.stat}</span>
+              <p className="brine-item-desc">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: '3rem', textAlign: 'center' }}>
+          <Link to="/sign-in" className="brine-btn-hero">Build Your Molt</Link>
+          <p style={{ marginTop: '1rem', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', color: 'rgba(240,240,245,0.2)', letterSpacing: '1px', fontStyle: 'italic' }}>
+            "A bad Molt doesn't guarantee a loss. It just makes it more likely." — The House
+          </p>
         </div>
       </section>
 
