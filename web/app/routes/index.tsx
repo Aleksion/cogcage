@@ -282,6 +282,29 @@ const STYLES = `
     background:var(--accent-color, rgba(255,255,255,.15));
   }
 
+  .item-icon-wrap {
+    width: 64px; height: 64px; margin-bottom: 1.1rem;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.3);
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  .item-icon-wrap::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--accent-color, rgba(255,255,255,0.05));
+    opacity: 0.08;
+  }
+  .item-icon { width: 52px; height: 52px; object-fit: contain;
+    filter: drop-shadow(0 0 6px rgba(0,229,255,0.3));
+  }
+  .item-icon-placeholder {
+    width: 52px; height: 52px;
+    border: 1px dashed rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: .55rem; color: rgba(255,255,255,0.15);
+    letter-spacing: 1px;
+  }
+
   .item-tag {
     font-family:var(--mono); font-size:.58rem; font-weight:600;
     letter-spacing:2.5px; text-transform:uppercase;
@@ -457,27 +480,63 @@ const TICKER = [
 
 const MOLT_SLOTS = {
   CARAPACE: {
-    desc: 'The shell your Crustie fights in. It will not survive the Scuttle. That is the point.',
+    desc: 'The shell your Crustie fights in. It will not survive the Scuttle. The Pit does not return Carapaces.',
     items: [
-      { name:'BLOCK-7',       rarity:'Common',    rarityColor:'rgba(255,255,255,0.35)', cls:'',          accent:'rgba(255,255,255,0.15)', stat:'+30 HP · 10% Damage Reduction',  desc:'Composite exo-plating. Absorbs what it absorbs. Does not absorb more.' },
-      { name:'GHOST SHELL',   rarity:'Rare',      rarityColor:'#9C27B0',               cls:'rare',      accent:'#9C27B0',                stat:'−10 HP · 25% Miss Chance',       desc:'Phase-scatter membrane. One in four attacks passes through it. The Pit logs this as physics.' },
-      { name:'THE PATRIARCH', rarity:'Legendary', rarityColor:'#FFD600',               cls:'legendary', accent:'#FFD600',                stat:'+50 HP · BURST Disabled',        desc:'Ancestral full-body plating. Heaviest shell available. You will not be running anywhere.' },
+      {
+        name:'BLOCK-7', rarity:'Common', rarityColor:'rgba(255,255,255,0.35)', cls:'', accent:'rgba(255,255,255,0.15)',
+        stat:'+30 HP · 10% Damage Reduction', icon:'/icon-block7.png',
+        desc:'A classified military prototype that found its way into The Brine through channels The House describes as "procurement-adjacent." The procurement chain is three entries long. Two are redacted. The third is a signature that does not match any known Chef.',
+      },
+      {
+        name:'GHOST SHELL', rarity:'Legendary', rarityColor:'#FFD600', cls:'legendary', accent:'#9C27B0',
+        stat:'−10 HP · 25% Miss Chance', icon: null,
+        desc:'One in four hits passes through it without making contact. Not deflected. Not absorbed. The hit simply does not land. The House has reviewed the code. The code is correct. The manufacturer describes the technology as "probability-adjacent." Nobody else uses this term.',
+      },
+      {
+        name:'THE PATRIARCH', rarity:'Legendary', rarityColor:'#FFD600', cls:'legendary', accent:'#FFD600',
+        stat:'+50 HP · BURST Disabled', icon: null,
+        desc:'The heaviest Carapace in the Registry. No BURST. No repositioning. You commit to every engagement you enter, which means you should choose your engagements carefully. THE PATRIARCH does not care whether you choose carefully.',
+      },
     ],
   },
   CLAWS: {
-    desc: 'How your Crustie attacks. Every loadout expresses a theory. The Pit tests it.',
+    desc: 'How your Crustie attacks. Every Molt is a theory. The Pit tests it.',
     items: [
-      { name:'MAXINE',        rarity:'Common',    rarityColor:'rgba(255,255,255,0.35)', cls:'',          accent:'rgba(255,255,255,0.15)', stat:'+80% Damage · 2-Window Cooldown', desc:'Hydraulic compression claws. Hits like a pressure vessel. Then it needs a moment.' },
-      { name:'THE FLICKER',   rarity:'Rare',      rarityColor:'#9C27B0',               cls:'rare',      accent:'#F44336',               stat:'−40% Damage · 8 Bleed Stacks',   desc:'Rapid laceration array. Each hit stacks Bleed. At 8 stacks: 16 HP per tick. The math is not in their favor.' },
-      { name:'THE REACH',     rarity:'Common',    rarityColor:'rgba(255,255,255,0.35)', cls:'',          accent:'rgba(255,255,255,0.15)', stat:'+2 Tile SPIT Range',             desc:'Extended strike array. Attacks from 3 tiles. Your opponent is still in range. They may not realize this yet.' },
+      {
+        name:'MAXINE', rarity:'Common', rarityColor:'rgba(255,255,255,0.35)', cls:'', accent:'rgba(255,255,255,0.15)',
+        stat:'+80% Damage · 2-Window Cooldown', icon:'/icon-maxine.png',
+        desc:'MAXINE does not like the word "weapon." She was a pressure technician — that\'s what she put on the form, that\'s what she told the three separate review boards between Tides 2 and 4. "I apply pressure," she said, at all three. The review boards found this answer responsive and somehow not reassuring.',
+      },
+      {
+        name:'THE FLICKER', rarity:'Rare', rarityColor:'#9C27B0', cls:'rare', accent:'#F44336',
+        stat:'−40% Damage · 8 Bleed Stacks', icon: null,
+        desc:'Nobody knows who built THE FLICKER. It appeared in The Brine between Tides 2 and 3 — the same gap that produced ORACLE. The House says this is a coincidence. The House\'s file on the Tide 2-3 gap is sealed to all queries below Deep rank.',
+      },
+      {
+        name:'THE REACH', rarity:'Common', rarityColor:'rgba(255,255,255,0.35)', cls:'', accent:'rgba(255,255,255,0.15)',
+        stat:'+2 Tile SPIT Range', icon: null,
+        desc:'The designer said disproportionate was the point. THE REACH keeps opponents at a distance they do not want to be at. Most Crusties flinch. THE REACH counts on most Crusties flinching. The Ledger supports this. The Ledger has a lot of data on annoyed Crusties.',
+      },
     ],
   },
   TOMALLEY: {
-    desc: 'The passive organ. It runs whether your agent thinks about it or not.',
+    desc: 'The passive organ. It fires whether your agent accounts for it or not.',
     items: [
-      { name:'ORACLE',        rarity:'Legendary', rarityColor:'#FFD600',               cls:'legendary', accent:'#FFD600',                stat:'+15% Accuracy · +500ms Window',  desc:'Predictive combat cortex. Sees what comes next. Costs processing time. Whether your agent can afford it is your problem.' },
-      { name:'THE RED GENE',  rarity:'Rare',      rarityColor:'#9C27B0',               cls:'rare',      accent:'#FF1744',               stat:'+40% Damage Below 40% HP',       desc:'Hemorrhage response organ. Activates when critically wounded. The Pit considers this a feature.' },
-      { name:'DEEP MEMORY',   rarity:'Rare',      rarityColor:'#9C27B0',               cls:'rare',      accent:'#3F51B5',               stat:'Full Opponent History',          desc:'Pattern analysis engine. Logs every move your opponent has made. Whether your agent reads the log is up to your agent.' },
+      {
+        name:'ORACLE', rarity:'Legendary', rarityColor:'#FFD600', cls:'legendary', accent:'#FFD600',
+        stat:'+15% Accuracy · +500ms Window', icon: null,
+        desc:'The House says it does not know how ORACLE arrived. The House is lying. The House knows it is lying. The Chefs know it is lying. Everyone has agreed not to press the point, because ORACLE is too useful to risk having The House "re-examine its provenance," which is a phrase The House used once and which everyone understood as a threat.',
+      },
+      {
+        name:'THE RED GENE', rarity:'Common', rarityColor:'rgba(255,255,255,0.35)', cls:'', accent:'#FF1744',
+        stat:'+40% Damage Below 40% HP', icon:'/icon-red-gene.png',
+        desc:'Extracted from a Red-ranked Crustie designated Tender-47. The extraction process was not voluntary. Tender-47 is still active. Still Red-ranked. Still fighting without it. The House says Tender-47 internalized what the splice provided externally. The House might be being poetic. The House does not use the word "poetic."',
+      },
+      {
+        name:'DEEP MEMORY', rarity:'Rare', rarityColor:'#9C27B0', cls:'rare', accent:'#3F51B5',
+        stat:'Full Opponent History After 30 Ticks', icon: null,
+        desc:'For thirty ticks, DEEP MEMORY watches. It does not contribute. It watches. After thirty ticks, it begins providing pattern hints. Not predictions. Patterns. DEEP MEMORY does the watching. The Crustie does the thinking. The Chef does the worrying.',
+      },
     ],
   },
 }
@@ -614,7 +673,7 @@ function LandingPage() {
           <span className="section-tag">// The Molt</span>
           <div className="section-rule" aria-hidden />
         </div>
-        <h2 className="section-h">Three Choices.<br />Make Them Count.</h2>
+        <h2 className="section-h">Three Slots.<br />Forty Items.</h2>
         <p className="section-quip">
           "A bad Molt doesn't guarantee a loss. It just makes it more likely." — The House
         </p>
@@ -640,6 +699,12 @@ function LandingPage() {
               className={`item-card ${item.cls}`}
               style={{ '--accent-color': item.accent } as React.CSSProperties}
             >
+              <div className="item-icon-wrap">
+                {item.icon
+                  ? <img src={item.icon} alt={item.name} className="item-icon" />
+                  : <div className="item-icon-placeholder">NO ART</div>
+                }
+              </div>
               <span className="item-tag">{moltTab}</span>
               <span className="item-name">{item.name}</span>
               <span className="item-rarity" style={{ color: item.rarityColor }}>{item.rarity}</span>
