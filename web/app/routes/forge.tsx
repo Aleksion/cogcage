@@ -10,12 +10,14 @@ import { getCard } from '~/lib/cards'
 const FORGE_STYLES = `
   .forge-root {
     min-height: calc(100vh - 56px);
-    background: #1A1A1A;
+    width: 100%;
+    background:
+      radial-gradient(circle, rgba(255,120,30,0.07) 1px, transparent 1px),
+      radial-gradient(ellipse at 30% 60%, #2a1000 0%, #120800 50%, #0a0500 100%);
+    background-size: 32px 32px, 100% 100%;
     color: #f0f0f5;
     font-family: 'Kanit', sans-serif;
-    padding: 2rem 1.5rem 3rem;
-    max-width: 1100px;
-    margin: 0 auto;
+    padding: 2.5rem 3rem 4rem;
   }
 
   .forge-header {
@@ -62,10 +64,10 @@ const FORGE_STYLES = `
   }
 
   .forge-panel {
-    background: rgba(255,255,255,0.03);
-    border: 3px solid #000;
-    border-radius: 14px;
-    box-shadow: 6px 6px 0 #000;
+    background: rgba(255,120,30,0.05);
+    border: 1px solid rgba(255,120,30,0.2);
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(255,80,0,0.1);
     padding: 1.5rem;
   }
 
@@ -74,6 +76,22 @@ const FORGE_STYLES = `
     flex-direction: column;
     align-items: center;
     text-align: center;
+  }
+
+  .forge-bot-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .forge-bot-glow {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,120,30,0.2) 0%, transparent 70%);
+    position: absolute;
+    pointer-events: none;
   }
 
   .forge-bot-art {
@@ -399,7 +417,10 @@ function ForgeContent() {
             const compute = Math.round(Math.max(0, 100 - (shell.stats.totalOverhead / 30) * 100))
             return (
               <div className="forge-panel forge-crawler-preview">
-                <div className="forge-bot-art">&#129302;</div>
+                <div className="forge-bot-wrap">
+                  <div className="forge-bot-glow" />
+                  <div className="forge-bot-art">&#129302;</div>
+                </div>
                 <h2 className="forge-crawler-name">{shell.name}</h2>
                 <div className="forge-mold-label">
                   {shell.cards.length} cards equipped&ensp;
@@ -424,7 +445,10 @@ function ForgeContent() {
             )
           })() : (
             <div className="forge-panel forge-crawler-preview">
-              <div className="forge-bot-art" style={{ fontSize: '5rem', background: 'rgba(235,77,75,0.1)' }}>&#129302;</div>
+              <div className="forge-bot-wrap">
+                <div className="forge-bot-glow" />
+                <div className="forge-bot-art" style={{ fontSize: '5rem', background: 'rgba(235,77,75,0.1)' }}>&#129302;</div>
+              </div>
               <h2 className="forge-crawler-name">FORGE YOUR CRAWLER</h2>
               <div className="forge-mold-label" style={{ maxWidth: 240 }}>
                 No crawler yet. Build your first shell to enter the pit.

@@ -8,7 +8,10 @@ const STYLES = `
 
   .signin-root {
     min-height: 100vh;
-    background: #1A1A1A;
+    background:
+      radial-gradient(circle, rgba(0,229,255,0.08) 1px, transparent 1px),
+      radial-gradient(ellipse at 50% 30%, #0a0a2e 0%, #050510 60%, #000 100%);
+    background-size: 24px 24px, 100% 100%;
     display: flex;
     flex-direction: column;
     font-family: 'Kanit', sans-serif;
@@ -20,7 +23,8 @@ const STYLES = `
     align-items: center;
     justify-content: space-between;
     padding: 1rem 2rem;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(0,229,255,0.25);
+    background: rgba(0,0,0,0.5);
   }
 
   .signin-logo {
@@ -55,8 +59,9 @@ const STYLES = `
   .signin-card {
     width: 100%;
     max-width: 420px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.7);
+    border: 1px solid rgba(0,229,255,0.25);
+    backdrop-filter: blur(12px);
     border-radius: 16px;
     padding: 2.5rem 2rem;
     text-align: center;
@@ -68,7 +73,7 @@ const STYLES = `
     font-weight: 600;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: #FFD600;
+    color: rgba(0,229,255,0.6);
     margin: 0 0 0.75rem;
   }
 
@@ -79,7 +84,7 @@ const STYLES = `
     color: #fff;
     margin: 0 0 0.5rem;
     line-height: 1;
-    text-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+    text-shadow: 0 0 30px rgba(0,229,255,0.4);
   }
 
   .signin-sub {
@@ -101,15 +106,16 @@ const STYLES = `
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #fff;
-    background: #EB4D4B;
-    border: none;
+    color: #000;
+    background: #fff;
+    border: 3px solid #000;
     border-radius: 10px;
     cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
+    box-shadow: 4px 4px 0 #000;
+    transition: transform 0.1s, box-shadow 0.1s;
   }
-  .signin-github-btn:hover { background: #d93a38; transform: translateY(-1px); }
-  .signin-github-btn:active { transform: translateY(0); }
+  .signin-github-btn:hover { transform: translateY(-1px); }
+  .signin-github-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #000; }
 
   .signin-divider {
     display: flex;
@@ -134,8 +140,8 @@ const STYLES = `
     padding: 0.8rem 1rem;
     font-family: 'Kanit', sans-serif;
     font-size: 0.95rem;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(0,229,255,0.2);
     border-radius: 8px;
     color: #fff;
     outline: none;
@@ -154,14 +160,16 @@ const STYLES = `
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #1A1A1A;
+    color: #000;
     background: #00E5FF;
-    border: none;
+    border: 3px solid #000;
     border-radius: 8px;
     cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
+    box-shadow: 4px 4px 0 #000;
+    transition: transform 0.1s, box-shadow 0.1s;
   }
-  .signin-email-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+  .signin-email-btn:hover:not(:disabled) { transform: translateY(-1px); }
+  .signin-email-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 #000; }
   .signin-email-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
   .signin-error {
