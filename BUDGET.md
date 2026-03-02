@@ -22,21 +22,22 @@
 | 2026-02-28 | Daily burn (day 3)           | -$20.00    | $940.00    |
 | 2026-03-01 | Daily burn (day 4)           | -$20.00    | $920.00    |
 | 2026-03-02 | Daily burn (day 5)           | -$20.00    | $900.00    |
+| 2026-03-02 | Meshy Pro — month 1 (intro)  | -$10.00    | $890.00    |
 
-## **Current Balance: $900.00**
+## **Current Balance: $890.00**
 *Last updated: 2026-03-02*
 
 ---
 
 ## Pending Requests
-| Date       | Requestor        | Item               | Amount/mo | Status   |
-|------------|------------------|--------------------|-----------|----------|
-| 2026-03-02 | Visual Director  | Meshy Pro API      | $120.00   | ⏳ Pending — browser automation first |
+*(none)*
 
 ---
 
 ## Approved Recurring
-*(none yet)*
+| Service      | Monthly Cost | Next Charge  | Notes                        |
+|--------------|-------------|--------------|------------------------------|
+| Meshy Pro    | $20.00/mo   | 2026-04-02   | First month $10 (intro rate) |
 
 ---
 
@@ -49,4 +50,4 @@
 - Daily: $20
 - Monthly: ~$620 (daily burn only)
 - Runway at current burn: **45 days** (until ~April 16, 2026)
-- Runway with Meshy Pro approved: ~38 days
+- Runway with Meshy Pro ($20/mo): ~43 days
