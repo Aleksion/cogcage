@@ -35,7 +35,7 @@ function PlayPageInner() {
         letterSpacing: 2,
         textTransform: 'uppercase' as const,
       }}>
-        Loading...
+        ENTERING THE BRINE...
       </div>
     )
   }

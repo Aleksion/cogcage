@@ -47,7 +47,7 @@ const PIT_STYLES = `
     left: 2rem;
     background: rgba(0,0,0,0.7);
     border: 1px solid rgba(0,229,255,0.3);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 0.75rem 1.25rem;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.75rem;
@@ -62,7 +62,7 @@ const PIT_STYLES = `
   .pit-title {
     font-family: 'Bangers', cursive;
     font-size: 4rem;
-    color: #FFD600;
+    color: #00E5FF;
     text-shadow: 4px 4px 0 #000;
     letter-spacing: 3px;
     margin: 0;
@@ -89,10 +89,10 @@ const PIT_STYLES = `
     letter-spacing: 3px;
     text-transform: uppercase;
     background: #00E5FF;
-    color: #000;
+    color: #050510;
     border: 4px solid #000;
     box-shadow: 0 6px 0 #000;
-    border-radius: 12px;
+    border-radius: 0;
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
     text-shadow: none;
@@ -106,8 +106,8 @@ const PIT_STYLES = `
     cursor: not-allowed;
   }
   .pit-enter-btn.pit-btn-noshell {
-    background: #FFD600;
-    color: #000;
+    background: #00E5FF;
+    color: #050510;
     text-shadow: none;
   }
 
@@ -165,12 +165,12 @@ const PIT_STYLES = `
 
   .pit-lb-row.pit-lb-me {
     background: rgba(255,214,0,0.08);
-    border-left: 3px solid #FFD600;
+    border-left: 3px solid #00E5FF;
   }
 
   .pit-lb-rank {
     font-family: 'Bangers', cursive;
-    color: #FFD600;
+    color: #00E5FF;
     font-size: 1.1rem;
     min-width: 28px;
   }
@@ -217,10 +217,10 @@ const PIT_STYLES = `
     font-family: 'Bangers', cursive;
     font-size: 0.95rem;
     letter-spacing: 1px;
-    color: #000;
+    color: #050510;
     background: #00E5FF;
     border: 2px solid #000;
-    border-radius: 8px;
+    border-radius: 0;
     padding: 0.3rem 0.8rem;
     cursor: pointer;
     box-shadow: 2px 2px 0 #000;
@@ -287,7 +287,7 @@ export default function ThePit() {
   }
 
   const hasShells = shells && shells.length > 0
-  const noShellText = 'BUILD A CRAWLER FIRST \u2192'
+  const noShellText = 'BUILD A ROEUSTIE FIRST \u2192'
 
   const handleEnterMolt = async () => {
     if (!shells || shells.length === 0) {
@@ -313,7 +313,7 @@ export default function ThePit() {
         <div className="pit-hero">
           <div className="pit-spotlight" />
           <h1 className="pit-title">&#9889; THE PIT</h1>
-          <p className="pit-subtitle">The arena. Live matches. Real crawlers fighting now.</p>
+          <p className="pit-subtitle">The arena. Live matches. Real crusties fighting now.</p>
 
           {/* Enter a Molt CTA */}
           <button
@@ -328,9 +328,9 @@ export default function ThePit() {
 
         {/* Two-column grid */}
         <div className="pit-grid" style={{ width: '100%' }}>
-          {/* Leaderboard */}
+          {/* The Ledger */}
           <div className="pit-panel">
-            <h2 className="pit-section-title">Leaderboard</h2>
+            <h2 className="pit-section-title">The Ledger</h2>
             {!topPlayers || topPlayers.length === 0 ? (
               <div className="pit-empty">No players yet</div>
             ) : (
@@ -347,11 +347,11 @@ export default function ThePit() {
             )}
           </div>
 
-          {/* Open Tanks */}
+          {/* Active Scuttles */}
           <div className="pit-panel">
-            <h2 className="pit-section-title">Open Tanks</h2>
+            <h2 className="pit-section-title">Active Scuttles</h2>
             {!openTanks || openTanks.length === 0 ? (
-              <div className="pit-empty">No open tanks &mdash; be first!</div>
+              <div className="pit-empty">No active scuttles &mdash; be first!</div>
             ) : (
               openTanks.map((tank) => (
                 <div key={tank._id} className="pit-tank-item">
