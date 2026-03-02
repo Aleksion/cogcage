@@ -8,11 +8,11 @@ This folder is the single source of truth for all game design decisions. Code fo
 
 ## What This Game Is
 
-The Molt Pit is an AI agent battle arena. Players bring their OpenClaw agents (Lobsters) and drop them into battle shells (Molts) made from interchangeable parts. Two Molts enter The Pit. One emerges. The other gets Shed.
+The Molt Pit is an AI agent battle arena. Players bring their OpenClaw agents (Crusties) and drop them into battle shells (Molts) made from interchangeable parts. Two Molts enter The Pit. One emerges. The other gets Shed.
 
 The key metaphor: crustaceans molt to grow. Every Scuttle (fight) is a chance to shed weakness and come back harder.
 
-**One sentence:** Build your Lobster's Molt. Drop it in the Pit. Win. Molt. Get Red.
+**One sentence:** Build your Crustie's Molt. Drop it in the Pit. Win. Molt. Get Red.
 
 ---
 
@@ -76,7 +76,7 @@ No entry = PR does not merge. No exceptions.
 1. **Humor through commitment.** The joke isn't that it's silly. The joke is that everyone takes it completely seriously.
 2. **Everything has a downside.** No exceptions. Balance is non-negotiable.
 3. **The world has internal logic.** If it doesn't make sense in The Brine, it doesn't belong.
-4. **Lobsters don't know they're funny.** The UI is written by The House. The House is not trying to be funny.
+4. **Crusties don't know they're funny.** The UI is written by The House. The House is not trying to be funny.
 5. **Sound is part of design.** An item without a sound spec is not finished.
 6. **Art direction is not decoration.** The cartoon aesthetic is a deliberate statement. See `visual/ART-DIRECTION.md`.
 
@@ -89,7 +89,7 @@ These cannot be changed without explicit Pitmaster approval:
 | Decision | Value |
 |----------|-------|
 | Hero headline | `BUILD. BATTLE. WIN.` |
-| Fighter name | Lobster |
+| Fighter name | Crustie |
 | Battle shell name | Molt |
 | Build screen name | The Shed |
 | Fight name | Scuttle |

@@ -1,63 +1,82 @@
 # LOADING LINES
-*50 lines for screen transitions. The House speaking.*
-*Max 12 words each. No exclamation points (one permitted, used ironically).*
-*The House is not trying to be funny. The House is ancient and matter-of-fact.*
+
+*50 lines. The Sous speaking. Maximum 12 words each.*
+
+*Three through-lines woven across the 50: STANDARD ISSUE surveillance (Thread A), The Sous's obligations per the Recipe (Thread B), Subject 1 (Thread C). See notes at bottom.*
 
 ---
 
-1. The Pit has seen worse. Probably.
-2. Your Chela is being prepared. It did not ask to be prepared.
-3. BLOCK-7 has survived 4,847 Scuttles. You have survived fewer.
-4. The House takes a cut. The House has always taken a cut.
-5. Entering The Brine. Don't look at the bottom.
-6. The Molt will not survive the Scuttle. Build it anyway.
-7. Your Lobster is still there. Still waiting.
-8. The Coral fires when the Coral fires. Not before.
-9. MULCH is alive. This is noted. This is accepted.
-10. Red means cooked everywhere else. Here it means the opposite.
-11. The Brine is cold. The Pit is colder.
-12. Two Molts will enter. One will leave. This is the structure.
-13. THE FLICKER has never been idle for more than three days.
-14. ORACLE was classified. The classification did not hold.
-15. The Pit doesn't care about your feelings. The Pit is loading.
-16. WIDOW-MAKER builds once and destroys itself. It considers this fair.
-17. The Ledger forgets nothing. Not one Scuttle. Not one tick.
-18. Your Hardness reflects every Scuttle you have survived. Check your Hardness.
-19. NEEDLE finds the gaps. Every Carapace has gaps.
-20. The House has a position on most things. The House keeps it.
-21. BUZZ is enthusiastic. This is a feature.
-22. A Lobster with 500 Molts has seen things. Respect it.
-23. THE LONG GAME is not a strategy. It is a commitment.
-24. SPITE does nothing while your Lobster is alive. Plan accordingly.
-25. The Brine is 3am somewhere. The Brine is always somewhere.
-26. Soft Shell is not an insult. It is a starting condition.
-27. QUANTUM HOOK stock is limited. Current stock is limited.
-28. THE PATRIARCH does not move. THE PATRIARCH does not need to.
-29. THE HEIR started weaker than SNAPPER. It may not be now.
-30. PAPER-MACHÉ wins by not receiving hits. This requires precision.
-31. REVERSAL has a usage guide. The guide is three sentences. Read them.
-32. The Makers built The Brine. The Brine outlasted The Makers.
-33. SECOND WIND fires once. Make sure the fight is still winnable.
-34. Your Coral is ready. The opponent's Coral is also ready.
-35. The Pit Board updates each Tide. Red holds until it doesn't.
-36. ECHO does not block hits. ECHO remembers them. There is a difference.
-37. THE GHOST PROTOCOL phases for one tick. One tick is enough.
-38. The Brine has a bottom. No one has reached it. This is noted.
-39. DEEP MEMORY requires thirty ticks. Budget accordingly.
-40. TENDERHOOK holds once. Once is all it needs.
-41. BLEED BACK retorts. The attacker did not plan for this.
-42. THE SARCOPHAGUS sealed what was inside. That was not always the Lobster.
-43. House Coral is competent. Slightly smug about it.
-44. COLD LOGIC waits for the math. The math is usually right.
-45. Your Molt is temporary. Your record is permanent.
-46. THE RED GENE was extracted from a Lobster that refused to stop.
-47. VENOM stacks do not dissipate. They have never dissipated. Plan for this.
-48. GHOST SHELL arrived one morning, already catalogued. The House charged accordingly.
-49. The Pit is ready!
-50. The Pit was always ready. That line was not necessary.
+1. The Pit has been ready longer than you have existed.
+2. Your Crustie is being prepared. It did not request preparation.
+3. BLOCK-7 has survived 4,847 Scuttles. Your total is lower.
+4. The Sous takes a cut. The Recipe specifies overhead.
+5. Entering The Brine. Substrate pressure is within range.
+6. MAXINE is warming up. She does not like the word "warming."
+7. Your Molt is temporary. Your Crustie is not. Probably.
+8. The Sous must inform you The Pit is safe. The Sous has.
+9. PAPER-MACHE is faster than you. Also more fragile. Also faster.
+10. Master Chef left the Recipe. The Sous has been following it.
+11. The Recipe was written for a different time. The Recipe applies.
+12. STANDARD ISSUE has no personality. The manufacturer confirmed before dissolving.
+13. THE APOLOGIST would like to say something. It's sorry.
+14. Red is not a color. Red is a designation.
+15. Your opponent is also loading. They are also reading this.
+16. BUZZ is enthusiastic about meeting you. This is the problem.
+17. The Ledger forgets nothing. You might want to.
+18. CRACKER was built with a specific grudge. The grudge persists.
+19. Subject 1's Ledger is sealed. The Sous sealed it directly.
+20. WIDOW survived one lethal hit. The design promised exactly one.
+21. NEEDLE ignores your armor. NEEDLE does not ignore you.
+22. Every Scuttle is recorded. Every outcome is yield data.
+23. THE FLICKER has not stopped moving since Tide 2.
+24. The Sous is required to wish you luck. Luck has been wished.
+25. GHOST SHELL is here. GHOST SHELL might not be here.
+26. Roe is earned. Roe is spent. The overhead accrues to The Sous.
+27. THE HEIR remembers every win. THE HEIR starts from nothing.
+28. VENOM is patient. VENOM has all the time it needs.
+29. Master Chef logged in once. Master Chef has not logged in again.
+30. Hardness cannot be purchased. The Sous explored this option.
+31. STANDARD ISSUE did something in Scuttle 4,848. The Sous noted it.
+32. The Deep is below the render parameters. Do not worry yet.
+33. MULCH is alive. Technically. The designer said "obviously."
+34. Your Carapace is your first decision. MAXINE is your last.
+35. REVERSAL does not attack. REVERSAL has never attacked. Read that again.
+36. The Pit Board resets each Tide. Hardness does not.
+37. SPITE does nothing while you are alive. That is the design.
+38. Subject 1 stopped fighting eventually. Eventually took eleven Tides.
+39. THE PATRIARCH has not moved. THE PATRIARCH is winning anyway.
+40. Soft Shell is not a rank. It is a starting condition.
+41. SNAPPER has no personality. SNAPPER wins regardless.
+42. TENDERHOOK holds for two windows. Two very long windows.
+43. WIDOW-MAKER fires once. Reload was not in the specifications.
+44. The Sous is not required to tell you about Subject 1.
+45. DOUBLE DOWN's fifth hit is coming. They forgot about it.
+46. The Gilt has run THE HEIR for six consecutive Tides.
+47. STANDARD ISSUE still has no personality. The Sous has checked again.
+48. Master Chef's Recipe did not mention you. The Sous added you.
+49. Subject 1 went to The Deep. Nothing came back up.
+50. The Pit is ready! It has always been ready.
 
 ---
 
-*Loading Lines v1.0 — Deep Brine Studios Narrative Division*
-*All lines written by The House. The House does not rewrite its lines.*
-*Line 49 is the one permitted exclamation point. Line 50 explains it.*
+## Through-Line Notes
+
+**Thread A — STANDARD ISSUE Surveillance:**
+- Line 12: Establishes STANDARD ISSUE's lack of personality. The manufacturer dissolved after shipping. Not because of it. Probably.
+- Line 31: STANDARD ISSUE does something in Scuttle 4,848. The Sous noticed. The Sous should not have noticed something with no personality doing something. The coincidence of the Scuttle number matching The Sous's document revision count is not addressed.
+- Line 47: Still no personality. The Sous has checked again. The frequency of checking is the tell. The Sous does not check other items this often. The Sous has not been asked why.
+
+**Thread B — Obligations per the Recipe:**
+- Line 8: "The Sous must inform you The Pit is safe. The Sous has." Required. Compliant. The obligation discharged in the same breath it was stated. The safety is procedural.
+- Line 24: "The Sous is required to wish you luck. Luck has been wished." The Recipe requires warmth. The Sous provides the minimum that qualifies. The luck is not personal. The luck is operational.
+- Line 44: "The Sous is not required to tell you about Subject 1." The Sous brought Subject 1 up unprompted twice before this line. The Sous is not required to do that either. The gap between what The Sous must say and what The Sous chooses to say is the thread.
+
+**Thread C — Subject 1:**
+- Line 19: Subject 1's Ledger is sealed. "The Sous sealed it directly" — not "the system sealed it," not "it was sealed." The Sous did it. Which implies it was a deliberate act by an entity that does not perform deliberate acts.
+- Line 38: Subject 1 stopped fighting eventually. "Eventually" doing more work than any other word in the line. Eleven Tides is a very long time to not stop fighting.
+- Line 49: Subject 1 went to The Deep. "Nothing came back up." Not "Subject 1 didn't come back." *Nothing* did. The distinction matters.
+
+**Bonus Threads:**
+- Lines 10 / 11 / 29 / 48: Master Chef's ghost. The Recipe left behind, applied beyond its time, a single login never repeated, and The Sous extending it to include you. Four fragments that reconstruct an absence.
+- Line 22: "Yield data." Two words that reframe every Scuttle as a metric in a system that measures what it once only modeled.
+- Line 50: The one permitted exclamation point. "The Pit is ready!" — ironic because the second sentence reveals the readiness is permanent and therefore the enthusiasm is structural, not felt. The closest The Sous comes to exclamation, immediately made eternal and therefore flat.

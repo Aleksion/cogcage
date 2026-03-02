@@ -41,7 +41,7 @@ The Crusties are crustaceans — not just lobsters. Five species, each a distinc
 
 | File | Species | Key Feature | Combat Energy |
 |------|---------|-------------|---------------|
-| `species-LOBSTER-APPROVED.png` | Lobster | Upright, forward claws, orange-red | Balanced archetype |
+| `species-LOBSTER-APPROVED.png` | Crustie | Upright, forward claws, orange-red | Balanced archetype |
 | `species-CRAB-APPROVED.png` | Fiddler Crab | ONE enormous crusher claw (right), one small pincer (left), asymmetric | Specialist, reads at a glance |
 | `species-MANTIS-APPROVED.png` | Mantis Shrimp | Raptorial strike arms, rotating compound eyes, iridescent teal-violet | The terror. Coiled violence |
 | `species-HERMIT-APPROVED.png` | Hermit Crab | Salvaged jury-rigged shell, no permanent carapace | Identity lives in the equipment |

@@ -151,7 +151,7 @@ These are permanent public URLs. No expiry.
 
 | Species | Task ID |
 |---------|---------|
-| Lobster | `019cacaa-f0c0-73a6-9fbe-861ac80f2e0e` |
+| Crustie | `019cacaa-f0c0-73a6-9fbe-861ac80f2e0e` |
 | Mantis  | `019cacaa-f8b1-73a7-9cd9-d2c3a6dc9a66` |
 | Shrimp  | `019cacab-0005-74b9-b8af-9dbc54d48072` |
 | Crab    | `019cacab-274a-73b2-a50f-177ca9190abd` |

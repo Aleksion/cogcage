@@ -6,7 +6,7 @@
 
 ## Decision: Full Visibility for v1
 
-**Both Lobsters see the full map at all times in v1.**
+**Both Crusties see the full map at all times in v1.**
 
 Why:
 - Full visibility isolates the skill expression we care about: loadout design + agent decision quality. Fog adds a second uncertainty layer that obscures whether a loss came from bad strategy or bad information. Can't tune balance if we can't read what happened.
@@ -38,7 +38,7 @@ Both agents receive complete game state per decision window:
 Covers ~196 tiles on a 20×20 grid. Enough to see SPIT range (3 tiles), approach corridors, nearby HAZARD zones. At spawn distance ~14 tiles: opponent NOT visible at fight start.
 
 ### Line of Sight
-COVER blocks visibility. Bresenham's line from Lobster to target tile — if any intermediate tile is WALL or COVER: not visible. WALL always blocks (already impassable).
+COVER blocks visibility. Bresenham's line from Crustie to target tile — if any intermediate tile is WALL or COVER: not visible. WALL always blocks (already impassable).
 
 Calculated at resolution step 7 (post-action, pre-snapshot).
 
@@ -68,14 +68,14 @@ Lobby pre-reveal (The Tank) still happens — Pitmasters see each other's loadou
 ### The Fog Phase Model
 1. **Opening (ticks 0-29):** Opponent not visible at standard spawn distance. Pure terrain navigation.
 2. **Contact (ticks 30-180):** Agents close. Standard game. Fog only at range.
-3. **Endgame (ticks 180-300):** Retreating Lobster creates "where did they go?" tension.
+3. **Endgame (ticks 180-300):** Retreating Crustie creates "where did they go?" tension.
 
 ---
 
 ## Spectator Visibility
 
 **Always full, even in Fog mode.** Spectators see:
-- Both Lobster actual positions
+- Both Crustie actual positions
 - Fog boundary for each agent (visual radius indicator)
 - Each agent's current visibility cone (toggle-able)
 - Last-known markers from each agent's perspective

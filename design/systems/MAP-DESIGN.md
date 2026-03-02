@@ -9,8 +9,8 @@
 **20×20 is correct. Do not change it.**
 
 Rationale:
-- At 150ms ticks, a Lobster can cross the arena in ~15 windows (~11 seconds). Fast enough to close. Slow enough that positioning decisions matter.
-- 400 tiles. A 2-Lobster fight uses ~30-40 tiles actively. The rest is breathing room — space to read, retreat, outmaneuver.
+- At 150ms ticks, a Crustie can cross the arena in ~15 windows (~11 seconds). Fast enough to close. Slow enough that positioning decisions matter.
+- 400 tiles. A 2-Crustie fight uses ~30-40 tiles actively. The rest is breathing room — space to read, retreat, outmaneuver.
 - Larger (30×30): kiting marathons, ranged dominant, boring.
 - Smaller (12×12): cage matches, positioning irrelevant, also boring.
 
@@ -50,7 +50,7 @@ Marked on map template. Becomes OPEN after tick 1.
 ## Obstacle Design Principles
 
 1. **Cover creates decisions, not cages.** No tile cluster should enclose a region with fewer than 2 exit directions.
-2. **Hazards punish passivity.** Place HAZARD where retreating Lobsters naturally flee. Cannot turtle without standing on something that wants to kill you.
+2. **Hazards punish passivity.** Place HAZARD where retreating Crusties naturally flee. Cannot turtle without standing on something that wants to kill you.
 3. **Asymmetry is valid.** Maps can be asymmetric as long as spawn positions are mirror-equivalent in advantage.
 4. **Center must be contested.** Center tiles always OPEN. Holding center = widest SPIT angles. Intentional.
 
@@ -59,7 +59,7 @@ Marked on map template. Becomes OPEN after tick 1.
 ## Map Variants — v1 Launch (3 fixed, procedural in Tide 2)
 
 ### MAP 001 — "THE STANDARD"
-*The House's baseline. Simple. Clean. Reveals everything about a Lobster.*
+*The House's baseline. Simple. Clean. Reveals everything about a Crustie.*
 
 ```
 . . . . . . . . . . . . . . . . . . . .
@@ -152,7 +152,7 @@ W W W W . . . . . . . . . . . . W W W W
 
 Spawn A: (2, 9) | Spawn B: (17, 9)
 
-Design intent: Walled edges force central engagement. Both Lobsters know the center COVER cluster is the prize. Who gets there first and holds it wins — unless the other one is smart enough to contest it.
+Design intent: Walled edges force central engagement. Both Crusties know the center COVER cluster is the prize. Who gets there first and holds it wins — unless the other one is smart enough to contest it.
 
 ---
 

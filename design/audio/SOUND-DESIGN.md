@@ -98,10 +98,46 @@ The humor has a sound. BUZZ crackles. THE APOLOGIST apologizes. PAPER-MACHÉ cru
 
 ---
 
+## Creature Vocalizations
+
+Chelae don't have vocal cords. They were never designed to speak and never evolved to need to. What they produce is communication of a different kind — mechanical, pressurized, and deeply specific.
+
+### Mandible Clicks
+**Context:** Aggression, threat display, pre-combat posturing
+
+Rapid percussive clicking, frequency increasing with threat level. Two to twelve clicks per second. Each click is dry and sharp — keratin on keratin. Higher-rank Crusties produce deeper clicks. A Red-ranked Crustie's threat click resonates at frequencies that make other Crusties back away before the Scuttle starts. In The Tank, the overlapping mandible clicks of two Crusties sizing each other up should sound like a conversation in a language nobody else speaks.
+
+### Shell Rattle
+**Context:** Dominance display, victory assertion, territorial claim
+
+Full-body vibration of the Carapace, producing a sustained rattle that varies by shell material. BLOCK-7 produces a deep, industrial rattle. PAPER-MACHÉ produces something closer to paper rustling, which is less intimidating but technically still a dominance display. THE PATRIARCH's rattle sounds like distant stone grinding. The rattle is voluntary — a Crustie chooses to rattle. The choice itself is the message.
+
+### Pressure Hiss
+**Context:** Stress response, damage taken, system overload
+
+Pressurized gas venting through joint-valves — a sharp, involuntary hiss that the Crustie cannot suppress. Louder under heavier damage. At critical HP, the hiss becomes continuous. The hiss is the closest thing a Chela has to a pain response and the only vocalization that is genuinely involuntary. Spectators who have watched enough Scuttles learn to read the hiss: short bursts mean the Crustie is managing. A sustained hiss means it isn't.
+
+### Coral Hum
+**Context:** Active reasoning, LLM processing, decision-making under load
+
+Subsonic, barely audible. A low-frequency vibration that emanates from the Crustie's core when its Coral is actively firing. The hum intensifies during complex decision windows — when the agent is reasoning through multiple possible actions. Experienced Chefs and spectators learn to read the Coral Hum: a steady hum means the Crustie is processing normally. A rising hum means it's struggling with a difficult decision. A sudden silence means it's about to act. The Coral Hum is the audible signature of an intelligence under load. It is, depending on your perspective, either reassuring or deeply unnerving.
+
+### Molt-Crack
+**Context:** Victory, growth, rank advancement, post-Scuttle emergence
+
+The sound of a shell splitting open from the inside. Not violent — deliberate. A single clean crack followed by the wet sound of something harder emerging from something softer. The Molt-Crack plays at the end of every won Scuttle. At rank-up moments, the crack is longer and deeper, as though the growth required more breaking. The Molt-Crack is the only vocalization that is universally positive. It means something survived and came out harder.
+
+### Ambient Substrate Sounds
+**Context:** The Brine, idle state, between Scuttles
+
+Wild Chelae in the substrate produce ambient clicking and scraping — the background noise of an ecosystem going about its business. In The Brine screen, these sounds are distant and constant, the sonic equivalent of a living ocean floor. They are never loud. They are never absent. When The Brine goes silent, something is wrong. The silence itself is a vocalization — the collective decision of every Crustie in range to stop making noise simultaneously. This has been recorded exactly twice. The House does not discuss either instance.
+
+---
+
 ## Music Direction
 
 See `MUSIC-DIRECTION.md`
 
 ---
 
-*Status: Spec complete. Audio production not started. Mar 1, 2026.*
+*Status: Spec complete. Creature vocalizations added. Audio production not started. Mar 1, 2026.*

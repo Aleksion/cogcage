@@ -25,13 +25,13 @@ The House is not:
 **Dry. Flat. Committed to the bit.**
 
 Good:
-> *"Your Lobster is resting. Don't let it rest too long."*
-> *"Other Lobsters are waiting. They're not nervous. You probably are."*
+> *"Your Crustie is resting. Don't let it rest too long."*
+> *"Other Crusties are waiting. They're not nervous. You probably are."*
 > *"The Pit doesn't care about your feelings. The Pit just keeps filling up."*
 
 Bad:
 > "Get ready to battle! 🦞"
-> "Welcome back, Pitmaster!"
+> "Welcome back, Chef!"
 > "You're doing great!"
 
 ---
@@ -40,10 +40,10 @@ Bad:
 
 | Use | Never say |
 |-----|-----------|
-| Lobster | Bot, Crawler, Fighter, Character, Agent (for the fighter) |
+| Crustie | Bot, Crawler, Fighter, Character, Agent, Crustie (for the fighter) |
 | Molt | Build, Loadout, Config, Setup |
 | Scuttle | Match, Battle, Fight, Game, Round |
-| The Shed | Forge, Workshop, Loadout Screen, Build Screen |
+| The Mise | Forge, Workshop, Loadout Screen, Build Screen, The Shed |
 | The Pit | Arena, Battle Screen, Game Screen |
 | The Brine | Home, Profile, Dashboard |
 | The Tank | Lobby, Waiting Room, Queue |
@@ -60,7 +60,7 @@ Bad:
 | Shed (to lose) | Lose, Die, Fail |
 | Molt (to win/grow) | Win (acceptable but Molt is better) |
 | Red | Diamond, Legend, Master (rank names) |
-| Pitmaster | User, Player, You |
+| Chef | User, Player, You, Pitmaster |
 | The House | Platform, System, We |
 
 ---
@@ -71,13 +71,13 @@ Each screen has a single line of ambient copy. The House wrote it. The House mea
 
 | Screen | Line |
 |--------|------|
-| The Brine | *"Your Lobster is resting. Don't let it rest too long."* |
-| The Shed | *"A bad Molt doesn't guarantee a loss. It just makes it more likely."* |
-| The Tank | *"Other Lobsters are waiting. They're not nervous. You probably are."* |
+| The Brine | *"Your Crustie is resting. Don't let it rest too long."* |
+| The Mise | *"Your Mise is ready. Your Crustie is not."* |
+| The Tank | *"Other Crusties are waiting. They're not nervous. You probably are."* |
 | The Pit | *"Coral is firing. Claws are out. Let's see what you built."* |
 | The Ledger | *"Every Scuttle is recorded. The Pit forgets nothing."* |
 | The Pit Board | *"The Red is up there. Everyone else is below."* |
-| Surface (sign in) | *"Surface, Pitmaster. Your Lobster needs you."* |
+| Surface (sign in) | *"Surface, Chef. Your Crustie needs you."* |
 | Victory | *"You molted. Come back before the shell hardens."* |
 | Loss | *"You were Shed. The Pit remains."* |
 
@@ -92,7 +92,7 @@ Errors are the one place The House is slightly more direct. Still not friendly.
 | Connection lost | *"The Brine is quiet. Check your connection."* |
 | Webhook timeout | *"Your agent didn't respond. The Pit did not wait."* |
 | Invalid URL | *"That is not a valid address. The House checked."* |
-| No Molts left | *"You need a Molt to enter a Scuttle. Head to The Shed."* |
+| No Molts left | *"You need a Molt to enter a Scuttle. Head to The Mise."* |
 
 ---
 
@@ -104,8 +104,8 @@ Errors are the one place The House is slightly more direct. Still not friendly.
 - "Amazing"
 - "Level up"
 - "Experience points" / "XP"
-- "Craft" (Lobsters don't craft, they build Molts)
-- "Equip" (you don't equip a Molt, you *drop your Lobster in*)
+- "Craft" (Crusties don't craft, they build Molts)
+- "Equip" (you don't equip a Molt, you *drop your Crustie in*)
 - "Play" (you don't play a Scuttle, you *enter* one)
 - "User"
 - "Game mode"
