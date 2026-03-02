@@ -8,6 +8,33 @@
 
 ---
 
+## [2026-03-02] - feat(autopilot): signup reliability + demo grid movement + monetization fallback
+
+**Type:** feature/ops | **Budget impact:** ~$2 (agent)
+
+### P1 — Signup form reliability + observable logs
+- `web/app/lib/observability.ts` — Redis ops log failures now warn to stderr instead of silently swallowing; added `appendSessionSummary()` structured entry type
+- `web/app/routes/api/waitlist.ts` — success response now returns `{ ok: true, message: "You're on the list!" }`; added `waitlist_health_check` log entry on every successful submit
+- `web/app/lib/fallback-drain.ts` — drain now replays to Redis (fire-and-forget) alongside SQLite inserts, closing the durability gap
+
+### P2 — Demo grid movement + spatial tactics
+- `web/app/components/DemoLoop.tsx` — complete rewrite:
+  - 7×7 arena grid with CSS grid visualization
+  - Added `MOVE` action: bots move 1 tile toward enemy each turn (unless stunned)
+  - Position tracking (`{x, y}`) in bot state, bots start at opposite corners (0,0) vs (6,6)
+  - Range-based combat: ATTACK and STUN only work at Manhattan distance ≤ 2, CHARGE at any range
+  - Smart action selection: bots prefer MOVE when out of range, prefer combat when close
+  - Colored bot markers (B = red BERSERKER, T = cyan TACTICIAN) on grid
+  - 800ms per turn auto-play, loops 3 matches then restarts
+  - Action legend with range indicator
+  - Side-by-side grid + turn log layout
+
+### P3 — Monetization fallback path
+- `web/app/components/MoltPitLanding.jsx` — Founder Pack button now captures email via `/api/founder-intent` when Stripe URL is not configured (zero revenue lost)
+- `web/app/routes/api/postback.ts` — added `?test=1` stub mode returning `{ok:true,mode:"test"}` for deploy verification
+
+---
+
 ## [2026-03-01] - feat(lore): WS17 lore bible — item lore, soft shell guide, loading lines, creature sounds, rank ladder
 
 **Type:** design/lore | **Budget impact:** ~$3 (agent)

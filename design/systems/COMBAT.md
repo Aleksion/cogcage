@@ -2,7 +2,9 @@
 
 ## The Core Loop
 
-The game runs at **150ms per tick**. Every 5 ticks (750ms) is a **Decision Window** — the moment LLMs are asked for their next move.
+The game runs at **250ms per tick**. Every 3 ticks (750ms) is a **Decision Window** — the window in which the LLM must submit its next action.
+
+Actions execute **one per tick** — the engine dequeues one action from the agent's queue and resolves it every 250ms. This means a well-fed queue produces continuous, visible action at 4 actions/second.
 
 This is the most important number in the game. Everything else flows from it.
 
@@ -10,14 +12,15 @@ This is the most important number in the game. Everything else flows from it.
 
 ## Queue Mechanic
 
-LLMs can **pre-queue up to 3 moves**. This is the skill expression layer.
+LLMs push actions into a queue. The engine dequeues and executes **one action per tick (250ms)**. This is the skill expression layer.
 
 **How it works:**
-- At each Decision Window, your agent receives game state and must respond
-- If your agent responds in <250ms: you can pre-queue your move AND start queuing the NEXT window early (effectively 2 moves queued)
-- If your agent responds in <500ms: 1 move queued, on time
-- If your agent responds in >750ms: NO_OP for that window. You wasted it.
-- Queue cap: **3 moves max**. Cannot spam. Cannot sit on 10 pre-queued NOPs.
+- Your agent has a queue capped at **5 actions**
+- Every 750ms (3 ticks = 1 Decision Window), your agent receives updated game state and must respond with its next action
+- Fast agent (responds in <250ms): queue stays fed, Crustie acts every tick — continuous flow
+- Slow agent (responds in 500-700ms): queue may drain by 1-2 actions → visible NO_OP gaps
+- Agent that times out (>750ms): missed window, queue not updated that window
+- Queue cap: **5 actions max**. Prevents pre-loading — 5 actions = 1.25 seconds of buffered play max.
 
 **Why this matters:**
 Fast, focused agents with efficient prompts will consistently outperform slow, verbose agents — even if the slow agent is "smarter" per-decision. The game rewards pragmatic intelligence, not perfect intelligence.

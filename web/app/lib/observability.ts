@@ -26,7 +26,7 @@ function appendLine(filePath: string, payload: Record<string, unknown>) {
 /**
  * Fire-and-forget Redis ops log write.
  * Lazy import avoids circular deps and keeps this module sync-compatible.
- * Never throws — any failure is silently swallowed.
+ * Never throws — failures are logged to stderr but never crash the request.
  */
 function fireRedisOpsLog(entry: Record<string, unknown>): void {
   try {
@@ -34,11 +34,11 @@ function fireRedisOpsLog(entry: Record<string, unknown>): void {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     import('./waitlist-redis').then(({ redisAppendOpsLog }) => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      redisAppendOpsLog(entry).catch(() => {
-        // Redis write failure — silently swallow, never crash the request.
+      redisAppendOpsLog(entry).catch((err: unknown) => {
+        console.warn('[moltpit:ops-log] Redis write failed:', err instanceof Error ? err.message : 'unknown');
       });
-    }).catch(() => {
-      // Import failure — not possible at runtime but guard anyway.
+    }).catch((err: unknown) => {
+      console.warn('[moltpit:ops-log] Redis import failed:', err instanceof Error ? err.message : 'unknown');
     });
   } catch {
     // Absolute last resort.
@@ -99,6 +99,23 @@ export function appendFounderIntentFallback(payload: Record<string, unknown>) {
     // ignore
   }
   appendLine(getLogPaths().founderIntentFallbackFile, payload);
+}
+
+/**
+ * Emit a structured session summary entry to the ops log.
+ * Used at the end of an autopilot session to record what shipped.
+ */
+export function appendSessionSummary(summary: {
+  priorities: string[];
+  artifacts: string[];
+  duration?: string;
+  notes?: string;
+}) {
+  appendOpsLog({
+    level: 'info',
+    event: 'session_summary',
+    ...summary,
+  });
 }
 
 export function appendEventsFallback(payload: Record<string, unknown>) {

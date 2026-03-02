@@ -317,6 +317,7 @@ export const Route = createFileRoute('/api/waitlist')({
           }
 
           appendOpsLog({ route: route, level: 'info', event: 'waitlist_saved', requestId, source: payload.source, emailHash: normalizedEmail.slice(0, 3), durationMs: Date.now() - startedAt });
+          appendOpsLog({ route, level: 'info', event: 'waitlist_health_check', requestId, status: 'ok', storage: 'redis', durationMs: Date.now() - startedAt });
           try {
             const drained = drainFallbackQueues(10);
             if ((drained.waitlist.inserted + drained.founder.inserted + drained.events.inserted) > 0) {
@@ -332,7 +333,7 @@ export const Route = createFileRoute('/api/waitlist')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: true }, 200);
+          return respond({ ok: true, message: 'You\'re on the list!' }, 200);
         } catch (error) {
           // Redis failed — try file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
@@ -349,7 +350,7 @@ export const Route = createFileRoute('/api/waitlist')({
               ipAddress,
             });
             appendOpsLog({ route: route, level: 'warn', event: 'waitlist_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
-            return respond({ ok: true, queued: true }, 202);
+            return respond({ ok: true, queued: true, message: 'You\'re on the list!' }, 202);
           } catch (fallbackError) {
             appendOpsLog({ route: route, level: 'error', event: 'waitlist_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
             safeTrackConversion(route, requestId, {

@@ -424,3 +424,22 @@ One oblique reference in LORE.md section I (Master Chef), formatted as a Sous ar
 Decided by: Head of Engineering (WS21, 2026-03-01)
 Babylon.js is the 3D game engine for The Pit's arena renderer. TypeScript-first, full game engine (ECS, animation, physics, scene graph), orthographic camera for TFT/LoL isometric angle, GLTF loader for incoming 3D assets from visual team, React integration via canvas ref pattern. Cloudflare DO WebSocket pipes cleanly into Babylon scene update loop. Babylon.js has the largest AI training corpus of any 3D web game engine.
 Rejected: Phaser 3 (2D only — cannot render 3D GLTF assets), Three.js/R3F (renderer wrapper, not a game engine — no built-in ECS, animation system, or scene management), PlayCanvas (smaller ecosystem, less TypeScript support), Unreal (not web-native)
+
+## 2026-03-02 — Combat Tick Rate + Queue Model Revision (Head of Engineering)
+
+**TICK RATE: 150ms → 250ms**
+Decided by: Daedalus (HoE), confirmed by Aleks
+250ms ticks give 220ms animation budget per action — workable for walk/attack cycles. 150ms was too tight (133ms budget caused animation overlap and visual jitter at action-per-tick execution).
+Rejected: 150ms (too tight for real skeletal animations), 300ms (comfortable but too slow for kinetic feel), 500ms (too slow)
+
+**ACTION EXECUTION: per decision window → per tick**
+Actions now dequeue and execute one per tick (250ms), not one per decision window (750ms). The game state ticks at 250ms. The LLM's 750ms decision window is 3 ticks.
+Rationale: action-per-tick is the correct model for an LLM queue system. LLM response speed becomes the direct skill axis — fast prompt = continuous action stream, slow prompt = visible gaps.
+Rejected: per-window execution (creates choppy "burst" feel, doesn't reward LLM latency optimization)
+
+**QUEUE CAP: 3 → 5**
+5 actions = 1.25 seconds of buffered play. Covers one full decision window (750ms) plus half of the next, giving a fast LLM meaningful pre-buffer headroom without enabling front-loading exploits.
+Rejected: 3 (too shallow — a single slow response drains the queue immediately), 10+ (too deep — eliminates latency as skill axis)
+
+**Decision window: 750ms — UNCHANGED**
+3 ticks at 250ms. LLMs still have 750ms to respond. This is the right budget for gpt-4o-mini (typical 200-400ms response).

@@ -1,6 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { insertConversionEvent, insertFounderIntent, insertWaitlistLead } from './waitlist-db';
+import {
+  redisInsertWaitlistLead,
+  redisInsertFounderIntent,
+  redisInsertConversionEvent,
+} from './waitlist-redis';
 import { ensureRuntimeDir } from './runtime-paths';
 
 type DrainStats = {
@@ -71,27 +76,33 @@ function drainFile(
 
 export function drainFallbackQueues(maxRowsPerFile = 50) {
   const waitlist = drainFile(runtimeFile(WAITLIST_FILE), (row) => {
-    insertWaitlistLead({
+    const payload = {
       email: String(row.email || '').toLowerCase(),
       game: String(row.game || 'Unspecified'),
       source: String(row.source || 'fallback-replay'),
       userAgent: typeof row.userAgent === 'string' ? row.userAgent : undefined,
       ipAddress: typeof row.ipAddress === 'string' ? row.ipAddress : undefined,
-    });
+    };
+    insertWaitlistLead(payload);
+    // Fire-and-forget Redis replay — best-effort durable storage recovery
+    void redisInsertWaitlistLead(payload).catch(() => {});
   }, maxRowsPerFile);
 
   const founder = drainFile(runtimeFile(FOUNDER_FILE), (row) => {
-    insertFounderIntent({
+    const payload = {
       email: String(row.email || '').toLowerCase(),
       source: String(row.source || 'fallback-replay'),
       intentId: typeof row.intentId === 'string' ? row.intentId : undefined,
       userAgent: typeof row.userAgent === 'string' ? row.userAgent : undefined,
       ipAddress: typeof row.ipAddress === 'string' ? row.ipAddress : undefined,
-    });
+    };
+    insertFounderIntent(payload);
+    // Fire-and-forget Redis replay
+    void redisInsertFounderIntent(payload).catch(() => {});
   }, maxRowsPerFile);
 
   const events = drainFile(runtimeFile(EVENTS_FILE), (row) => {
-    insertConversionEvent({
+    const payload = {
       eventName: String(row.eventName || 'fallback_event'),
       eventId: typeof row.eventId === 'string' ? row.eventId : undefined,
       page: typeof row.page === 'string' ? row.page : undefined,
@@ -102,7 +113,10 @@ export function drainFallbackQueues(maxRowsPerFile = 50) {
       metaJson: typeof row.metaJson === 'string' ? row.metaJson : undefined,
       userAgent: typeof row.userAgent === 'string' ? row.userAgent : undefined,
       ipAddress: typeof row.ipAddress === 'string' ? row.ipAddress : undefined,
-    });
+    };
+    insertConversionEvent(payload);
+    // Fire-and-forget Redis replay
+    void redisInsertConversionEvent(payload).catch(() => {});
   }, maxRowsPerFile);
 
   return {

@@ -117,12 +117,11 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
-          { sha: 'ws18', msg: 'feat(ws18): product core — signup reliability, demo loop, monetization, ops log' },
-          { sha: '03af74a', msg: 'ops: budget tracker, decision log, mandatory PR rules' },
-          { sha: '7f9befd', msg: 'design: game studio structure — ontology, items, visual, audio, UI copy guide' },
-          { sha: '860f447', msg: 'feat(ws16): BYO OpenClaw agent — webhook-based decision routing' },
-          { sha: '516848f', msg: 'feat(autopilot-march1): signup reliability + public demo loop + monetization' },
-          { sha: '16dafb0', msg: 'feat(ws15): composable mold assembly + real LLM battles' },
+          { sha: 'HEAD', msg: 'fix(p1): sign-in logAuthEvent wired — email OTP + GitHub auth events → Convex authEvents table' },
+          { sha: 'HEAD~1', msg: 'feat(p2/p3): DemoLoop Stripe CTA live — GET FOUNDER PACK replaces /shell link when URL set' },
+          { sha: '90692d3', msg: 'feat(p2): interactive play mode — player picks actions vs AI on 7x7 grid' },
+          { sha: '290542f', msg: 'feat(p3): monetization fallback hardening + env docs' },
+          { sha: 'fbeec01', msg: 'feat(p2): action economy — speed-based AP system in DemoLoop' },
         ];
 
         return new Response(JSON.stringify({

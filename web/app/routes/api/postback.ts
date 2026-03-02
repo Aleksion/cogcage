@@ -38,7 +38,7 @@ function normalizeEmail(value: unknown): string | undefined {
 }
 
 function authorize(request: Request): boolean {
-  const key = process.env.MOLTPIT_POSTBACK_KEY?.trim();
+  const key = (process.env.COGCAGE_POSTBACK_KEY ?? process.env.MOLTPIT_POSTBACK_KEY)?.trim();
   if (!key) return true;
   const provided = request.headers.get('x-postback-key')?.trim() ?? '';
   return provided === key;
@@ -74,9 +74,38 @@ function safeMetaJson(meta: Record<string, unknown>) {
 export const Route = createFileRoute('/api/postback')({
   server: {
     handlers: {
+      GET: async ({ request }) => {
+        if (!authorize(request)) {
+          return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
+            status: 401,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        // Health check / test endpoint
+        const url = new URL(request.url);
+        if (url.searchParams.get('test') === '1') {
+          return new Response(JSON.stringify({ ok: true, mode: 'test', method: 'GET' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ ok: true, status: 'ready', acceptedTypes: ['checkout.session.completed', 'founder_pack.paid'] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      },
       POST: async ({ request }) => {
         const startedAt = Date.now();
         const requestId = crypto.randomUUID();
+
+        // Test mode stub: ?test=1 returns 200 without processing, for deploy verification
+        const url = new URL(request.url);
+        if (url.searchParams.get('test') === '1') {
+          return new Response(JSON.stringify({ ok: true, mode: 'test', requestId }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
 
         if (!authorize(request)) {
           appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_unauthorized', requestId });
