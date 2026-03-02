@@ -25,6 +25,7 @@ import {
   Mesh,
   AbstractMesh,
   Animation,
+  AnimationGroup,
   TransformNode,
   GlowLayer,
 } from '@babylonjs/core';
@@ -47,7 +48,7 @@ import type { GameState, GameEvent, ActorState } from '../lib/ws2/engine';
 const GRID_CELLS = ARENA_SIZE_UNITS; // 20
 const CELL_SIZE = 1; // 1 Babylon unit per cell
 const ARENA_WORLD = GRID_CELLS * CELL_SIZE; // 20
-const TWEEN_FRAMES = 8; // ~133ms at 60fps, fits inside 150ms tick
+const TWEEN_FRAMES = 13; // ~217ms at 60fps, fits inside 250ms tick with margin
 const FPS = 60;
 
 /* ── Brine Palette ──────────────────────────────────────────────── */
@@ -61,14 +62,50 @@ const C_YELLOW = Color3.FromHexString('#ffd600');
 const C_GREEN = Color3.FromHexString('#00c853');
 const C_PURPLE = Color3.FromHexString('#9c27b0');
 
+/* ── Skeletal animation types ───────────────────────────────────── */
+
+type AnimClipName = 'idle' | 'walk' | 'attack' | 'hit' | 'death';
+type AnimState = 'idle' | 'walk' | 'attack' | 'hit' | 'death';
+type SfxKey = 'pinch' | 'spit' | 'scuttle' | 'shellUp' | 'burst' | 'ko';
+
+interface CrustieAnims {
+  idle: AnimationGroup;
+  walk: AnimationGroup | null;
+  attack: AnimationGroup | null;
+  hit: AnimationGroup | null;
+  death: AnimationGroup | null;
+}
+
+const RIGGED_SPECIES = new Set(['lobster', 'mantis', 'shrimp']);
+
+const SPECIES_CLIPS: Record<string, AnimClipName[]> = {
+  lobster: ['idle', 'walk', 'attack', 'hit', 'death'],
+  shrimp:  ['idle', 'walk', 'attack', 'death'],       // NO hit
+  mantis:  ['idle', 'walk', 'attack', 'death'],       // NO hit
+};
+
+const CDN_BASE = 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d';
+function animClipUrl(species: string, clip: AnimClipName): string {
+  return `${CDN_BASE}/animations/${species}-${clip}.glb`;
+}
+
+const SFX_PATHS: Record<SfxKey, string> = {
+  pinch:   '/sfx/actions/pinch.mp3',
+  spit:    '/sfx/actions/spit.mp3',
+  scuttle: '/sfx/actions/scuttle.mp3',
+  shellUp: '/sfx/actions/shell-up.mp3',
+  burst:   '/sfx/actions/burst.mp3',
+  ko:      '/sfx/ui/ko.mp3',
+};
+
 /* ── GLB CDN URLs (Vercel Blob — permanent) ──────────────────────── */
 
 const CRUSTIE_GLBS: Record<string, string> = {
-  lobster: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-lobster-Z2WN3cFGSSTQO0STQOxXJKG5GQOxXG.glb',
+  lobster: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-lobster-rigged-aWcVTCfhMxG0TtVUPtaNmkCKaUgB9v.glb',
   crab: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-crab-khUCfgl6zHSHOdiP2cMPeBA38tZRo3.glb',
-  mantis: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-mantis-N5cksDxSVDlCYxgBVl6YYIeNf2g7a3.glb',
+  mantis: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-mantis-rigged-jMO6pjjbMa8XeQQbjM2OMyevvBYxcs.glb',
   hermit: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-hermit-YnSbhLPGa5nGN4O4dgNoHb7d36y7f3.glb',
-  shrimp: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-shrimp-G2WM2yC3gMbh1pWdMpQhmogyyDL52S.glb',
+  shrimp: 'https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-shrimp-rigged-R3MQvmXMlAGXXpAviKcQ3DcycXJzAM.glb',
 };
 
 /** Default species for each team slot */
@@ -199,6 +236,20 @@ export class PitScene {
   private betaNameText!: TextBlock;
   private tickText!: TextBlock;
 
+  /* Skeletal animations */
+  private alphaAnims: CrustieAnims | null = null;
+  private betaAnims: CrustieAnims | null = null;
+  private alphaAnimState: AnimState = 'idle';
+  private betaAnimState: AnimState = 'idle';
+  private alphaDead = false;
+  private betaDead = false;
+
+  /* SFX */
+  private sfx: Record<SfxKey, HTMLAudioElement | null> = {
+    pinch: null, spit: null, scuttle: null, shellUp: null, burst: null, ko: null,
+  };
+  private sfxReady = false;
+
   /* VFX */
   private glowLayer!: GlowLayer;
 
@@ -225,6 +276,7 @@ export class PitScene {
     this.setupCrusties();
     this.setupGUI();
     this.setupGlow();
+    this.preloadSfx();
 
     // Render loop
     this.engine.runRenderLoop(() => {
@@ -475,6 +527,17 @@ export class PitScene {
         this.betaMeshes = meshes;
         this.betaLoaded = true;
       }
+
+      // Load skeletal animation clips for rigged species
+      if (RIGGED_SPECIES.has(species)) {
+        const anims = await this.loadAnimationClips(species, result.meshes[0]);
+        if (anims) {
+          if (team === 'alpha') this.alphaAnims = anims;
+          else this.betaAnims = anims;
+          // Start idle loop
+          anims.idle.start(true);
+        }
+      }
     } catch (err) {
       console.warn(`[PitScene] Failed to load ${species} GLB, using fallback capsule:`, err);
       this.createFallbackCapsule(parentNode, team);
@@ -505,6 +568,157 @@ export class PitScene {
     } else {
       this.betaMeshes = [capsule];
       this.betaLoaded = true;
+    }
+  }
+
+  /* ── Load animation clips for rigged species ────────────────── */
+
+  private async loadAnimationClips(
+    species: string,
+    baseRoot: AbstractMesh,
+  ): Promise<CrustieAnims | null> {
+    const clips = SPECIES_CLIPS[species];
+    if (!clips || clips.length === 0) return null;
+
+    // Get all target bones/transforms from the base model skeleton
+    const baseDescendants = baseRoot.getDescendants(false);
+
+    const loaded: Partial<Record<AnimClipName, AnimationGroup>> = {};
+
+    await Promise.all(
+      clips.map(async (clipName) => {
+        try {
+          const url = animClipUrl(species, clipName);
+          const clipResult = await SceneLoader.ImportMeshAsync('', '', url, this.scene);
+          if (this.disposed) {
+            clipResult.meshes.forEach(m => m.dispose());
+            return;
+          }
+
+          const group = clipResult.animationGroups[0];
+          if (!group) {
+            clipResult.meshes.forEach(m => m.dispose());
+            return;
+          }
+
+          // Retarget: match animation targets to base skeleton by name
+          for (const anim of group.targetedAnimations) {
+            const srcTarget = anim.target;
+            if (!srcTarget?.name) continue;
+            const match = baseDescendants.find(d => d.name === srcTarget.name);
+            if (match) {
+              anim.target = match;
+            }
+          }
+
+          // Dispose clip meshes (we only need the animation data)
+          clipResult.meshes.forEach(m => m.dispose());
+
+          group.stop();
+          loaded[clipName] = group;
+        } catch (err) {
+          console.warn(`[PitScene] Failed to load ${species}/${clipName} clip:`, err);
+        }
+      }),
+    );
+
+    // idle is required — without it, no skeletal anims
+    const idle = loaded.idle;
+    if (!idle) return null;
+
+    return {
+      idle,
+      walk: loaded.walk ?? idle,     // fallback to idle
+      attack: loaded.attack ?? idle, // fallback to idle
+      hit: loaded.hit ?? null,       // null → use vfxHitPulse
+      death: loaded.death ?? null,   // null → no freeze-frame
+    };
+  }
+
+  /* ── Animation state machine ────────────────────────────────── */
+
+  private playAnimClip(
+    anims: CrustieAnims,
+    clipName: AnimState,
+    team: 'alpha' | 'beta',
+    loop = false,
+  ): void {
+    // Death is terminal — never interrupted
+    if (team === 'alpha' && this.alphaDead) return;
+    if (team === 'beta' && this.betaDead) return;
+
+    const clip = anims[clipName];
+    if (!clip) return;
+
+    // Stop all clips (pass true to skip onAnimationEnd callbacks)
+    for (const key of ['idle', 'walk', 'attack', 'hit', 'death'] as AnimClipName[]) {
+      anims[key]?.stop();
+    }
+
+    if (team === 'alpha') this.alphaAnimState = clipName;
+    else this.betaAnimState = clipName;
+
+    if (clipName === 'death') {
+      // Death: play once, freeze on last frame
+      if (team === 'alpha') this.alphaDead = true;
+      else this.betaDead = true;
+
+      clip.start(false);
+      clip.onAnimationGroupEndObservable.addOnce(() => {
+        clip.goToFrame(clip.to);
+        clip.pause();
+      });
+      return;
+    }
+
+    if (loop) {
+      clip.start(true);
+    } else {
+      clip.start(false);
+      // Auto-return to idle when non-looping clip finishes
+      clip.onAnimationGroupEndObservable.addOnce(() => {
+        if (team === 'alpha' && !this.alphaDead) {
+          this.alphaAnimState = 'idle';
+          anims.idle.start(true);
+        } else if (team === 'beta' && !this.betaDead) {
+          this.betaAnimState = 'idle';
+          anims.idle.start(true);
+        }
+      });
+    }
+  }
+
+  /* ── SFX preload + play ─────────────────────────────────────── */
+
+  private preloadSfx(): void {
+    for (const [key, path] of Object.entries(SFX_PATHS)) {
+      try {
+        const audio = new Audio(path);
+        audio.preload = 'auto';
+        this.sfx[key as SfxKey] = audio;
+      } catch {
+        // Silently skip — SFX is non-critical
+      }
+    }
+    this.sfxReady = true;
+  }
+
+  private playSfx(key: SfxKey): void {
+    if (!this.sfxReady) return;
+    const audio = this.sfx[key];
+    if (!audio) return;
+
+    try {
+      if (!audio.paused) {
+        // Clone for overlapping playback
+        const clone = audio.cloneNode() as HTMLAudioElement;
+        clone.play().catch(() => {});
+      } else {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      }
+    } catch {
+      // Autoplay policy or other browser restriction — silently skip
     }
   }
 
@@ -717,9 +931,25 @@ export class PitScene {
       const target = targetId ? actors[targetId] : null;
       if (target) {
         this.vfxDamageNumber(posToWorld(target.position), data.amount as number);
-        // Scale pulse on the hit Crustie (procedural — models not rigged)
-        const hitNode = targetId === this.lastAlphaId ? this.alphaNode : this.betaNode;
-        this.vfxHitPulse(hitNode);
+        const isAlphaTarget = targetId === this.lastAlphaId;
+        const hitNode = isAlphaTarget ? this.alphaNode : this.betaNode;
+        const hitAnims = isAlphaTarget ? this.alphaAnims : this.betaAnims;
+        const hitTeam: 'alpha' | 'beta' = isAlphaTarget ? 'alpha' : 'beta';
+
+        // Skeletal hit animation if available, else procedural fallback
+        if (hitAnims?.hit) {
+          this.playAnimClip(hitAnims, 'hit', hitTeam);
+        } else {
+          this.vfxHitPulse(hitNode);
+        }
+
+        // Death check
+        if (target.hp <= 0) {
+          if (hitAnims) {
+            this.playAnimClip(hitAnims, 'death', hitTeam);
+          }
+          this.playSfx('ko');
+        }
       }
     }
 
@@ -731,16 +961,27 @@ export class PitScene {
 
       const origin = posToWorld(actor.position);
       const isAlpha = actorId === this.lastAlphaId;
+      const anims = isAlpha ? this.alphaAnims : this.betaAnims;
+      const team: 'alpha' | 'beta' = isAlpha ? 'alpha' : 'beta';
 
       if (actionType === 'MELEE_STRIKE') {
+        if (anims) this.playAnimClip(anims, 'attack', team);
+        this.playSfx('pinch');
         const target = evt.targetId ? actors[evt.targetId] : null;
         if (target) this.vfxPinch(origin, posToWorld(target.position));
       } else if (actionType === 'RANGED_SHOT') {
+        if (anims) this.playAnimClip(anims, 'attack', team);
+        this.playSfx('spit');
         const target = evt.targetId ? actors[evt.targetId] : null;
         if (target) this.vfxSpit(origin, posToWorld(target.position));
+      } else if (actionType === 'MOVE') {
+        if (anims) this.playAnimClip(anims, 'walk', team);
+        this.playSfx('scuttle');
       } else if (actionType === 'GUARD') {
+        this.playSfx('shellUp');
         this.vfxShellUp(origin);
       } else if (actionType === 'DASH') {
+        this.playSfx('burst');
         this.vfxBurst(origin, isAlpha ? C_CYAN : C_RED);
       }
     }
@@ -995,6 +1236,27 @@ export class PitScene {
 
   dispose(): void {
     this.disposed = true;
+
+    // Dispose animation groups
+    for (const anims of [this.alphaAnims, this.betaAnims]) {
+      if (!anims) continue;
+      for (const key of ['idle', 'walk', 'attack', 'hit', 'death'] as AnimClipName[]) {
+        const group = anims[key];
+        if (group) {
+          group.stop();
+          group.dispose();
+        }
+      }
+    }
+    this.alphaAnims = null;
+    this.betaAnims = null;
+
+    // Release SFX audio elements
+    for (const key of Object.keys(this.sfx) as SfxKey[]) {
+      this.sfx[key] = null;
+    }
+    this.sfxReady = false;
+
     this.scene.dispose();
     this.engine.dispose();
   }

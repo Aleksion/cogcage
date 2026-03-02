@@ -3,7 +3,8 @@ import { runMatchAsync } from '~/lib/ws2/run-match'
 import { HP_MAX, TICK_RATE, MAX_TICKS, UNIT_SCALE, MELEE_RANGE, RANGED_MAX } from '~/lib/ws2/index'
 import type { BotConfig, MatchSnapshot } from '~/lib/ws2/match-types'
 import { PARTS, composeMold, type Part } from '~/lib/ws2/parts'
-import ArenaCanvas, { type ArenaHandle } from './ArenaCanvas'
+import { BabylonArena } from '../BabylonArena'
+import type { MatchSnapshot as PitSnapshot } from '~/game/PitScene'
 import BattleHUD from './BattleHUD'
 import BrainStream from './BrainStream'
 import {
@@ -148,7 +149,7 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
     'OPPONENT',
     { x: 16, y: 10 },
   ), [opponentMold])
-  const arenaRef = useRef<ArenaHandle>(null)
+  const [arenaSnapshot, setArenaSnapshot] = useState<PitSnapshot | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const prevEventsLenRef = useRef(0)
   const streamAbortRef = useRef<AbortController | null>(null)
@@ -205,19 +206,14 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
     if (typeof a.energy === 'number') setBotAEnergy(a.energy)
     if (typeof b.energy === 'number') setBotBEnergy(b.energy)
 
-    // Update arena positions
-    if (a.position && arenaRef.current) {
-      arenaRef.current.updatePositions(
-        a.position,
-        b.position,
-      )
-    }
-
-    // Process new events
+    // Process new events (diff from cumulative list)
     const events: any[] = s.events || []
     const prev = prevEventsLenRef.current
     const newEvents = events.slice(prev)
     prevEventsLenRef.current = events.length
+
+    // Forward snapshot to BabylonArena / PitScene
+    setArenaSnapshot({ state: s, decisions: [], newEvents })
 
     const entries: FeedEntry[] = []
 
@@ -244,20 +240,15 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
 
         entries.push({ text: `${icon} ${who}: ${label}`, reasoning })
 
-        // Trigger arena animations
-        if (arenaRef.current) {
-          if (d.type === 'MELEE_STRIKE') {
-            arenaRef.current.triggerAttack(isA ? 'botA' : 'botB', 'melee')
-            playAttackSound('melee')
-          } else if (d.type === 'RANGED_SHOT') {
-            arenaRef.current.triggerAttack(isA ? 'botA' : 'botB', 'ranged')
-            playAttackSound('ranged')
-          } else if (d.type === 'GUARD') {
-            arenaRef.current.triggerGuard(isA ? 'botA' : 'botB')
-            playAttackSound('guard')
-          } else if (d.type === 'DASH') {
-            playAttackSound('dash')
-          }
+        // Sound effects (PitScene handles its own SFX too, but these are the legacy UI sounds)
+        if (d.type === 'MELEE_STRIKE') {
+          playAttackSound('melee')
+        } else if (d.type === 'RANGED_SHOT') {
+          playAttackSound('ranged')
+        } else if (d.type === 'GUARD') {
+          playAttackSound('guard')
+        } else if (d.type === 'DASH') {
+          playAttackSound('dash')
         }
 
         // Update brain stream last action
@@ -287,17 +278,11 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
 
       if (evt.type === 'DAMAGE_APPLIED') {
         const target = evt.targetId === 'botA' ? playerBot.name : opponentBot.name
-        const isTargetA = evt.targetId === 'botA'
         const amount = evt.data?.amount ?? 0
         const guarded = evt.data?.defenderGuarded ? ' (guarded)' : ''
         entries.push({
           text: `\uD83D\uDCA5 ${who} hits ${target} for ${amount} dmg${guarded}`,
         })
-
-        if (arenaRef.current) {
-          arenaRef.current.triggerHit(isTargetA ? 'botA' : 'botB', amount)
-          if (amount > 15) arenaRef.current.shakeCamera()
-        }
         playHitSound(amount)
 
         // Track stats
@@ -323,10 +308,6 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
       setWinnerId(snap.winnerId)
       setEndReason(s.endReason || 'UNKNOWN')
       setPhase('ended')
-      if (snap.winnerId) {
-        const loser = snap.winnerId === 'botA' ? 'botB' : 'botA'
-        arenaRef.current?.triggerDeath(loser)
-      }
       playKOSound()
       stopAmbient()
     }
@@ -520,8 +501,20 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
 
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: '#050510' }}>
-      {/* Three.js Arena — behind everything */}
-      <ArenaCanvas ref={arenaRef} />
+      {/* Babylon.js Arena — behind everything */}
+      <BabylonArena
+        snapshot={arenaSnapshot}
+        botNames={{ botA: playerBot.name, botB: opponentBot.name }}
+        canvasStyle={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          borderRadius: 0,
+          border: 'none',
+          boxShadow: 'none',
+        }}
+      />
 
       {/* HUD Overlay */}
       <BattleHUD
