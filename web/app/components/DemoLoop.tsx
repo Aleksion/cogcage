@@ -14,6 +14,7 @@ interface BotConfig {
   color: string
   initial: string
   hp: number
+  speed: number
   bias: Record<Action, number>
   start: Position
 }
@@ -24,18 +25,21 @@ interface BotState {
   charged: boolean
   stunned: boolean
   defending: boolean
+  ap: number
 }
 
 interface TurnResult {
   turn: number
-  p1Action: Action
-  p2Action: Action
+  p1Action: Action | 'WAIT'
+  p2Action: Action | 'WAIT'
   p1Dmg: number
   p2Dmg: number
   p1Hp: number
   p2Hp: number
   p1Pos: Position
   p2Pos: Position
+  p1Ap: number
+  p2Ap: number
   log: string
 }
 
@@ -46,6 +50,7 @@ const BERSERKER: BotConfig = {
   color: '#EB4D4B',
   initial: 'B',
   hp: 100,
+  speed: 1.2,
   bias: { MOVE: 20, ATTACK: 40, DEFEND: 5, CHARGE: 25, STUN: 10 },
   start: { x: 0, y: 0 },
 }
@@ -55,6 +60,7 @@ const TACTICIAN: BotConfig = {
   color: '#00E5FF',
   initial: 'T',
   hp: 100,
+  speed: 0.9,
   bias: { MOVE: 15, ATTACK: 20, DEFEND: 25, CHARGE: 15, STUN: 25 },
   start: { x: 6, y: 6 },
 }
@@ -111,14 +117,24 @@ const MAX_TURNS = 15
 const MATCH_COUNT = 3
 
 function simulateMatch(): { turns: TurnResult[]; winner: string } {
-  const p1: BotState = { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false }
-  const p2: BotState = { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false }
+  const p1: BotState = { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: 0 }
+  const p2: BotState = { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: 0 }
   const turns: TurnResult[] = []
 
   for (let t = 1; t <= MAX_TURNS; t++) {
+    // Accumulate AP based on speed
+    p1.ap += BERSERKER.speed
+    p2.ap += TACTICIAN.speed
+
+    const p1CanAct = p1.ap >= 1.0
+    const p2CanAct = p2.ap >= 1.0
+
     const dist = manhattan(p1.pos, p2.pos)
-    const p1Act = pickAction(BERSERKER.bias, dist, p1.stunned)
-    const p2Act = pickAction(TACTICIAN.bias, dist, p2.stunned)
+    const p1Act: Action | 'WAIT' = p1CanAct ? pickAction(BERSERKER.bias, dist, p1.stunned) : 'WAIT'
+    const p2Act: Action | 'WAIT' = p2CanAct ? pickAction(TACTICIAN.bias, dist, p2.stunned) : 'WAIT'
+
+    if (p1CanAct) p1.ap -= 1.0
+    if (p2CanAct) p2.ap -= 1.0
 
     let p1Dmg = 0 // damage dealt TO p2
     let p2Dmg = 0 // damage dealt TO p1
@@ -126,58 +142,62 @@ function simulateMatch(): { turns: TurnResult[]; winner: string } {
     p2.defending = false
 
     // P1 action
-    switch (p1Act) {
-      case 'MOVE':
-        if (!p1.stunned) {
-          p1.pos = clampGrid(moveToward(p1.pos, p2.pos))
-        }
-        break
-      case 'ATTACK':
-        if (dist <= 2) {
-          let dmg = rollDamage()
-          if (p1.charged) { dmg = Math.floor(dmg * 1.4); p1.charged = false }
-          if (p1.stunned && Math.random() < 0.5) { dmg = 0 }
-          if (p2Act === 'DEFEND') dmg = Math.floor(dmg * 0.5)
-          p1Dmg = dmg
-        }
-        break
-      case 'CHARGE':
-        p1.charged = true
-        break
-      case 'STUN':
-        if (dist <= 2) p2.stunned = true
-        break
-      case 'DEFEND':
-        p1.defending = true
-        break
+    if (p1Act !== 'WAIT') {
+      switch (p1Act) {
+        case 'MOVE':
+          if (!p1.stunned) {
+            p1.pos = clampGrid(moveToward(p1.pos, p2.pos))
+          }
+          break
+        case 'ATTACK':
+          if (dist <= 2) {
+            let dmg = rollDamage()
+            if (p1.charged) { dmg = Math.floor(dmg * 1.4); p1.charged = false }
+            if (p1.stunned && Math.random() < 0.5) { dmg = 0 }
+            if (p2Act === 'DEFEND') dmg = Math.floor(dmg * 0.5)
+            p1Dmg = dmg
+          }
+          break
+        case 'CHARGE':
+          p1.charged = true
+          break
+        case 'STUN':
+          if (dist <= 2) p2.stunned = true
+          break
+        case 'DEFEND':
+          p1.defending = true
+          break
+      }
     }
 
     // P2 action
-    const dist2 = manhattan(p1.pos, p2.pos) // recalculate after p1 move
-    switch (p2Act) {
-      case 'MOVE':
-        if (!p2.stunned) {
-          p2.pos = clampGrid(moveToward(p2.pos, p1.pos))
-        }
-        break
-      case 'ATTACK':
-        if (dist2 <= 2) {
-          let dmg = rollDamage()
-          if (p2.charged) { dmg = Math.floor(dmg * 1.4); p2.charged = false }
-          if (p2.stunned && Math.random() < 0.5) { dmg = 0 }
-          if (p1Act === 'DEFEND') dmg = Math.floor(dmg * 0.5)
-          p2Dmg = dmg
-        }
-        break
-      case 'CHARGE':
-        p2.charged = true
-        break
-      case 'STUN':
-        if (dist2 <= 2) p1.stunned = true
-        break
-      case 'DEFEND':
-        p2.defending = true
-        break
+    if (p2Act !== 'WAIT') {
+      const dist2 = manhattan(p1.pos, p2.pos) // recalculate after p1 move
+      switch (p2Act) {
+        case 'MOVE':
+          if (!p2.stunned) {
+            p2.pos = clampGrid(moveToward(p2.pos, p1.pos))
+          }
+          break
+        case 'ATTACK':
+          if (dist2 <= 2) {
+            let dmg = rollDamage()
+            if (p2.charged) { dmg = Math.floor(dmg * 1.4); p2.charged = false }
+            if (p2.stunned && Math.random() < 0.5) { dmg = 0 }
+            if (p1Act === 'DEFEND') dmg = Math.floor(dmg * 0.5)
+            p2Dmg = dmg
+          }
+          break
+        case 'CHARGE':
+          p2.charged = true
+          break
+        case 'STUN':
+          if (dist2 <= 2) p1.stunned = true
+          break
+        case 'DEFEND':
+          p2.defending = true
+          break
+      }
     }
 
     p2.hp = Math.max(0, p2.hp - p1Dmg)
@@ -189,12 +209,21 @@ function simulateMatch(): { turns: TurnResult[]; winner: string } {
 
     const logParts: string[] = []
     logParts.push(`T${t}:`)
-    logParts.push(`${BERSERKER.initial} ${p1Act}`)
-    if (p1Act === 'ATTACK' && dist > 2) logParts.push('(out of range)')
-    else if (p1Dmg > 0) logParts.push(`(${p1Dmg} dmg)`)
-    logParts.push(`vs ${TACTICIAN.initial} ${p2Act}`)
-    if (p2Act === 'ATTACK' && dist2 > 2) logParts.push('(out of range)')
-    else if (p2Dmg > 0) logParts.push(`(${p2Dmg} dmg)`)
+    if (p1Act === 'WAIT') {
+      logParts.push(`${BERSERKER.initial} WAIT`)
+    } else {
+      logParts.push(`${BERSERKER.initial} ${p1Act}`)
+      if (p1Act === 'ATTACK' && dist > 2) logParts.push('(out of range)')
+      else if (p1Dmg > 0) logParts.push(`(${p1Dmg} dmg)`)
+    }
+    if (p2Act === 'WAIT') {
+      logParts.push(`vs ${TACTICIAN.initial} WAIT`)
+    } else {
+      logParts.push(`vs ${TACTICIAN.initial} ${p2Act}`)
+      const dist2 = manhattan(p1.pos, p2.pos)
+      if (p2Act === 'ATTACK' && dist2 > 2) logParts.push('(out of range)')
+      else if (p2Dmg > 0) logParts.push(`(${p2Dmg} dmg)`)
+    }
 
     turns.push({
       turn: t,
@@ -206,6 +235,8 @@ function simulateMatch(): { turns: TurnResult[]; winner: string } {
       p2Hp: p2.hp,
       p1Pos: { ...p1.pos },
       p2Pos: { ...p2.pos },
+      p1Ap: p1.ap,
+      p2Ap: p2.ap,
       log: logParts.join(' '),
     })
 
@@ -499,14 +530,46 @@ const DEMO_STYLES = `
     border-radius: 2px;
     display: inline-block;
   }
+
+  .demo-ap-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.2rem;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .demo-ap-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+    background: #FFD600;
+  }
+
+  .demo-ap-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    color: rgba(255,214,0,0.5);
+    margin-top: 0.1rem;
+  }
+
+  .demo-speed-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.55rem;
+    color: rgba(255,214,0,0.6);
+    margin-top: 0.1rem;
+  }
 `
 
-const ACTION_COLORS: Record<Action, string> = {
+const ACTION_COLORS: Record<Action | 'WAIT', string> = {
   MOVE: '#3498db',
   ATTACK: '#EB4D4B',
   DEFEND: '#2ecc71',
   CHARGE: '#FFD600',
   STUN: '#9b59b6',
+  WAIT: '#555',
 }
 
 function hpColor(pct: number) {
@@ -576,6 +639,8 @@ export default function DemoLoop() {
   const p2Pct = (p2Hp / TACTICIAN.hp) * 100
   const p1Pos = currentTurn ? currentTurn.p1Pos : BERSERKER.start
   const p2Pos = currentTurn ? currentTurn.p2Pos : TACTICIAN.start
+  const p1Ap = currentTurn ? currentTurn.p1Ap : 0
+  const p2Ap = currentTurn ? currentTurn.p2Ap : 0
   const visibleLogs = match.turns.slice(0, visibleTurn)
   const dist = manhattan(p1Pos, p2Pos)
 
@@ -624,6 +689,11 @@ export default function DemoLoop() {
                 <div className="demo-hp-fill" style={{ width: `${p1Pct}%`, background: hpColor(p1Pct) }} />
               </div>
               <div className="demo-hp-text">{p1Hp} / {BERSERKER.hp} HP</div>
+              <div className="demo-ap-bar">
+                <div className="demo-ap-fill" style={{ width: `${Math.min(p1Ap, 1) * 100}%` }} />
+              </div>
+              <div className="demo-ap-text">AP {p1Ap.toFixed(1)}</div>
+              <div className="demo-speed-badge">SPD {BERSERKER.speed}x</div>
             </div>
             <div className="demo-vs-text">VS</div>
             <div className="demo-bot">
@@ -632,6 +702,11 @@ export default function DemoLoop() {
                 <div className="demo-hp-fill" style={{ width: `${p2Pct}%`, background: hpColor(p2Pct) }} />
               </div>
               <div className="demo-hp-text">{p2Hp} / {TACTICIAN.hp} HP</div>
+              <div className="demo-ap-bar">
+                <div className="demo-ap-fill" style={{ width: `${Math.min(p2Ap, 1) * 100}%` }} />
+              </div>
+              <div className="demo-ap-text">AP {p2Ap.toFixed(1)}</div>
+              <div className="demo-speed-badge">SPD {TACTICIAN.speed}x</div>
             </div>
           </div>
 
@@ -647,7 +722,7 @@ export default function DemoLoop() {
 
           {/* Action Legend */}
           <div className="demo-legend">
-            {(['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN'] as Action[]).map((a) => (
+            {(['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN', 'WAIT'] as (Action | 'WAIT')[]).map((a) => (
               <div key={a} className="demo-legend-item">
                 <span className="demo-legend-dot" style={{ background: ACTION_COLORS[a] }} />
                 {a}
