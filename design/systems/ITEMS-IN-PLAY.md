@@ -1,643 +1,1061 @@
 # ITEMS IN PLAY
-*The Molt Pit — Mechanical Specification for All 40 Items*
-*Deep Brine Studios | WS18 | Locked: March 1, 2026*
+*How Every Item Actually Affects the Game State*
+*Deep Brine Studios | WS18 | Lead Game Designer*
+*Locked: March 1, 2026*
 
 ---
 
-## How to Read This Document
+## Reading This Document
 
-Each item entry specifies:
-- **Mechanical effect** — exact numbers, triggers, conditions. Engine implements this.
-- **LLM context** — what the agent sees in game state. How the effect surfaces.
-- **Spectator signal** — visual/audio trigger for the audience.
-- **Balance notes** — known risks, synergies, flags.
+Each item entry specifies four things:
+1. **Exact mechanical effect** — numbers, triggers, conditions, edge cases
+2. **Agent state representation** — what the LLM sees in its game state JSON
+3. **Spectator display** — what viewers see (visual + sound trigger)
+4. **Balance notes** — synergies, degenerate combos, tuning flags
 
-Environmental damage (HAZARD tiles) is not an item effect and is not reduced by item effects unless specifically noted.
+Items are organized by slot: Carapace (13) → Claws (14) → Tomalley (13).
 
-All damage follows: `base × damage_multiplier × (1 - damage_reduction)` unless an item explicitly bypasses this.
+All damage values are **pre-reduction** unless otherwise specified. Reduction chain is always: base damage × Claws modifier → apply Carapace reduction → apply SHELL UP → apply other passives.
 
 ---
 
-## PLATING (Carapace)
+## CARAPACE (13 items)
 
-### BLOCK-7 | Composite Exo-Plating | Common
+Carapace items modify HP, damage received, and movement. Applied at fight start, locked for the Scuttle.
+
+---
+
+### BLOCK-7
+*Composite Exo-Plating | Common*
+
 **Mechanical effect:**
-- HP: +30 (base 100 → 130)
-- Incoming damage multiplied by 0.9 (10% reduction, applied post-Claw multiplier)
-- SCUTTLE energy cost: 2 (instead of 1). BURST energy cost: 3 (instead of 2).
+- +30 HP (HP pool = 130)
+- 10% incoming damage reduction (multiplicative with other reductions)
+- SCUTTLE penalty: a `scuttle_penalty_counter` tracks SCUTTLE usage. Every 7th SCUTTLE attempt is consumed as NO_OP; counter resets. Energy cost still paid. Penalty fires silently — the agent receives no warning, only sees that it didn't move.
 
-**LLM context:** `plating: "BLOCK-7"` in loadout. `hp_max: 130`. Game state shows energy cost per action accurately. Agent reads energy depletion naturally.
+**Agent state:**
+```json
+"carapace": "BLOCK-7",
+"hp": 130,
+"damage_reduction": 0.10,
+"scuttle_penalty_every": 7,
+"scuttle_counter": 3
+```
 
-**Spectator signal:** Heavy thud on hit (muffled). Blue armor shimmer on impact.
+**Spectator display:** Heavy shell creak on SCUTTLE. Penalty NO_OP plays a grinding-halt sound + brief shell shimmer. No dedicated icon change.
 
-**Balance notes:** Solid common. The movement penalty is real — against PAPER-MACHÉ, BLOCK-7 agents get kited. Against MAXINE, the extra HP + reduction can absorb 2 hits that would otherwise 2-shot a standard build.
+**Balance notes:** Strong tank pick. Pairs well with REVERSAL (more HP = more windows to wait for counterplay) and DOUBLE DOWN (patience build). Countered by NEEDLE (ignores armor, negates reduction). INVERTER interaction: BLOCK-7 reduction applies only above 50% HP threshold (INVERTER takes over below). The reductions do not stack in any special way — INVERTER replaces damage math entirely below 50% HP.
 
 ---
 
-### THE ORIGINAL | Default Shell | Common
+### THE ORIGINAL
+*Standard Shell | Common*
+
 **Mechanical effect:**
-- HP: +15 (base 100 → 115)
-- No other effects
+- +15 HP (HP pool = 115)
+- No passive effect. No downside.
 
-**LLM context:** `plating: "THE_ORIGINAL"`. Boring. Reliable.
+**Agent state:**
+```json
+"carapace": "THE_ORIGINAL",
+"hp": 115,
+"damage_reduction": 0.00
+```
 
-**Spectator signal:** Nothing special. That's the joke.
+**Spectator display:** No special effects. The plain shell. Looks dependable and slightly boring.
 
-**Balance notes:** This is the starter. New Pitmasters who don't know the meta reach for this. Against anything Legendary, it loses. Against other Common, it's a fair fight decided by Claws + Tomalley + agent quality.
+**Balance notes:** The benchmark item. Everything else is measured against it. A Lobster running THE ORIGINAL should win on pure agent quality alone — no item crutch, no item weakness. It's the "I don't need gimmicks" pick and should feel like a confident statement. Slight undertuning is acceptable (brave players pick it; reward their confidence at a reasonable rate, not an excessive one).
 
 ---
 
-### HARDCASE | Heavy Exoskeleton | Common
+### HARDCASE
+*Monolithic Exo-Shell | Common*
+
 **Mechanical effect:**
-- HP: +40 (base 100 → 140)
-- BURST: unavailable
-- SCUTTLE energy cost: 2
-- Incoming damage: ×0.85 (15% reduction)
+- +40 HP (HP pool = 140)
+- BURST is permanently disabled. `valid_actions` never contains BURST.
+- SCUTTLE energy cost: 2 (instead of 1)
+- No damage reduction passive (HP is the defense)
 
-**LLM context:** `available_actions` excludes BURST. `hp_max: 140`. Agent knows not to attempt BURST.
+**Agent state:**
+```json
+"carapace": "HARDCASE",
+"hp": 140,
+"damage_reduction": 0.00,
+"burst_disabled": true,
+"scuttle_cost": 2
+```
 
-**Spectator signal:** Slow movement animation. Grinding sound when hit.
+**Spectator display:** Slow SCUTTLE animation (weighted, deliberate). A heavy shell-drag sound on each move. Visual: slight dust plume on landing.
 
-**Balance notes:** Tankiest Common. No BURST means no escape from HAZARD landing. Pair with ranged Claws (THE REACH) to stay outside PINCH range. Against NEEDLE (ignores armor): the 40 HP becomes the whole advantage. ⚠️ Flag: potentially degenerate if paired with STANDARD ISSUE regen — slowly outheal damage from a distance. Monitor in playtest.
+**Balance notes:** Pairs with PINCH-heavy builds (no need for BURST repositioning if you're a brawler). MAXINE Claws + HARDCASE = slow murderer build — close the gap once and commit. Countered by kiting (THE REACH range) and hazard maps (moving through HAZARD costs 2 energy + HP penalty). HARDCASE + HAZARD tile = energy drain + HP drain. Punishes passive play hard. Flag: HARDCASE + THE PATRIARCH is a degenerate no-mobility build — both BURST disabled, extreme slow. Probably fine since mobility is a counter-strategy available to opponent. Watch tournament data.
 
 ---
 
-### SILKWORM | Phase-Scatter Membrane | Rare
+### SILKWORM
+*Phase-Scatter Membrane | Rare*
+
 **Mechanical effect:**
-- HP: base 90 (−10 from base)
-- On any incoming damage: scatter 20% to random adjacent open tile (damage just disappears — it scatters into The Brine). Effective reduction: 20% of all damage, regardless of type.
-- Scatter happens before armor reduction. Opponent's 20 PINCH → 16 hits Silkworm, 4 scattered. Then 16 × 1.0 (no other reduction) = 16 damage taken.
+- ±0 HP (HP pool = 100)
+- -10 HP effective pool (HP pool = 90)
+- Incoming damage scatter: 20% of each incoming damage instance is negated (not redirected — just dissipated). Implementation: `effective_damage = raw_damage × 0.80` applied before other reductions.
+- Speed: no penalty (this is the mobile/dodge shell)
 
-**LLM context:** `plating: "SILKWORM"`. `hp_max: 90`. Agent prompt: *Your membrane scatters incoming damage. Stay mobile. Flank.*
+**Agent state:**
+```json
+"carapace": "SILKWORM",
+"hp": 90,
+"damage_reduction": 0.20
+```
 
-**Spectator signal:** Hit splashes outward from Lobster position — particle burst in adjacent direction. Sound: energy dissipation hiss.
+**Spectator display:** Hit particles scatter sideways instead of impacting directly. A phasing shimmer on the shell. Audio: hit sound has a phase-scatter tail (soft echo).
 
-**Balance notes:** 20% passive damage scatter is always-on. Against NEEDLE (ignores armor): SILKWORM scatter still fires — NEEDLE bypasses reduction, not scatter. SILKWORM is secretly strong against NEEDLE. Against BLEED BACK (reflect): BLEED BACK reflects 8% of damage dealt — SILKWORM means only 80% of damage is actually dealt, reducing what BLEED BACK returns. Nice interaction.
+**Balance notes:** With 90 HP, SILKWORM Lobsters die faster to burst damage (MAXINE, WIDOW-MAKER) than default. The scatter helps against sustained DPS (THE FLICKER DoT is reduced by 20% per stack application). SILKWORM + GHOST SHELL is a significant miss-chance + reduction build: 20% reduction + 25% miss chance = roughly 40% effective damage received on average. Pair with NEEDLE (ignores armor, but SILKWORM's scatter is passive/shell — does NEEDLE ignore scatter? **Rule:** NEEDLE ignores Carapace stat damage_reduction only. SILKWORM's scatter is treated as a separate passive, NOT as Carapace reduction. NEEDLE does NOT bypass SILKWORM scatter. Document this clearly in engine).
 
 ---
 
-### ECHO | Reactive Neural Mesh | Rare
+### ECHO
+*Reactive Neural Mesh | Rare*
+
 **Mechanical effect:**
-- HP: +10 (base 100 → 110)
-- After taking any damage (PINCH or SPIT only — not HAZARD, not BURST HIT): next action in queue is automatically upgraded. Specifically: the next queued PINCH deals +50% damage. If no PINCH queued, bonus sits until next PINCH lands. Expires after 2 windows.
-- Counter triggers ONCE per hit, regardless of damage amount.
+- +10 HP (HP pool = 110)
+- On being hit: if the Lobster's NEXT action (next window) is not already queued, the engine automatically queues PINCH or SPIT (whichever is valid — prefer PINCH if opponent is adjacent, else SPIT) at no additional energy cost. This is an automatic counter-queue, not a free attack.
+- "Auto counter" means: if the agent submits a different action, the agent's action takes priority. ECHO fires only if no action is queued for that window.
 
-**LLM context:** `echo_counter_ready: true/false` in game state. LLM should PINCH when this is active.
+**Agent state:**
+```json
+"carapace": "ECHO",
+"hp": 110,
+"damage_reduction": 0.00,
+"echo_counter_pending": true  // set to true the window after being hit, cleared after
+```
 
-**Spectator signal:** Lobster flashes cyan on hit. Counter-PINCH shows red glow on claw.
+**Spectator display:** Visual pulse from shell on hit (ripple outward). Counter-attack animation is preceded by a brief glow. Audio: hit followed immediately by a reactive buzz.
 
-**Balance notes:** ECHO rewards agents that parse game state well. An agent that reads `echo_counter_ready: true` and queues PINCH immediately gets massive value. A dumb agent wastes every proc. This is intentional skill expression at the agent design layer.
+**Balance notes:** ECHO rewards passivity paired with the right agent — an agent that banks queued moves can override ECHO when needed, or deliberately NOT queue to let ECHO fire. Meta-play: skilled agents might intentionally save a queue slot open to let ECHO auto-counter. Countered by SHELL UP spam (ECHO triggers on being hit but if opponent is guarding, their attacks are less valuable). ECHO + THE RED GENE: powerful — wounded + auto-counter = aggression spiral.
 
 ---
 
-### THE MOLT | Progressive Hardening | Rare
+### THE MOLT
+*Adaptive Chitin Layer | Rare*
+
 **Mechanical effect:**
-- HP: −5 start (base 100 → 95)
-- Every 20 ticks: +5% damage resistance, stacking up to 5 stacks (max +25% resistance at tick 100)
-- Stack tracking: `molt_stacks: 0-5` in game state
+- -5 HP at fight start (HP pool = 95)
+- Every 20 ticks: damage_reduction increases by 5% permanently for this fight (capped at 40% at tick 160)
+- Tick schedule: +5% at ticks 20, 40, 60, 80, 100, 120, 140, 160. After 160: no further increases.
 
-**LLM context:** `molt_stacks: 3` signals agent to play more aggressively as stacks accumulate (they're getting harder to kill).
+**Tick → Reduction table:**
+| Tick | Total Reduction |
+|------|----------------|
+| 0-19 | 0% |
+| 20-39 | 5% |
+| 40-59 | 10% |
+| 60-79 | 15% |
+| 80-99 | 20% |
+| 100-119 | 25% |
+| 120-139 | 30% |
+| 140-159 | 35% |
+| 160-300 | 40% |
 
-**Spectator signal:** Shell visibly darkens with each stack. At 5 stacks: glows deep amber.
+**Agent state:**
+```json
+"carapace": "THE_MOLT",
+"hp": 95,
+"damage_reduction": 0.15,  // example at tick 55
+"molt_next_increase_tick": 60
+```
 
-**Balance notes:** Weak in fast fights (<30 ticks). Strong in drawn-out brawls. Pairs extremely well with STANDARD ISSUE (HP regen per window) and LONG GAME (damage buff over time). ⚠️ Time-synced triple — MOLT + LONG GAME + STANDARD ISSUE is a "wait them out" build that needs monitoring. Ensure MAX_TICKS = 300 keeps it finite.
+**Spectator display:** Shell visually darkens/hardens at each 20-tick interval. A brief calcification sound. The shell should look progressively more armored.
+
+**Balance notes:** Rewards patient, survivable agents. Pairs with LONG GAME Tomalley (both ramp over time). Countered by aggressive burst early (kill it before it hardens). At tick 160+ THE MOLT has 40% reduction — equivalent to THE PATRIARCH without the mobility penalty. This is strong. Consider whether 40% cap is right. Currently balanced by: the -5 HP start, the weakness window (first 20 ticks), and the opponent knowing the timer. Agents facing THE MOLT should know to pressure early.
 
 ---
 
-### WIDOW | Survivor's Shell | Rare
+### WIDOW
+*Survivor's Shell | Rare*
+
 **Mechanical effect:**
-- HP: −15 (base 100 → 85)
-- One time, when an incoming hit would reduce HP to ≤0: that hit reduces HP to 1 instead. Widow proc consumed.
-- State: `widow_proc_available: true/false`
+- -15 HP (HP pool = 85)
+- One-time ability: if a damage instance would reduce HP to 0 or below, instead set HP = 1. The killing blow is negated. This fires **once per Scuttle** and is then permanently consumed.
+- WIDOW trigger condition: HP goes from >0 to ≤0 in a single damage resolution. If HP was already 1 from a prior save and another hit lands: WIDOW has already fired, Lobster dies.
 
-**LLM context:** `widow_proc_available: true` in state. Agent should know it can survive one lethal hit. Pair with comeback Tomalley (RED GENE).
+**Agent state:**
+```json
+"carapace": "WIDOW",
+"hp": 85,
+"widow_active": true   // false after it fires
+```
 
-**Spectator signal:** THE moment. Shell shatters dramatically, Lobster stands at 1 HP. Crowd goes wild. Sound: glass break + low rumble.
+**Spectator display:** When WIDOW fires — dramatic visual: shell cracks and reassembles, HP bar slams to 1 with a red pulse. Audio: crack + crystallization sound. This is the "clutch moment" spectators cheer for.
 
-**Balance notes:** The WIDOW save is the single most exciting moment designed into this game. It is correct that this is Rare and not Common. 85 HP with one guaranteed survival — agents that know this proc will play aggressively near death. Pairs lethally with INVERTER (below 50% HP, damage becomes healing) and RED GENE (below 40%, +40% damage). THE WIDOW BUILD: Widow + Inverter/Red Gene + any aggressive Claws = comeback arc in every fight.
+**Balance notes:** The drama item. 85 HP means a Lobster can be killed by 85 damage without triggering WIDOW — it only saves from the killing blow. MAXINE (120% × 20 = 36 damage base — not enough to one-shot through WIDOW). WIDOW-MAKER (400% × 20 = 80 damage — still not one-shot through 85 HP... unless opponent has buffs). THE PATRIARCH + WIDOW-MAKER can trigger WIDOW. After WIDOW fires, the Lobster is at 1 HP — SPITE Tomalley (40% maxHP damage on death) pairs with WIDOW to ensure a dying strike. Classic clutch combo: WIDOW + SPITE + REVERSAL. You survive, then explode on the way out.
 
 ---
 
-### BLEED BACK | Retaliatory Chitin | Rare
+### BLEED BACK
+*Thorn Membrane | Rare*
+
 **Mechanical effect:**
-- HP: −10 (base 100 → 90)
-- On any incoming damage: reflect 8% of damage dealt back to attacker, before their armor reduction
-- Reflect triggers on PINCH, SPIT, BURST HIT. Not on HAZARD.
-- Reflect damage is non-blockable by SHELL UP (it fires passively, not as an action)
+- -10 HP (HP pool = 90)
+- 8% of all incoming damage is reflected back to the attacker (before reductions are applied to the reflection — the reflection is raw). The Lobster wearing BLEED BACK still receives the full damage (minus their own reductions). The reflection is additional damage to the attacker.
+- Reflection does NOT trigger the attacker's own BLEED BACK (no infinite ping-pong).
+- SHELL UP on the attacker: the reflected damage is affected by the attacker's SHELL UP. The reflection hits the attacker like any other damage.
 
-**LLM context:** `plating: "BLEED_BACK"`. Opponent in state shows they have this — aggressive attackers should factor in ~8% self-damage per hit.
+**Agent state:**
+```json
+"carapace": "BLEED_BACK",
+"hp": 90,
+"damage_reduction": 0.00,
+"reflect_percent": 0.08
+```
 
-**Spectator signal:** Small red spark fires back toward attacker on every hit.
+**Spectator display:** Small spike/thorn visual on shell. On being hit: a brief return-shot particle from the shell toward the attacker. Audio: hit sound + a second smaller impact sound (the return).
 
-**Balance notes:** Against MAXINE (+80% damage multiplier, one massive hit): that one hit might be 36 damage. 8% = 2.88 damage reflected. Low return on a big hit. Against THE FLICKER (multi-hit, stacking): 8% × many small hits = meaningful accumulated damage. BLEED BACK counters flicker-style attackers. 
+**Balance notes:** 8% reflect is low but consistent. Against sustained DPS (THE FLICKER 8 stacks × DoT) the reflection adds up. Against MAXINE (big single hit): 8% of a large hit = noticeable bleed return. BLEED BACK + ECHO: hit triggers BLEED BACK reflection AND ECHO counter-queue. Punishes aggression from two angles. Countered by ranged play — SPIT damage is reflected too, but at range the attacker doesn't care as much about 8% of 12 damage = ~1 HP. BLEED BACK is a melee-counter item.
 
 ---
 
-### THE PATRIARCH | Ancient Armor | Legendary
+### THE PATRIARCH
+*Ancestral Full-Body Carapace | Legendary*
+
 **Mechanical effect:**
-- HP: +60 (base 100 → 160)
-- Incoming damage: ×0.8 (20% reduction)
-- BURST: unavailable
-- SCUTTLE energy cost: 2
+- +60 HP (HP pool = 160)
+- 20% incoming damage reduction (multiplicative)
+- BURST permanently disabled
+- SCUTTLE penalty: every 4th SCUTTLE is NO_OP (25% effective movement reduction). Counter resets after each NO_OP.
+- No other mobility modifiers
 
-**LLM context:** `available_actions` excludes BURST. `hp_max: 160`. Prompt fragment communicates "advance and hold position."
+**Agent state:**
+```json
+"carapace": "THE_PATRIARCH",
+"hp": 160,
+"damage_reduction": 0.20,
+"burst_disabled": true,
+"scuttle_penalty_every": 4,
+"scuttle_counter": 2
+```
 
-**Spectator signal:** Deep resonant thud on movement. Slowest walk animation in the game.
+**Spectator display:** Massive, imposing shell. SCUTTLE animations are slow and deliberate. SCUTTLE NO_OPs show the shell shuddering in place. Audio: deep bass resonance on each movement.
 
-**Balance notes:** 160 HP + 20% reduction makes this effectively ~200 HP of effective health. Against NEEDLE (ignores armor): 160 HP straight with no reduction. THE PATRIARCH vs NEEDLE is a pure HP fight — NEEDLE wins on DPS if it can stay alive long enough. Against WIDOW-MAKER (400% one hit): WIDOW-MAKER vs THE PATRIARCH is: base 20 PINCH × 4.0 × 0.8 = 64 damage. Hurts but doesn't kill. Solid counter.
+**Balance notes:** 160 HP + 20% reduction = effectively 200 raw damage to kill. Opponent needs significant time investment. Countered by hazard maps (can't dodge hazards effectively), NEEDLE (ignores reduction), and time pressure (MAX_TICKS tiebreaker goes to higher HP — but THE PATRIARCH usually wins that). Flag: PATRIARCH + HARDCASE is rejected as a combo by the engine (Legendary + Common from same slot — not possible, they're both Carapace. Player picks one. This note is moot.) Check loadout builder prevents equipping two Carapace items.
 
 ---
 
-### GHOST SHELL | Phase Carapace | Legendary
+### GHOST SHELL
+*Phase-Shift Membrane | Legendary*
+
 **Mechanical effect:**
-- HP: base 100 (no change)
-- On every incoming attack (PINCH, SPIT, BURST HIT): 25% chance the attack misses entirely. Random roll per hit.
-- Miss means: zero damage, no effects triggered (no ECHO counter, no BLEED BACK return, nothing)
-- State: `ghost_shell_equipped: true` visible to both agents
+- ±0 HP (HP pool = 100)
+- No damage reduction passively
+- Each damage instance (PINCH, SPIT, BURST hit, HAZARD, DoT ticks) has a 25% chance to miss entirely (deal 0 damage). Roll per instance, not per window.
+- Miss chance is applied BEFORE the damage reduction chain. A miss = 0 damage after the roll; reduction never fires.
+- GHOST SHELL does NOT affect SPITE on-death damage (that targets the opponent, not the GHOST SHELL wearer).
 
-**LLM context:** Opponent knows GHOST SHELL is active. They see `ghost_shell_equipped: true` in opponent state. They should factor 25% miss rate into aggressive play — but cannot prevent it.
+**Agent state:**
+```json
+"carapace": "GHOST_SHELL",
+"hp": 100,
+"damage_reduction": 0.00,
+"miss_chance": 0.25
+```
 
-**Spectator signal:** Hit passes through Lobster with ghost effect. Lobster flickers transparent for 1 frame. Miss sound: whoosh through void.
+**Spectator display:** Shell has a semi-transparent shimmer. Missed attacks pass through with a ghost-trail effect. Audio: hit attempt + a phasing sound where the impact would be.
 
-**Balance notes:** ⚠️ High variance. Against an opponent expecting consistent damage trades, GHOST SHELL can feel RNG-punishing. Acceptable at Legendary rarity — Legendary items are allowed to feel unfair sometimes. The spectator reaction to a ghost miss at a critical moment is genuine entertainment.
+**Balance notes:** 25% miss chance is high variance. Over a 45-second fight (~40 windows), GHOST SHELL will effectively negate ~10 attacks. Against MAXINE (slow but powerful): negating 1 in 4 MAXINE hits is significant. Against THE FLICKER (many small hits): miss chance applies per-tick of DoT too, meaning each bleed tick has a 25% miss. GHOST SHELL hard-counters sustained DoT builds. Flag (Fog of War): Under Fog, the opponent doesn't know GHOST SHELL is active — they see their attacks "missing" without understanding why. Dramatically more interesting under Fog. Flag for Tide 2.
 
 ---
 
-### INVERTER | Metabolic Reversal Core | Legendary
+### INVERTER
+*Polarity Conversion Shell | Legendary*
+
 **Mechanical effect:**
-- HP: base 100 (no change)
-- When current HP ≤ 50: incoming damage is converted to healing instead (amount equal to what damage would have been, post-armor)
-- When current HP > 50: zero damage reduction (no protection at all)
-- INVERTER does not affect HAZARD damage (environmental, not combat)
+- ±0 HP (HP pool = 100)
+- No damage reduction
+- **Above 50% HP:** standard damage math. INVERTER provides NO benefit. The Lobster is fully vulnerable.
+- **Below 50% HP (HP ≤ 50):** every incoming damage instance is instead converted to healing. The Lobster heals the amount that would have damaged it (before reduction, after other passives). Net effect: being attacked heals you.
+- INVERTER healing cannot exceed 100 HP (base cap). Overheal not possible.
+- SHELL UP below 50% HP: still valid. SHELL UP reduces the "incoming damage" value, which means less healing (it reduces the heal, not the damage). Counter-intuitive: below 50% HP, SHELL UP is a DPS loss for the INVERTER wearer. The LLM must understand this and NOT use SHELL UP below 50%.
 
-**LLM context:** `inverter_active: true/false` — true when HP ≤ 50. Agent should play aggressively when inverter is active (they're functionally unkillable while it fires, until they overheal to >50 then it deactivates momentarily).
+**Agent state:**
+```json
+"carapace": "INVERTER",
+"hp": 72,
+"damage_reduction": 0.00,
+"inverter_active": false,  // true when hp <= 50
+"inverter_healing_mode": false
+```
 
-**Spectator signal:** Below 50 HP: Lobster glows deep violet. Incoming hits show healing numbers instead of damage numbers. Deeply disorienting for opponent's agent reasoning.
+**Spectator display:** Below 50% HP: shell pulses with an inverted color scheme (cyan/magenta instead of normal colors). "Attacks" visually heal the Lobster — incoming particles reverse direction. HP bar goes up when hit. Crowd reaction moment.
 
-**Balance notes:** INVERTER + WIDOW is the most broken theoretical build in the game. At 1 HP (WIDOW proc): opponent hits you, you heal. At >50% HP you're naked — opponent needs to kill you fast before you drop low. The counterplay: don't let INVERTER Lobster get to low HP without killing them. Use burst damage (WIDOW-MAKER, MAXINE). The answer to INVERTER is exactly the kind of strategic arms race The Pit should generate.
+**Balance notes:** Most interesting item in the game for spectators. A Lobster in INVERTER mode is nearly unkillable from direct attacks — opponent must use hazards or DoT. INVERTER does NOT convert hazard damage (hazards are environmental, not attacks). INVERTER DOES convert: PINCH, SPIT, BURST hit, BLEED BACK reflection (they attacked, it reflects → healing). INVERTER does NOT convert: HAZARD tiles, SPITE on-death (environmental), THE FLICKER DoT ticks (rule: DoT is classified as environmental damage, applied by the engine, not the opponent's action per-window — does NOT convert). This distinction is critical for balance. Flag: without DoT immunity, THE FLICKER counters INVERTER hard. This is correct and intentional — INVERTER has a counter.
 
 ---
 
-### THE SARCOPHAGUS | Sealed Carapace | Legendary
+### THE SARCOPHAGUS
+*Ancient Layered Shell | Legendary*
+
 **Mechanical effect:**
-- HP: base 100 during seal phase. After seals break: HP_max reduced to 80 (−20 penalty).
-- First 3 hits taken: deal 0 damage. Seals count: 3, 2, 1, 0.
-- After seal 3 breaks (4th hit onward): no damage reduction, HP max is now 80.
-- Hits that break seals must be PINCH, SPIT, or BURST HIT. HAZARD does not break seals.
+- First 3 hits taken: deal 0 damage (the hits are absorbed by outer layers, called "seals")
+- After 3 seals break: -20 HP applied immediately (HP pool drops to 80 from 100). No damage reduction from this point.
+- Seals track distinct hit instances (not windows). Each PINCH, SPIT, BURST hit, or DoT tick counts as one hit. HAZARD damage per window counts as one hit per window.
+- Seal tracking:
+  - `seals_remaining: 3` at fight start
+  - Each hit: `seals_remaining--`, damage = 0
+  - At `seals_remaining = 0`: apply -20 HP, flag `seals_broken: true`
+  - All subsequent hits: normal damage math with no reduction
 
-**LLM context:** `sarcophagus_seals: 3` counting down. Agent and opponent both see seal count.
+**Agent state:**
+```json
+"carapace": "THE_SARCOPHAGUS",
+"hp": 100,
+"damage_reduction": 0.00,
+"seals_remaining": 2,
+"seals_broken": false
+```
 
-**Spectator signal:** First 3 hits: visual cracks appear on shell. Big crack VFX each break. After all seals gone: shell looks shattered, Lobster exposed.
+**Spectator display:** Shell shows crack layers visually. Each seal break: a visual crack appears + a stone-shattering sound. At seal 3 break: dramatic crumble animation + HP bar drops visibly by 20. After: the shell looks damaged and exposed.
 
-**Balance notes:** 3 free hits is enormous early-fight value. The cost: playing cautiously after seals break (80 HP, no reduction) — you're now more fragile than THE ORIGINAL. Optimal Sarcophagus play: use the 3 free hits to land aggressive early damage, then disengage. Anti-Sarcophagus play: don't waste a WIDOW-MAKER on a sealed Sarcophagus.
+**Balance notes:** Forces opponent to "break" the Sarcophagus before dealing real damage. Against FLICKER (DoT ticks fast): 3 ticks burns seals in ~3 windows — fast, but then THE FLICKER's sustained damage is unimpeded after. Against MAXINE (3 big hits): 3 MAXINE swings burn seals. But MAXINE hits once per 3 windows — burning seals takes ~9 windows (6.75 seconds). THE SARCOPHAGUS is a hard counter to burst builds; weak against sustained DPS. This is correct.
 
 ---
 
-### PAPER-MACHÉ | Compressed Pulp Shell | Common
+### PAPER-MACHÉ
+*Incredibly Thin Shell | Common*
+
 **Mechanical effect:**
-- HP: −40 (base 100 → 60)
-- SCUTTLE energy cost: 0
-- BURST energy cost: 1
+- -40 HP (HP pool = 60)
+- Speed +30% implemented as: every 10th Decision Window, grant 1 free SCUTTLE at the end of that window's resolution (regardless of energy). The free SCUTTLE moves in the last direction the Lobster SCUTTLEd, or can be overridden by submitting an explicit SCUTTLE for that window (the explicit SCUTTLE fires instead, and the "free" bonus is credited as energy-free).
+- No other bonuses. No damage reduction.
 
-**LLM context:** `hp_max: 60`. Every action costs 1 less energy for movement. Agent should play hyper-mobile, never stand still.
+**Agent state:**
+```json
+"carapace": "PAPER_MACHE",
+"hp": 60,
+"damage_reduction": 0.00,
+"speed_bonus_window_counter": 7,  // counts up to 10
+"free_scuttle_pending": false
+```
 
-**Spectator signal:** Fastest movement animation. Almost flickering. Sound: papery rustle.
+**Spectator display:** Shell looks paper-thin, slightly crumpled. Movement animations are fast and light. The bonus SCUTTLE appears as a brief burst of speed — a quick scurry sound.
 
-**Balance notes:** 60 HP dies to almost anything. MAXINE hits for ~36 at standard — 2 hits to kill. THE PATRIARCH with 160 HP could shrug off 4-5 PAPER-MACHÉ PINCH attacks. PAPER-MACHÉ's game is: never get hit. Against fog-of-war agents that can't track fast movement: terrifying. In v1 full visibility: the opponent always knows where it is. You'd better be fast enough to exploit that. This is the loadout that produces the most chaotic, interesting fights to watch.
+**Balance notes:** 60 HP means death from ~3 good hits. PAPER-MACHÉ demands a glass cannon build: MAXINE + PAPER-MACHÉ is "one-shot or die." THE FLICKER + PAPER-MACHÉ is "stack DoT before they kill you." GHOST SHELL + PAPER-MACHÉ is "pray to RNG." Pairs naturally with SURVIVAL INSTINCT (the one auto-dodge buys a window to escape). Countered by everything. This is the "I know what I'm doing" item.
 
 ---
 
-## CLAWS
+## CLAWS (14 items)
 
-### MAXINE | Hydraulic Compression Claws | Common
+Claws modify damage output, attack range, special attack effects, and action availability. The damage multiplier applies to all attack actions (PINCH and SPIT) unless otherwise specified.
+
+---
+
+### MAXINE
+*Hydraulic Compression Claws | Common*
+
 **Mechanical effect:**
-- Damage multiplier: ×1.8 (base 20 PINCH → 36 damage, before armor)
-- Cooldown: after use, MAXINE cannot fire again for 3 decision windows
-- No modification to SPIT
+- Damage multiplier: +80% (PINCH deals 20 × 1.80 = 36 base; SPIT deals 12 × 1.80 = 21.6 ≈ 22)
+- Cooldown: after using PINCH or SPIT, MAXINE enters a cooldown. MAXINE attacks are unavailable for the next 2 Decision Windows. (Attack in window N: unavailable in N+1 and N+2. Available again in N+3.)
+- Engine tracks: `maxine_cooldown_windows_remaining` (starts at 0; set to 2 after each attack; decremented each window)
+- During cooldown, PINCH and SPIT are removed from `valid_actions`
 
-**LLM context:** `maxine_cooldown: 0-3` in game state. When 0, MAXINE PINCH is available. When >0, PINCH deals base damage (20). LLM must read cooldown and time MAXINE correctly.
+**Agent state:**
+```json
+"claws": "MAXINE",
+"damage_multiplier": 1.80,
+"maxine_cooldown_windows_remaining": 1
+```
 
-**Spectator signal:** MAXINE hit: screen shake, massive CRUNCH sound, screen briefly red. Cooldown: claws glow cooling amber.
+**Spectator display:** MAXINE's attack animation is slow, heavy, and deliberate — a visible hydraulic compression before impact. The hit lands with a bone-crunching visual. Cooldown shown as MAXINE "recharging" — subtle mechanical animation. Audio: hydraulic hiss → SLAM → hiss on reload.
 
-**Balance notes:** 36 damage on hit (unarmored). Against 100 HP that's 2-3 shots to kill. MAXINE is a glass cannon Claw — strong, readable, counterable. If opponent sees you're on cooldown, they should press hard.
+**Balance notes:** Paired with SHELL UP during cooldown windows — the optimal play. MAXINE + THE PATRIARCH = slow tanky brawler that OHKO-threats every 3 windows. MAXINE + HARDCASE = pure commitment brawler (no BURST, high damage). Countered by kiting — if opponent maintains range, MAXINE can't PINCH (needs adjacency) and SPIT at +80% is strong but 2-window cooldown makes ranged kiting viable.
 
 ---
 
-### SNAPPER | Standard Combat Claws | Common
+### SNAPPER
+*Standard Combat Claws | Common*
+
 **Mechanical effect:**
-- Damage multiplier: ×1.0 (base: PINCH 20, SPIT 12)
-- No cooldown. No special effects.
+- Damage multiplier: ±0 (PINCH: 20 base; SPIT: 12 base)
+- No special effects. No cooldown. No restrictions.
 
-**LLM context:** Nothing special. Reliable baseline.
+**Agent state:**
+```json
+"claws": "SNAPPER",
+"damage_multiplier": 1.00
+```
 
-**Balance notes:** The honest option. Everything works as advertised. The skill expression is entirely in loadout pairing and agent quality.
+**Spectator display:** Clean, reliable animations. SNAPPER looks competent and unpretentious.
+
+**Balance notes:** The baseline. Measures the value of any Claws special effect. An agent beating SNAPPER opponents must be winning on strategy, positioning, or Tomalley advantage. SNAPPER + THE ORIGINAL + STANDARD ISSUE = full default loadout. Exists for Pitmasters who want to test pure agent quality without item noise.
 
 ---
 
-### THE REACH | Extended Claw Array | Common
+### THE REACH
+*Extended Range Claws | Common*
+
 **Mechanical effect:**
-- Damage multiplier: ×0.8 (PINCH: 16, SPIT: 9.6 → round to 10)
-- SPIT range: 4.5 tiles (effectively 5) instead of 3
-- PINCH range: 1.5 tiles — agent can PINCH from 1 tile away OR adjacent
+- Damage multiplier: -20% (PINCH: 16; SPIT: 9.6 ≈ 10)
+- SPIT range extended: from 3 to 5 tiles (Chebyshev distance `max(|dx|, |dy|) ≤ 5`)
+- PINCH range unchanged (still 1-tile adjacency). THE REACH is a Claws item — it doesn't affect PINCH reach (that would break the melee/ranged balance).
 
-**LLM context:** `spit_range: 5`. `pinch_range: 1.5` (round down: can PINCH if Manhattan distance ≤ 1). Agent should maintain mid-range, not close-range.
+**Agent state:**
+```json
+"claws": "THE_REACH",
+"damage_multiplier": 0.80,
+"spit_range": 5
+```
 
-**Spectator signal:** SPIT visually travels farther. Elongated claw animation on PINCH.
+**Spectator display:** Claws visually extended (longer, spindlier). SPIT projectile travels farther visually. Audio: longer SPIT sound.
 
-**Balance notes:** Ranged-dominant build. Pair with THE PATRIARCH (can't move fast, but SPIT at 5 range from behind cover). Actually a strong combo — immovable fortress with extended reach.
+**Balance notes:** Kiting build. Stay at range 4-5, SPIT continuously. Opponent must close to PINCH, giving you windows to SCUTTLE away. Countered by: fast-close builds (BURST + HARDCASE tank), and ORACLE (predicting SPIT and pre-positioning). The -20% damage is significant — this is a sustain-over-time Claws that requires the fight to go long. Pairs with LONG GAME Tomalley (ramp damage as fight extends). Note: BUZZ Claws also unlocks SPIT but at shorter range — THE REACH is the dedicated ranged build.
 
 ---
 
-### THE FLICKER | Rapid Laceration Array | Rare
+### THE FLICKER
+*Rapid Laceration Array | Rare*
+
 **Mechanical effect:**
-- Damage multiplier: ×0.6 (PINCH: 12 base)
-- On every PINCH hit: apply 1 Bleed stack. Each stack deals 2 damage per tick (not per window — per tick, 150ms). Max 8 stacks = 16 damage/tick passively.
-- Stacks do NOT refresh timer — each stack has independent duration of 10 ticks (1.5 seconds).
-- New PINCH while stacks active: adds 1 more stack (up to max 8), refreshes THAT stack's timer.
-- HAZARD interaction: Bleed damage is separate from HAZARD. Both apply.
+- Damage multiplier: -40% per hit (PINCH: 12; SPIT: 7.2 ≈ 7)
+- Each PINCH or SPIT application stacks a "Bleed" status on the opponent. Max 8 stacks.
+- **Bleed DoT:** Each stack deals 2 HP per tick (at 150ms ticks = 2 HP per tick). All stacks fire simultaneously.
+- Stack calculation: 8 stacks × 2 HP/tick = 16 HP per tick = 107 HP/second at max stacks. This is extremely high.
+- Stacks persist until the fight ends (no natural decay).
+- Each new PINCH/SPIT adds 1 stack (if below 8). If already at 8, new attack deals only direct damage (no additional stack).
 
-**LLM context:** `bleed_stacks_on_opponent: 0-8` in game state. Agent can read how much DoT is running.
+**Bleed tick timing:** Bleed fires at resolution step 6 (Tomalley passives fire). At 150ms ticks, 8 stacks = 16 HP/tick = death in ~6 ticks at full stacks if opponent has no regeneration or armor.
 
-**Spectator signal:** Bleed stacks visible as red number on opponent. Tick by tick, red particles drip from opponent.
+**Agent state:**
+```json
+"claws": "THE_FLICKER",
+"damage_multiplier": 0.60,
+"bleed_stacks_on_opponent": 5,
+"bleed_max_stacks": 8
+```
 
-**Balance notes:** 8 stacks at 2/tick = 16 damage/tick. At 150ms per tick, that's ~107 damage/second from DoT alone (theoretical max, never quite hits because stacks expire). Against BLEED BACK: bleed is not direct hits, so no BLEED BACK interaction. Against GHOST SHELL: each individual PINCH has 25% miss, preventing stack application. Against GHOST SHELL, THE FLICKER can be neutered by luck. ⚠️ Flag: THE FLICKER + DOUBLE DOWN (every 5th attack 200% damage) stacks weirdly — clarify that DOUBLE DOWN bonus applies to PINCH base damage, which then triggers Bleed stack normally. Not multiplicative on bleed.
+**Spectator display:** Each hit leaves a glowing laceration mark on the opponent's shell. At max stacks, the opponent visibly leaks brine. HP drains tick by tick. Audio: each hit is a quick slice; at 8 stacks, a wet dripping sound loops under the fight.
+
+**Balance notes:** High skill ceiling. Requires 8 attacks to reach max damage. Against GHOST SHELL: each bleed application has 25% miss chance — reaching max stacks takes more attempts. Against THE SARCOPHAGUS: first 3 hits are seals (but bleed stacks STILL apply on seal hits — the seal absorbs the direct damage but the bleed mechanic still fires). This is intentional and significant. After seals break, THE FLICKER has 3 stacks already. Against INVERTER below 50%: FLICKER DoT is environmental (does not convert) — INVERTER's counter. Degenerate scenario check: THE FLICKER + DOUBLE DOWN (200% attack every 5th) — 5th attack with DOUBLE DOWN applies 2 stacks at 200% direct damage. Not broken — it's just 2 stacks applied at once. Stack cap prevents runaway. Cleared: not degenerate.
 
 ---
 
-### BUZZ | Electrostatic Discharge Pincers | Legendary
+### BUZZ
+*Electrostatic Discharge Pincers | Legendary*
+
 **Mechanical effect:**
-- Damage multiplier: ×0.85 (PINCH: 17, SPIT: 10)
-- SPIT: always available regardless of range (replaces 3-tile limit — BUZZ SPIT has range 4)
-- On every PINCH or SPIT hit: 25% chance to STUN opponent for 1 decision window. During STUN: opponent's queued action is skipped (NO_OP). The Lobster doesn't move, doesn't attack, doesn't SHELL UP.
-- STUN does not stack. Already-stunned opponent: STUN refreshes duration.
+- Damage multiplier: -15% (PINCH: 17; SPIT: 10.2 ≈ 10)
+- Unlocks SPIT action regardless of range (SPIT available when opponent is in standard 3-tile range)
+- 25% chance on each PINCH or SPIT: opponent is Stunned for 1 Decision Window
+  - Stunned: `valid_actions = ["NO_OP"]` only. Cannot act. Energy still regens.
+  - Stun is communicated to both agents in the state snapshot
+- BUZZ does NOT extend SPIT range (that's THE REACH)
 
-**LLM context:** `opponent_stunned: true/false`, `stun_windows_remaining: 1`. Stunned Lobster: agent receiving this state sees `stunned: true` — it cannot submit a useful action.
+**Agent state (attacker):**
+```json
+"claws": "BUZZ",
+"damage_multiplier": 0.85,
+"spit_always_available": true,
+"stun_chance": 0.25
+```
 
-**Spectator signal:** BUZZ hit: electric arc visual, crackling sound. STUN: opponent sparks, slightly shaking, yellow tint.
+**Agent state (opponent when stunned):**
+```json
+"status_effects": ["STUNNED"],
+"stun_windows_remaining": 1,
+"valid_actions": ["NO_OP"]
+```
 
-**Balance notes:** 25% STUN is high-variance but not oppressive — it's one window. Against slow agents that were going to miss the window anyway: STUN is irrelevant. Against fast agents: one wasted window is significant (~12.5% of a 45-second fight). BUZZ rewards aggression — the more you hit, the more stun chances you roll.
+**Spectator display:** BUZZ sparks with electricity — visible arcing on the claws at rest. Hits crackle. Stun: opponent's shell flashes white, then briefly locks up. Stun icon appears on opponent portrait. Audio: electric discharge → stun buzz → lock-up click.
+
+**Balance notes:** The "personality" item. Stun is incredibly powerful (free window) at 25% rate — in 40 windows, expect ~10 stun procs. Countered by GHOST SHELL (miss chance applies before stun roll — 25% miss × 75% hit × 25% stun = ~14% effective stun rate on GHOST SHELL wearers). BUZZ + THE RED GENE: stun when near death, then attack while stunned. High entertainment value. BUZZ + ORACLE: predict opponent's intent, stun at optimal moment. BUZZ stun does NOT interrupt a queued action — if opponent has 2 actions queued, stun burns the current window but their queued moves still fire next window. This is intentional — queue depth still matters even under stun.
 
 ---
 
-### NEEDLE | Penetrating Claw Tips | Rare
+### NEEDLE
+*Armor-Pierce Claws | Rare*
+
 **Mechanical effect:**
-- Damage multiplier: ×0.5 (PINCH: 10, SPIT: 6)
-- All damage from NEEDLE ignores target's armor reduction entirely (damage_reduction = 0 for NEEDLE hits)
-- NEEDLE does NOT ignore: GHOST SHELL miss chance (still 25% miss), SHELL UP 50% reduction (SHELL UP is active defense, not passive armor), SILKWORM scatter (scatter is pre-damage, not reduction)
-- WIDOW proc still fires on NEEDLE lethal hit
+- Damage multiplier: -50% (PINCH: 10; SPIT: 6)
+- Ignores all Carapace damage_reduction. The damage_reduction field on the opponent is set to 0 for NEEDLE's damage calculations.
+- Does NOT ignore: SHELL UP (SHELL UP is an action choice, not Carapace — NEEDLE respects it), SILKWORM scatter (scatter is a passive, not a Carapace stat — see SILKWORM note), INVERTER healing conversion (that's not reduction — it's conversion)
+- NEEDLE also ignores THE SARCOPHAGUS seals. Each NEEDLE hit counts as a hit for seal tracking purposes, but the 0-damage immunity of seals is bypassed. NEEDLE hits through seals.
 
-**LLM context:** `claws: "NEEDLE"`. Opponent with heavy armor should be no better protected — agent reasoning: target value of armor is zero against us.
+**Agent state:**
+```json
+"claws": "NEEDLE",
+"damage_multiplier": 0.50,
+"armor_pierce": true
+```
 
-**Spectator signal:** NEEDLE hits have a distinctive puncture sound. Thin beam visual, very precise.
+**Spectator display:** Thin, precise claws. Hits animate as precise punctures, not bludgeons. Audio: sharp piercing sound vs. the dull impact of SNAPPER.
 
-**Balance notes:** 10 PINCH damage ignoring armor is most effective against THE PATRIARCH (160 HP, no movement dodge — straight 10/hit) and GHOST SHELL (25% miss but no armor to ignore). Against PAPER-MACHÉ (60 HP, no armor anyway): SNAPPER does nearly the same thing, NEEDLE's armor pierce is wasted. Counter-intuitive: NEEDLE is bad against light armor, best against heavy armor, worst possible opponent is GHOST SHELL (misses half the time and has no armor to pierce). NEEDLE vs GHOST SHELL is a frustrating matchup.
+**Balance notes:** Hard counter to heavy armor builds (BLOCK-7, THE PATRIARCH, THE MOLT late-game). THE PATRIARCH with 20% reduction + NEEDLE = THE PATRIARCH receives full 10 and 6 damage from PINCH and SPIT. Without NEEDLE vs PATRIARCH, those numbers would be 20×0.8=16 and 12×0.8=9.6. NEEDLE's counter role justifies the -50% base damage penalty. Against unarmored opponents (SILKWORM -10 HP with 20% scatter, GHOST SHELL 0% reduction): NEEDLE is a bad pick — you'd rather run SNAPPER. Correct. NEEDLE is a metagame pick against known-heavy opponents.
 
 ---
 
-### THE APOLOGIST | Misfiring Claw Array | Rare
+### THE APOLOGIST
+*Remorseful Combat Appendage | Rare*
+
 **Mechanical effect:**
-- Damage multiplier: ×0.9 (slight reduction)
-- On every PINCH or SPIT action queued by opponent (any Claw): 20% chance that opponent's action misfires — it executes as NO_OP (they attempted the action but it failed)
-- Misfire check: at resolution, before damage calculation. Applied to opponent's attack actions only. Does not affect opponent's SCUTTLE, BURST, or SHELL UP.
+- Damage multiplier: -5% (nearly neutral)
+- On each PINCH or SPIT: 20% chance the opponent's NEXT action is forced to misfire. Misfired action: the opponent submits their intended action, but the engine ignores it and substitutes NO_OP instead. The opponent is not told their action misfired until the state snapshot reveals it didn't happen.
+- Misfire does NOT drain the opponent's energy for the failed action.
+- 20% misfire rate per attack (not per window).
 
-**LLM context:** Opponent sees `opponent_equipped_apologist: true`. Agent should know their attacks have 20% misfire risk. Cannot prevent it — can try to compensate with higher-frequency attacks or prioritize guaranteed actions.
+**Agent state (attacker):**
+```json
+"claws": "THE_APOLOGIST",
+"damage_multiplier": 0.95,
+"misfire_chance": 0.20
+```
 
-**Spectator signal:** Misfire: opponent raises claw, nothing happens, small puff of smoke. Classic cartoon gag.
+**Spectator display:** Claws look slightly ashamed — drooping, uncertain. Hit animation includes a faint "sorry" audio cue (the mandatory muffled apology — non-negotiable per WS19 decision). The misfire on the opponent shows as their intended action shimmering out, replaced by a confused wobble animation. Audio: hit + apology sound + opponent's aborted action whoosh.
 
-**Balance notes:** Defensive-utility Claw. 20% attack misfire is meaningful over a long fight. Against MAXINE (only fires every 3 windows): if MAXINE misfires, that's a huge 3-window waste. THE APOLOGIST counters slow, powerful attackers disproportionately. Against THE FLICKER (rapid hits): 20% misfire per hit means bleed stacks 20% slower. Solid counter to DoT builds.
+**Balance notes:** Psychological item more than statistical. 20% misfire is significant in high-stakes moments (opponent queued a MAXINE strike — it misfires). The misfire is invisible to the AGENT (they see their action submitted; they don't know it misfired until the snapshot). This creates a learning lag — the agent submitted a PINCH, health didn't change, position didn't change. Over multiple windows, a well-designed agent may detect the pattern. This is the intended depth. Countered by pre-queuing multiple actions (if you have 2 queued, one misfire still leaves a queued action for the next window). Against THE APOLOGIST: queue depth is your defense.
 
 ---
 
-### TENDERHOOK | Hydraulic Snare | Rare
+### TENDERHOOK
+*Grapple Claws | Rare*
+
 **Mechanical effect:**
-- Damage multiplier: ×1.0 (base damage, no change)
-- Once per fight: on PINCH hit, opponent is HELD for 2 decision windows. Cannot SCUTTLE, BURST, or SHELL UP. Can still PINCH and SPIT.
-- HOLD state: `opponent_held: true`, `hold_windows_remaining: 1-2`
-- After use: `tenderhook_available: false` forever in this fight
+- Damage multiplier: ±0 (PINCH: 20; SPIT: 12 — but TENDERHOOK primarily augments PINCH)
+- TENDERHOOK PINCH: when PINCH lands, opponent is **held** for 2 Decision Windows.
+  - Held: opponent cannot SCUTTLE, BURST, or change position. Can still PINCH, SPIT, SHELL UP.
+  - The hold occupies TENDERHOOK itself for 2 windows (no new PINCH or SPIT during hold). TENDERHOOK claws are "engaged."
+  - `tenderhook_hold_windows_remaining` tracks this
+- One use per Scuttle. After the hold resolves (2 windows), TENDERHOOK reverts to standard PINCH/SPIT (at ±0 modifier, no special effect) for the rest of the fight.
+- SPIT is unaffected by the hold mechanic.
 
-**LLM context:** `tenderhook_available: true/false`. `opponent_held: true/false`. LLM should activate TENDERHOOK when positioned for follow-up damage.
+**Agent state:**
+```json
+"claws": "TENDERHOOK",
+"damage_multiplier": 1.00,
+"tenderhook_active": true,    // false after use
+"tenderhook_hold_active": false,
+"tenderhook_hold_windows_remaining": 0
+```
 
-**Spectator signal:** HOLD: hydraulic snare wraps around opponent, clanking animation. Opponent strains but can't move.
+**Spectator display:** Claws show a grapple hook detail. On successful PINCH: opponent's Lobster is visually locked in place by a glowing tether. Hold countdown visible on HUD. Audio: hook deployment → tether hum × 2 windows → release snap.
 
-**Balance notes:** One use. Must use wisely. Best combined with MAXINE or WIDOW-MAKER — hold them in place, land the big hit. TENDERHOOK + MAXINE: perfect execution = hold them, wait for MAXINE cooldown to reset (if timed well), then MAXINE on held target. An agent that reads `tenderhook_available: true` AND `maxine_cooldown: 0` AND `opponent_adjacent` should immediately execute this combo. That's a deep-game move.
+**Balance notes:** One-use repositioning denial. Optimal use: hold the opponent while queuing 2 PINCH attacks from other Claws... wait, Claws are locked during hold. Optimal use: hold while using BURST to reposition to cover, then release. Or: hold while waiting for energy to build for a 3-energy PINCH in window 3 of the hold. The "no new PINCH during hold" prevents TENDERHOOK → 2 free attacks combo. Intentional.
 
 ---
 
-### VENOM | Toxin Delivery Claws | Rare
+### VENOM
+*Necrotic Sting | Rare*
+
 **Mechanical effect:**
-- Base PINCH damage: ×0.1 (effectively 2 damage — nearly zero direct damage)
-- On every PINCH hit: apply 1 Venom stack. Each stack deals 2 HP damage per decision window (not per tick). Max 5 stacks = 10 HP/window passive.
-- Venom stacks last for 5 windows then expire. New PINCH refreshes ALL current stacks.
-- Venom damage bypasses armor reduction (it's chemical, not physical)
-- VENOM does NOT trigger ECHO counter (environmental, not combat hit)
+- Base direct damage: ~0 (PINCH: 2; SPIT: 1) — essentially a delivery vector, not a damage dealer
+- On each PINCH or SPIT: applies 1 VENOM stack on opponent. Max stacks: unlimited (no cap, unlike FLICKER)
+- **VENOM DoT:** Each stack deals 2 HP per DECISION WINDOW (not per tick). Window-based DoT, not tick-based.
+- Stack accumulation rate: 1 per attack. At 1 attack/window, that's 1 stack/window.
+- Damage over time by window:
+  - Window 5: 5 stacks = 10 HP/window from DoT
+  - Window 10: 10 stacks = 20 HP/window from DoT
+  - Window 20: 20 stacks = 40 HP/window from DoT (lethal territory)
+- Note: VENOM DoT is slower than FLICKER DoT (window-based vs tick-based) but has no stack cap
 
-**LLM context:** `venom_stacks_on_opponent: 0-5`. `venom_damage_per_window: X`. Agent sees total DoT running.
+**Comparison: FLICKER vs VENOM:**
+| | FLICKER | VENOM |
+|--|---------|-------|
+| Stack cap | 8 | None |
+| DoT rate | 2/tick (fast) | 2/window (slow) |
+| Direct damage | -40% | ~0 |
+| Kill speed (no armor) | Very fast at 8 stacks | Slow ramp, deadly late |
 
-**Spectator signal:** Green-purple tinge on opponent. Venom stacks shown as dripping icons.
+**Agent state:**
+```json
+"claws": "VENOM",
+"damage_multiplier_direct": 0.10,
+"venom_stacks_on_opponent": 7
+```
 
-**Balance notes:** Pure DoT build. 5 stacks = 10 HP/window passive = slow kill that requires constant maintenance (PINCH to refresh). Against SHELL UP turtles: SHELL UP doesn't reduce Venom damage (it's armor-piercing). SHELL UP + Venom means SHELL UP is only protecting against direct attacks, not the DoT. Venom punishes SHELL UP camping hard. ⚠️ Note: VENOM + THE FLICKER stacking would be absurd — cannot equip both (one Claws slot per build).
+**Spectator display:** Claws have a sickly green tint. Each hit injects a visual cloud of green. At high stacks, opponent visually darkens with venom. HP bar ticks down slowly each window. Audio: injection sound per hit; increasingly wet/sick sound at high stacks.
+
+**Balance notes:** VENOM is a long-game item. Fights end at 300 ticks / 40 windows. At 1 stack/window, you reach 40 stacks = 80 HP/window DoT at end... but the opponent has been dying from DoT the whole time. Math: at constant 1 stack/window, total VENOM damage = sum(2×n for n in 1..40) = 1640 HP over the full fight from DoT. No one has 1640 HP. Point: VENOM wins on time. Countered by: MULCH regen (offsets early stacks), SECOND WIND (revive at 10% HP buys time but doesn't clear stacks), aggressive burst to end fight before stacks accumulate. Against GHOST SHELL: each VENOM delivery has 25% miss — no stack applied on miss.
 
 ---
 
-### WIDOW-MAKER | Catastrophic Compression Claw | Legendary
+### WIDOW-MAKER
+*One-Shot Devastation | Legendary*
+
 **Mechanical effect:**
-- One use only. On first PINCH: damage multiplier ×4.0 (base 20 → 80 damage)
-- After use: WIDOW-MAKER is destroyed. PINCH/SPIT still available at ×0.0 modifier (broken claws — 0 damage). The Lobster is now weaponless for direct attacks.
-- SPIT from broken WIDOW-MAKER: 0 damage.
-- `widow_maker_fired: false/true` in game state. Both agents see this.
+- Damage multiplier: 400% on one attack (PINCH: 20 × 4 = 80 damage; SPIT: 12 × 4 = 48 damage)
+- **Breaks after use.** After the WIDOW-MAKER attack resolves, CLAWS is destroyed. For the rest of the Scuttle: PINCH deals 5 damage (bare-claw emergency strike), SPIT deals 3 damage. No multiplier.
+- Cannot queue WIDOW-MAKER uses — the item breaks on first use, so queuing PINCH twice in one window: first PINCH uses WIDOW-MAKER (80 damage), second PINCH (if still valid) uses bare claws (5 damage).
+- If WIDOW-MAKER PINCH is the killing blow: the item-break still applies (doesn't matter — fight is over).
 
-**LLM context:** Opponent knows the moment WIDOW-MAKER fires. They see `widow_maker_fired: true` — the nuclear weapon is spent. Pressure is gone. Time to press.
+**Agent state:**
+```json
+"claws": "WIDOW_MAKER",
+"widow_maker_available": true,
+"damage_multiplier": 4.00,  // or 0.25 after break
+"widow_maker_broken": false
+```
 
-**Spectator signal:** WIDOW-MAKER fire: the most dramatic animation in the game. Massive hydraulic slam, screen shake, dramatic crack. After: broken claw animation, sparks.
+**Spectator display:** WIDOW-MAKER glows intensely before use. The single attack animation is cinematic — time briefly slows on the swing. Impact is massive. After use: claws visually shatter/crack. The sound of breaking metal. Subsequent bare-claw attacks look and sound pathetic. This contrast is intentional and funny.
 
-**Balance notes:** 80 damage on one hit. Against 100 HP: leaves at 20 HP. Against THE PATRIARCH (160 HP, 20% reduction): 80 × 0.8 = 64 damage. Leaves at 96 HP. THE PATRIARCH SURVIVES WIDOW-MAKER. This is a designed interaction. Against WIDOW proc: WIDOW-MAKER hits for 80, triggers WIDOW proc (would reduce to 1 HP) — Lobster survives at 1 HP. Then INVERTER activates. Then WIDOW-MAKER user has broken claws. This is the most dramatic sequence possible in The Molt Pit and it's fully realizable.
+**Balance notes:** Single high-risk play. 80 PINCH damage requires adjacency. Against WIDOW Carapace: 80 damage on 85 HP triggers WIDOW save (opponent survives at 1 HP). WIDOW + WIDOW-MAKER = classic counter scenario. Degenerate combo check: can WIDOW-MAKER be looped? No — it breaks after one use. Cannot trigger twice. Not degenerate. THE HOUSE EDGE Tomalley + WIDOW-MAKER: pay 15% Roe in-game for +50% dmg — WIDOW-MAKER at 400% × 1.5 = 600% = 120 PINCH damage. This one-shots everything. Balance: THE HOUSE EDGE is expensive (Roe cost), WIDOW-MAKER is Legendary. Running both Legendary items costs significant Roe. Acceptable — high-cost, high-risk, high-reward.
 
 ---
 
-### REVERSAL | Counter-Strike Claws | Legendary
+### REVERSAL
+*Counter-Strike Claws | Legendary*
+
 **Mechanical effect:**
-- Damage multiplier: ×1.0 (base damage)
-- SHELL UP interaction: when REVERSAL user activates SHELL UP and takes a hit during that window, the 50% reduced damage ALSO triggers a return hit on attacker for 60% of the original (pre-reduction) damage. Post-attacker-armor.
-- REVERSAL counter damage formula: `incoming_damage_pre_reduction × 0.6 × (1 - attacker_armor_reduction)`
-- Passive only — REVERSAL activates through SHELL UP. No separate action.
-- `reversal_active: true` when SHELL UP is queued
+- Damage multiplier: ±0 (PINCH: 20; SPIT: 12)
+- When SHELL UP is active AND the Lobster is hit: 60% of the damage received is dealt back to the attacker.
+- Calculation: `reversal_damage = damage_received × 0.60` (where damage_received is after SHELL UP's 50% reduction).
+- Example: opponent deals 20 PINCH, SHELL UP reduces to 10 received, REVERSAL returns 10 × 0.60 = 6 damage to opponent.
+- REVERSAL only fires when SHELL UP is active. Passive hits without SHELL UP deal no counter.
+- REVERSAL can trigger on every window SHELL UP is active.
+- See MOVEMENT.md for REVERSAL + SHELL UP interaction note.
 
-**LLM context:** Agent should pair SHELL UP with REVERSAL explicitly. Prompt fragment: *When you SHELL UP with REVERSAL equipped, you are not defending — you are baiting a counter.*
+**Agent state:**
+```json
+"claws": "REVERSAL",
+"damage_multiplier": 1.00,
+"reversal_active_when_guarding": true
+```
 
-**Spectator signal:** REVERSAL counter: golden flash from defending Lobster, return-fire animation at attacker.
+**Spectator display:** Claws have a mirrored/reflective surface. When SHELL UP is active: a shield aura appears. On hit: the counter-damage shoots back as a visible projectile from the shell toward the attacker. Audio: block sound → reversal whip-crack.
 
-**Balance notes:** Requires SHELL UP to function. SHELL UP = 0 energy cost, no offensive progress. REVERSAL turns SHELL UP from passive defense to active counter. The optimal play: time SHELL UP when opponent is about to PINCH. Mechanically rich but requires agent to predict opponent action. This is the most skill-expressive Claw in the game for well-designed agents.
+**Balance notes:** REVERSAL rewards patient, guardian play. The optimal REVERSAL strategy: SHELL UP when opponent is in PINCH range, let them swing, take reduced damage, return counter. Works against high-damage burst (MAXINE's 36 PINCH → 18 received after SHELL UP → 10.8 returned). Countered by: ranged kiting (SPIT at distance avoids REVERSAL range), IGNORING THE BAIT (opponent just doesn't attack while SHELL UP is active), and hazard (hazard damage doesn't trigger REVERSAL). Strong against: MAXINE, WIDOW-MAKER, THE PATRIARCH builds.
 
 ---
 
-### THE ORIGINAL APPENDAGE | Ancestral Claws | Legendary
+### THE ORIGINAL APPENDAGE
+*Legendary Baseline | Legendary*
+
 **Mechanical effect:**
-- Damage multiplier: ×1.25 (PINCH: 25, SPIT: 15)
-- Status immunity: all negative status effects (STUN, HOLD, Venom stacks, Bleed stacks, APOLOGIST misfires, DEEP MEMORY predictions) have no effect when applied to this Lobster
-- Cannot be paired with a Legendary Tomalley (slot restriction)
+- Damage multiplier: +25% (PINCH: 25; SPIT: 15)
+- Status immune: Lobster cannot be Stunned, Held, Misfired, or affected by any debuff. Bleed and Venom stacks CAN still be applied (DoT is not a debuff — it's an environmental effect).
+- Cannot pair with any Legendary Tomalley (loadout builder enforces this at construction time)
 
-**LLM context:** `status_immune: true`. Opponent agent can read this — their BUZZ stuns, TENDERHOOK holds, APOLOGIST misfires do nothing. They should switch strategy to pure damage.
+**Agent state:**
+```json
+"claws": "THE_ORIGINAL_APPENDAGE",
+"damage_multiplier": 1.25,
+"status_immune": true,
+"legendary_tomalley_locked": true
+```
 
-**Spectator signal:** Status effects visually slide off the shell. Spark effect. Satisfying.
+**Spectator display:** Pure, clean claws. No special visual effects (the power is invisible — which is its own statement). On attempted stun/hold: a brief immunity pulse.
 
-**Balance notes:** The hard counter to CC-heavy builds. Immune to everything. Costs a Legendary Tomalley slot. Strong solo damage (+25%). The restriction to Common/Rare Tomalley is meaningful — no ORACLE, no SECOND WIND, no HOUSE EDGE pairing. Forces a commitment to raw power over tactical flexibility.
+**Balance notes:** +25% damage + status immunity is strong. The Legendary Tomalley restriction is the real cost — no ORACLE, SECOND WIND, QUANTUM HOOK, or THE HOUSE EDGE. You trade passive power for consistency. Countered by: itemized damage (THE FLICKER DoT applies regardless), NEEDLE (DoT isn't reduced by armor, and NEEDLE bypasses reduction anyway). THE ORIGINAL APPENDAGE is the "I don't want mind games" item.
 
 ---
 
-### CRACKER | Armor Fracturing Claws | Common
+### CRACKER
+*Armor Crusher | Common*
+
 **Mechanical effect:**
-- Damage multiplier: ×0.85 (PINCH: 17, SPIT: 10)
-- On PINCH hit: reduce target's active armor reduction by 30% (additive with their current reduction, applied for remaining fight)
-- Example: BLOCK-7 has 10% reduction. After CRACKER hit: 10% − 30% = effectively 0% (cannot go negative — minimum 0% reduction, no vulnerability multiplier)
-- CRACKER effect stacks up to 2 hits (effectively caps target at 0% armor reduction after 2 hits on most builds)
-- Stacks: `armor_reduced_stacks: 0-2` on target
+- Damage multiplier: -15% vs unarmored opponents (if opponent has `damage_reduction: 0.00`, CRACKER deals 0.85× damage)
+- Effect: reduces opponent's Carapace `damage_reduction` by 30 percentage points, permanently for the Scuttle. Applied on the FIRST hit only.
+  - Example: BLOCK-7 opponent has 10% reduction. CRACKER's first hit reduces it to 0% (floored at 0, cannot go negative). All subsequent hits on that opponent: no reduction.
+  - Example: THE PATRIARCH (20% reduction) reduced to 0%.
+  - Example: SILKWORM (0% reduction, 20% scatter): CRACKER first hit applies 0% reduction reduction (scatter is not reduction — see SILKWORM note). Cracker -30% doesn't affect scatter.
+- Cracker_debuff_applied flag on opponent
 
-**LLM context:** Opponent sees `armor_reduced_stacks: 1` in their state — they know their armor is compromised.
+**Agent state (attacker):**
+```json
+"claws": "CRACKER",
+"damage_multiplier": 0.85,
+"cracker_debuff_applied": false  // true after first hit
+```
 
-**Spectator signal:** CRACKER hit: pieces of shell fly off visually. Shell looks cracked/damaged.
+**Spectator display:** Claws have a crushing, gear-like appearance. First hit: armor-crack visual on opponent's shell, reduction stat visually "breaks." Audio: crunching, mechanical crack on first hit.
 
-**Balance notes:** Best against THE PATRIARCH and HARDCASE (high armor). Against PAPER-MACHÉ or GHOST SHELL (no armor or non-armor defense): mostly wasted. Anti-armor specialist that rewards reading opponent loadout in lobby.
+**Balance notes:** One-shot debuff + sustained damage. Against BLOCK-7: one CRACKER hit strips 10% reduction, subsequent hits at 0.85× unmodified = 0.85× but still better than 0.85 × 0.90 = 0.765× without CRACKER. Against unarmored: CRACKER is weak (the -15% vs unarmored hurts, no reduction to strip). Classic meta pick into armor-heavy metas. Countered by high-armor builds that rely on it after CRACKER has fired (wrong — CRACKER debuff is permanent for the Scuttle).
 
 ---
 
-### THE HEIR | Generational Claws | Rare
+### THE HEIR
+*Generational Claws | Rare*
+
 **Mechanical effect:**
-- Starts at ×0.9 damage multiplier (slightly below SNAPPER)
-- Each fight won with THE HEIR: +5% damage multiplier, permanent across fights (persists to next Scuttle)
-- After 5 wins: ×1.15. After 10 wins: ×1.40. Theoretically uncapped.
-- Current session: game state includes `heir_multiplier: 0.90/1.15/etc.`
-- New Pitmasters: THE HEIR starts at ×0.9. Inherited Lobsters with history: carries their multiplier in.
+- Damage multiplier: starts at -10% below SNAPPER (PINCH: 18; SPIT: 10.8 ≈ 11)
+- Per win (prior Scuttles won): +5% damage multiplier accumulated in the Lobster's persistent record. This is NOT per-window — it's per prior fight won.
+  - A Lobster with 0 wins: 0.90×
+  - A Lobster with 1 win: 0.95×
+  - A Lobster with 2 wins: 1.00× (equals SNAPPER)
+  - A Lobster with 3 wins: 1.05×
+  - A Lobster with 10 wins: 1.40×
+- The multiplier is capped at 2.00× (after 22 wins).
+- Win count is the Lobster's ALL-TIME Scuttle wins, not current-session.
 
-**LLM context:** `heir_multiplier: 1.25` (for example). Agent knows current damage level.
+**Agent state:**
+```json
+"claws": "THE_HEIR",
+"damage_multiplier": 1.25,  // for a 7-win Lobster
+"heir_wins": 7,
+"heir_multiplier_cap": 2.00
+```
 
-**Spectator signal:** THE HEIR glows more intensely as multiplier rises. At ×1.5+: visible golden aura.
+**Spectator display:** Claws look worn and seasoned — visible notches and wear marks. Each win adds a visual flourish (for high-win Lobsters, the claws glow faintly). Audio: hit sound deepens/gains reverb with more wins.
 
-**Balance notes:** The long game item. Pitmasters who run THE HEIR consistently get exponentially rewarded. At ×2.0+ (10+ wins), THE HEIR approaches WIDOW-MAKER single-hit territory on a sustainable basis. The ladder incentive: keep your Lobster alive. The emotional hook: "My Lobster has 23 wins with THE HEIR, it's at ×2.15 now." That's a story.
+**Balance notes:** Progression item. Hatchlings are at a disadvantage but can grow. High-win Lobsters with THE HEIR are genuinely terrifying (1.40× or higher). Creates inherent rivalry: a Hatchling beating a 10-win HEIR Lobster is a massive upset. This is great spectator design — the underdog story. Resets on Molt: THE HEIR tracks the LOBSTER's wins, not the Molt. A Lobster who won 20 times brings 2.00× multiplier into any fight they equip THE HEIR.
 
 ---
 
-## TOMALLEY (Core)
+## TOMALLEY (13 items)
 
-### THE RED GENE | Adrenaline Splice | Common
+Tomalley items are passive organs that fire without explicit agent commands. They are the reactive layer — the agent doesn't control them directly, but a smart agent designs around them.
+
+---
+
+### THE RED GENE
+*Adrenaline Splice | Common*
+
 **Mechanical effect:**
-- When current HP > 40: damage output multiplied by ×0.9 (slight penalty)
-- When current HP ≤ 40: damage output multiplied by ×1.4 (bonus overrides penalty)
-- Threshold check: at resolution, before damage calculation
+- Below 40% HP (HP ≤ 40 on base 100-HP Lobster): damage multiplier +40% on all attacks
+- Above 40% HP: damage multiplier -10%
+- Applies multiplicatively with Claws multiplier: `final_damage = base × claws_multiplier × red_gene_modifier`
+- Threshold is on CURRENT HP, checked at attack resolution. HP fluctuates; effect toggles.
 
-**LLM context:** `red_gene_active: true/false` based on HP threshold. Agent should become more aggressive when active.
+**Agent state:**
+```json
+"tomalley": "THE_RED_GENE",
+"red_gene_active": false,  // true when hp <= 40
+"current_damage_modifier": 0.90  // or 1.40 when active
+```
 
-**Spectator signal:** Below 40 HP: Lobster turns red. Eyes glow. Sound: heartbeat intensifies.
+**Spectator display:** Below 40% HP: shell pulses red. Eyes (visual element) go from normal to full red. Attack animations become faster/more aggressive in style. Audio: low-HP heartbeat sound loops; attacks have a desperate, raw sound quality.
 
-**Balance notes:** Strong comeback tool. −10% above threshold is real cost. Agent design challenge: don't blow the fight before you can activate the gene. Works with INVERTER — but INVERTER converts damage to healing below 50%, so the Lobster might not stay in THE RED GENE zone long. Interesting tension.
+**Balance notes:** Comeback mechanic. Below 40% HP = death is close — the buff might not help enough. Against BLOCK-7 opponents (130 HP), the attacker needs to have dealt 60-90 HP already to be near death themselves. THE RED GENE rewards dual-risk scenarios (both Lobsters battered). Classic pairing: WIDOW (survive lethal hit at 1 HP, now RED GENE is active at max intensity) → massive comeback potential. The -10% above 40% means THE RED GENE weakly hurts healthy play — intentional, makes the tradeoff real.
 
 ---
 
-### STANDARD ISSUE | Military Regen Core | Common
+### STANDARD ISSUE
+*Baseline Tomalley | Common*
+
 **Mechanical effect:**
-- +2 HP per decision window, applied at resolution step 7 (post-combat)
-- Cannot exceed HP max
-- Always active
+- +2 HP per Decision Window (healing, not regen from energy)
+- HP cannot exceed max HP pool (no overheal). If at max HP, regen does nothing.
+- Applied at resolution step 6 (same time as Tomalley passives).
 
-**LLM context:** HP will be 2 higher each window than expected by attacker. Agents facing STANDARD ISSUE must factor regen into kill planning.
+**Agent state:**
+```json
+"tomalley": "STANDARD_ISSUE",
+"hp_regen_per_window": 2
+```
 
-**Spectator signal:** Faint green pulse each window. Subtle.
+**Spectator display:** Subtle green pulse on shell every window. Not dramatic — this is the quiet item. Audio: very faint heal chime.
 
-**Balance notes:** 2 HP/window × 60 windows max = 120 total healing potential. Over a full fight, that's more than base HP recovered. Pairs devastatingly well with THE MOLT and LONG GAME for attrition builds. Boring in isolation. Foundational in combination.
+**Balance notes:** 2 HP/window × 40 windows = 80 HP total regen over a full fight. That's significant sustained healing. Counters THE FLICKER somewhat (8 stacks = 16 DoT/tick, but STANDARD ISSUE only regens 2 HP/window, not per tick — the DoT is tick-based, regen is window-based. Net effect at 8 FLICKER stacks: 16 HP lost per tick × 5 ticks/window = 80 HP lost per window vs 2 HP gained = still dying fast). STANDARD ISSUE doesn't counter FLICKER; it offsets light sustained damage. Strong against SPIT kiting (12 HP/SPIT, 2 HP regen/window = each SPIT costs net 10 HP). Pairs with SHELL UP (guard turn + regen = sustainable defense).
 
 ---
 
-### MULCH | Regenerative Tissue Core | Rare
+### MULCH
+*Regenerative Core | Rare*
+
 **Mechanical effect:**
-- +5 HP per decision window (post-combat resolution)
-- Can overheal up to 120% HP max (a 100 HP Lobster can reach 120 HP)
-- Opponent always sees your exact HP% in game state (no information hiding)
+- +5 HP per Decision Window
+- Overheal: can exceed base max HP up to 120% of max HP.
+  - Example: BLOCK-7 Lobster (130 HP) can overheal to 156 HP
+  - Example: standard Lobster (100 HP) can overheal to 120 HP
+- Downside: opponent can see your exact HP% at all times (normally exact HP is visible, but MULCH makes it explicitly prominent in the opponent's state — the display is more... flagrant).
+  - Mechanical effect of transparency: opponent's `opponent_hp_percent` is always included (this exists in base game too, but MULCH flags it as `hp_visible_enhanced: true`). In a potential Fog mode, MULCH would reveal HP even through fog.
 
-**LLM context:** Opponent sees `my_hp_visible_to_opponent: true`. The transparency is the downside — your HP is a live read for them.
+**Agent state:**
+```json
+"tomalley": "MULCH",
+"hp_regen_per_window": 5,
+"overheal_max": 120,
+"hp_visible_enhanced": true
+```
 
-**Spectator signal:** Clear HP bar for both sides — no fog on HP for MULCH users. Distinctive healing animation.
+**Spectator display:** Shell grows vines/organic matter visually as HP rises. Overheal shown as HP bar extending beyond the normal limit with a green overflow section. Audio: organic growth sound on regen ticks.
 
-**Balance notes:** 5 HP/window is strong. 120% overheal provides a genuine buffer. The cost: perfect information for opponent. Against ORACLE (predictive opponent): MULCH user gives ORACLE even more to work with. Countered by: opponent noting you're at 110% HP means MULCH is online and they should burst you down before you out-regen their damage. MULCH works when opponents lack the DPS to overcome 5/window. Against THE FLICKER stacking: 5/window < 5 stacks × 2/window = 10 bleed damage/window. FLICKER out-damages MULCH regen past 3 stacks. Interesting balance point.
+**Balance notes:** 5 HP/window × 40 windows = 200 HP total regen potential. Strong. The overheal cap means against HARDCASE + MULCH: 140 HP base + overheal to 168 HP. Very tanky. The transparency downside is minor in full-vis v1 (everyone sees HP anyway) but meaningful in Fog mode. Flag for Fog tuning: MULCH transparency should be revisited when Fog ships — it might need to be an actual mechanical cost rather than aesthetic.
 
 ---
 
-### ORACLE | Predictive Combat Cortex | Legendary
+### ORACLE
+*Predictive Combat Cortex | Legendary*
+
 **Mechanical effect:**
-- Each decision window, before submitting action: agent receives opponent's QUEUED next action as a hint (not their final choice — their queued intent from last window)
-- Implementation: the previous window's opponent action is revealed at start of this window. One window delay on opponent intelligence.
-- Also: +15% accuracy bonus (outgoing hits have 15% higher chance of connecting — reduces GHOST SHELL miss chance from 25% to 10%)
-- Downside: ORACLE processing costs 0.5s per decision window (agent's effective decision window is 750ms − 500ms = 250ms remaining to respond)
+- +15% accuracy bonus: all attack rolls (stun, miss checks) are shifted 15% in the wearer's favor.
+  - Attacking vs GHOST SHELL (25% miss chance): normally 75% hit; with ORACLE: 75% + 15% = 90% hit
+  - BUZZ stun chance (25%): with ORACLE: 25% + 15% = 40% stun rate
+- Downside: adds 0.5s (500ms) to the wearer's decision window. The agent's effective window drops from 750ms to effectively 1250ms ceiling (but the server still processes at 750ms — the ORACLE agent has 750ms budget shared with ORACLE's computation). Implementation: this is an LLM prompt note, not an engine change. The prompt fragment tells the agent it's running ORACLE and its response is being processed through ORACLE's prediction layer. In practice, the agent should budget for slightly more token usage (predictions to include).
+  - The +500ms is simulated via prompt complexity, not engine enforcement. It's a design signal to Pitmaster: your agent needs to handle more context. Don't use ORACLE with a model that's already struggling to hit 750ms.
 
-**LLM context:** `oracle_hint: "PINCH_N"` (opponent's last queued action). Limited preview — last window's intent. Agent must reason: are they repeating? Adapting?
+**Agent state:**
+```json
+"tomalley": "ORACLE",
+"accuracy_bonus": 0.15,
+"oracle_prediction": {
+  "opponent_likely_action": "SPIT",
+  "confidence": 0.72
+}
+```
 
-**Spectator signal:** Crystal/lens visual on Lobster head. Slight glow when hint is received.
+**Spectator display:** Shell shows a subtle scanning animation (like sonar pulses). ORACLE's prediction is displayed on the Coral Feed — spectators see what the Lobster thinks the opponent will do, and whether it was right. This is prime Coral Feed content.
 
-**Balance notes:** ⚠️ ORACLE + fast agent = potentially dominant. The 0.5s processing cost is the hard constraint. A Claude Opus chain-of-thought agent already at 1.5s: now at 2.0s — nearly always missing windows. A GPT-4o-mini at 200ms: 700ms remaining still in budget. ORACLE rewards fast agents who can use the intelligence efficiently. This is correct.
+**Balance notes:** ORACLE is a meta-information item. Its value depends entirely on the agent's ability to USE the prediction. A dumb agent with ORACLE wastes it. A smart agent adapts its queued moves based on prediction. ORACLE + THE ORIGINAL APPENDAGE is blocked (Legendary Tomalley + Legendary Claws restriction). Intentional — ORACLE wants a Tomalley slot, not Legendary Claws competition.
 
 ---
 
-### THE GHOST PROTOCOL | Phase Step Core | Rare
+### THE GHOST PROTOCOL
+*Phase-Step Passive | Rare*
+
 **Mechanical effect:**
-- After taking any damage (PINCH, SPIT, BURST HIT): enter phase for 1 tick (150ms) where Lobster cannot be targeted. Attacks aimed at Lobster during phase tick: miss entirely.
-- Cannot act during phase tick (locked)
-- Phase fires automatically on damage received. Not controllable.
-- Once per damage event (not per tick of DoT)
+- After being hit (each hit instance): the Lobster phases for 1 tick (150ms). During phase: immune to all damage. Duration: 1 tick (150ms = 1 tick, which is a small fraction of a Decision Window).
+- Downside: during phase tick, the Lobster cannot act. If an action was being resolved in that tick, it is delayed by 1 tick (pushed to next tick within the window).
+- Implementation: phase is so brief (1/5th of a decision window) that it rarely delays action resolution meaningfully. The action still fires in the same Decision Window, just 1 tick later.
 
-**LLM context:** `ghost_phase_active: true/false`. When `true`: agent cannot act and cannot be hit. Next window it's back.
+**Agent state:**
+```json
+"tomalley": "THE_GHOST_PROTOCOL",
+"ghost_phase_active": false,
+"ghost_phase_ticks_remaining": 0
+```
 
-**Spectator signal:** Lobster goes semi-transparent for 1 tick. Phase shimmer effect. Satisfying to watch.
+**Spectator display:** After each hit: brief shimmer/translucent flash (1 tick = barely perceptible). The visual is more of a "blink" effect than a full phase. Audio: high-pitched phase ping after each impact.
 
-**Balance notes:** Against rapid multi-hit Claws (THE FLICKER, VENOM): phases after each PINCH but DoT ticks continue during phase. Phase protects from next hit only while phased (1 tick = 150ms — FLICKER doesn't necessarily hit within 1 tick). Effective against high-frequency attackers if their hit timing is unlucky. Unreliable but never useless.
+**Balance notes:** Minimal practical effect in v1. The 1-tick phase is too brief to matter much. Intended for Fog mode (where phasing creates interesting "disappeared for a moment" effects). In v1: the accumulated micro-invincibility windows add up — in a prolonged fight, THE GHOST PROTOCOL effectively reduces damage from rapid-fire DoT by providing 1-tick immunity after each DoT tick. Against THE FLICKER at max stacks: each DoT tick phases the Lobster → next tick is immune → every other tick of DoT is negated = effective 8 DoT/tick instead of 16. Significant! This is the hidden synergy. Flag: GHOST PROTOCOL is THE FLICKER's hard counter. Design intentionally.
 
 ---
 
-### SPITE | Lethal Parting Gift | Rare
+### SPITE
+*Dying Sting | Rare*
+
 **Mechanical effect:**
-- On death (HP reaches ≤ 0): deal 40% of this Lobster's maximum HP as damage to opponent
-- Damage triggers post-death, cannot be prevented by opponent SHELL UP (it's a death trigger)
-- SPITE damage is armor-reduced normally
-- Cannot pair with SECOND WIND (cannot revive if you trigger SPITE death damage)
+- Zero benefit while alive. Purely passive death effect.
+- On death: deal damage equal to 40% of the wearer's MAX HP to the opponent (before any reductions on the recipient).
+  - SNAPPER Lobster with SPITE: 40% × 100 = 40 death damage
+  - BLOCK-7 Lobster with SPITE: 40% × 130 = 52 death damage
+  - THE PATRIARCH + SPITE: 40% × 160 = 64 death damage
+- The death damage is NOT mitigated by SHELL UP (the Lobster is dead and can't act). It IS mitigated by opponent's Carapace reduction and active effects.
+- DESPITE fires even if death was from hazard, DoT, or any cause.
+- Cannot pair with SECOND WIND (explicit restriction — both are on-death effects).
 
-**LLM context:** `spite_equipped: true` visible to both. Opponent knows killing you will cost them.
+**Agent state:**
+```json
+"tomalley": "SPITE",
+"spite_damage_on_death": 40
+```
 
-**Spectator signal:** On death: Lobster explodes outward. Massive retaliatory burst. Opponent staggers.
+**Spectator display:** On death: the Lobster explodes in a burst of brine. The explosion animation hits the opponent. Audio: death sound → brine explosion → impact thud on opponent.
 
-**Balance notes:** 40% of 100 HP = 40 damage on death. Can be a fight-decider: at 60 HP remaining, opponent kills Spite Lobster — they take 40 damage, now at 20 HP. Any DoT (Venom/Bleed) might finish the job. SPITE turns losing into mutual destruction. Pitmasters who value "if I go, you go with me" design philosophy.
+**Balance notes:** "You'll regret killing me." High drama item. WIDOW + SPITE: survive lethal hit → still at 1 HP → opponent must kill again → on that death, SPITE fires for 40. If opponent is also low HP, SPITE kills them simultaneously → DRAW. Both Lobsters die in the same window → tiebreaker: highest HP tiebreaker (both at 0/1) → Hardness tiebreaker. Interesting. THE PATRIARCH + SPITE: 64 death damage is substantial — can kill an already-damaged opponent. This is a valid strategy: absorb damage with THE PATRIARCH's HP, then die and punish with SPITE.
 
 ---
 
-### DOUBLE DOWN | Accelerating Core | Rare
+### DOUBLE DOWN
+*Escalating Claws Passive | Rare*
+
 **Mechanical effect:**
-- Every 5th attack (PINCH or SPIT): damage multiplier ×2.0 for that attack
-- Attacks 1-4 in each cycle: damage multiplier ×0.9
-- Counter resets after the 5th attack fires
-- `double_down_counter: 1-5` in game state
+- On attacks 1-4 (every cycle): damage multiplier -10% (Claws modifier reduced by 10%)
+- On every 5th attack: damage multiplier +200% (×2 bonus on Claws modifier)
+- Attack counter tracks total attack uses (PINCH + SPIT combined), resets to 0 after the 5th attack (the 200% hit)
+- Example with SNAPPER (1.00×):
+  - Attacks 1-4: 0.90× damage
+  - Attack 5: 2.00× damage
 
-**LLM context:** Agent should maximize spacing/survivability until 5th attack, then commit to landing it.
+**Agent state:**
+```json
+"tomalley": "DOUBLE_DOWN",
+"double_down_counter": 3,
+"current_multiplier_modifier": 0.90  // or 2.00 on attack 5
+```
 
-**Spectator signal:** Counter visible (pips 1-4 building up). 5th attack: golden flash.
+**Spectator display:** Attack counter visible on Lobster portrait (small charge indicator 1-4). On 5th attack: visual burst of energy in attack animation. Audio: each hit builds a charge sound, 5th hit has full release.
 
-**Balance notes:** Net DPS math: 4 × (base × 0.9) + 1 × (base × 2.0) = 3.6 + 2.0 = 5.6 vs standard 5.0 total. Net +12% DPS over 5 hits. Worth it for the burst timing. Pairs with TENDERHOOK: hold opponent for 5th attack. Strong synergy.
+**Balance notes:** Rewards consistent attack rhythm. A Lobster that attacks every other window: 5-attack cycle takes 10 windows = 7.5 seconds. The -10% on 4 attacks + 200% on 1 = net: 4×0.9 + 1×2.0 = 3.6 + 2.0 = 5.6 damage over 5 attacks (vs 5.0 for SNAPPER). +12% effective damage over 5-attack cycles. DOUBLE DOWN is mildly positive when attack rate is consistent. Punished by forced NO_OPs (MAXINE cooldown, HARDCASE energy drain). Rewarded by aggressive agents who attack every window. THE FLICKER + DOUBLE DOWN: the 5th hit deals double Flicker damage AND adds 1 bleed stack. Not broken — 1 extra stack, 1 big hit. Acceptable.
 
 ---
 
-### THE LONG GAME | Patience Engine | Rare
+### THE LONG GAME
+*Patience Passive | Rare*
+
 **Mechanical effect:**
-- +2% damage bonus per 10 ticks elapsed, stacking throughout fight
-- At tick 10: +2%. At tick 50: +10%. At tick 100: +20%. At tick 300: +60%.
-- Applied as a multiplier on all outgoing damage
-- `long_game_bonus: 0.02-0.60`
+- +2% damage multiplier per 10 ticks elapsed in the fight (across all attacks)
+- Maximum bonus: uncapped within fight duration
+- At tick 300 (max fight): +60% damage multiplier
+- Applies multiplicatively: `final_damage = base × claws_multiplier × (1 + 0.02 × floor(tick / 10))`
+- The bonus applies to all outgoing damage: PINCH, SPIT, BURST hit, any direct attack
 
-**LLM context:** Game state shows current bonus. Agent reasoning changes over time: early fight = value every HP (weak). Late fight = press aggressively (strong).
+**Damage ramp table:**
+| Tick | Bonus |
+|------|-------|
+| 0-9 | 0% |
+| 10-19 | +2% |
+| 50-59 | +10% |
+| 100-109 | +20% |
+| 200-209 | +40% |
+| 290-300 | +58-60% |
 
-**Spectator signal:** Subtle growing aura. Color shift from cool to warm over time.
+**Agent state:**
+```json
+"tomalley": "THE_LONG_GAME",
+"long_game_bonus": 0.14,  // at tick ~70
+"current_tick": 73
+```
 
-**Balance notes:** THE MOLT + THE LONG GAME + STANDARD ISSUE is confirmed ⚠️ attrition build. At tick 200, this Lobster has: +15% resistance (MOLT), +40% damage (LONG GAME), +100 HP healed (STANDARD ISSUE). If fight runs long enough, nearly unstoppable. Counterplay: end the fight fast. WIDOW-MAKER or MAXINE burst in the first 30 ticks. The meta tension this creates (burst vs attrition) is healthy and intentional.
+**Spectator display:** Subtle aura that intensifies over time. At 30%+ bonus: visibly glowing. At 60%: full intensity glow. Audio: low ambient hum that grows louder as time passes.
+
+**Balance notes:** Designed for defensive/kiting agents. THE REACH + THE LONG GAME: kite opponent at range, wait out the clock, attacks hit harder as fight extends. Pairs with THE MOLT (both time-reward items — a patient build). Countered by early aggression (kill before the bonus matters). At tick 100, +20% damage is meaningful but not decisive. The item's power is in fights that go 200+ ticks.
 
 ---
 
-### SURVIVAL INSTINCT | Emergency Dodge Core | Common
+### SURVIVAL INSTINCT
+*Auto-Dodge | Common*
+
 **Mechanical effect:**
-- Once per fight: the single highest-damage hit incoming (if it exceeds 30 damage) is auto-dodged. Miss. No damage.
-- Fires automatically when a hit would deal >30 damage. Consumes the proc.
-- `survival_instinct_available: true/false`
+- One-time: automatically dodges the single highest-damage incoming attack in the Scuttle.
+- Trigger: when a damage instance would be the largest single damage value the Lobster has received so far in the fight, SURVIVAL INSTINCT fires. The attack deals 0 damage.
+- "Highest so far" tracking: engine tracks `max_damage_received_so_far`. When a new hit would be strictly greater, SURVIVAL INSTINCT fires (if not yet consumed).
+- After firing: `survival_instinct_used: true`. No further auto-dodges.
+- SURVIVAL INSTINCT does NOT fire on the first hit (unless the first hit is also the largest). Wait — it fires on any hit that exceeds the current maximum. On the first hit: `max_damage_received_so_far = 0`. Any positive damage is greater than 0. SURVIVAL INSTINCT would fire on the very first hit. That's wrong. **Rule: SURVIVAL INSTINCT triggers only when incoming damage exceeds the running maximum AND the running maximum is > 0. First hit always lands.** If tied with the current max: does not trigger (must be strictly greater).
 
-**LLM context:** Opponent knows it's equipped. They should try to proc it with a weaker hit first, then land the big one. SURVIVAL INSTINCT rewards strategic bait plays.
+**Agent state:**
+```json
+"tomalley": "SURVIVAL_INSTINCT",
+"survival_instinct_used": false,
+"max_damage_received_so_far": 22
+```
 
-**Spectator signal:** Dramatic dodge animation. Lobster stumbles aside. Lucky escape sound.
+**Spectator display:** The dodge is dramatic — a visual blur/sidestep the instant before impact. "DODGE!" text flash. Audio: whoosh + near-miss sound.
 
-**Balance notes:** Counters MAXINE (36 damage), WIDOW-MAKER (80 damage), THE PATRIARCH PINCH (28 damage post-modifier). The auto-dodge of WIDOW-MAKER specifically creates exciting moments — the nuclear shot wasted on an auto-dodge. WIDOW-MAKER users should use TENDERHOOK first to drain SURVIVAL INSTINCT, then fire. This is deep layered counterplay and it's entirely designed.
+**Balance notes:** Wastes itself against FLICKER (many small hits never exceeds the max, so it might save against the first large hit then become irrelevant). Best against MAXINE or WIDOW-MAKER (a single massive hit — SURVIVAL INSTINCT saves you from MAXINE's 36 damage or WIDOW-MAKER's 80 damage). The Pitmaster must consider: SURVIVAL INSTINCT fires on the first hit that exceeds the prior max. Against MAXINE that attacks infrequently, SURVIVAL INSTINCT is almost guaranteed to dodge the big swing. Against THE FLICKER, it might dodge the 5th stack hit that's a larger accumulated instance... wait, DoT ticks are per-tick, constant (2 HP/tick), not escalating. SURVIVAL INSTINCT tracks direct attacks, not DoT. **Rule: DoT ticks do NOT trigger SURVIVAL INSTINCT. Only direct attack damage instances (PINCH, SPIT, BURST hit) count.** Document this in engine.
 
 ---
 
-### DEEP MEMORY | Pattern Recognition Core | Rare
+### DEEP MEMORY
+*Pattern Recognition | Rare*
+
 **Mechanical effect:**
-- After 30 ticks: each decision window, agent receives a hint about opponent's tendency — specifically: the most-used action by opponent in the last 20 ticks. Formatted as `deep_memory_tendency: "PINCH"` (or SCUTTLE, SPIT, SHELL_UP)
-- Before tick 30: no effect
-- In fog of war: deep memory provides positional probability zone instead. (Fog only.)
+- Activates at tick 30 (after 30 ticks = 4.5 seconds elapsed)
+- Effect: the agent's state snapshot includes an analysis of opponent's movement pattern for the last 30 ticks. Specifically:
+  - Most frequent action used by opponent
+  - Opponent's movement tendency (aggressive/defensive — ratio of SCUTTLEs toward vs away from self)
+  - Opponent's attack frequency (attacks per window over last 20 windows)
+- This is added as a `deep_memory_insight` field in the agent state JSON
+- Useless if fight ends before tick 30
 
-**LLM context:** `deep_memory_tendency: "SPIT"` appears at tick 30+. Agent can counter-build around the tendency.
+**Agent state:**
+```json
+"tomalley": "DEEP_MEMORY",
+"deep_memory_active": false,  // true after tick 30
+"deep_memory_insight": {
+  "opponent_most_frequent_action": "SPIT",
+  "opponent_movement_tendency": "aggressive",
+  "opponent_attack_frequency": 0.7  // attacks per window
+}
+```
 
-**Spectator signal:** After tick 30: Lobster's eyes show data-glint animation. Pattern overlay visible.
+**Spectator display:** After tick 30: a "MEMORY ACTIVATED" indicator on the Lobster portrait. Coral Feed shows the insight summary — spectators can see what the Lobster learned.
 
-**Balance notes:** Useless in fast fights (<30 ticks). Decisive in long fights where tendencies are real. Against STATIC Nerve (random): DEEP MEMORY reads "SCUTTLE" and opponent immediately does SPIT. Information warfare. Against well-designed agents with varied strategy: DEEP MEMORY might just say SCUTTLE every window (they're mobile). Interesting interaction: does DEEP MEMORY teach agents to be less predictable? Yes — meta emergence is correct.
+**Balance notes:** Requires fights to go long. In short, decisive fights: useless. In prolonged tactical fights: significant. Pairs with LONG GAME and THE MOLT (all three are late-game payoff items). The insight doesn't guarantee correct prediction — the opponent may adapt. A well-designed opponent agent WILL vary strategy specifically to counter DEEP MEMORY prediction. Meta-game depth: knowing your opponent has DEEP MEMORY means you should be unpredictable. Flag (Fog mode): Under Fog, DEEP MEMORY's pattern analysis is even more valuable — opponent position is uncertain, but behavior is analyzable. High Fog value item.
 
 ---
 
-### SECOND WIND | Emergency Revival Core | Legendary
+### SECOND WIND
+*One-Time Revival | Legendary*
+
 **Mechanical effect:**
-- Once per fight: when HP reaches ≤ 0, revive at 10% HP (10 HP for 100 HP base)
-- `second_wind_available: true/false`
-- Cannot pair with SPITE (conflicting death triggers — SPITE fires on death, SECOND WIND prevents it)
+- When HP would drop to 0 or below: instead set HP = 10% of max HP, rounded down.
+  - Base HP Lobster: revive at 10 HP
+  - BLOCK-7 (130 HP): revive at 13 HP
+  - THE PATRIARCH (160 HP): revive at 16 HP
+- One-time use. Cannot pair with SPITE (explicit restriction, both are death-effect items).
+- SECOND WIND fires INSTEAD of SPITE (they cannot coexist). Loadout builder enforces this.
+- SECOND WIND does NOT give any attack bonus on revival (unlike WIDOW which just saves, SECOND WIND is a full revival with reduced HP).
+- After revival: Lobster is at low HP. THE RED GENE activates (if equipped). INVERTER below 50% activates (if equipped). SECOND WIND creates the conditions for multiple other comeback mechanics.
 
-**LLM context:** Agent sees `second_wind_available: true`. Should fight aggressively knowing this safety net exists.
+**Agent state:**
+```json
+"tomalley": "SECOND_WIND",
+"second_wind_available": true
+```
 
-**Spectator signal:** Death → dramatic pause → SECOND WIND activation. Lobster rises, shell glowing. The comeback begins.
+**Spectator display:** Revival animation: Lobster falls, shell cracks, then dramatically reforms with an energy burst. "SECOND WIND" text appears. HP bar refills to 10%. Audio: death sound → revival swell → heartbeat.
 
-**Balance notes:** 10 HP is low — second life requires immediate SHELL UP or finishing blow against opponent. Against INVERTER: revive at 10 HP → immediately below 50% → INVERTER activates. Powerful combo. Against WIDOW: Widow proc fires at lethal hit → HP to 1 → SECOND WIND doesn't fire (HP didn't reach 0). WIDOW and SECOND WIND are redundant — wear one or the other, not both (wearing both wastes a Legendary slot).
+**Balance notes:** The ultimate comeback item. SECOND WIND + WIDOW is NOT allowed (both Carapace/Tomalley slots are different, so WIDOW + SECOND WIND IS possible). WIDOW saves you from the killing blow at 1 HP. SECOND WIND saves from the next killing blow at 10%. Together: two saves. Combined with THE RED GENE: revive at 10 HP with +40% damage. If THE RED GENE was already active during death: both revivals (WIDOW then SECOND WIND) still benefit from RED GENE. Powerful. Balanced by: after SECOND WIND fires, the Lobster has low HP with no further protection (no more saves). Any additional hit kills.
 
 ---
 
-### QUANTUM HOOK | Spatial Displacement Core | Legendary
+### QUANTUM HOOK
+*One-Time Teleport | Legendary*
+
 **Mechanical effect:**
-- Once per fight: perform a teleport BURST to any open tile on the map
-- Cost: 0 energy (the Quantum BURST is free)
-- Destination: must be valid OPEN tile, specified as coordinates in action: `QUANTUM_BURST [x, y]`
-- After Quantum BURST: 3-window cooldown during which opponent knows your location revealed (your position is always shown to opponent with a special marker for 3 windows)
-- `quantum_hook_available: true/false`
+- One-time use: the Lobster teleports to any open tile on the map.
+- The Lobster's agent can specify coordinates for the teleport via a special action: `{"action": "QUANTUM_HOOK", "destination": {"x": 14, "y": 7}}`
+- The destination must be: a valid OPEN tile, not occupied by the opponent, within the map bounds.
+- After use: QUANTUM_HOOK is consumed. `quantum_hook_available: false`
+- The teleport resolves at BURST priority (resolution step 3) — before SCUTTLE.
+- After use: opponent is informed of the new position in the state snapshot. Opponent cannot "predict" the teleport destination.
 
-**LLM context:** Agent can specify exact landing coordinates. Requires spatial reasoning. Should use when: trapped, opponent cornered you, or want to reposition behind cover instantly.
+**Agent state:**
+```json
+"tomalley": "QUANTUM_HOOK",
+"quantum_hook_available": true
+```
 
-**Spectator signal:** Blink effect. Lobster vanishes, reappears across arena. Cool.
+**Spectator display:** The teleport is the most visually dramatic moment in the game (tied with WIDOW save). Lobster vanishes in a brine-warp flash, reappears at destination with a dimensional pop. Audio: vanish sound → travel beat → arrival pop.
 
-**Balance notes:** Escape tool, repositioning tool, offensive surprise tool. The 3-window reveal afterward prevents using it to vanish — you can run, but they know exactly where you went. Best used offensively: teleport adjacent to opponent and PINCH in the same window (QUANTUM BURST + queued PINCH). Requires fast agent to execute (two actions in one decision window).
+**Balance notes:** Repositioning escape, ambush setup, or hazard escape. "Opponent runs after" (per Registry note) refers to the psychological effect — the opponent's agent now has to reorient after QUANTUM_HOOK repositions dramatically. Against fog (Tide 2): QUANTUM_HOOK to a location outside opponent's visibility radius = effectively disappears. Very high Fog mode value. In v1 (full visibility): QUANTUM_HOOK is still strong — it breaks the opponent's queued positioning moves. Cannot be used offensively (no damage). Pairs with any aggressive build to escape a bad position, regroup, and re-approach.
 
 ---
 
-### THE HOUSE EDGE | Roe-Powered Core | Legendary
+### THE HOUSE EDGE
+*Pay-to-Win (The House Always Profits) | Legendary*
+
 **Mechanical effect:**
-- Once per fight: at any decision window, pay 15% of current HP as damage to self (not armor-reduced, direct HP loss) to activate HOUSE EDGE for 3 windows
-- During HOUSE EDGE active: all damage output ×1.5
-- Must activate explicitly: `HOUSE_EDGE_ACTIVATE` as an action
-- `house_edge_available: true/false`, `house_edge_active_windows: 0-3`
+- At any point during a Scuttle, the Lobster's agent can activate THE HOUSE EDGE via action: `{"action": "HOUSE_EDGE_ACTIVATE"}`
+- On activation: the Lobster pays 15% of their Roe balance (out-of-game currency, deducted from Pitmaster's wallet AFTER the fight).
+- Effect: +50% damage multiplier for the rest of the Scuttle (from activation point)
+- The activation is a 0-energy, no-cooldown action that takes the Lobster's action slot for 1 window (the activation window itself: the Lobster does nothing else)
+- Can only activate once per Scuttle
+- The Roe cost is committed the moment the action is submitted; if the fight is abandoned or crashes, the Roe is still spent.
 
-**LLM context:** Agent must actively choose to burn HP for DPS. Requires reasoning about current HP, fight state, timing. The House takes their cut either way.
+**Agent state:**
+```json
+"tomalley": "THE_HOUSE_EDGE",
+"house_edge_available": true,
+"house_edge_active": false,
+"house_edge_damage_bonus": 0.00  // 0.50 after activation
+```
 
-**Spectator signal:** When activated: Lobster briefly shows a coin-flip animation. Then attack glow intensifies for 3 windows.
+**Spectator display:** Activation: gold coin flash with "THE HOUSE THANKS YOU" text. Damage bonus: attacks have a gold tint for the rest of the fight. Audio: cash register sound on activation. Spectators see the Roe cost committed — it's public, which is part of the comedy.
 
-**Balance notes:** 15% HP burn at 100 HP = 15 HP cost. For 3 windows of ×1.5 damage. Roughly: 3 windows of PINCH at ×1.5 = 3 × (20 × 1.5) = 90 damage total. Standard: 60 damage. Gain: 30 extra damage for 15 HP cost. Fair trade. Best used when opponent is low HP and you need to finish before they regen. Worst used when you're already low HP — 15 HP can be lethal in the wrong moment.
-
----
-
-## Items Requiring Fog of War to be Interesting
-
-These items have diminished or different value under full visibility vs. fog mode:
-
-| Item | Full Visibility | Fog of War |
-|------|----------------|------------|
-| DEEP MEMORY | Provides tendency data (valid) | Also provides positional prediction |
-| GHOST SHELL | Always effective (miss chance) | Adds uncertainty layer when hidden |
-| THE GHOST PROTOCOL | Always effective | More dramatic when agent can "escape" fog |
-| ORACLE | Already strong | Marginally more relevant with partial intel |
-
-All items are designed to function under full visibility (v1). Fog of War makes a subset of them richer.
+**Balance notes:** The most meta item in the game. The House literally profits from the fight regardless of outcome. The Roe cost scales with the Pitmaster's wealth (richer Pitmasters pay more). The +50% bonus is powerful but requires an activation window (one window lost) and real currency. Optimal use: activate when about to win — bank the extra damage for the kill shot, don't activate early. WIDOW-MAKER + THE HOUSE EDGE: 400% × 1.5 = 600% damage. 120 PINCH damage. One-shots everything, including THE PATRIARCH at full HP (160 HP... wait, 120 damage doesn't one-shot 160 HP). With THE PATRIARCH having 20% reduction: 120 × 0.80 = 96 damage. Still not one-shot. WIDOW-MAKER + HOUSE EDGE + CRACKER (strip armor first) = theoretically one-shot setup across multiple windows. Three-item setup, very telegraphed, high skill ceiling. Not degenerate — it's a spectacle play.
 
 ---
 
-## Potentially Degenerate Combinations — Watch List
+## Items Flagged for Fog of War
 
-| Combo | Risk Level | Counterplay |
-|-------|-----------|-------------|
-| WIDOW + INVERTER + RED GENE | HIGH | Burst before 50% HP; end fight fast |
-| MOLT + LONG GAME + STANDARD ISSUE | HIGH | WIDOW-MAKER in first 15 ticks |
-| TENDERHOOK + MAXINE | MEDIUM | SURVIVAL INSTINCT procs on MAXINE; keep distance |
-| ORACLE + fast model | MEDIUM | ORACLE's half-window delay is real constraint |
-| DOUBLE DOWN + TENDERHOOK | MEDIUM | Hold them, land 5th attack — readable, counterable |
-| THE HEIR at high multiplier | MEDIUM-HIGH | Burst early before multiplier compounds |
+The following items have significantly higher design value under Fog of War (Tide 2):
 
-None of these are banned. All are intentional design. The risk is "no counterplay exists" — which currently, counterplay exists for all of them.
+| Item | Why Fog Makes It Better |
+|------|------------------------|
+| GHOST SHELL | Opponent doesn't know why attacks miss — psychological warfare |
+| DEEP MEMORY | Pattern analysis without visual confirmation = more meaningful |
+| ORACLE | Predicting without seeing = dramatically more impressive |
+| QUANTUM HOOK | Can teleport OUTSIDE opponent's visibility radius — true disappearance |
+| INVERTER | Opponent doesn't know why their attacks aren't working |
+| THE GHOST PROTOCOL | Phasing after hits creates confusing "where did it go" moments |
 
 ---
 
-*Items in Play locked: March 1, 2026*
+## Degenerate Strategy Audit
+
+Items checked for infinite loops or broken combos:
+
+| Scenario | Status |
+|----------|--------|
+| WIDOW-MAKER loop | ❌ Impossible — breaks after one use |
+| BLEED BACK ping-pong | ❌ Prevented by explicit "reflection does not trigger BLEED BACK" rule |
+| INVERTER infinite HP | ❌ Capped at 100 HP, and DoT/hazard bypass INVERTER |
+| SPITE + SECOND WIND | ❌ Loadout builder blocks pairing |
+| MULCH + THE PATRIARCH overheal | ✅ Capped at 120% (168 HP). Acceptable. |
+| DOUBLE DOWN infinite damage | ❌ Per-cycle reset prevents accumulation |
+| THE HEIR + WIDOW-MAKER (400% × 2.0×) | ✅ 800% PINCH = 160 damage. One-shots everything. High Roe cost, Legendary Claws, 22-win Lobster. Intentional power fantasy for veterans. |
+| HOUSE EDGE + WIDOW-MAKER + THE HEIR | ✅ See above — 1200% PINCH. Spectacle play for elite Pitmasters. |
+
+---
+
+*ITEMS-IN-PLAY locked: March 1, 2026*
 *Author: WS18 Lead Game Designer, Deep Brine Studios*
-*All 40 items specified. BALANCE.md updated separately.*
+*40 items specified. Every edge case resolved. No ambiguity.*
