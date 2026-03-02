@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import type { MatchSnapshot } from '../game/PitScene';
 
 /**
@@ -78,17 +78,35 @@ export function BabylonArena({ snapshot, botNames, onMatchEnd, playerBotId, canv
     }
   }, [snapshot, onMatchEnd]);
 
+  const [canvasSize, setCanvasSize] = useState({ width: 1280, height: 720 });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const parent = canvas?.parentElement;
+    if (!canvas || !parent || typeof ResizeObserver === 'undefined') return;
+
+    const update = () => {
+      const rect = parent.getBoundingClientRect();
+      const width = Math.max(320, Math.floor(rect.width));
+      const height = Math.max(420, Math.floor(rect.height || window.innerHeight * 0.68));
+      setCanvasSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+    };
+
+    const ro = new ResizeObserver(update);
+    ro.observe(parent);
+    update();
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <canvas
       ref={canvasRef}
       id="babylon-arena"
-      width={900}
-      height={640}
+      width={canvasSize.width}
+      height={canvasSize.height}
       style={{
         width: '100%',
-        maxWidth: 900,
-        height: 'auto',
-        aspectRatio: '900 / 640',
+        height: '100%',
         background: '#050510',
         borderRadius: 8,
         overflow: 'hidden',

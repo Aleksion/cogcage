@@ -115,6 +115,7 @@ interface CrustieAnims {
 }
 
 const RIGGED_SPECIES = new Set(['lobster', 'mantis', 'shrimp']);
+const ENABLE_REMOTE_ANIM_CLIPS = false; // Visual Director clip URLs have been unstable/404; rely on base GLBs + procedural VFX
 
 const SPECIES_CLIPS: Record<string, AnimClipName[]> = {
   lobster: ['idle', 'walk', 'attack', 'hit', 'death'],
@@ -148,7 +149,7 @@ const CRUSTIE_GLBS: Record<string, string> = {
 
 /* ── GLB scale (Meshy default is large — normalize) ──────────────── */
 
-const GLB_SCALE = 0.5;
+const GLB_SCALE = 1.35;
 
 const C_WALL = Color3.FromHexString('#1a0a2e');
 const C_WALL_TRIM = Color3.FromHexString('#6a1b9a');
@@ -391,8 +392,8 @@ export class PitScene {
     const aspect = renderWidth / renderHeight;
 
     // Keep the arena readable by default, then push in slightly further on narrow screens.
-    let orthoSize = renderWidth <= 460 ? 8.6 : renderWidth <= 820 ? 9.2 : 9.8;
-    if (aspect < 0.8) orthoSize += 0.9;
+    let orthoSize = renderWidth <= 460 ? 6.8 : renderWidth <= 820 ? 7.6 : 8.6;
+    if (aspect < 0.8) orthoSize += 0.6;
 
     this.camera.orthoTop = orthoSize;
     this.camera.orthoBottom = -orthoSize;
@@ -402,10 +403,10 @@ export class PitScene {
 
   private getActorScaleForViewport(): number {
     const width = this.engine.getRenderWidth();
-    if (width <= 420) return 1.45;
-    if (width <= 768) return 1.28;
-    if (width <= 1100) return 1.14;
-    return 1.06;
+    if (width <= 420) return 2.15;
+    if (width <= 768) return 1.8;
+    if (width <= 1100) return 1.55;
+    return 1.35;
   }
 
   private computeOutlineWidthForViewport(): number {
@@ -733,8 +734,9 @@ export class PitScene {
       state.loaded = true;
       this.applyMeshOutlines(meshes);
 
-      // Load skeletal animation clips for rigged species
-      if (RIGGED_SPECIES.has(species)) {
+      // Load skeletal animation clips for rigged species (optional).
+      // Disabled by default because remote clip URLs have 404'd in production.
+      if (ENABLE_REMOTE_ANIM_CLIPS && RIGGED_SPECIES.has(species)) {
         const anims = await this.loadAnimationClips(species, result.meshes[0]);
         if (anims) {
           state.anims = anims;
