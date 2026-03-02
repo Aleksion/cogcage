@@ -32,6 +32,8 @@ import {
   AnimationGroup,
   TransformNode,
   GlowLayer,
+  CubicEase,
+  EasingFunction,
 } from '@babylonjs/core';
 import {
   AdvancedDynamicTexture,
@@ -52,8 +54,9 @@ import type { GameState, GameEvent, ActorState } from '../lib/ws2/engine';
 const GRID_CELLS = ARENA_SIZE_UNITS; // 20
 const CELL_SIZE = 1; // 1 Babylon unit per cell
 const ARENA_WORLD = GRID_CELLS * CELL_SIZE; // 20
-const TWEEN_FRAMES = 13; // ~217ms at 60fps, fits inside 250ms tick with margin
+const TWEEN_FRAMES = 18; // ~300ms at 60fps for visible interpolation across ticks
 const FPS = 60;
+const MOVE_HOP_HEIGHT = 0.14;
 
 /* ── Brine Palette ──────────────────────────────────────────────── */
 
@@ -126,7 +129,10 @@ const CRUSTIE_GLBS: Record<string, string> = {
 
 /* ── GLB scale (Meshy default is large — normalize) ──────────────── */
 
-const GLB_SCALE = 0.5;
+const GLB_TARGET_HEIGHT = 2.0;
+const GLB_MIN_SCALE = 0.9;
+const GLB_MAX_SCALE = 2.3;
+const LOAD_EXTERNAL_ANIMATION_CLIPS = false;
 
 const C_WALL = Color3.FromHexString('#1a0a2e');
 const C_WALL_TRIM = Color3.FromHexString('#6a1b9a');
@@ -240,6 +246,11 @@ export class PitScene {
   private engine: Engine;
   private scene: Scene;
   private canvas: HTMLCanvasElement;
+  private camera!: UniversalCamera;
+  private cameraBasePosition = Vector3.Zero();
+  private cameraShakeMsRemaining = 0;
+  private cameraShakeMsTotal = 0;
+  private cameraShakeStrength = 0;
 
   /* N-actor state map */
   private actorStates = new Map<string, ActorRenderState>();
@@ -285,11 +296,12 @@ export class PitScene {
     this.engine.runRenderLoop(() => {
       if (this.disposed) return;
       this.animateHazards();
+      this.updateCameraShake();
       this.scene.render();
     });
 
     // Handle resize
-    const onResize = () => this.engine.resize();
+    const onResize = () => this.resize();
     window.addEventListener('resize', onResize);
     this.scene.onDisposeObservable.addOnce(() => {
       window.removeEventListener('resize', onResize);
@@ -299,19 +311,33 @@ export class PitScene {
   /* ── Camera ──────────────────────────────────────────────────── */
 
   private setupCamera(): void {
-    const camera = new UniversalCamera('camera', new Vector3(10, 18, -6), this.scene);
-    camera.setTarget(new Vector3(10, 0, 10));
+    const center = ARENA_WORLD / 2;
+    const camera = new UniversalCamera('camera', new Vector3(center - 13.5, 12.5, center - 13.5), this.scene);
+    camera.setTarget(new Vector3(center, 0.2, center));
     camera.mode = UniversalCamera.ORTHOGRAPHIC_CAMERA;
-
-    const aspect = this.canvas.width / this.canvas.height;
-    const orthoSize = 13;
-    camera.orthoTop = orthoSize;
-    camera.orthoBottom = -orthoSize;
-    camera.orthoLeft = -orthoSize * aspect;
-    camera.orthoRight = orthoSize * aspect;
-
     camera.minZ = 0.1;
-    camera.maxZ = 100;
+    camera.maxZ = 140;
+    this.camera = camera;
+    this.cameraBasePosition = camera.position.clone();
+    this.updateCameraOrthoBounds();
+  }
+
+  private updateCameraOrthoBounds(): void {
+    if (!this.camera) return;
+    const width = Math.max(1, this.canvas.clientWidth || this.canvas.width || 1);
+    const height = Math.max(1, this.canvas.clientHeight || this.canvas.height || 1);
+    const aspect = width / height;
+    const orthoSize = 12;
+    this.camera.orthoTop = orthoSize;
+    this.camera.orthoBottom = -orthoSize;
+    this.camera.orthoLeft = -orthoSize * aspect;
+    this.camera.orthoRight = orthoSize * aspect;
+  }
+
+  resize(): void {
+    if (this.disposed) return;
+    this.updateCameraOrthoBounds();
+    this.engine.resize();
   }
 
   /* ── Lighting ────────────────────────────────────────────────── */
@@ -515,10 +541,19 @@ export class PitScene {
 
       const root = result.meshes[0];
       if (!root) return;
+      const modelRoot = new TransformNode(`${actorId}_modelRoot`, this.scene);
+      modelRoot.parent = parentNode;
 
-      root.parent = parentNode;
-      root.scaling = new Vector3(GLB_SCALE, GLB_SCALE, GLB_SCALE);
-      root.position = Vector3.Zero();
+      const topLevelMeshes = result.meshes.filter((m) => !m.parent);
+      for (const mesh of topLevelMeshes) {
+        mesh.parent = modelRoot;
+      }
+
+      const bounds = this.getMeshBounds(result.meshes);
+      const modelHeight = Math.max(0.001, bounds.maxY - bounds.minY);
+      const scale = Math.min(GLB_MAX_SCALE, Math.max(GLB_MIN_SCALE, GLB_TARGET_HEIGHT / modelHeight));
+      modelRoot.scaling = new Vector3(scale, scale, scale);
+      modelRoot.position = new Vector3(0, -bounds.minY * scale + 0.02, 0);
 
       const meshes: AbstractMesh[] = [];
       for (const m of result.meshes) {
@@ -545,14 +580,30 @@ export class PitScene {
 
       state.meshes = meshes;
       state.loaded = true;
+      let resolvedAnims: CrustieAnims | null = null;
 
-      // Load skeletal animation clips for rigged species
-      if (RIGGED_SPECIES.has(species)) {
-        const anims = await this.loadAnimationClips(species, result.meshes[0]);
-        if (anims) {
-          state.anims = anims;
-          anims.idle.start(true);
+      const embeddedIdle = result.animationGroups[0];
+      if (embeddedIdle) {
+        resolvedAnims = {
+          idle: embeddedIdle,
+          walk: embeddedIdle,
+          attack: embeddedIdle,
+          hit: null,
+          death: null,
+        };
+      }
+
+      // Disabled in production because those URLs currently 404.
+      if (LOAD_EXTERNAL_ANIMATION_CLIPS && RIGGED_SPECIES.has(species)) {
+        const clipAnims = await this.loadAnimationClips(species, root);
+        if (clipAnims) {
+          resolvedAnims = clipAnims;
         }
+      }
+
+      if (resolvedAnims) {
+        state.anims = resolvedAnims;
+        resolvedAnims.idle.start(true);
       }
     } catch (err) {
       console.warn(`[PitScene] Failed to load ${species} GLB for ${actorId}, using fallback capsule:`, err);
@@ -560,15 +611,35 @@ export class PitScene {
     }
   }
 
+  private getMeshBounds(meshes: AbstractMesh[]): { minY: number; maxY: number } {
+    let minY = Number.POSITIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+
+    for (const mesh of meshes) {
+      const info = mesh.getBoundingInfo();
+      if (!info) continue;
+      const min = info.boundingBox.minimum;
+      const max = info.boundingBox.maximum;
+      minY = Math.min(minY, min.y);
+      maxY = Math.max(maxY, max.y);
+    }
+
+    if (!Number.isFinite(minY) || !Number.isFinite(maxY)) {
+      return { minY: 0, maxY: GLB_TARGET_HEIGHT };
+    }
+
+    return { minY, maxY };
+  }
+
   private createFallbackCapsule(parent: TransformNode, actorId: string): void {
     const state = this.actorStates.get(actorId);
     const color = state?.color ?? C_CYAN;
 
     const capsule = MeshBuilder.CreateCapsule(`${actorId}_fallback`, {
-      height: 0.8, radius: 0.25,
+      height: 1.15, radius: 0.35,
     }, this.scene);
     capsule.parent = parent;
-    capsule.position.y = 0.4;
+    capsule.position.y = 0.6;
 
     const mat = new StandardMaterial(`${actorId}_fallbackMat`, this.scene);
     mat.diffuseColor = color.scale(0.8);
@@ -591,6 +662,7 @@ export class PitScene {
     species: string,
     baseRoot: AbstractMesh,
   ): Promise<CrustieAnims | null> {
+    if (!LOAD_EXTERNAL_ANIMATION_CLIPS) return null;
     const clips = SPECIES_CLIPS[species];
     if (!clips || clips.length === 0) return null;
 
@@ -806,6 +878,37 @@ export class PitScene {
     }
   }
 
+  private triggerCameraShake(durationMs: number, strength = 0.16): void {
+    if (!this.camera) return;
+    this.cameraShakeMsTotal = Math.max(this.cameraShakeMsTotal, durationMs);
+    this.cameraShakeMsRemaining = Math.max(this.cameraShakeMsRemaining, durationMs);
+    this.cameraShakeStrength = Math.max(this.cameraShakeStrength, strength);
+  }
+
+  private updateCameraShake(): void {
+    if (!this.camera || this.cameraShakeMsRemaining <= 0) {
+      if (this.camera && !this.camera.position.equalsWithEpsilon(this.cameraBasePosition, 0.0001)) {
+        this.camera.position.copyFrom(this.cameraBasePosition);
+      }
+      return;
+    }
+
+    const dt = this.engine.getDeltaTime();
+    this.cameraShakeMsRemaining = Math.max(0, this.cameraShakeMsRemaining - dt);
+    const t = this.cameraShakeMsRemaining / Math.max(1, this.cameraShakeMsTotal);
+    const amp = this.cameraShakeStrength * t;
+
+    this.camera.position.x = this.cameraBasePosition.x + (Math.random() - 0.5) * amp;
+    this.camera.position.y = this.cameraBasePosition.y + (Math.random() - 0.5) * amp * 0.65;
+    this.camera.position.z = this.cameraBasePosition.z + (Math.random() - 0.5) * amp;
+
+    if (this.cameraShakeMsRemaining <= 0) {
+      this.camera.position.copyFrom(this.cameraBasePosition);
+      this.cameraShakeStrength = 0;
+      this.cameraShakeMsTotal = 0;
+    }
+  }
+
   /* ── Public API ──────────────────────────────────────────────── */
 
   setBotNames(names: Record<string, string>): void {
@@ -851,6 +954,10 @@ export class PitScene {
   /* ── Animation helper ────────────────────────────────────────── */
 
   private animateNodeTo(node: TransformNode, target: Vector3): void {
+    const start = node.position.clone();
+    const mid = Vector3.Lerp(start, target, 0.5);
+    mid.y = Math.max(start.y, target.y) + MOVE_HOP_HEIGHT;
+
     const anim = new Animation(
       `${node.name}_move`,
       'position',
@@ -859,9 +966,13 @@ export class PitScene {
       Animation.ANIMATIONLOOPMODE_CONSTANT,
     );
     anim.setKeys([
-      { frame: 0, value: node.position.clone() },
+      { frame: 0, value: start },
+      { frame: Math.round(TWEEN_FRAMES * 0.5), value: mid },
       { frame: TWEEN_FRAMES, value: target },
     ]);
+    const easing = new CubicEase();
+    easing.setEasingMode(EasingFunction.EASINGMODE_EASEINOUT);
+    anim.setEasingFunction(easing);
     this.scene.beginDirectAnimation(node, [anim], 0, TWEEN_FRAMES, false);
   }
 
@@ -890,9 +1001,12 @@ export class PitScene {
       const targetId = evt.targetId;
       const target = targetId ? actors[targetId] : null;
       if (target) {
-        this.vfxDamageNumber(posToWorld(target.position), data.amount as number);
+        const hitPos = posToWorld(target.position);
+        this.vfxDamageNumber(hitPos, data.amount as number);
 
         const targetState = targetId ? this.actorStates.get(targetId) : null;
+        this.vfxHitImpact(hitPos, targetState?.color ?? C_RED);
+        this.triggerCameraShake(120, 0.2);
         if (targetState) {
           if (targetState.anims?.hit) {
             this.playAnimClip(targetState.anims, 'hit', targetId!);
@@ -922,11 +1036,13 @@ export class PitScene {
       if (actionType === 'MELEE_STRIKE') {
         if (anims && actorId) this.playAnimClip(anims, 'attack', actorId);
         this.playSfx('pinch');
+        this.triggerCameraShake(90, 0.14);
         const target = evt.targetId ? actors[evt.targetId] : null;
         if (target) this.vfxPinch(origin, posToWorld(target.position));
       } else if (actionType === 'RANGED_SHOT') {
         if (anims && actorId) this.playAnimClip(anims, 'attack', actorId);
         this.playSfx('spit');
+        this.triggerCameraShake(70, 0.1);
         const target = evt.targetId ? actors[evt.targetId] : null;
         if (target) this.vfxSpit(origin, posToWorld(target.position));
       } else if (actionType === 'MOVE') {
@@ -937,6 +1053,7 @@ export class PitScene {
         this.vfxShellUp(origin);
       } else if (actionType === 'DASH') {
         this.playSfx('burst');
+        this.triggerCameraShake(80, 0.12);
         this.vfxBurst(origin, actorColor);
       }
     }
@@ -978,14 +1095,23 @@ export class PitScene {
   /* ── VFX: SPIT (ranged projectile) ──────────────────────────── */
 
   private vfxSpit(origin: Vector3, target: Vector3): void {
-    const proj = MeshBuilder.CreateSphere('vfx_spit', { diameter: 0.2 }, this.scene);
+    const proj = MeshBuilder.CreateSphere('vfx_spit', { diameter: 0.28 }, this.scene);
     proj.position = origin.clone();
-    proj.position.y = 0.5;
+    proj.position.y = 0.62;
 
     const projMat = new StandardMaterial('spitMat', this.scene);
-    projMat.emissiveColor = C_PURPLE;
+    projMat.emissiveColor = C_PURPLE.scale(1.8);
     projMat.disableLighting = true;
+    projMat.alpha = 0.95;
     proj.material = projMat;
+
+    const projGlow = MeshBuilder.CreateSphere('vfx_spit_glow', { diameter: 0.5 }, this.scene);
+    projGlow.parent = proj;
+    const glowMat = new StandardMaterial('spitGlowMat', this.scene);
+    glowMat.emissiveColor = C_PURPLE.scale(0.9);
+    glowMat.disableLighting = true;
+    glowMat.alpha = 0.45;
+    projGlow.material = glowMat;
 
     const anim = new Animation(
       'spit_fly', 'position', FPS,
@@ -993,23 +1119,49 @@ export class PitScene {
       Animation.ANIMATIONLOOPMODE_CONSTANT,
     );
     const targetPos = target.clone();
-    targetPos.y = 0.5;
+    targetPos.y = 0.62;
     anim.setKeys([
       { frame: 0, value: proj.position.clone() },
-      { frame: 15, value: targetPos },
+      { frame: 12, value: targetPos },
     ]);
     proj.animations = [anim];
 
-    this.scene.beginAnimation(proj, 0, 15, false, 1, () => {
-      const burst = MeshBuilder.CreateSphere('vfx_spit_burst', { diameter: 0.6 }, this.scene);
+    this.scene.beginAnimation(proj, 0, 12, false, 1, () => {
+      const burst = MeshBuilder.CreateSphere('vfx_spit_burst', { diameter: 0.95 }, this.scene);
       burst.position = targetPos.clone();
       const burstMat = new StandardMaterial('burstMat', this.scene);
-      burstMat.emissiveColor = C_PURPLE;
+      burstMat.emissiveColor = C_PURPLE.scale(1.3);
       burstMat.disableLighting = true;
-      burstMat.alpha = 0.6;
+      burstMat.alpha = 0.75;
       burst.material = burstMat;
-      this.fadeAndDispose(burst, burstMat, 300);
+      const ring = MeshBuilder.CreateTorus('vfx_spit_ring', {
+        diameter: 1.15, thickness: 0.09, tessellation: 24,
+      }, this.scene);
+      ring.position = targetPos.clone();
+      const ringMat = new StandardMaterial('spitRingMat', this.scene);
+      ringMat.emissiveColor = C_PURPLE.scale(1.2);
+      ringMat.disableLighting = true;
+      ringMat.alpha = 0.85;
+      ring.material = ringMat;
+
+      const ringAnim = new Animation(
+        'spit_ring_scale', 'scaling', FPS,
+        Animation.ANIMATIONTYPE_VECTOR3,
+        Animation.ANIMATIONLOOPMODE_CONSTANT,
+      );
+      ringAnim.setKeys([
+        { frame: 0, value: new Vector3(0.6, 1, 0.6) },
+        { frame: 14, value: new Vector3(2.1, 1, 2.1) },
+      ]);
+      ring.animations = [ringAnim];
+      this.scene.beginAnimation(ring, 0, 14, false);
+
+      this.fadeAndDispose(burst, burstMat, 260);
+      this.fadeAndDispose(ring, ringMat, 240);
+      projGlow.dispose();
+      glowMat.dispose();
       proj.dispose();
+      projMat.dispose();
     });
   }
 
@@ -1084,6 +1236,43 @@ export class PitScene {
       { frame: 12, value: new Vector3(1, 1, 1) },
     ]);
     this.scene.beginDirectAnimation(node, [anim], 0, 12, false);
+  }
+
+  private vfxHitImpact(worldPos: Vector3, color: Color3): void {
+    const flash = MeshBuilder.CreateSphere('vfx_hit_flash', { diameter: 0.95 }, this.scene);
+    flash.position = worldPos.clone();
+    flash.position.y = 0.6;
+    const flashMat = new StandardMaterial('hitFlashMat', this.scene);
+    flashMat.emissiveColor = Color3.White();
+    flashMat.disableLighting = true;
+    flashMat.alpha = 0.95;
+    flash.material = flashMat;
+
+    const ring = MeshBuilder.CreateTorus('vfx_hit_ring', {
+      diameter: 0.9, thickness: 0.1, tessellation: 28,
+    }, this.scene);
+    ring.position = worldPos.clone();
+    ring.position.y = 0.5;
+    const ringMat = new StandardMaterial('hitRingMat', this.scene);
+    ringMat.emissiveColor = color.scale(1.35);
+    ringMat.disableLighting = true;
+    ringMat.alpha = 0.95;
+    ring.material = ringMat;
+
+    const ringAnim = new Animation(
+      'hit_ring_scale', 'scaling', FPS,
+      Animation.ANIMATIONTYPE_VECTOR3,
+      Animation.ANIMATIONLOOPMODE_CONSTANT,
+    );
+    ringAnim.setKeys([
+      { frame: 0, value: new Vector3(0.8, 1, 0.8) },
+      { frame: 12, value: new Vector3(2.3, 1, 2.3) },
+    ]);
+    ring.animations = [ringAnim];
+    this.scene.beginAnimation(ring, 0, 12, false);
+
+    this.fadeAndDispose(flash, flashMat, 180);
+    this.fadeAndDispose(ring, ringMat, 240);
   }
 
   /* ── VFX: Damage number popup ───────────────────────────────── */
