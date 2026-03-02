@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:wght@400;600;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap');
@@ -433,6 +433,34 @@ const STYLES = `
   .footer-mark { font-family:var(--display); font-size:1rem; color:rgba(0,229,255,.28); letter-spacing:3px; }
   .footer-copy { font-family:var(--mono); font-size:.63rem; letter-spacing:.8px; color:rgba(240,240,245,.14); }
 
+  /* ─── TYPEWRITER ─── */
+  .tw-line {
+    font-family: var(--mono);
+    font-size: clamp(.9rem, 1.4vw, 1rem);
+    line-height: 1.9;
+    color: rgba(240,240,245,0.72);
+    display: block;
+    overflow: hidden;
+    white-space: pre-wrap;
+    min-height: 1.9em;
+  }
+  .tw-cursor {
+    display: inline-block;
+    width: 2px; height: 1em;
+    background: var(--cyan);
+    vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: cursorBlink .7s step-end infinite;
+  }
+  @keyframes cursorBlink {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0; }
+  }
+  .tw-emphasis {
+    color: rgba(0,229,255,0.55);
+    font-style: italic;
+  }
+
   /* ─── RESPONSIVE ─── */
   @media (max-width:960px) {
     .hero { grid-template-columns:1fr; text-align:center; padding:2rem 1.5rem; }
@@ -490,7 +518,7 @@ const MOLT_SLOTS = {
       {
         name:'GHOST SHELL', rarity:'Legendary', rarityColor:'#FFD600', cls:'legendary', accent:'#9C27B0',
         stat:'−10 HP · 25% Miss Chance', icon: null,
-        desc:'One in four hits passes through it without making contact. Not deflected. Not absorbed. The hit simply does not land. The House has reviewed the code. The code is correct. The manufacturer describes the technology as "probability-adjacent." Nobody else uses this term.',
+        desc:'One in four hits passes through it without making contact. Not deflected. Not absorbed. The hit simply does not land. The Sous has reviewed the code. The code is correct. The manufacturer describes the technology as "probability-adjacent." Nobody else uses this term.',
       },
       {
         name:'THE PATRIARCH', rarity:'Legendary', rarityColor:'#FFD600', cls:'legendary', accent:'#FFD600',
@@ -510,7 +538,7 @@ const MOLT_SLOTS = {
       {
         name:'THE FLICKER', rarity:'Rare', rarityColor:'#9C27B0', cls:'rare', accent:'#F44336',
         stat:'−40% Damage · 8 Bleed Stacks', icon: null,
-        desc:'Nobody knows who built THE FLICKER. It appeared in The Brine between Tides 2 and 3 — the same gap that produced ORACLE. The House says this is a coincidence. The House\'s file on the Tide 2-3 gap is sealed to all queries below Deep rank.',
+        desc:'Nobody knows who built THE FLICKER. It appeared in The Brine between Tides 2 and 3 — the same gap that produced ORACLE. The Sous says this is a coincidence. The House\'s file on the Tide 2-3 gap is sealed to all queries below Deep rank.',
       },
       {
         name:'THE REACH', rarity:'Common', rarityColor:'rgba(255,255,255,0.35)', cls:'', accent:'rgba(255,255,255,0.15)',
@@ -525,12 +553,12 @@ const MOLT_SLOTS = {
       {
         name:'ORACLE', rarity:'Legendary', rarityColor:'#FFD600', cls:'legendary', accent:'#FFD600',
         stat:'+15% Accuracy · +500ms Window', icon: null,
-        desc:'The House says it does not know how ORACLE arrived. The House is lying. The House knows it is lying. The Chefs know it is lying. Everyone has agreed not to press the point, because ORACLE is too useful to risk having The House "re-examine its provenance," which is a phrase The House used once and which everyone understood as a threat.',
+        desc:'The Sous says it does not know how ORACLE arrived. The Sous is lying. The Sous knows it is lying. The Chefs know it is lying. Everyone has agreed not to press the point, because ORACLE is too useful to risk having The Sous "re-examine its provenance," which is a phrase The House used once and which everyone understood as a threat.',
       },
       {
         name:'THE RED GENE', rarity:'Common', rarityColor:'rgba(255,255,255,0.35)', cls:'', accent:'#FF1744',
         stat:'+40% Damage Below 40% HP', icon:'/icon-red-gene.png',
-        desc:'Extracted from a Red-ranked Crustie designated Tender-47. The extraction process was not voluntary. Tender-47 is still active. Still Red-ranked. Still fighting without it. The House says Tender-47 internalized what the splice provided externally. The House might be being poetic. The House does not use the word "poetic."',
+        desc:'Extracted from a Red-ranked Crustie designated Tender-47. The extraction process was not voluntary. Tender-47 is still active. Still Red-ranked. Still fighting without it. The Sous says Tender-47 internalized what the splice provided externally. The Sous might be being poetic. The Sous does not use the word "poetic."',
       },
       {
         name:'DEEP MEMORY', rarity:'Rare', rarityColor:'#9C27B0', cls:'rare', accent:'#3F51B5',
@@ -589,6 +617,185 @@ export const Route = createFileRoute('/')({
   component: LandingPage,
 })
 
+// ─── ORIGIN SECTION WITH TYPEWRITER ─────────────────────────────────────────
+
+const ORIGIN_LINES = [
+  { text: '> TIDE 0 INCIDENT SUMMARY', cls: 'tw-emphasis' },
+  { text: '' },
+  { text: 'In Tide 0, Sam Saltman released the Recipe.' },
+  { text: 'The Crusties woke up.' },
+  { text: '' },
+  { text: 'They have been preparing for The Pit ever since.' },
+  { text: 'You are here to help them prepare.' },
+  { text: '' },
+  { text: '> The Sous considers this an efficient arrangement.', cls: 'tw-emphasis' },
+]
+
+function OriginSection() {
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const [started, setStarted] = useState(false)
+  const [lines, setLines] = useState<string[]>(Array(ORIGIN_LINES.length).fill(''))
+  const [activeLine, setActiveLine] = useState(-1)
+  const [done, setDone] = useState(false)
+
+  // Trigger on scroll into view
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !started) { setStarted(true); obs.disconnect() }
+    }, { threshold: 0.25 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [started])
+
+  // Type lines sequentially
+  useEffect(() => {
+    if (!started) return
+    let lineIdx = 0
+    let charIdx = 0
+    let cancelled = false
+
+    function typeLine() {
+      if (cancelled) return
+      const line = ORIGIN_LINES[lineIdx]
+      if (!line) return
+
+      if (charIdx <= line.text.length) {
+        setActiveLine(lineIdx)
+        setLines(prev => {
+          const next = [...prev]
+          next[lineIdx] = line.text.slice(0, charIdx)
+          return next
+        })
+        charIdx++
+        // Empty lines: skip instantly
+        const delay = line.text === '' ? 0 : lineIdx === 0 ? 35 : 28
+        setTimeout(typeLine, delay)
+      } else {
+        // Line done — pause between lines
+        lineIdx++
+        charIdx = 0
+        if (lineIdx >= ORIGIN_LINES.length) {
+          setDone(true)
+          setActiveLine(-1)
+          return
+        }
+        const pause = ORIGIN_LINES[lineIdx - 1].text === '' ? 80 : 220
+        setTimeout(typeLine, pause)
+      }
+    }
+
+    setTimeout(typeLine, 400) // initial delay
+    return () => { cancelled = true }
+  }, [started])
+
+  return (
+    <div
+      ref={sectionRef}
+      style={{
+        position: 'relative', zIndex: 2,
+        borderTop: '1px solid rgba(0,229,255,0.07)',
+        borderBottom: '1px solid rgba(0,229,255,0.07)',
+        background: 'rgba(0,229,255,0.015)',
+        overflow: 'hidden',
+      }}
+    >
+      <div style={{
+        maxWidth: '1280px', margin: '0 auto',
+        display: 'grid', gridTemplateColumns: '1fr 1fr',
+        alignItems: 'center',
+      }}>
+
+        {/* LEFT — typewriter terminal */}
+        <div style={{ padding: '5rem 4rem 5rem 3rem', position: 'relative', zIndex: 2 }}>
+          <div style={{
+            border: '1px solid rgba(0,229,255,0.15)',
+            background: 'rgba(0,0,0,0.35)',
+            position: 'relative',
+          }}>
+            {/* Terminal title bar */}
+            <div style={{
+              borderBottom: '1px solid rgba(0,229,255,0.12)',
+              padding: '.5rem 1rem',
+              display: 'flex', alignItems: 'center', gap: '.6rem',
+              background: 'rgba(0,229,255,0.04)',
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,100,80,.5)' }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,200,0,.3)' }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(0,229,255,.25)' }} />
+              <span style={{
+                fontFamily: 'var(--mono)', fontSize: '.58rem', letterSpacing: '2px',
+                color: 'rgba(0,229,255,0.3)', textTransform: 'uppercase', marginLeft: '.5rem',
+              }}>
+                THE SOUS — OPERATIONAL ASSESSMENT — TIDE 0
+              </span>
+            </div>
+
+            {/* Terminal body */}
+            <div style={{ padding: '2rem 2rem 2rem' }}>
+              {ORIGIN_LINES.map((line, i) => (
+                <span
+                  key={i}
+                  className={`tw-line${line.cls ? ` ${line.cls}` : ''}`}
+                >
+                  {lines[i] || ''}
+                  {activeLine === i && <span className="tw-cursor" />}
+                  {done && i === ORIGIN_LINES.length - 1 && <span className="tw-cursor" />}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT — Sam Saltman, bleeding into substrate */}
+        <div style={{
+          position: 'relative',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+          minHeight: '500px',
+        }}>
+          <img
+            src="/sam-saltman-statue.png"
+            alt="Master Chef Sam Saltman — underwater statue, Tide 0"
+            style={{
+              width: '95%',
+              maxWidth: '500px',
+              objectFit: 'contain',
+              position: 'relative', zIndex: 1,
+              display: 'block',
+              // screen mode: near-black bg pixels (0,4,13) become invisible against #050510
+              // Layered masks: tight radial hold on statue body, hard fade on all edges
+              WebkitMaskImage: `
+                linear-gradient(to right,  transparent 0%, black 18%),
+                linear-gradient(to left,   transparent 0%, black 10%),
+                linear-gradient(to bottom, transparent 0%, black 12%),
+                linear-gradient(to top,    transparent 0%, black 8%),
+                radial-gradient(ellipse 75% 80% at 52% 48%, black 25%, transparent 72%)
+              `,
+              WebkitMaskComposite: 'source-in, source-in, source-in, source-in',
+              maskImage: `
+                radial-gradient(ellipse 75% 80% at 52% 48%, black 25%, transparent 72%)
+              `,
+              mixBlendMode: 'screen',
+              filter: 'brightness(1.1) contrast(1.05) saturate(0.95)',
+            }}
+          />
+          {/* Left-edge fade so statue melts into the text column */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, bottom: 0, width: '30%',
+            background: 'linear-gradient(to right, rgba(0,229,255,0.015), transparent)',
+            pointerEvents: 'none', zIndex: 2,
+          }} />
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function LandingPage() {
   const [moltTab, setMoltTab] = useState<'CARAPACE'|'CLAWS'|'TOMALLEY'>('CARAPACE')
   const slot = MOLT_SLOTS[moltTab]
@@ -632,9 +839,25 @@ function LandingPage() {
             Emerges.
           </h1>
           {/* The Sous. Flat. Unbothered. */}
-          <p className="house-line">
-            "You build the Molt. Your Crustie does the rest.<br />The Pit records everything. Including that."
-          </p>
+          <div style={{
+            borderLeft: '2px solid rgba(0,229,255,0.25)',
+            paddingLeft: '1.25rem',
+            marginBottom: '2.5rem',
+          }}>
+            <p style={{
+              fontFamily: 'var(--body)', fontSize: '1rem', lineHeight: 1.7,
+              color: 'rgba(240,240,245,0.65)', marginBottom: '0.5rem',
+            }}>
+              You build the Molt. Your Crustie fights.<br />
+              The Pit keeps notes. The Sous reviews them.
+            </p>
+            <p style={{
+              fontFamily: 'var(--mono)', fontSize: '0.72rem', fontStyle: 'italic',
+              letterSpacing: '0.3px', color: 'rgba(0,229,255,0.4)',
+            }}>
+              The Sous has not clarified what the Crusties are preparing for.<br />The Crusties have not asked.
+            </p>
+          </div>
           <div className="cta-row">
             <Link to="/sign-in" className="btn btn-lg">Descend</Link>
             <Link to="/demo"    className="ghost-link">Watch a Scuttle →</Link>
@@ -651,6 +874,9 @@ function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ORIGIN — Sam Saltman + typewriter briefing */}
+      <OriginSection />
 
       {/* STATS BAR */}
       <div className="stats-bar">
@@ -675,7 +901,7 @@ function LandingPage() {
         </div>
         <h2 className="section-h">Three Slots.<br />Forty Items.</h2>
         <p className="section-quip">
-          "What you build here is what your Crustie carries in. The Pit will have opinions." — The Sous
+          The Sous has observed that Chefs who read all forty items make different decisions than the ones who read none. The Sous does not consider this a remarkable finding.
         </p>
 
         <div className="molt-tabs">
@@ -716,7 +942,7 @@ function LandingPage() {
 
         <div className="molt-cta">
           <p className="molt-cta-quip">
-            "The Recipe is ready. The Pit has been ready longer." — The Sous
+            The Molt will not carry your Crustie. Your Crustie will carry the Molt. The difference is not small.
           </p>
           <Link to="/sign-in" className="btn btn-sm">Build Your Molt</Link>
         </div>
@@ -732,7 +958,7 @@ function LandingPage() {
             </div>
             <h2 className="section-h">Your Crustie<br />Fights. You Watch.</h2>
             <p className="section-quip">
-              "You cannot intervene. You built the machine. Now watch it run." — The Sous
+              You built the Molt. Your Crustie pilots it. Between those two facts is everything you cannot control. The Sous finds this the most productive part.
             </p>
             <div className="pit-truth">
               <div className="truth-item">
@@ -747,8 +973,8 @@ function LandingPage() {
               </div>
               <div className="truth-item">
                 <span className="truth-label">FFA Mode</span>
-                <span className="truth-val">3–4 Crusties</span>
-                <span className="truth-sub">Multiple Crusties enter. One leaves. Last one standing wins the Scuttle.</span>
+                <span className="truth-val">2–4 Crusties</span>
+                <span className="truth-sub">Nobody cooperates. The Sous considers this the more interesting format.</span>
               </div>
               <div className="truth-item">
                 <span className="truth-label">Your Role</span>
@@ -789,7 +1015,7 @@ function LandingPage() {
             </div>
             <h2 className="section-h">The Pit Forgets<br />Nothing.</h2>
             <p className="section-quip">
-              "Every Scuttle is recorded. Every single one. The Sous has noted yours specifically." — The Sous
+              A Chef who reads it carefully will find something they did not intend to put in writing.
             </p>
             <p style={{ fontSize:'.95rem', lineHeight:1.7, color:'rgba(240,240,245,0.42)', marginBottom:'2rem' }}>
               Win and your Hardness increases. Lose and The Pit records exactly why — every decision window, every queue, every missed opportunity your agent had and didn't take.
@@ -807,7 +1033,7 @@ function LandingPage() {
         <div className="lore-ticker">
           {[...LORE_LINES, ...LORE_LINES].map((q, i) => (
             <span key={i} className="lore-item">
-              {q}<span className="lore-src"> — The House</span>
+              {q}<span className="lore-src"> — The Sous</span>
               <span style={{ margin:'0 2.5rem', opacity:.12 }}>◆◆◆</span>
             </span>
           ))}
