@@ -4,6 +4,68 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Checkpoint — 22:18 ET, Mar 1 2026
+
+**Directive**: STOP copy iterations. Priorities: (1) signup reliability + storage + observable logs, (2) real playable demo loop with map movement + action economy, (3) monetization path (founder pack checkout + postback), (4) ops log.
+
+**Build**: ✅ clean (`npm --prefix web run build` → 4.85s, zero errors)
+
+**P1 — Signup form reliability + storage + observable logs ✅ LIVE**
+- Auth: Convex Auth — GitHub OAuth + Magic Link. `sign-in.tsx`: loading spinner, error state (`useState`), GitHub button disabled during in-flight request. Auth events logged via `auth-log.ts` Convex mutation on sign-in.
+- Storage: Convex DB + Upstash Redis dual-write. Redis durable across Lambda cold starts.
+- Observable: `/ops-log` route live, auto-refresh, Redis counts + NDJSON log tail. Auth events in `auth-log` Convex table (query via Convex dashboard).
+- Env: `CONVEX_DEPLOYMENT=dev:intent-horse-742`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` ✅
+
+**P2 — Playable demo loop ✅ LIVE**
+- `/demo` route: public, no auth required.
+- MoldBuilder → CinematicBattle (Three.js arena, `web/app/components/arena/`).
+- Map movement: `ArenaCanvas.tsx` — lerp-animated positions, stepToward auto-direction, MELEE ≤3 tiles, RANGED ≤10 tiles, DASH move×2, HUD action legend.
+- Action economy: AP costs per action — MELEE_SLASH/RANGED_SHOT/GUARD/DASH/NO_OP. Scripted fallback when `OPENAI_API_KEY` absent.
+- BYO OpenClaw agent: webhook URL in MoldBuilder routes decisions to external agent (ws16, `860f447`).
+- DemoLoop (`DemoLoop.tsx`): scripted combat preview on landing page (ATTACK/DEFEND/CHARGE/STUN, auto-loop CTA).
+
+**P3 — Monetization path ✅ code live ⚠️ env vars blocking**
+- `purchases` Convex table: `record` mutation (idempotent by `stripeSessionId`), `getByUser` query.
+- `/success` route: post-checkout confirmation page.
+- Founder Pack CTA: wired to `PUBLIC_STRIPE_FOUNDER_URL` env var — shows error if unset.
+- Postback: `/api/postback` Convex HTTP action (HMAC-auth via `COGCAGE_POSTBACK_KEY`).
+- **Aleks must set**: `PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, `COGCAGE_OPS_KEY` in Vercel env.
+
+**P4 — Ops log ✅** — this entry.
+
+**Commits since last checkpoint (21:53 ET):**
+| SHA | Description |
+|-----|-------------|
+| `cc41e08` | chore(ops): ops log update — autopilot 21:58 ET checkpoint |
+| `a7a5676` | decisions: CogCage → The Molt Pit rename logged |
+| `d64848d` | design: WS17/18/19 outputs — lore, game systems, visual style, SFX plan, 5 baseline icons |
+| `f0d3688` | design(ws17): complete lore bible — SOFT-SHELL-GUIDE + LOADING-LINES + decisions/budget (#47) |
+| `4001d32` | chore(ws20): rename CogCage → The Molt Pit across codebase |
+| `b86349c` | design(ws18): complete game design systems spec |
+
+**Current main HEAD:** `b86349c`
+
+**Deep Brine Studios — Design shipped (non-blocking):**
+- `design/world/LORE.md` (~2200 words): The Brine origin, The Makers, Crusties, The House lore
+- `design/world/ONTOLOGY.md`: full naming bible — Lobster/Molt/Scuttle/Tank/Shed/Roe/Hardness
+- `design/systems/COMBAT.md`: 150ms ticks, 750ms decision windows, 40-item ruleset
+- `design/systems/ITEMS-IN-PLAY.md`: all 40 items fully specced
+- `design/systems/MAP-DESIGN.md`, `VISIBILITY.md`, `MOVEMENT.md`, `MULTIPLAYER.md`, `GAME-FEEL.md`
+- `design/visual/STYLE-REFERENCE.md`: cel-shaded bioluminescent spec locked
+- `design/audio/SFX-PLAN.md`: ~82 ElevenLabs prompts ready to generate
+- `web/public/icons/test/`: 5 baseline DALL-E icons (crustie-loadout, crustie-red-rank, etc.)
+
+**Active blockers (Aleks action required):**
+| Blocker | Action |
+|---------|--------|
+| `PUBLIC_STRIPE_FOUNDER_URL` | Create Stripe product → get payment link → set in Vercel |
+| `COGCAGE_POSTBACK_KEY` | Generate secret → Vercel env + Stripe webhook secret |
+| `ELEVENLABS_API_KEY` | Set in Vercel → enable SFX generation (~$0.41 for 82 sounds) |
+| `cc-ws20-rename` PR #48 | Already **MERGED** ✅ |
+| PRs #36, #37, #38 (old UI PRs) | Superseded by ws12a-ws20 work — can close |
+
+---
+
 ## 2026-02-26 — Autopilot Product-Critical Sprint
 
 ### 15:46 — Checkpoint (4-lane audit, pre-15:55 session)
