@@ -25,6 +25,7 @@
 | 2026-03-01 | WS19 map movement + action economy | $0.00 | $860.00 |
 | 2026-03-01 | WS19 Visual: 5 DALL-E 3 icons (1024×1024 × 5 = $0.20) | -$0.20 | $859.80 |
 | 2026-03-01 | WS19 Sound: SFX-PLAN.md written, 82 ElevenLabs prompts (no audio generated yet) | $0.00 | $859.80 |
+| 2026-03-01 | WS17 Lore Bible: LORE.md + SCREEN-PRIMERS.md + ITEM-LORE.md + SOFT-SHELL-GUIDE.md + LOADING-LINES.md (subagent write pass) | ~$0.50 | $859.30 |
 
 ---
 
