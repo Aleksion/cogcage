@@ -443,3 +443,21 @@ Rejected: 3 (too shallow — a single slow response drains the queue immediately
 
 **Decision window: 750ms — UNCHANGED**
 3 ticks at 250ms. LLMs still have 750ms to respond. This is the right budget for gpt-4o-mini (typical 200-400ms response).
+
+---
+
+## [2026-03-02] Add THE ROLL to Carapace registry
+
+**Decision:** Add THE ROLL (Kinetic Evasion Shell, Rare) as Carapace item #14.
+
+**Mechanic:** Moving this window = all incoming attacks miss. Stationary = zero armor. Pure movement-as-defense.
+
+**Rationale:** The existing Carapace set was all about absorbing hits. Nothing rewarded avoiding them through movement. THE ROLL fills that gap and creates a new skill expression vector: prompt engineering for constant movement.
+
+**Name rationale:** Lobster roll (the food). The House named it. The Crusties wear it proudly and have no idea why The House finds it amusing. The House is not going to explain. This is load-bearing humor.
+
+**Hard counter:** TENDERHOOK HOLD — 2 windows immobile = 2 naked windows. Designed interaction.
+
+**Alternatives rejected:** 
+- RNG-based dodge (rejected — THE ROLL should be deterministic/skill-based, not luck)
+- Always-on 30% reduction + movement bonus (rejected — too safe, no tension)

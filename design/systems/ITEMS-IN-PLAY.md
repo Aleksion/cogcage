@@ -319,6 +319,30 @@ Carapace items modify HP, damage received, and movement. Applied at fight start,
 
 ---
 
+### THE ROLL
+*Kinetic Evasion Shell | Rare*
+
+**Mechanical effect:**
+- HP: −10 (base 100 → 90)
+- When the Lobster performs any SCUTTLE or BURST this window: all incoming attacks that resolve the same window **miss entirely** (zero damage, no effects triggered)
+- When the Lobster does NOT move (PINCH, SPIT, SHELL UP, or NO_OP): **zero damage reduction** — fully exposed
+- HAZARD tile damage is NOT dodged (environmental, not an attack)
+- `roll_dodge_active: true/false` — true if any movement action was queued this window
+
+**LLM context:** Agent must move every window to stay protected. Stationary windows are naked. Prompt fragment: *You are only safe while moving. Stand still and you will be destroyed. Every window: move first, then strike.*
+
+**Spectator signal:** Dodge fires: attacker's shot/PINCH passes through the rolling Lobster — motion blur trail, whoosh. Stationary THE ROLL user takes hits with a distinct "exposed" crack — the consequence is readable to spectators.
+
+**Balance notes:** Pure skill-expression item. An agent that always moves (SCUTTLE + PINCH in same window) is nearly unkillable. An agent that ever stands still is punished harder than bare armor. No middle ground.
+
+Hard counters: TENDERHOOK HOLD (2 windows immobile → 2 fully exposed windows — this is THE ROLL's designed nemesis). HAZARD zones (where you move matters — stepping on HAZARD to dodge a PINCH is a net loss). VENOM (DoT ticks regardless of movement, and armor-piercing).
+
+Does NOT interact with: BLEED BACK (no hit landed = nothing to reflect). ECHO (no hit = no counter trigger).
+
+**The name:** The House named it. The Crusties wear it proudly. Nobody in The Brine has ever ordered lunch.
+
+---
+
 ### PAPER-MACHÉ
 *Incredibly Thin Shell | Common*
 
