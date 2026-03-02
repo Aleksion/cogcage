@@ -8,6 +8,73 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
+
+**Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)
+
+### What
+- `web/app/lib/waitlist-redis.ts`
+  - Fixed Redis rate-limit metadata to return **remaining milliseconds** (not absolute epoch), so API `Retry-After` headers and rate-limit telemetry are correct.
+  - Added Redis dedupe keys for product-critical storage paths:
+    - waitlist leads deduped by normalized email (`moltpit:waitlist:email:*`)
+    - founder intents deduped by `intentId` (or deterministic derived id)
+    - conversion events deduped by `eventId` when present (webhook/idempotent flow)
+  - Preserved existing storage layering and fallback architecture.
+- `web/app/components/OpsLogPage.tsx`
+  - Fixed funnel cards to read the current `/api/ops` payload fields (`counts` and `redisCounts`) instead of stale keys, restoring real-time observability for waitlist/founder/conversion metrics.
+
+### Why
+- Redis rate-limit responses were using absolute window timestamps while handlers expected relative durations; this could emit incorrect `Retry-After` values for signup/founder APIs.
+- Redis list-only writes could inflate core funnel counts under retried submissions or webhook retries.
+- Ops dashboard cards were reading deprecated field names, which could hide shipped reliability/monetization metrics.
+
+### Design Decisions
+- Keep Redis as primary durable store, but apply deterministic dedupe keys at write-time to maintain reliability under retries without changing API contracts.
+- Apply dedupe only where product semantics are idempotent (email/intentId/eventId); keep event streams without `eventId` append-only.
+- Treat `/api/ops` as the source of truth for product observability and align UI bindings to current server schema.
+
+### Verification
+- `cd web && npm run test:product` ✅ (9 pass / 0 fail)
+- `cd web && npm run build` ✅
+
+## [2026-03-02] - fix(product-mode): redis idempotency + redis-first monetization persistence
+
+**Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)
+
+### What
+- `web/app/lib/waitlist-redis.ts`
+  - Added Redis-backed idempotency receipt store/read (`redisWriteApiRequestReceipt`, `redisReadApiRequestReceipt`) with 3-day TTL.
+- `web/app/routes/api/waitlist.ts`
+  - Idempotency replay now checks Redis first, then SQLite.
+  - Idempotency write now persists to Redis + SQLite (best-effort on both) with explicit failure logs per store.
+- `web/app/routes/api/founder-intent.ts`
+  - Applied the same Redis-first idempotency replay/write behavior as waitlist.
+- `web/app/routes/api/postback.ts`
+  - Switched paid conversion persistence to Redis-first, SQLite-second, file-fallback-last.
+  - Added founder-intent persistence fallback chain inside postback (`Redis -> SQLite -> founder-intent fallback queue`).
+- `web/app/routes/api/checkout-success.ts`
+  - Switched conversion confirmation persistence to Redis-first with SQLite/file fallback.
+  - Response now surfaces `degraded` when Redis fails but fallback storage succeeds.
+
+### Why
+- Waitlist and founder-intent idempotency previously depended on SQLite receipts; in serverless runtimes where SQLite is unavailable this could replay duplicate submissions.
+- Monetization postback/success handlers previously wrote SQLite first, which could skip durable Redis writes during SQLite runtime failures.
+
+### Design
+- Storage order is now consistent across product-critical write paths:
+  - **Primary:** Upstash Redis (durable across invocations)
+  - **Secondary:** SQLite (local/dev + best-effort safety net)
+  - **Tertiary:** NDJSON fallback queue (for replay/drain)
+- Idempotency replay logs now include `idempotencyStore` (`redis` or `sqlite`) for observability.
+- Fallback paths emit explicit structured events so `/api/ops` can distinguish Redis outages from SQLite degradation.
+
+### Breaking
+- None.
+
+### Next Steps
+- Add integration tests for idempotent replay behavior through route handlers (Redis-enabled test environment).
+- Backfill `/api/ops` summary cards with idempotency replay counts split by store.
+
 ## [2026-03-02] - fix(product-mode): signup durability, playable loop checks, founder checkout telemetry, postback observability
 
 **Type:** fix/feature/ops | **Budget impact:** n/a (product-mode stabilization)

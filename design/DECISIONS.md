@@ -7,6 +7,18 @@ Format: date · who decided · what · why · alternatives rejected
 
 ---
 
+## 2026-03-02 — Product-Mode Reliability Hardening (Engineering)
+
+**Redis rate-limit reset semantics standardized to relative milliseconds**
+Decided by: Product-mode hardening pass
+`redisConsumeRateLimit()` now returns `resetMs` as remaining duration, matching SQLite rate-limit behavior and API handler expectations (`Retry-After` header + telemetry). This avoids incorrect epoch-based retry windows in signup/founder endpoints.
+Rejected: Keeping absolute epoch in Redis path (inconsistent semantics, incorrect client retry guidance).
+
+**Redis write dedupe keys on product-critical funnel entities**
+Decided by: Product-mode hardening pass
+Waitlist writes are deduped by normalized email, founder intents by `intentId` (with deterministic fallback), and conversion events by `eventId` when present. This preserves Redis as primary durable storage while preventing retry-driven duplicate funnel inflation.
+Rejected: List-only append semantics for all writes (duplicate growth under retries/webhook redelivery). Rejected: full schema/storage rewrite (unnecessary for current architecture).
+
 ## 2026-03-02 — WS17 V3 Canonical Lore Rewrite (Narrative Director)
 
 **The Makers: scrapped from canon**

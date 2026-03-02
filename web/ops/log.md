@@ -2,6 +2,47 @@
 
 ---
 
+## Product-Mode Ship — 16:46 ET Mar 2
+
+Directive executed: prioritize P1 signup reliability, P2 playable loop, P3 monetization postback lifecycle, P4 ops artifacts.
+
+### Shipped artifacts
+- `app/lib/waitlist-redis.ts`
+  - Corrected Redis rate-limit `resetMs` semantics to relative milliseconds for accurate `Retry-After` handling.
+  - Added deterministic Redis dedupe keys:
+    - waitlist leads dedupe by normalized email
+    - founder intents dedupe by `intentId` (derived fallback when absent)
+    - postback/checkout conversion dedupe by `eventId`
+- `app/components/OpsLogPage.tsx`
+  - Funnel cards now read `counts`/`redisCounts` from `/api/ops`, fixing visibility of live signup/founder/conversion totals.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+- `npm run build` ✅
+
+## Product-Mode Ship — 16:18 ET Mar 2
+
+Directive executed: prioritize P1 signup reliability, P2 playable loop, P3 monetization postback lifecycle, P4 ops artifacts.
+
+### Shipped artifacts
+- `app/lib/waitlist-redis.ts`
+  - Added Redis idempotency receipt APIs with TTL-backed keys.
+- `app/routes/api/waitlist.ts`
+  - Idempotency replay now checks Redis before SQLite; idempotency receipts are written to both stores.
+- `app/routes/api/founder-intent.ts`
+  - Same Redis-first idempotency behavior as waitlist.
+- `app/routes/api/postback.ts`
+  - Paid conversion persistence now runs Redis-first, then SQLite fallback, then file queue.
+  - Founder-intent side-write from postback now includes SQLite + fallback path if Redis is down.
+- `app/routes/api/checkout-success.ts`
+  - Checkout success conversion persistence now runs Redis-first, then SQLite fallback, then file queue.
+  - API response includes `degraded` flag when fallback persistence is used.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+- `npm run build` ✅
+- `npx tsc --noEmit` ⚠️ pre-existing repo-wide failures unrelated to this ship lane (Phaser typings/route typing/import-style errors).
+
 ## Product-Mode Ship — 15:40 ET Mar 2
 
 Directive executed in strict order: P1 signup reliability, P2 playable loop, P3 monetization lifecycle, P4 ops artifacts.
