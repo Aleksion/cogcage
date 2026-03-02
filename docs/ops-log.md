@@ -416,3 +416,28 @@ bun run build (web/)
 3. `COGCAGE_OPS_KEY` (or `MOLTPIT_OPS_KEY`) → Vercel env → secures /api/ops
 
 **No new product-critical commits this cycle.** Design agents (ws17-lore, ws18-game-design, ws19-visual-sound, ws19-map) are running as background/non-blocking work per autopilot policy.
+
+
+---
+
+### Autopilot Checkpoint — 21:48 ET, Mar 1 2026
+
+**Directive**: STOP copy iterations. P1-P3 priorities.
+
+**Status:**
+
+- **P1 ✅ LIVE** — Signup reliability + Redis storage + observable logs (PR #44, main `e6fc977`)
+- **P2 ✅ LIVE (map upgrade pending merge)** — `/demo` live: CinematicBattle, AP economy, BYO webhook. WS19 map upgrade: PR #46 open — stepToward auto-direction, MELEE range ≤3, lerp 0.15, HUD action legend. Rebase conflict resolved, force-pushed, Vercel build passing.
+- **P3 ✅ code live ⚠️ env vars blocked** — Founder checkout code live; `PUBLIC_STRIPE_FOUNDER_URL` not yet set by Aleks.
+- **P4 ✅** — Ops log current.
+
+**PR #46** (map movement): merge-ready, awaiting Aleks approval. Vercel preview: https://vercel.com/precurion/themoltpit/HP55dHWoJfjA6RsxQ8Rt77WbqNCt
+
+**Agents running:**
+- `cc-ws19-visual-sound` — waiting on API key (skipped icon gen, plan docs written)
+- `cc-ws17-lore-bible`, `cc-ws17-sprint`, `cc-ws18-game-design` — background/design work, non-blocking
+
+**Aleks action required (unchanged):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret
+3. Merge PR #46 when ready
