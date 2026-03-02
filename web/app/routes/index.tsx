@@ -727,14 +727,14 @@ function IndexPage() {
           <div className="brine-pit-floor" aria-hidden="true" />
           <div className="brine-crustie-frame">
             <img
-              src="/crustie-base.png"
-              alt="Crustie in combat Molt"
+              src="/crustie-equipped.png"
+              alt="Crustie in combat Molt — MAXINE claws, BLOCK-7 carapace"
               className="brine-crustie-img"
             />
           </div>
           <div className="brine-rank-badge">
-            <span className="brine-rank-label">Current Leader</span>
-            <span className="brine-rank-value">RED RANK</span>
+            <span className="brine-rank-label">Molt Equipped</span>
+            <span className="brine-rank-value">MAXINE + BLOCK-7</span>
           </div>
         </div>
       </section>
