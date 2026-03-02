@@ -8,6 +8,25 @@
 
 ---
 
+## [2026-03-02] - feat(product): arena map movement/actions visible in live demo loop
+
+**Type:** feature | **Budget impact:** ~$0 (manual patch)
+
+- `web/app/components/arena/ArenaCanvas.tsx` — replaced placeholder canvas stub with live SVG arena map renderer driven by `ArenaHandle` events.
+- Added real-time bot position tracking from `updatePositions()` with distance display (cells), objective zone, and bot-to-bot connection line.
+- Added action-economy observability in-UI:
+  - `triggerAttack` flashes attacker in amber
+  - `triggerHit` flashes target in red
+  - `triggerGuard` flashes target in cyan
+  - `triggerDeath` marks eliminated bot with death glyph
+- Preserved existing `ArenaHandle` interface so `CinematicBattle` integration remains backwards-compatible.
+
+**Why:** product priority shifted from landing-page copy to showing real, inspectable gameplay state (movement + actions) in the public demo loop.
+
+**Breaking changes:** None.
+
+**Next steps:** expose per-turn AP/energy ledger next to the map so users can see why each action fired.
+
 ## [2026-03-02] - feat(autopilot): signup reliability + demo grid movement + monetization fallback
 
 **Type:** feature/ops | **Budget impact:** ~$2 (agent)
