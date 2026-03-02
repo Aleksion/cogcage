@@ -117,11 +117,11 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
+          { sha: '516848f', msg: 'feat(autopilot-march1): signup reliability + public demo loop + monetization [MERGED]' },
+          { sha: 'e9c7541', msg: 'fix: resolve demo.tsx conflict — use CinematicBattle/MoldBuilder from main' },
           { sha: '5fb078b', msg: 'fix: demo link visibility (dark text on light hero) + DEMO nav link for visitors' },
           { sha: '2625b59', msg: 'feat(p3): founder checkout fallback + postback hardening + env docs' },
-          { sha: '11df489', msg: 'feat(p2): public /demo route + landing demo link + QuickDemo scripted fallback' },
           { sha: '70e3932', msg: 'fix(p1): signup form reliability + ops log auto-refresh + recent commits' },
-          { sha: 'e286c12', msg: 'feat: guest/anonymous auth for frictionless onboarding (#35)' },
         ];
 
         return new Response(JSON.stringify({
