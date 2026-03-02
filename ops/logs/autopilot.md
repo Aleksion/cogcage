@@ -108,3 +108,22 @@ Directive: STOP landing-page copy iterations. Prioritize: (1) signup form reliab
 2. `COGCAGE_OPS_KEY` → gates `/api/ops` viewer (non-blocking)
 
 No landing-page copy changes. Zero product regressions. Autopilot idle.
+
+---
+
+### Autopilot Checkpoint — 14:51 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. P1 signup reliability + storage + observable logs, P2 real playable demo loop with map movement + action economy, P3 monetization path (founder pack checkout + postback), P4 ops log.
+
+**Status: all P1–P4 live and verified. No new code to ship. Autopilot idle.**
+
+- **P1 ✅ LIVE** — 3-tier signup storage (Redis→Convex→SQLite→file), idempotency, rate-limit, honeypot, `appendOpsLog` on every path, structured `/api/ops` event log.
+- **P2 ✅ LIVE** — `DemoLoop.tsx` (WATCH/PLAY modes on `/play` + `/demo`). 7×7 grid, player controls BERSERKER vs TACTICIAN AI. AP economy, range-gated MOVE/ATTACK/DEFEND/CHARGE/STUN, BFS pathfinding, combat log.
+- **P3 ✅ LIVE (soft auth)** — `PUBLIC_STRIPE_FOUNDER_URL` live, `/api/founder-intent` → Stripe redirect, `/api/postback` Stripe webhook (unauthenticated fallback — pending `COGCAGE_POSTBACK_KEY`), `/api/checkout-success`.
+- **P4 ✅** — This entry. HEAD `97a5549`. Build clean.
+
+**⚠️ Blocked on Aleks (env vars — Vercel):**
+1. `COGCAGE_POSTBACK_KEY` → hardens Stripe webhook auth (currently logs unauthenticated, does not reject)
+2. `COGCAGE_OPS_KEY` → gates `/api/ops` viewer (non-blocking)
+
+No landing-page copy changes. Zero product regressions. Autopilot idle.
