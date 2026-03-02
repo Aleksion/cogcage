@@ -12,9 +12,9 @@ const FORGE_STYLES = `
     min-height: calc(100vh - 56px);
     width: 100%;
     background:
-      radial-gradient(circle, rgba(255,120,30,0.07) 1px, transparent 1px),
-      radial-gradient(ellipse at 30% 60%, #2a1000 0%, #120800 50%, #0a0500 100%);
-    background-size: 32px 32px, 100% 100%;
+      radial-gradient(rgba(0,229,255,0.05) 1px, transparent 1px),
+      radial-gradient(ellipse at 30% 60%, #0a0a1a 0%, #050510 50%, #030308 100%);
+    background-size: 28px 28px, 100% 100%;
     color: #f0f0f5;
     font-family: 'Kanit', sans-serif;
     padding: 2.5rem 3rem 4rem;
@@ -64,10 +64,10 @@ const FORGE_STYLES = `
   }
 
   .forge-panel {
-    background: rgba(255,120,30,0.05);
-    border: 1px solid rgba(255,120,30,0.2);
+    background: rgba(0,229,255,0.03);
+    border: 1px solid rgba(0,229,255,0.12);
     border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(255,80,0,0.1);
+    box-shadow: 0 4px 24px rgba(0,229,255,0.04);
     padding: 1.5rem;
   }
 
@@ -89,7 +89,7 @@ const FORGE_STYLES = `
     width: 200px;
     height: 200px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,120,30,0.2) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(0,229,255,0.12) 0%, transparent 70%);
     position: absolute;
     pointer-events: none;
   }
@@ -97,14 +97,14 @@ const FORGE_STYLES = `
   .forge-bot-art {
     width: 140px;
     height: 140px;
-    background: rgba(46,204,113,0.1);
-    border: 3px solid #000;
+    background: rgba(0,229,255,0.07);
+    border: 1px solid rgba(0,229,255,0.25);
     border-radius: 14px;
     display: grid;
     place-items: center;
     font-size: 4rem;
     margin-bottom: 1rem;
-    box-shadow: 4px 4px 0 #000;
+    box-shadow: 0 0 24px rgba(0,229,255,0.08);
   }
 
   .forge-crawler-name {
@@ -196,10 +196,12 @@ const FORGE_STYLES = `
   .forge-cta-primary:hover { background: #d93a38; }
 
   .forge-cta-secondary {
-    background: #fff;
-    color: #1A1A1A;
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    border-color: rgba(255,255,255,0.18);
+    box-shadow: none;
   }
-  .forge-cta-secondary:hover { background: #f0f0f0; }
+  .forge-cta-secondary:hover { background: rgba(255,255,255,0.1); }
 
   .forge-section-title {
     font-family: 'Bangers', cursive;
@@ -219,12 +221,11 @@ const FORGE_STYLES = `
   }
 
   .forge-stat-card {
-    background: rgba(255,255,255,0.03);
-    border: 3px solid #000;
-    border-radius: 12px;
+    background: rgba(0,229,255,0.04);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 10px;
     padding: 1rem;
     text-align: center;
-    box-shadow: 4px 4px 0 #000;
   }
 
   .forge-stat-value {
@@ -291,8 +292,8 @@ const FORGE_STYLES = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(255,255,255,0.03);
-    border: 2px solid rgba(255,255,255,0.08);
+    background: rgba(0,229,255,0.03);
+    border: 1px solid rgba(0,229,255,0.1);
     border-radius: 10px;
     padding: 0.65rem 1rem;
   }
@@ -447,7 +448,7 @@ function ForgeContent() {
             <div className="forge-panel forge-crawler-preview">
               <div className="forge-bot-wrap">
                 <div className="forge-bot-glow" />
-                <div className="forge-bot-art" style={{ fontSize: '5rem', background: 'rgba(235,77,75,0.1)' }}>&#129302;</div>
+                <div className="forge-bot-art" style={{ fontSize: '5rem' }}>&#129302;</div>
               </div>
               <h2 className="forge-crawler-name">FORGE YOUR CRAWLER</h2>
               <div className="forge-mold-label" style={{ maxWidth: 240 }}>
