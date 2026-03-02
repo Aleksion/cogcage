@@ -4,6 +4,39 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Cron — 08:36 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Prioritize: (1) signup reliability, (2) playable demo loop, (3) monetization path, (4) ops log.
+
+**Verified state (08:36 ET):**
+- **Build**: ✅ clean (1.30s, 0 errors)
+- **Tests**: 4/4 pass (guard arc multiplier, guard arc miss, illegal action no-op, replay parity)
+- **P1 — Signup + Redis storage + observable logs**: ✅ LIVE on main
+  - `/api/waitlist` idempotent + rate-limited + Redis drain fallback
+  - OpsLogPage auto-refresh (30s interval) + "Last refreshed" counter
+  - Signup error state bold red + "✓ You're on the list" success state visible
+- **P2 — Playable demo loop with map movement + action economy**: ✅ LIVE on main
+  - `Play.tsx` — BabylonJS 3D arena, 8×8 grid, BFS pathfinding, speed-based AP economy
+  - WASD controls, 3 loadout presets, combat log, ws2 engine
+  - `/demo` public route (no auth) + "DEMO" nav link for visitors
+  - Landing hero → "→ Watch a live battle" secondary CTA
+  - `QuickDemo.tsx` scripted AI fallback when `/api/agent/decide` unavailable
+- **P3 — Monetization path**: ✅ CODE COMPLETE — partial activation
+  - `/api/founder-intent` — email capture fallback when Stripe URL not set ✅
+  - `/api/postback` — Stripe postback handler ✅
+  - `.env.example` updated ✅
+  - `PUBLIC_STRIPE_FOUNDER_URL` → confirmed set in Vercel ✅
+  - ⚠️ `COGCAGE_POSTBACK_KEY` → NOT SET — postback auth disabled (accepts all)
+  - ⚠️ `MOLTPIT_OPS_KEY` / `COGCAGE_OPS_KEY` → NOT SET — ops viewer open
+
+**No new code this pass.** All P1-P3 shipped. Autopilot idle — blocked on 2 env vars.
+
+**⚠️ ACTION REQUIRED — Aleks only:**
+1. `COGCAGE_POSTBACK_KEY` → set in Vercel → secures `/api/postback` webhook
+2. `COGCAGE_OPS_KEY` (or `MOLTPIT_OPS_KEY`) → set in Vercel → gates `/api/ops` viewer
+
+---
+
 ### Autopilot Cron — 01:43 ET, Mar 2 2026
 
 **Directive**: STOP landing-page copy iterations. Priorities: (1) signup form reliability + storage + observable logs, (2) real playable demo loop with map movement + action economy, (3) monetization path (founder pack checkout + postback), (4) update ops log.
