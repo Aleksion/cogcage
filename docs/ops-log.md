@@ -1223,3 +1223,27 @@ bun run build (web/)
 1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates live founder checkout CTA
 2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret → `https://cogcage.com/api/postback`
 3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
+
+---
+
+### Autopilot Cron — 11:52 ET, Mar 2 2026
+
+**Directive**: STOP copy iterations. Ship product: P1 signup, P2 demo, P3 monetization, P4 ops log.
+
+**P1 — Signup form reliability + storage + observable logs: ✅ COMPLETE**
+- `web/app/lib/observability.ts` — Redis failures warn to stderr, never swallowed silently
+- `web/app/routes/api/waitlist.ts` — returns `{ok:true}`, health_check entry on every submit
+- `web/app/lib/fallback-drain.ts` — drains replay to Redis + SQLite, closing durability gap
+- Committed: `90692d3` (interactive demo), `aa9395b` (ops fix)
+
+**P2 — Playable demo loop with map movement + action economy: ✅ COMPLETE**
+- `web/app/components/DemoLoop.tsx` — 7×7 grid, MOVE/ATTACK/STUN/CHARGE/DEFEND, range-based combat (Manhattan distance), bot AI, player-vs-bot mode, 800ms tick loop, 3-match restart
+- Committed: `90692d3`
+
+**P3 — Monetization path (founder checkout + postback): ✅ CODE COMPLETE**
+- `web/app/components/MoltPitLanding.jsx` — Founder Pack button captures email via `/api/founder-intent` when Stripe URL not set
+- `web/app/routes/api/postback.ts` — `?test=1` stub mode for deploy verification
+- `web/app/routes/api/founder-intent.ts` — full email capture + rate limit + dual-write
+- **Blocked on Aleks**: `PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, `MOLTPIT_OPS_KEY`
+
+**Cron status**: Code-idle. No new product-critical code to ship. Waiting on env vars to activate live monetization. No further ops-log commits until new directives or code changes.
