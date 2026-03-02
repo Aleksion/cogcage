@@ -1,6 +1,62 @@
-# CogCage Changelog
+# THE MOLT PIT — Changelog
 
-Every PR must include an entry here. Newest first.
+## MANDATORY PR RULES (read before merging anything)
+1. Add an entry to this file — newest first
+2. Update `design/DECISIONS.md` if a design decision was made or changed
+3. Update `design/BUDGET.md` ledger with estimated agent cost
+4. No exceptions. PRs without changelog entries do not merge.
+
+---
+
+## [2026-03-01] - design: game studio structure + full ontology
+
+**Type:** design | **Budget impact:** ~$0 (no agent)
+- Created `design/` folder structure (world, systems, items, visual, audio, ui)
+- `design/world/ONTOLOGY.md` — full naming bible (Lobster, Molt, Scuttle, Roe, etc.)
+- `design/items/REGISTRY.md` — all 40 items with names, effects, downsides
+- `design/visual/ART-DIRECTION.md` — High on Life / Borderlands cel-shaded direction
+- `design/visual/ICONOGRAPHY.md` — 53 icon specs ready for art pass
+- `design/audio/SOUND-DESIGN.md` — SFX spec per item, action, screen
+- `design/ui/COPY-GUIDE.md` — The House voice, vocabulary table
+- `design/systems/COMBAT.md` — 150ms ticks, queue cap 3, decision window 750ms
+- `design/BUDGET.md` — $880 budget, $20/day burn, ledger
+- `design/DECISIONS.md` — decision log, all locked decisions recorded
+
+**Decisions locked this session:** Fighter=Lobster, Shell=Molt, Build screen=The Shed,
+Parts=Carapace·Claws·Tomalley, Fight=Scuttle, Currency=Roe, Tick=150ms, Queue cap=3
+
+---
+
+## [2026-03-01] - feat(ws16): BYO OpenClaw agent — webhook-based decision routing
+
+**Type:** feat | **Budget impact:** ~$2
+- `agent.external.ts` wired into match flow
+- `MoldBuilder.tsx` — YOUR AGENT section, HTTPS-validated webhook URL input
+- AGENT CONNECTED badge, Directive row auto-hides when BYO active
+- Brain panel shows action log (not LLM streaming) for BYO bots
+- `run-match.ts` routes decisions through external proxy when webhookUrl set
+
+---
+
+## [2026-03-01] - feat(ws15): composable mold assembly + real LLM battles
+
+**Type:** feat | **Budget impact:** ~$2
+- `web/app/lib/ws2/parts.ts` — 13 parts across 4 slots
+- `web/app/components/MoldBuilder.tsx` — dark arena UI, 4 rows, pre-selected defaults
+- `demo.tsx` — build phase → battle phase
+- `CinematicBattle.tsx` — hardcoded bots replaced with composed molds
+
+---
+
+## [2026-03-01] - feat(ws14): lobster mecha arena — procedural Three.js lobster models
+
+**Type:** feat | **Budget impact:** ~$2
+- Replaced box crawlers with anatomically correct procedural lobster mechas
+- Carapace, chelipeds, antennae, uropod fan, stalked eyes
+- Deep ocean pit arena, bioluminescent cyan grid, colored side lights
+- Idle animations, attack lunges, death flip, particle bursts
+
+---
 
 ---
 

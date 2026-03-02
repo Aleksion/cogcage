@@ -52,6 +52,16 @@ design/
 
 ---
 
+## ⚠️ MANDATORY — Every PR Must Do All Three
+
+1. **`CHANGELOG.md`** (repo root) — add an entry. What changed, why, budget impact.
+2. **`design/DECISIONS.md`** — log any design decision made or changed.
+3. **`design/BUDGET.md`** — add a ledger row with estimated agent cost.
+
+No entry = PR does not merge. No exceptions.
+
+---
+
 ## Reading Order for New Agents
 
 1. `world/ONTOLOGY.md` — learn the vocabulary. Everything uses these terms.
