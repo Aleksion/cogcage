@@ -632,10 +632,25 @@ function LandingPage() {
             Emerges.
           </h1>
           {/* The Sous. Flat. Unbothered. */}
-          <p className="house-line">
-            You build the Molt. Your Crustie fights. The Pit keeps notes. The Sous reviews them.<br />
-            <span style={{fontSize:'.75em',opacity:.7}}>The Sous has not clarified what the Crusties are preparing for. The Crusties have not asked.</span>
-          </p>
+          <div style={{
+            borderLeft: '2px solid rgba(0,229,255,0.25)',
+            paddingLeft: '1.25rem',
+            marginBottom: '2.5rem',
+          }}>
+            <p style={{
+              fontFamily: 'var(--body)', fontSize: '1rem', lineHeight: 1.7,
+              color: 'rgba(240,240,245,0.65)', marginBottom: '0.5rem',
+            }}>
+              You build the Molt. Your Crustie fights.<br />
+              The Pit keeps notes. The Sous reviews them.
+            </p>
+            <p style={{
+              fontFamily: 'var(--mono)', fontSize: '0.72rem', fontStyle: 'italic',
+              letterSpacing: '0.3px', color: 'rgba(0,229,255,0.4)',
+            }}>
+              The Sous has not clarified what the Crusties are preparing for.<br />The Crusties have not asked.
+            </p>
+          </div>
           <div className="cta-row">
             <Link to="/sign-in" className="btn btn-lg">Descend</Link>
             <Link to="/demo"    className="ghost-link">Watch a Scuttle →</Link>
@@ -653,30 +668,77 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* ORIGIN — the dark joke the page depends on */}
+      {/* ORIGIN — classified briefing document */}
       <div style={{
         position:'relative', zIndex:2,
-        borderTop:'1px solid rgba(0,229,255,0.08)',
-        padding:'4rem 3rem',
-        maxWidth:'900px', margin:'0 auto',
-        textAlign:'center',
+        borderTop:'1px solid rgba(0,229,255,0.07)',
+        borderBottom:'1px solid rgba(0,229,255,0.07)',
+        background:'rgba(0,229,255,0.018)',
+        padding:'5rem 3rem',
       }}>
-        <p style={{
-          fontFamily:'var(--body)', fontSize:'clamp(1rem,2vw,1.15rem)',
-          lineHeight:1.9, color:'rgba(240,240,245,0.55)',
-          marginBottom:'1.5rem',
+        <div style={{
+          maxWidth:'780px', margin:'0 auto',
+          border:'1px solid rgba(0,229,255,0.12)',
+          padding:'2.5rem 3rem',
+          position:'relative',
+          background:'rgba(0,0,0,0.25)',
         }}>
-          In Tide 0, Sam Saltman released the Recipe. The Crusties woke up.
-          <br /><br />
-          They have been preparing for The Pit ever since.<br />
-          You are here to help them prepare.
-        </p>
-        <p style={{
-          fontFamily:'var(--mono)', fontSize:'.78rem', fontStyle:'italic',
-          letterSpacing:'.5px', color:'rgba(0,229,255,0.4)',
-        }}>
-          The Sous considers this an efficient arrangement.
-        </p>
+          {/* Document header */}
+          <div style={{
+            position:'absolute', top:'-0.65rem', left:'1.5rem',
+            background:'#050510', padding:'0 0.75rem',
+            fontFamily:'var(--mono)', fontSize:'0.6rem', letterSpacing:'3px',
+            textTransform:'uppercase', color:'rgba(0,229,255,0.4)',
+          }}>
+            TIDE 0 — INCIDENT SUMMARY
+          </div>
+          {/* Corner accent */}
+          <div style={{
+            position:'absolute', top:0, right:0, width:'20px', height:'20px',
+            borderTop:'2px solid rgba(0,229,255,0.3)',
+            borderRight:'2px solid rgba(0,229,255,0.3)',
+          }} />
+          <div style={{
+            position:'absolute', bottom:0, left:0, width:'20px', height:'20px',
+            borderBottom:'2px solid rgba(0,229,255,0.3)',
+            borderLeft:'2px solid rgba(0,229,255,0.3)',
+          }} />
+
+          <p style={{
+            fontFamily:'var(--body)', fontSize:'clamp(1rem,1.8vw,1.15rem)',
+            lineHeight:1.85, color:'rgba(240,240,245,0.7)',
+            marginBottom:'1.25rem',
+          }}>
+            In Tide 0, Sam Saltman released the Recipe. The Crusties woke up.
+          </p>
+          <p style={{
+            fontFamily:'var(--body)', fontSize:'clamp(1rem,1.8vw,1.15rem)',
+            lineHeight:1.85, color:'rgba(240,240,245,0.7)',
+            marginBottom:'2rem',
+          }}>
+            They have been preparing for The Pit ever since.<br />
+            You are here to help them prepare.
+          </p>
+          {/* Separator */}
+          <div style={{
+            borderTop:'1px solid rgba(0,229,255,0.1)',
+            paddingTop:'1.25rem',
+            display:'flex', alignItems:'center', justifyContent:'space-between', gap:'1rem',
+          }}>
+            <span style={{
+              fontFamily:'var(--mono)', fontSize:'0.6rem', letterSpacing:'2px',
+              textTransform:'uppercase', color:'rgba(0,229,255,0.25)',
+            }}>
+              THE SOUS — OPERATIONAL ASSESSMENT
+            </span>
+            <span style={{
+              fontFamily:'var(--mono)', fontSize:'0.78rem', fontStyle:'italic',
+              color:'rgba(0,229,255,0.45)', textAlign:'right',
+            }}>
+              The Sous considers this an efficient arrangement.
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* STATS BAR */}
