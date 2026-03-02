@@ -149,7 +149,7 @@ const STYLES = `
   }
   .headline .c { color: var(--cyan); text-shadow: 0 0 30px rgba(0,229,255,.5), 0 2px 0 rgba(0,0,0,.5); }
 
-  /* The House delivers this. Flat, unbothered. */
+  /* The Sous delivers this. Flat, unbothered. */
   .house-line {
     font-family: var(--mono); font-size: .8rem; font-style: italic;
     letter-spacing: .5px; color: rgba(0,229,255,.45);
@@ -235,7 +235,7 @@ const STYLES = `
     white-space:nowrap;
   }
   .section-rule { flex:1; height:1px; background:linear-gradient(to right,rgba(0,229,255,.12),transparent); }
-  /* The House comment below every section title */
+  /* The Sous speaks below every section title */
   .section-quip {
     font-family:var(--mono); font-size:.75rem; font-style:italic;
     color:rgba(0,229,255,.35); margin-bottom:3.5rem; padding-left:.1rem;
@@ -480,7 +480,7 @@ const TICKER = [
 
 const MOLT_SLOTS = {
   CARAPACE: {
-    desc: 'The shell your Crustie fights in. It will not survive the Scuttle. The Pit does not return Carapaces.',
+    desc: 'What absorbs the hits so your Crustie doesn\'t have to. The Pit will test this decision thoroughly. The Pit returns nothing.',
     items: [
       {
         name:'BLOCK-7', rarity:'Common', rarityColor:'rgba(255,255,255,0.35)', cls:'', accent:'rgba(255,255,255,0.15)',
@@ -631,7 +631,7 @@ function LandingPage() {
             Last One<br />
             Emerges.
           </h1>
-          {/* The House. Flat. Unbothered. */}
+          {/* The Sous. Flat. Unbothered. */}
           <p className="house-line">
             "You build the Molt. Your Crustie does the rest.<br />The Pit records everything. Including that."
           </p>
@@ -675,7 +675,7 @@ function LandingPage() {
         </div>
         <h2 className="section-h">Three Slots.<br />Forty Items.</h2>
         <p className="section-quip">
-          "A bad Molt doesn't guarantee a loss. It just makes it more likely." — The House
+          "What you build here is what your Crustie carries in. The Pit will have opinions." — The Sous
         </p>
 
         <div className="molt-tabs">
@@ -716,7 +716,7 @@ function LandingPage() {
 
         <div className="molt-cta">
           <p className="molt-cta-quip">
-            "The Molt will not survive the Scuttle. Build it right anyway." — The House
+            "The Recipe is ready. The Pit has been ready longer." — The Sous
           </p>
           <Link to="/sign-in" className="btn btn-sm">Build Your Molt</Link>
         </div>
@@ -732,7 +732,7 @@ function LandingPage() {
             </div>
             <h2 className="section-h">Your Crustie<br />Fights. You Watch.</h2>
             <p className="section-quip">
-              "You cannot intervene. That is the design, and the design is sacred." — The House
+              "You cannot intervene. You built the machine. Now watch it run." — The Sous
             </p>
             <div className="pit-truth">
               <div className="truth-item">
@@ -789,7 +789,7 @@ function LandingPage() {
             </div>
             <h2 className="section-h">The Pit Forgets<br />Nothing.</h2>
             <p className="section-quip">
-              "Every Scuttle is recorded. The Ledger doesn't judge. It lists. The distinction matters." — The House
+              "Every Scuttle is recorded. Every single one. The Sous has noted yours specifically." — The Sous
             </p>
             <p style={{ fontSize:'.95rem', lineHeight:1.7, color:'rgba(240,240,245,0.42)', marginBottom:'2rem' }}>
               Win and your Hardness increases. Lose and The Pit records exactly why — every decision window, every queue, every missed opportunity your agent had and didn't take.
