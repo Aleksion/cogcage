@@ -294,6 +294,20 @@ export const globalStyles = `
     flex-wrap: wrap;
   }
 
+  .hero-demo-link {
+    color: var(--c-dark);
+    opacity: 0.72;
+    font-size: 0.9rem;
+    text-decoration: none;
+    border: 0;
+    font-family: var(--f-body);
+  }
+
+  .hero-demo-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
   .hero-waitlist {
     margin-bottom: 0;
     max-width: var(--copy-max);
@@ -1503,14 +1517,7 @@ const HeroSection = ({ sectionRef }) => {
         <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
           <a
             href="/demo"
-            style={{
-              color: 'var(--c-dark)',
-              opacity: 0.6,
-              fontSize: '0.9rem',
-              textDecoration: 'underline',
-              textUnderlineOffset: '3px',
-              fontFamily: 'var(--f-body)',
-            }}
+            className="hero-demo-link"
           >
             → Watch a live battle
           </a>
