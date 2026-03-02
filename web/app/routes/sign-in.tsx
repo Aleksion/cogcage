@@ -33,30 +33,34 @@ const STYLES = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 2rem;
-    border-bottom: 1px solid rgba(0,229,255,0.25);
-    background: rgba(0,0,0,0.5);
+    padding: 1.1rem 2.5rem;
+    border-bottom: 1px solid rgba(0,229,255,0.12);
+    background: rgba(5,5,16,0.92);
+    backdrop-filter: blur(16px);
   }
 
   .signin-logo {
     font-family: 'Bangers', cursive;
-    font-size: 1.6rem;
-    color: #EB4D4B;
+    font-size: 1.4rem;
+    color: #00E5FF;
     text-decoration: none;
-    text-shadow: 2px 2px 0 #000;
-    letter-spacing: 1px;
+    letter-spacing: 3px;
+    text-shadow: 0 0 16px rgba(0,229,255,0.4);
   }
 
   .signin-back {
-    font-size: 0.85rem;
-    font-weight: 700;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.4);
+    letter-spacing: 1.5px;
+    color: rgba(240,240,245,0.3);
     text-decoration: none;
-    letter-spacing: 0.5px;
     transition: color 0.15s;
+    border-bottom: 1px solid rgba(240,240,245,0.1);
+    padding-bottom: 1px;
   }
-  .signin-back:hover { color: rgba(255,255,255,0.8); }
+  .signin-back:hover { color: rgba(240,240,245,0.7); border-color: rgba(240,240,245,0.4); }
 
   .signin-body {
     flex: 1;
@@ -279,7 +283,7 @@ function SignInPage() {
       <div className="signin-root">
         <nav className="signin-nav">
           <Link to="/" className="signin-logo">THE MOLT PIT</Link>
-          <Link to="/" className="signin-back">← Back</Link>
+          <Link to="/" className="signin-back">Surface →</Link>
         </nav>
 
         <div className="signin-body">
@@ -289,16 +293,16 @@ function SignInPage() {
             </div>
           ) : isAuthenticated ? (
             <div className="signin-card">
-              <div className="signin-eyebrow">CRAWLER IDENTIFIED</div>
+              <div className="signin-eyebrow">SURFACE DETECTED</div>
               <div className="signin-logged-in-title">YOU'RE IN.</div>
-              <p className="signin-sub" style={{ marginBottom: '1.5rem' }}>Redirecting you to The Forge...</p>
+              <p className="signin-sub" style={{ marginBottom: '1.5rem' }}>The Sous is preparing your workspace. Stand by.</p>
               <Link to="/forge" className="signin-cta-btn">ENTER THE FORGE →</Link>
             </div>
           ) : (
             <div className="signin-card">
-              <div className="signin-eyebrow">PLAYER AUTH</div>
+              <div className="signin-eyebrow">THE SOUS — IDENTITY CHECK</div>
               <h1 className="signin-title">ENTER THE PIT</h1>
-              <p className="signin-sub">Sign in to save your shells and compete on the ladder.</p>
+              <p className="signin-sub">Surface, Chef. Your Crustie needs you.</p>
 
               <GitHubSignIn />
 
