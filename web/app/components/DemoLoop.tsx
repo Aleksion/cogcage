@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
 
 const STRIPE_FOUNDER_URL = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? ''
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // ── Action Economy ──
 type Action = 'MOVE' | 'ATTACK' | 'DEFEND' | 'CHARGE' | 'STUN'
@@ -667,6 +668,8 @@ const DEMO_STYLES = `
     background: #FFD600;
     border-radius: 10px;
     text-decoration: none;
+    border: none;
+    cursor: pointer;
     transition: transform 0.1s, background 0.15s;
     box-shadow: 4px 4px 0 #000;
   }
@@ -757,6 +760,101 @@ function hpColor(pct: number) {
   if (pct > 60) return '#2ecc71'
   if (pct > 30) return '#f39c12'
   return '#EB4D4B'
+}
+
+function createIdempotencyKey() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+function getStoredEmail() {
+  if (typeof window === 'undefined') return undefined
+  const raw = window.localStorage.getItem('moltpit_email')?.trim().toLowerCase()
+  if (!raw || !EMAIL_RE.test(raw)) return undefined
+  return raw
+}
+
+function postDemoEvent(event: string, payload: Record<string, unknown>) {
+  if (typeof window === 'undefined') return
+  const body = JSON.stringify({
+    event,
+    page: '/demo',
+    ...payload,
+  })
+  try {
+    const blob = new Blob([body], { type: 'application/json' })
+    const accepted = navigator.sendBeacon('/api/events', blob)
+    if (accepted) return
+  } catch {
+    // Fall through to fetch keepalive.
+  }
+  void fetch('/api/events', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-idempotency-key': createIdempotencyKey(),
+    },
+    body,
+    keepalive: true,
+  }).catch(() => {
+    // best-effort telemetry only
+  })
+}
+
+function startFounderCheckout(source: string) {
+  if (typeof window === 'undefined' || !STRIPE_FOUNDER_URL) return
+  const email = getStoredEmail()
+
+  const intentPayload = email ? {
+    email,
+    source: `${source}-intent`,
+    intentId: `intent:${new Date().toISOString().slice(0, 10)}:${email}:${source}`,
+  } : null
+
+  if (intentPayload) {
+    const body = JSON.stringify(intentPayload)
+    try {
+      const blob = new Blob([body], { type: 'application/json' })
+      const accepted = navigator.sendBeacon('/api/founder-intent', blob)
+      if (!accepted) {
+        void fetch('/api/founder-intent', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-idempotency-key': createIdempotencyKey(),
+          },
+          body,
+          keepalive: true,
+        }).catch(() => {
+          // best-effort founder-intent capture
+        })
+      }
+    } catch {
+      // best-effort founder-intent capture
+    }
+  }
+
+  postDemoEvent('founder_checkout_clicked', {
+    source,
+    email,
+    tier: 'founder',
+    meta: { surface: 'demo-loop' },
+  })
+
+  try {
+    window.localStorage.setItem('moltpit_last_founder_checkout_source', source)
+    window.localStorage.setItem('moltpit_last_founder_intent_source', `${source}-intent`)
+  } catch {
+    // ignore storage write failures
+  }
+
+  const target = new URL(STRIPE_FOUNDER_URL, window.location.origin)
+  if (email) {
+    target.searchParams.set('prefilled_email', email)
+  }
+  window.location.href = target.toString()
 }
 
 // ── Watch Mode (spectator) ──
@@ -934,7 +1032,7 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
               : `${match.winner} crushed the opposition.`}
           </div>
           {STRIPE_FOUNDER_URL
-            ? <a href={STRIPE_FOUNDER_URL} className="demo-cta">GET FOUNDER PACK &rarr;</a>
+            ? <button className="demo-cta" type="button" onClick={() => startFounderCheckout('demo-loop-watch-winner')}>GET FOUNDER PACK &rarr;</button>
             : <Link to="/sign-in" className="demo-cta">ENTER THE PIT &rarr;</Link>}
           <button className="demo-restart" onClick={startNewMatch}>Watch another match</button>
         </div>
@@ -1225,7 +1323,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
             {winner === 'YOU WIN!' ? 'Your Crustie dominated The Pit.' : winner === 'DRAW' ? 'Both still standing after 15 rounds.' : 'The AI held its line.'}
           </div>
           {STRIPE_FOUNDER_URL
-            ? <a href={STRIPE_FOUNDER_URL} className="demo-cta">GET FOUNDER PACK &rarr;</a>
+            ? <button className="demo-cta" type="button" onClick={() => startFounderCheckout('demo-loop-play-winner')}>GET FOUNDER PACK &rarr;</button>
             : <Link to="/sign-in" className="demo-cta">ENTER THE PIT &rarr;</Link>}
           <button className="demo-restart" onClick={resetGame}>Play again</button>
         </div>

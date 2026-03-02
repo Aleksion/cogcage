@@ -19,7 +19,8 @@ import {
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '../../../convex/_generated/api'
 
-const convexClient = new ConvexHttpClient(process.env.CONVEX_URL || 'https://intent-horse-742.convex.cloud')
+const convexUrl = (process.env.CONVEX_URL ?? '').trim();
+const convexClient = convexUrl ? new ConvexHttpClient(convexUrl) : null;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
@@ -359,15 +360,19 @@ export const Route = createFileRoute('/api/waitlist')({
           // Redis is the primary storage on Vercel — durable across Lambda invocations
           await redisInsertWaitlistLead(payload);
 
-          // Convex is best-effort secondary — durable, queryable
-          try {
-            await convexClient.mutation(api.waitlist.addToWaitlist, {
-              email: normalizedEmail,
-              source: eventSource,
-            });
-          } catch (convexError) {
-            appendOpsLog({ route, level: 'warn', event: 'waitlist_convex_write_failed', requestId, error: convexError instanceof Error ? convexError.message : 'unknown' });
-            // Never throw — Redis already succeeded
+          // Convex is best-effort secondary — durable, queryable.
+          if (convexClient) {
+            try {
+              await convexClient.mutation(api.waitlist.addToWaitlist, {
+                email: normalizedEmail,
+                source: eventSource,
+              });
+            } catch (convexError) {
+              appendOpsLog({ route, level: 'warn', event: 'waitlist_convex_write_failed', requestId, error: convexError instanceof Error ? convexError.message : 'unknown' });
+              // Never throw — Redis already succeeded
+            }
+          } else {
+            appendOpsLog({ route, level: 'debug', event: 'waitlist_convex_skipped', requestId, reason: 'missing_CONVEX_URL' });
           }
 
           // SQLite is best-effort tertiary — useful locally, ephemeral on Vercel

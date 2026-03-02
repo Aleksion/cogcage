@@ -8,6 +8,50 @@
 
 ---
 
+## [2026-03-02] - fix(product-critical-mar2): signup storage guardrails, default playable demo mode, and checkout intent durability
+
+**Type:** fix/feature/ops | **Budget impact:** n/a (product-critical execution)
+
+### What
+- `web/app/routes/api/waitlist.ts`
+  - Removed hardcoded Convex URL fallback (`intent-horse-742`).
+  - Convex secondary write now runs only when `CONVEX_URL` is configured.
+  - Added explicit observability event `waitlist_convex_skipped` when Convex is intentionally disabled by env.
+- `web/app/routes/demo.tsx`
+  - `/demo` now defaults to the battle-ready `DemoLoop` (map movement + AP economy).
+  - Existing cinematic builder flow is retained behind `?mode=cinematic`.
+- `web/app/components/Play.tsx`
+  - Added durable founder-intent replay queue for founder checkout path on `/play`.
+  - Founder-intent failures on transient statuses (`0/408/429/5xx`) now buffer locally and replay on mount/online.
+  - Added monetization reliability telemetry: `founder_intent_buffered`, `founder_intent_replay_sent`, `founder_intent_replay_failed`.
+- `web/app/components/DemoLoop.tsx`
+  - Founder CTA now records checkout telemetry + attribution source keys used by `/success`.
+  - Added best-effort founder-intent pre-capture before redirect and `prefilled_email` propagation when a valid stored email exists.
+- `ops/logs/2026-03-02.md`
+  - Added shipment artifact block for this pass with verification commands/results.
+
+### Why
+- A hardcoded Convex fallback target in signup ingestion risked writing secondary data to a non-environment-owned project and introduced avoidable runtime noise when `CONVEX_URL` is unset.
+- Product directive required a reliable, immediate playable loop; defaulting `/demo` to the AP/map loop removes build-step friction for first-time users.
+- Founder checkout on `/play` could lose intent records under transient API/network/rate-limit failures; local replay makes monetization capture durable without blocking checkout.
+
+### Design Decisions
+- Keep Redis as primary durability layer and preserve existing fallback hierarchy; add guardrails/observability rather than replacing storage architecture.
+- Fail open for checkout redirect while buffering founder intent locally to avoid conversion loss during transient backend failures.
+- Change `/demo` default behavior to optimize playability while preserving prior cinematic behavior as an explicit mode switch.
+
+### Breaking Changes
+- `/demo` now renders the quick playable loop by default.
+- Previous cinematic experience is still available at `/demo?mode=cinematic`.
+
+### Verification
+- `cd web && npm run test:product` ✅ (16 pass / 0 fail)
+- `cd web && npm run build` ✅
+
+### Next Steps
+- Add route-level tests for `/play` founder-intent replay queue behavior (offline/429/reconnect matrix).
+- Add an explicit UI affordance linking from `/demo` quick mode to `?mode=cinematic` so both paths are discoverable.
+
 ## [2026-03-02] - fix(product-mode): hero conversion reliability lane + directional demo controls
 
 **Type:** fix/feature | **Budget impact:** n/a (product-critical execution)

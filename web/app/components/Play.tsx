@@ -428,6 +428,106 @@ const postEvent = async (event: string, payload: Record<string, unknown>) => {
   }, 3000);
 };
 
+type FounderIntentReplayEntry = {
+  email: string;
+  source: string;
+  intentId: string;
+  queuedAt: string;
+};
+
+const FOUNDER_INTENT_REPLAY_QUEUE_KEY = 'moltpit_play_founder_intent_replay_queue';
+
+const shouldQueueFounderIntentReplay = (status: number) => (
+  status === 0 || status === 408 || status === 429 || status >= 500
+);
+
+const readFounderIntentReplayQueue = (): FounderIntentReplayEntry[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed as FounderIntentReplayEntry[] : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeFounderIntentReplayQueue = (queue: FounderIntentReplayEntry[]) => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!queue.length) {
+      window.localStorage.removeItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY);
+      return;
+    }
+    window.localStorage.setItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY, JSON.stringify(queue.slice(-20)));
+  } catch {
+    // best-effort cache only
+  }
+};
+
+const enqueueFounderIntentReplay = (entry: FounderIntentReplayEntry) => {
+  const queue = readFounderIntentReplayQueue();
+  const normalized: FounderIntentReplayEntry = {
+    email: entry.email.trim().toLowerCase(),
+    source: entry.source,
+    intentId: entry.intentId,
+    queuedAt: entry.queuedAt,
+  };
+  const deduped = queue.filter((item) => item.intentId !== normalized.intentId);
+  deduped.push(normalized);
+  writeFounderIntentReplayQueue(deduped);
+};
+
+const getPostJsonReason = (response: { status: number; body: Record<string, unknown> }) => {
+  if (typeof response.body?.error === 'string' && response.body.error.trim()) {
+    return response.body.error;
+  }
+  return response.status > 0 ? `status_${response.status}` : 'network_error';
+};
+
+const replayFounderIntentQueue = async () => {
+  if (typeof window === 'undefined') return;
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  const queue = readFounderIntentReplayQueue();
+  if (!queue.length) return;
+
+  const remaining: FounderIntentReplayEntry[] = [];
+  for (const item of queue) {
+    const response = await postJson('/api/founder-intent', {
+      email: item.email,
+      source: item.source,
+      intentId: item.intentId,
+    }, 7000);
+
+    if (response.ok && response.body?.ok === true) {
+      await postEvent('founder_intent_replay_sent', {
+        source: item.source,
+        email: item.email,
+        tier: 'founder',
+        meta: { intentId: item.intentId, queuedAt: item.queuedAt },
+      });
+      continue;
+    }
+
+    if (shouldQueueFounderIntentReplay(response.status)) {
+      remaining.push(item);
+    }
+
+    await postEvent('founder_intent_replay_failed', {
+      source: item.source,
+      email: item.email,
+      tier: 'founder',
+      meta: {
+        intentId: item.intentId,
+        queuedAt: item.queuedAt,
+        reason: getPostJsonReason(response),
+      },
+    });
+  }
+
+  writeFounderIntentReplayQueue(remaining);
+};
+
 /* ============================================================
    COMPONENT
    ============================================================ */
@@ -507,6 +607,14 @@ const Play = () => {
     if (typeof window === 'undefined') return;
     const saved = window.localStorage.getItem(EMAIL_KEY) || '';
     if (saved) setEmail(saved);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    void replayFounderIntentQueue();
+    const onOnline = () => { void replayFounderIntentQueue(); };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
   }, []);
 
   // Fetch room list periodically when lobby is open
@@ -913,6 +1021,11 @@ const Play = () => {
     const checkoutSource = 'play-page-founder-cta';
     const intentSource = 'play-page-founder-checkout';
     const intentId = `intent:${new Date().toISOString().slice(0, 10)}:${hashString(`${normalizedEmail}|${intentSource}`)}`;
+    const founderIntentPayload = {
+      email: normalizedEmail,
+      source: intentSource,
+      intentId,
+    };
 
     try {
       await postEvent('founder_checkout_clicked', {
@@ -921,22 +1034,36 @@ const Play = () => {
         tier: 'founder',
       });
 
-      const intentResponse = await postJson('/api/founder-intent', {
-        email: normalizedEmail,
-        source: intentSource,
-        intentId,
-      });
+      const intentResponse = await postJson('/api/founder-intent', founderIntentPayload);
 
       if (!intentResponse.ok || intentResponse.body?.ok !== true) {
-        const reason = String(intentResponse.body?.error || `status_${intentResponse.status}`);
-        await postEvent('founder_intent_submit_failed', {
-          source: intentSource,
-          email: normalizedEmail,
-          tier: 'founder',
-          meta: { reason, intentId },
-        });
+        const reason = getPostJsonReason(intentResponse);
+        if (shouldQueueFounderIntentReplay(intentResponse.status)) {
+          enqueueFounderIntentReplay({
+            ...founderIntentPayload,
+            queuedAt: new Date().toISOString(),
+          });
+          await postEvent('founder_intent_buffered', {
+            source: intentSource,
+            email: normalizedEmail,
+            tier: 'founder',
+            meta: { reason, intentId },
+          });
+        } else {
+          await postEvent('founder_intent_submit_failed', {
+            source: intentSource,
+            email: normalizedEmail,
+            tier: 'founder',
+            meta: { reason, intentId },
+          });
+        }
+
         if (!founderCheckoutUrl) {
-          setCheckoutMessage('Could not reserve spot. Try again.');
+          if (shouldQueueFounderIntentReplay(intentResponse.status)) {
+            setCheckoutMessage('✓ Reserved! We buffered your founder intent and will replay it automatically.');
+          } else {
+            setCheckoutMessage('Could not reserve spot. Try again.');
+          }
           return;
         }
       } else {
