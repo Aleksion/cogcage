@@ -19,3 +19,6 @@ web/node_modules/
 .DS_Store
 *.log
 web/node_modules
+*.glb
+*.fbx
+design/visual/3d/*.glb
