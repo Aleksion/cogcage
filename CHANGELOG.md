@@ -8,6 +8,47 @@
 
 ---
 
+## [2026-03-02] - fix(product-critical): event durability fallback, postback fail-closed auth, and AP-cost demo economy
+
+**Type:** fix/security/feature | **Budget impact:** n/a (product-critical hardening)
+
+### What
+- `web/app/routes/api/events.ts`
+  - Added SQLite fallback write path when Redis is unavailable before falling back to NDJSON queue files.
+  - Added explicit observability events for sqlite fallback success/failure (`conversion_event_saved_sqlite_fallback`, `conversion_event_sqlite_fallback_failed`).
+- `web/app/routes/api/postback.ts`
+  - Refactored auth into explicit result modes.
+  - Production now fails closed when postback key is missing (`503` + `postback_key_missing`).
+  - Unauthorized key mismatches remain `401`.
+  - Dev runtime remains open without a key (with `postback_auth_bypass_dev` warning), preserving local integration testing.
+  - `GET /api/postback?test=1` stays available for deployment smoke checks.
+- `web/app/components/DemoLoop.tsx`
+  - Replaced flat AP spend with per-action AP costs in both WATCH and PLAY loops:
+    - MOVE `0.8`, DEFEND `0.9`, CHARGE `1.0`, ATTACK `1.2`, STUN `1.3`.
+  - Player + AI now execute only affordable actions; otherwise they wait/fallback.
+  - Initial AP now starts at `0`; AP bars now scale to 2.0 AP.
+  - PLAY action labels now expose AP costs and disable actions by AP/range availability.
+- `ops/logs/2026-03-02.md`
+  - Added new P1→P4 shipment artifact block for this pass with verification outputs.
+
+### Why
+- Conversion telemetry durability had a gap: `/api/events` skipped SQLite fallback under Redis outages, causing unnecessary queueing and potential data loss if filesystem fallback also failed.
+- Monetization postback endpoint could accept unauthenticated writes when key env vars were absent, which is unsafe in production.
+- Demo loop AP economy was too flat and did not express action-level tradeoffs clearly enough for a real playable loop.
+
+### Design
+- Kept existing storage tiering model consistent across critical endpoints:
+  - Redis primary → SQLite secondary → NDJSON fallback queue tertiary.
+- Applied fail-closed security only in production runtime when postback key is missing; preserved dev-open mode to avoid local workflow breakage.
+- Implemented AP economy as lightweight per-action costs without changing route contracts or external API shapes.
+
+### Breaking Changes
+- Production deployments must provide `COGCAGE_POSTBACK_KEY` or `MOLTPIT_POSTBACK_KEY`; otherwise `POST /api/postback` now returns `503` instead of accepting writes.
+
+### Next Steps
+- Add route-level automated tests for `/api/postback` auth-mode matrix (keyed/unauthorized/missing-key-production).
+- Consider porting the same per-action AP-cost model into non-demo combat surfaces for consistency.
+
 ## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)

@@ -69,11 +69,28 @@ function getProvidedPostbackKey(request: Request): string {
   return '';
 }
 
-function authorize(request: Request): boolean {
-  const key = (process.env.COGCAGE_POSTBACK_KEY ?? process.env.MOLTPIT_POSTBACK_KEY)?.trim();
-  if (!key) return true;
+function isProductionRuntime(): boolean {
+  const env = (process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? '').trim().toLowerCase();
+  return env === 'production';
+}
+
+type AuthorizationResult =
+  | { ok: true; mode: 'keyed' | 'dev-open' }
+  | { ok: false; status: 401 | 503; reason: 'unauthorized' | 'key_missing' };
+
+function authorize(request: Request): AuthorizationResult {
+  const key = (process.env.COGCAGE_POSTBACK_KEY ?? process.env.MOLTPIT_POSTBACK_KEY)?.trim() ?? '';
+  if (!key) {
+    if (isProductionRuntime()) {
+      return { ok: false, status: 503, reason: 'key_missing' };
+    }
+    return { ok: true, mode: 'dev-open' };
+  }
   const provided = getProvidedPostbackKey(request);
-  return provided === key;
+  if (provided === key) {
+    return { ok: true, mode: 'keyed' };
+  }
+  return { ok: false, status: 401, reason: 'unauthorized' };
 }
 
 function hashString(input: string) {
@@ -108,7 +125,30 @@ export const Route = createFileRoute('/api/postback')({
     handlers: {
       GET: async ({ request }) => {
         const requestId = crypto.randomUUID();
-        if (!authorize(request)) {
+        const url = new URL(request.url);
+        // Health/test check intentionally bypasses auth for deployment smoke checks.
+        if (url.searchParams.get('test') === '1') {
+          return new Response(JSON.stringify({ ok: true, mode: 'test', method: 'GET' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+
+        const auth = authorize(request);
+        if (!auth.ok) {
+          if (auth.reason === 'key_missing') {
+            appendOpsLog({
+              route: '/api/postback',
+              level: 'error',
+              event: 'postback_key_missing',
+              requestId,
+              method: 'GET',
+            });
+            return new Response(JSON.stringify({ ok: false, error: 'Postback key is not configured' }), {
+              status: auth.status,
+              headers: { 'content-type': 'application/json' },
+            });
+          }
           appendOpsLog({
             route: '/api/postback',
             level: 'warn',
@@ -119,19 +159,17 @@ export const Route = createFileRoute('/api/postback')({
             hasBearer: Boolean(request.headers.get('authorization')),
           });
           return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
-            status: 401,
+            status: auth.status,
             headers: { 'content-type': 'application/json' },
           });
         }
-        // Health check / test endpoint
-        const url = new URL(request.url);
-        if (url.searchParams.get('test') === '1') {
-          return new Response(JSON.stringify({ ok: true, mode: 'test', method: 'GET' }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          });
-        }
-        return new Response(JSON.stringify({ ok: true, status: 'ready', acceptedTypes: [...ACCEPTED_POSTBACK_TYPES] }), {
+
+        return new Response(JSON.stringify({
+          ok: true,
+          status: 'ready',
+          authMode: auth.mode,
+          acceptedTypes: [...ACCEPTED_POSTBACK_TYPES],
+        }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         });
@@ -160,7 +198,21 @@ export const Route = createFileRoute('/api/postback')({
           });
         }
 
-        if (!authorize(request)) {
+        const auth = authorize(request);
+        if (!auth.ok) {
+          if (auth.reason === 'key_missing') {
+            appendOpsLog({
+              route: '/api/postback',
+              level: 'error',
+              event: 'postback_key_missing',
+              requestId,
+              method: 'POST',
+            });
+            return new Response(JSON.stringify({ ok: false, error: 'Postback key is not configured', requestId }), {
+              status: auth.status,
+              headers: { 'content-type': 'application/json' },
+            });
+          }
           appendOpsLog({
             route: '/api/postback',
             level: 'warn',
@@ -171,8 +223,16 @@ export const Route = createFileRoute('/api/postback')({
             hasBearer: Boolean(request.headers.get('authorization')),
           });
           return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', requestId }), {
-            status: 401,
+            status: auth.status,
             headers: { 'content-type': 'application/json' },
+          });
+        }
+        if (auth.mode === 'dev-open') {
+          appendOpsLog({
+            route: '/api/postback',
+            level: 'warn',
+            event: 'postback_auth_bypass_dev',
+            requestId,
           });
         }
 

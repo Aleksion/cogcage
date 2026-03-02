@@ -122,6 +122,40 @@ function pickAction(bias: Record<Action, number>, dist: number, stunned: boolean
   return 'MOVE'
 }
 
+const ACTION_AP_COST: Record<Action, number> = {
+  MOVE: 0.8,
+  ATTACK: 1.2,
+  DEFEND: 0.9,
+  CHARGE: 1.0,
+  STUN: 1.3,
+}
+
+const AP_BAR_MAX = 2
+const MIN_ACTION_AP = Math.min(...Object.values(ACTION_AP_COST))
+
+function canAffordAction(ap: number, action: Action): boolean {
+  return ap >= ACTION_AP_COST[action]
+}
+
+function chooseAffordableAction(
+  bias: Record<Action, number>,
+  dist: number,
+  stunned: boolean,
+  ap: number,
+): Action | 'WAIT' {
+  if (ap < MIN_ACTION_AP) return 'WAIT'
+
+  const desired = pickAction(bias, dist, stunned)
+  if (canAffordAction(ap, desired)) return desired
+
+  const fallbackOrder: Action[] = ['MOVE', 'DEFEND', 'CHARGE', 'ATTACK', 'STUN']
+  for (const candidate of fallbackOrder) {
+    if (candidate === 'MOVE' && stunned) continue
+    if (canAffordAction(ap, candidate)) return candidate
+  }
+  return 'WAIT'
+}
+
 function rollDamage() {
   return 15 + Math.floor(Math.random() * 11)
 }
@@ -242,13 +276,11 @@ function simulateMatch(): { turns: TurnResult[]; winner: string } {
   for (let t = 1; t <= MAX_TURNS; t++) {
     p1.ap += BERSERKER.speed
     p2.ap += TACTICIAN.speed
-    const p1CanAct = p1.ap >= 1.0
-    const p2CanAct = p2.ap >= 1.0
     const dist = manhattan(p1.pos, p2.pos)
-    const p1Act: Action | 'WAIT' = p1CanAct ? pickAction(BERSERKER.bias, dist, p1.stunned) : 'WAIT'
-    const p2Act: Action | 'WAIT' = p2CanAct ? pickAction(TACTICIAN.bias, dist, p2.stunned) : 'WAIT'
-    if (p1CanAct) p1.ap -= 1.0
-    if (p2CanAct) p2.ap -= 1.0
+    const p1Act: Action | 'WAIT' = chooseAffordableAction(BERSERKER.bias, dist, p1.stunned, p1.ap)
+    const p2Act: Action | 'WAIT' = chooseAffordableAction(TACTICIAN.bias, dist, p2.stunned, p2.ap)
+    if (p1Act !== 'WAIT') p1.ap = Math.max(0, p1.ap - ACTION_AP_COST[p1Act])
+    if (p2Act !== 'WAIT') p2.ap = Math.max(0, p2.ap - ACTION_AP_COST[p2Act])
 
     const result = resolveTurn(p1Act, p2Act, p1, p2, t)
     turns.push(result)
@@ -261,8 +293,8 @@ function simulateMatch(): { turns: TurnResult[]; winner: string } {
 
 function makeInitialLiveState() {
   return {
-    p1: { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: BERSERKER.speed } as BotState,
-    p2: { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: TACTICIAN.speed } as BotState,
+    p1: { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: 0 } as BotState,
+    p2: { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: 0 } as BotState,
     turn: 1,
     log: [] as TurnResult[],
     winner: null as string | null,
@@ -797,7 +829,7 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
           </div>
           <div className="demo-hp-text">{p1Hp} / {BERSERKER.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p1Ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p1Ap / AP_BAR_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p1Ap.toFixed(1)}</div>
           <div className="demo-speed-badge">SPD {BERSERKER.speed}x</div>
@@ -810,7 +842,7 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
           </div>
           <div className="demo-hp-text">{p2Hp} / {TACTICIAN.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p2Ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p2Ap / AP_BAR_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p2Ap.toFixed(1)}</div>
           <div className="demo-speed-badge">SPD {TACTICIAN.speed}x</div>
@@ -910,15 +942,13 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
         // Accumulate AP
         p1.ap += BERSERKER.speed
         p2.ap += TACTICIAN.speed
-        const p1CanAct = p1.ap >= 1.0
-        const p2CanAct = p2.ap >= 1.0
 
-        const p1Act: Action | 'WAIT' = p1CanAct ? action : 'WAIT'
+        const p1Act: Action | 'WAIT' = canAffordAction(p1.ap, action) ? action : 'WAIT'
         const dist = manhattan(p1.pos, p2.pos)
-        const p2Act: Action | 'WAIT' = p2CanAct ? pickAction(TACTICIAN.bias, dist, p2.stunned) : 'WAIT'
+        const p2Act: Action | 'WAIT' = chooseAffordableAction(TACTICIAN.bias, dist, p2.stunned, p2.ap)
 
-        if (p1CanAct) p1.ap -= 1.0
-        if (p2CanAct) p2.ap -= 1.0
+        if (p1Act !== 'WAIT') p1.ap = Math.max(0, p1.ap - ACTION_AP_COST[p1Act])
+        if (p2Act !== 'WAIT') p2.ap = Math.max(0, p2.ap - ACTION_AP_COST[p2Act])
 
         const result = resolveTurn(p1Act, p2Act, p1, p2, prev.turn, { p1Dir: moveDir })
 
@@ -975,8 +1005,8 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
   const p1Pct = (p1.hp / BERSERKER.hp) * 100
   const p2Pct = (p2.hp / TACTICIAN.hp) * 100
   const dist = manhattan(p1.pos, p2.pos)
-  const canAttack = dist <= 2
-  const canStun = dist <= 2
+  const canAttackRange = dist <= 2
+  const canStunRange = dist <= 2
 
   const gridCells: React.ReactElement[] = []
   for (let y = 0; y < GRID_SIZE; y++) {
@@ -1006,11 +1036,19 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
   }
 
   const ACTIONS: { action: Action; label: string; disabled?: boolean }[] = [
-    { action: 'MOVE', label: 'MOVE (WASD)' },
-    { action: 'ATTACK', label: `ATTACK${!canAttack ? ' (far)' : ''}`, disabled: !canAttack },
-    { action: 'DEFEND', label: 'DEFEND' },
-    { action: 'CHARGE', label: 'CHARGE' },
-    { action: 'STUN', label: `STUN${!canStun ? ' (far)' : ''}`, disabled: !canStun },
+    { action: 'MOVE', label: `MOVE (WASD · ${ACTION_AP_COST.MOVE.toFixed(1)} AP)`, disabled: !canAffordAction(p1.ap, 'MOVE') },
+    {
+      action: 'ATTACK',
+      label: `ATTACK (${ACTION_AP_COST.ATTACK.toFixed(1)} AP)${!canAttackRange ? ' · far' : ''}`,
+      disabled: !canAttackRange || !canAffordAction(p1.ap, 'ATTACK'),
+    },
+    { action: 'DEFEND', label: `DEFEND (${ACTION_AP_COST.DEFEND.toFixed(1)} AP)`, disabled: !canAffordAction(p1.ap, 'DEFEND') },
+    { action: 'CHARGE', label: `CHARGE (${ACTION_AP_COST.CHARGE.toFixed(1)} AP)`, disabled: !canAffordAction(p1.ap, 'CHARGE') },
+    {
+      action: 'STUN',
+      label: `STUN (${ACTION_AP_COST.STUN.toFixed(1)} AP)${!canStunRange ? ' · far' : ''}`,
+      disabled: !canStunRange || !canAffordAction(p1.ap, 'STUN'),
+    },
   ]
 
   return (
@@ -1035,7 +1073,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           </div>
           <div className="demo-hp-text">{p1.hp} / {BERSERKER.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p1.ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p1.ap / AP_BAR_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p1.ap.toFixed(1)}</div>
         </div>
@@ -1052,7 +1090,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           </div>
           <div className="demo-hp-text">{p2.hp} / {TACTICIAN.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p2.ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p2.ap / AP_BAR_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p2.ap.toFixed(1)}</div>
         </div>
@@ -1061,7 +1099,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
       <div className="demo-turn-counter">
         {winner
           ? winner
-          : `TURN ${turn} / ${MAX_TURNS}  ·  DIST ${dist}  ·  ${!canAttack ? 'CLOSE IN TO ATTACK' : 'IN RANGE'}`}
+          : `TURN ${turn} / ${MAX_TURNS}  ·  DIST ${dist}  ·  ${!canAttackRange ? 'CLOSE IN TO ATTACK' : 'IN RANGE'}`}
       </div>
 
       {!winner && (

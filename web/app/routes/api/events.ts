@@ -148,24 +148,56 @@ export const Route = createFileRoute('/api/events')({
           appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_redis_write_failed', requestId, eventName, source: payload.source, error: errorMessage, durationMs: Date.now() - startedAt });
 
           try {
-            appendEventsFallback({ route: '/api/events', requestId, ...payload, reason: errorMessage });
-            appendOpsLog({ route: '/api/events', level: 'warn', event: 'conversion_event_saved_to_fallback', requestId, eventName, source: payload.source, durationMs: Date.now() - startedAt });
-            return new Response(JSON.stringify({ ok: true, queued: true, requestId }), {
-              status: 202,
+            // SQLite fallback keeps writes durable in local/dev and redis-outage scenarios.
+            insertConversionEvent(payload);
+            appendOpsLog({
+              route: '/api/events',
+              level: 'warn',
+              event: 'conversion_event_saved_sqlite_fallback',
+              requestId,
+              eventName,
+              source: payload.source,
+              durationMs: Date.now() - startedAt,
+            });
+            return new Response(JSON.stringify({ ok: true, degraded: true, requestId }), {
+              status: 200,
               headers: {
                 'content-type': 'application/json',
                 'x-request-id': requestId,
               },
             });
-          } catch (fallbackError) {
-            appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_fallback_write_failed', requestId, eventName, source: payload.source, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
-            return new Response(JSON.stringify({ ok: false, error: 'Event storage unavailable.', requestId }), {
-              status: 503,
-              headers: {
-                'content-type': 'application/json',
-                'x-request-id': requestId,
-              },
+          } catch (sqliteFallbackError) {
+            const sqliteError = sqliteFallbackError instanceof Error ? sqliteFallbackError.message : 'unknown-sqlite-error';
+            appendOpsLog({
+              route: '/api/events',
+              level: 'warn',
+              event: 'conversion_event_sqlite_fallback_failed',
+              requestId,
+              eventName,
+              source: payload.source,
+              error: sqliteError,
+              durationMs: Date.now() - startedAt,
             });
+            try {
+              appendEventsFallback({ route: '/api/events', requestId, ...payload, reason: `${errorMessage};sqlite:${sqliteError}` });
+              appendOpsLog({ route: '/api/events', level: 'warn', event: 'conversion_event_saved_to_fallback', requestId, eventName, source: payload.source, durationMs: Date.now() - startedAt });
+              return new Response(JSON.stringify({ ok: true, queued: true, requestId }), {
+                status: 202,
+                headers: {
+                  'content-type': 'application/json',
+                  'x-request-id': requestId,
+                },
+              });
+            } catch (fallbackError) {
+              appendOpsLog({ route: '/api/events', level: 'error', event: 'conversion_event_fallback_write_failed', requestId, eventName, source: payload.source, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
+              return new Response(JSON.stringify({ ok: false, error: 'Event storage unavailable.', requestId }), {
+                status: 503,
+                headers: {
+                  'content-type': 'application/json',
+                  'x-request-id': requestId,
+                },
+              });
+            }
           }
         }
       },
