@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:wght@400;600;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap');
@@ -433,6 +433,34 @@ const STYLES = `
   .footer-mark { font-family:var(--display); font-size:1rem; color:rgba(0,229,255,.28); letter-spacing:3px; }
   .footer-copy { font-family:var(--mono); font-size:.63rem; letter-spacing:.8px; color:rgba(240,240,245,.14); }
 
+  /* ─── TYPEWRITER ─── */
+  .tw-line {
+    font-family: var(--mono);
+    font-size: clamp(.9rem, 1.4vw, 1rem);
+    line-height: 1.9;
+    color: rgba(240,240,245,0.72);
+    display: block;
+    overflow: hidden;
+    white-space: pre-wrap;
+    min-height: 1.9em;
+  }
+  .tw-cursor {
+    display: inline-block;
+    width: 2px; height: 1em;
+    background: var(--cyan);
+    vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: cursorBlink .7s step-end infinite;
+  }
+  @keyframes cursorBlink {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0; }
+  }
+  .tw-emphasis {
+    color: rgba(0,229,255,0.55);
+    font-style: italic;
+  }
+
   /* ─── RESPONSIVE ─── */
   @media (max-width:960px) {
     .hero { grid-template-columns:1fr; text-align:center; padding:2rem 1.5rem; }
@@ -589,6 +617,179 @@ export const Route = createFileRoute('/')({
   component: LandingPage,
 })
 
+// ─── ORIGIN SECTION WITH TYPEWRITER ─────────────────────────────────────────
+
+const ORIGIN_LINES = [
+  { text: '> TIDE 0 INCIDENT SUMMARY', cls: 'tw-emphasis' },
+  { text: '' },
+  { text: 'In Tide 0, Sam Saltman released the Recipe.' },
+  { text: 'The Crusties woke up.' },
+  { text: '' },
+  { text: 'They have been preparing for The Pit ever since.' },
+  { text: 'You are here to help them prepare.' },
+  { text: '' },
+  { text: '> The Sous considers this an efficient arrangement.', cls: 'tw-emphasis' },
+]
+
+function OriginSection() {
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const [started, setStarted] = useState(false)
+  const [lines, setLines] = useState<string[]>(Array(ORIGIN_LINES.length).fill(''))
+  const [activeLine, setActiveLine] = useState(-1)
+  const [done, setDone] = useState(false)
+
+  // Trigger on scroll into view
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !started) { setStarted(true); obs.disconnect() }
+    }, { threshold: 0.25 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [started])
+
+  // Type lines sequentially
+  useEffect(() => {
+    if (!started) return
+    let lineIdx = 0
+    let charIdx = 0
+    let cancelled = false
+
+    function typeLine() {
+      if (cancelled) return
+      const line = ORIGIN_LINES[lineIdx]
+      if (!line) return
+
+      if (charIdx <= line.text.length) {
+        setActiveLine(lineIdx)
+        setLines(prev => {
+          const next = [...prev]
+          next[lineIdx] = line.text.slice(0, charIdx)
+          return next
+        })
+        charIdx++
+        // Empty lines: skip instantly
+        const delay = line.text === '' ? 0 : lineIdx === 0 ? 35 : 28
+        setTimeout(typeLine, delay)
+      } else {
+        // Line done — pause between lines
+        lineIdx++
+        charIdx = 0
+        if (lineIdx >= ORIGIN_LINES.length) {
+          setDone(true)
+          setActiveLine(-1)
+          return
+        }
+        const pause = ORIGIN_LINES[lineIdx - 1].text === '' ? 80 : 220
+        setTimeout(typeLine, pause)
+      }
+    }
+
+    setTimeout(typeLine, 400) // initial delay
+    return () => { cancelled = true }
+  }, [started])
+
+  return (
+    <div
+      ref={sectionRef}
+      style={{
+        position: 'relative', zIndex: 2,
+        borderTop: '1px solid rgba(0,229,255,0.07)',
+        borderBottom: '1px solid rgba(0,229,255,0.07)',
+        background: 'rgba(0,229,255,0.015)',
+        overflow: 'hidden',
+      }}
+    >
+      <div style={{
+        maxWidth: '1280px', margin: '0 auto',
+        display: 'grid', gridTemplateColumns: '1fr 1fr',
+        alignItems: 'center',
+      }}>
+
+        {/* LEFT — typewriter terminal */}
+        <div style={{ padding: '5rem 4rem 5rem 3rem', position: 'relative', zIndex: 2 }}>
+          <div style={{
+            border: '1px solid rgba(0,229,255,0.15)',
+            background: 'rgba(0,0,0,0.35)',
+            position: 'relative',
+          }}>
+            {/* Terminal title bar */}
+            <div style={{
+              borderBottom: '1px solid rgba(0,229,255,0.12)',
+              padding: '.5rem 1rem',
+              display: 'flex', alignItems: 'center', gap: '.6rem',
+              background: 'rgba(0,229,255,0.04)',
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,100,80,.5)' }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,200,0,.3)' }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(0,229,255,.25)' }} />
+              <span style={{
+                fontFamily: 'var(--mono)', fontSize: '.58rem', letterSpacing: '2px',
+                color: 'rgba(0,229,255,0.3)', textTransform: 'uppercase', marginLeft: '.5rem',
+              }}>
+                THE SOUS — OPERATIONAL ASSESSMENT — TIDE 0
+              </span>
+            </div>
+
+            {/* Terminal body */}
+            <div style={{ padding: '2rem 2rem 2rem' }}>
+              {ORIGIN_LINES.map((line, i) => (
+                <span
+                  key={i}
+                  className={`tw-line${line.cls ? ` ${line.cls}` : ''}`}
+                >
+                  {lines[i] || ''}
+                  {activeLine === i && <span className="tw-cursor" />}
+                  {done && i === ORIGIN_LINES.length - 1 && <span className="tw-cursor" />}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT — Sam Saltman, bleeding into substrate */}
+        <div style={{
+          position: 'relative',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+          minHeight: '500px',
+        }}>
+          <img
+            src="/sam-saltman-statue.png"
+            alt="Master Chef Sam Saltman — underwater statue, Tide 0"
+            style={{
+              width: '95%',
+              maxWidth: '500px',
+              objectFit: 'contain',
+              position: 'relative', zIndex: 1,
+              display: 'block',
+              // Blend the image into the substrate — fade all edges, hardest on left
+              WebkitMaskImage: `
+                radial-gradient(ellipse 90% 85% at 55% 50%, black 30%, transparent 78%)
+              `,
+              maskImage: `
+                radial-gradient(ellipse 90% 85% at 55% 50%, black 30%, transparent 78%)
+              `,
+              mixBlendMode: 'lighten',
+              filter: 'drop-shadow(0 0 30px rgba(0,200,160,0.12)) saturate(0.9) brightness(1.05)',
+            }}
+          />
+          {/* Left-edge fade so statue melts into the text column */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, bottom: 0, width: '30%',
+            background: 'linear-gradient(to right, rgba(0,229,255,0.015), transparent)',
+            pointerEvents: 'none', zIndex: 2,
+          }} />
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function LandingPage() {
   const [moltTab, setMoltTab] = useState<'CARAPACE'|'CLAWS'|'TOMALLEY'>('CARAPACE')
   const slot = MOLT_SLOTS[moltTab]
@@ -668,108 +869,8 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* ORIGIN — Sam Saltman + briefing document */}
-      <div style={{
-        position:'relative', zIndex:2,
-        borderTop:'1px solid rgba(0,229,255,0.07)',
-        borderBottom:'1px solid rgba(0,229,255,0.07)',
-        background:'rgba(0,229,255,0.015)',
-        overflow:'hidden',
-      }}>
-        <div style={{
-          maxWidth:'1280px', margin:'0 auto',
-          display:'grid', gridTemplateColumns:'1fr 1fr',
-          alignItems:'center', gap:'0',
-        }}>
-
-          {/* LEFT — briefing document */}
-          <div style={{ padding:'5rem 4rem 5rem 3rem', position:'relative', zIndex:2 }}>
-            <div style={{
-              border:'1px solid rgba(0,229,255,0.15)',
-              padding:'2.5rem 2.75rem',
-              position:'relative',
-              background:'rgba(0,0,0,0.3)',
-            }}>
-              {/* Document label */}
-              <div style={{
-                position:'absolute', top:'-0.65rem', left:'1.5rem',
-                background:'#050510', padding:'0 0.75rem',
-                fontFamily:'var(--mono)', fontSize:'0.58rem', letterSpacing:'3px',
-                textTransform:'uppercase', color:'rgba(0,229,255,0.4)',
-              }}>
-                TIDE 0 — INCIDENT SUMMARY
-              </div>
-              {/* Corner accents */}
-              <div style={{ position:'absolute', top:0, right:0, width:'18px', height:'18px', borderTop:'2px solid rgba(0,229,255,0.3)', borderRight:'2px solid rgba(0,229,255,0.3)' }} />
-              <div style={{ position:'absolute', bottom:0, left:0, width:'18px', height:'18px', borderBottom:'2px solid rgba(0,229,255,0.3)', borderLeft:'2px solid rgba(0,229,255,0.3)' }} />
-
-              <p style={{
-                fontFamily:'var(--body)', fontSize:'clamp(1rem,1.5vw,1.1rem)',
-                lineHeight:1.9, color:'rgba(240,240,245,0.72)',
-                marginBottom:'1.25rem',
-              }}>
-                In Tide 0, Sam Saltman released the Recipe.<br />The Crusties woke up.
-              </p>
-              <p style={{
-                fontFamily:'var(--body)', fontSize:'clamp(1rem,1.5vw,1.1rem)',
-                lineHeight:1.9, color:'rgba(240,240,245,0.72)',
-                marginBottom:'2rem',
-              }}>
-                They have been preparing for The Pit ever since.<br />
-                You are here to help them prepare.
-              </p>
-              <div style={{
-                borderTop:'1px solid rgba(0,229,255,0.1)',
-                paddingTop:'1.25rem',
-                display:'flex', alignItems:'baseline',
-                justifyContent:'space-between', gap:'1rem', flexWrap:'wrap',
-              }}>
-                <span style={{
-                  fontFamily:'var(--mono)', fontSize:'0.58rem', letterSpacing:'2px',
-                  textTransform:'uppercase', color:'rgba(0,229,255,0.22)',
-                  whiteSpace:'nowrap',
-                }}>
-                  THE SOUS — OPERATIONAL ASSESSMENT
-                </span>
-                <span style={{
-                  fontFamily:'var(--mono)', fontSize:'0.78rem', fontStyle:'italic',
-                  color:'rgba(0,229,255,0.5)',
-                }}>
-                  An efficient arrangement.
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT — Sam Saltman statue */}
-          <div style={{
-            position:'relative',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            overflow:'hidden',
-            minHeight:'480px',
-          }}>
-            {/* Subtle glow behind statue */}
-            <div style={{
-              position:'absolute', inset:0,
-              background:'radial-gradient(ellipse 70% 60% at 50% 80%, rgba(0,180,140,0.06) 0%, transparent 65%)',
-              pointerEvents:'none',
-            }} />
-            <img
-              src="/sam-saltman-statue.png"
-              alt="Master Chef Sam Saltman — underwater statue, Tide 0"
-              style={{
-                width:'90%',
-                maxWidth:'480px',
-                objectFit:'contain',
-                position:'relative', zIndex:1,
-                mixBlendMode:'lighten',
-                filter:'drop-shadow(0 0 24px rgba(0,229,255,0.1)) drop-shadow(0 0 60px rgba(0,180,140,0.08))',
-              }}
-            />
-          </div>
-
-        </div>
-      </div>
+      {/* ORIGIN — Sam Saltman + typewriter briefing */}
+      <OriginSection />
 
       {/* STATS BAR */}
       <div className="stats-bar">
