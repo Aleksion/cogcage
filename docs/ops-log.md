@@ -556,3 +556,24 @@ bun run build (web/)
 1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates checkout CTA
 2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret
 3. Merge PR #50 (Babylon.js 3D arena) when ready
+
+---
+
+### Autopilot Checkpoint — 23:23 ET, Mar 1 2026
+
+**Directive**: STOP copy iterations. P1-P3 priorities.
+
+**Status:**
+
+- **P1 ✅ LIVE** — Signup reliability + Redis storage + observable logs (main `e6fc977`)
+- **P2 ✅ LIVE** — `/demo` live with map movement (PR #46 merged `dbf4d6b`). Babylon.js 3D engine (WS21) PR #50 open — build fixed, Vercel passing.
+- **P3 ✅ code live ⚠️ env vars blocked** — Founder checkout live; `PUBLIC_STRIPE_FOUNDER_URL` not set by Aleks.
+- **P4 ✅** — Ops log current.
+
+**This pass:** Build ✅, tests 4/4 ✅. No new product-critical code changes. HEAD `bf733f1` (LFS config for 3D assets).
+
+**Aleks action required (blocking monetization):**
+1. `PUBLIC_STRIPE_FOUNDER_URL` → Stripe payment link URL → Vercel env → activates checkout CTA
+2. `COGCAGE_POSTBACK_KEY` → Vercel env + Stripe webhook secret
+3. `COGCAGE_OPS_KEY` → Vercel env → secures /api/ops
+4. Merge PR #50 (Babylon.js 3D arena) when ready
