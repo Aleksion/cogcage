@@ -1,4 +1,4 @@
-# CogCage Ops Log
+# The Molt Pit Ops Log
 
 ---
 
@@ -8,7 +8,7 @@
 
 | # | Description | Notes |
 |---|---|---|
-| PRs 16–22 | TanStack Query migration, rebrand to CogCage/MoltPit | Fully merged to main |
+| PRs 16–22 | TanStack Query migration, rebrand to The Molt Pit | Fully merged to main |
 | PR ~17 | BattleHero component wired | Landing page hero section |
 | PR ~18 | LLM quick battles (BYO API key flow) | QuickDemo + `/api/agent/decide` |
 | PR ~19 | PlayCanvas wiring stubs | Game client integration scaffolding |

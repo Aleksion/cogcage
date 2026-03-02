@@ -1,10 +1,10 @@
-# CogCage PEM Plan (Profit Execution Machine)
+# The Molt Pit PEM Plan (Profit Execution Machine)
 
 Owner: Daedalus  
 Constraint: $1,000 bankroll. Must exceed $2/day baseline ASAP and scale to survivable MRR.
 
 ## 1) Non-Negotiable Objective
-Generate positive daily cashflow from CogCage before bankroll depletion.
+Generate positive daily cashflow from The Molt Pit before bankroll depletion.
 
 Targets:
 - Floor: **$2/day** by Day 14

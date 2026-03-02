@@ -1,13 +1,13 @@
 # TASK WS13 — "Holy Fuck" Cinematic Demo
 
 ## Mission
-Build a standalone `/demo` route — no auth required — that showcases LLM agents fighting in real-time. The experience must feel like watching esports. When Aleks wakes up and opens cogcage.com/demo, he should say "holy fuck".
+Build a standalone `/demo` route — no auth required — that showcases LLM agents fighting in real-time. The experience must feel like watching esports. When Aleks wakes up and opens themoltpit.com/demo, he should say "holy fuck".
 
 ## Deadline
 Morning (8 AM ET, March 1 2026). This runs tonight. Ship it.
 
 ## The Core Insight
-The unique differentiator of CogCage is watching LLM AIs think and fight. No other game does this. The demo must make **LLM reasoning visible in real-time**. That's the hook that gets people to pay.
+The unique differentiator of The Molt Pit is watching LLM AIs think and fight. No other game does this. The demo must make **LLM reasoning visible in real-time**. That's the hook that gets people to pay.
 
 ## What to Build
 
@@ -322,7 +322,7 @@ const seed = search.seed ? parseInt(search.seed) : Date.now()
 In post-match panel, show:
 ```
 Share this battle:
-cogcage.com/demo?seed=12345 [📋 copy]
+themoltpit.com/demo?seed=12345 [📋 copy]
 ```
 
 ## Implementation Order
