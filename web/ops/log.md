@@ -2,6 +2,21 @@
 
 ---
 
+## Product-Mode Audit — 15:31 ET Mar 2
+
+Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.
+
+### Shipped artifacts this pass
+- No new copy or non-critical scope touched.
+- Re-verified product-critical lane already shipped and active:
+  - Signup reliability path (`/api/waitlist`, `/api/founder-intent`) with Redis → SQLite → fallback queue behavior.
+  - Playable demo loop (`DemoLoop` + `Play`) with map movement and AP/action economy.
+  - Monetization path (`PUBLIC_STRIPE_FOUNDER_URL`, `/api/postback`, `/api/checkout-success`) and event lifecycle.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+
+
 ## Product-Mode Ship — 16:46 ET Mar 2
 
 Directive executed: prioritize P1 signup reliability, P2 playable loop, P3 monetization postback lifecycle, P4 ops artifacts.
