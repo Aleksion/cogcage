@@ -8,6 +8,54 @@
 
 ---
 
+## [2026-03-01] - feat(ws21): Babylon.js 3D game engine — Sprint 1
+
+**Type:** feature | **Budget impact:** ~$0.15 (no API calls, local dev only)
+
+### Head of Engineering (WS21)
+
+**Game engine upgrade — Babylon.js replaces Phaser 3 / Three.js / PlayCanvas:**
+
+- **Engine decision locked: Babylon.js** (logged in `design/DECISIONS.md`)
+  - 3D-first engine for incoming GLTF assets from visual team
+  - Isometric orthographic camera (TFT/LoL 45° angle)
+  - TypeScript-first, full game engine (ECS, animation, physics, scene graph)
+  - Cloudflare DO WebSocket pipes into Babylon scene update loop
+
+- `web/app/game/PitScene.ts` — Babylon.js arena scene
+  - Dark Brine aesthetic with bioluminescent point lights (cyan, purple)
+  - 20x20 grid floor with thin box grid lines (every 5th line glows cyan)
+  - MAP 001 "THE STANDARD" tile rendering: WALL (3D boxes with purple trim dots), COVER (low boxes), HAZARD (ground planes with pulsing orange glow)
+  - Placeholder Crustie meshes: capsules with claw stubs, emissive eyes, team colors (cyan/red)
+  - HP bars and tick counter via @babylonjs/gui fullscreen UI
+  - Animated position lerp (12 frames ~200ms) on each tick
+  - VFX animations: PINCH (slash line + impact flash), SPIT (projectile sphere with impact burst), SHELL UP (expanding green shield sphere), BURST (expanding torus ring)
+  - Floating damage numbers linked to world-space anchors
+  - Match end overlay ("SCUTTLE OVER" + winner name)
+  - GlowLayer for bioluminescent atmosphere
+
+- `web/app/components/BabylonArena.tsx` — React wrapper component
+  - Dynamic import of PitScene (SSR-safe)
+  - Accepts WebSocket snapshots, forwards to PitScene
+  - Lifecycle management (create/dispose)
+  - `useWebSocketArena` hook for standalone usage
+
+- `web/app/components/Play.tsx` — Replaced Phaser/PlayCanvas references with Babylon
+  - Removed dead PlayCanvas lifecycle code
+  - Removed dead Phaser imports and state
+  - BabylonArena now receives snapshot via `babylonSnap` state
+
+- `web/package.json` — Dependency cleanup
+  - Removed: `phaser`, `three`, `@types/three`, `playcanvas`
+  - Added: `@babylonjs/core@8.53.0`, `@babylonjs/loaders@8.53.0`, `@babylonjs/gui@8.53.0`
+
+- `/api/agent/decide` endpoint — already exists (no changes needed)
+  - Multi-provider LLM support (OpenAI, Anthropic, Groq, OpenRouter)
+  - Scripted AI fallback when no API key available
+  - Skill/tool-use support with two-pass LLM calls
+
+---
+
 ## [2026-03-01] - feat(ws21): Phaser 3 game engine — Sprint 1
 
 **Type:** feature | **Budget impact:** ~$0.10 (no API calls, local dev only)

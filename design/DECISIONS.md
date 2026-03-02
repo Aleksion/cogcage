@@ -263,3 +263,10 @@ Rejected: Color-by-category (same color for all Claws) — loses item personalit
 Decided by: Aleks (Mar 1, 2026)
 Every user-facing reference, UI copy, doc, and comment: CogCage/Cogcage/cogcage → The Molt Pit.
 Excluded from rename: GitHub repo URLs, Vercel project name, local directory paths, npm package names.
+
+---
+
+**WS21 Game Engine: Babylon.js selected**
+Decided by: Head of Engineering (WS21, 2026-03-01)
+Babylon.js is the 3D game engine for The Pit's arena renderer. TypeScript-first, full game engine (ECS, animation, physics, scene graph), orthographic camera for TFT/LoL isometric angle, GLTF loader for incoming 3D assets from visual team, React integration via canvas ref pattern. Cloudflare DO WebSocket pipes cleanly into Babylon scene update loop. Babylon.js has the largest AI training corpus of any 3D web game engine.
+Rejected: Phaser 3 (2D only — cannot render 3D GLTF assets), Three.js/R3F (renderer wrapper, not a game engine — no built-in ECS, animation system, or scene management), PlayCanvas (smaller ecosystem, less TypeScript support), Unreal (not web-native)

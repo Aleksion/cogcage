@@ -9,8 +9,8 @@ import {
   TICK_RATE,
 } from '../lib/ws2/index.js';
 import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-types';
-import type { MatchSnapshot as PhaserSnapshot } from '../lib/ws2/MatchScene';
-import { PhaserArena } from './PhaserArena';
+import type { MatchSnapshot as BabylonSnapshot } from '../game/PitScene';
+import { BabylonArena } from './BabylonArena';
 
 const ENGINE_WS_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_ENGINE_WS_URL) ||
@@ -431,18 +431,14 @@ const Play = () => {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [ffaBusy, setFfaBusy] = useState(false);
 
-  // --- Phaser Arena ---
-  const [phaserSnap, setPhaserSnap] = useState<PhaserSnapshot | null>(null);
+  // --- Babylon Arena ---
+  const [babylonSnap, setBabylonSnap] = useState<BabylonSnapshot | null>(null);
 
-  // --- PlayCanvas (legacy, kept for fallback) ---
-  const [pcActive, setPcActive] = useState(false);
-  const playCanvasRef = useRef<HTMLCanvasElement>(null);
   const [vfxWord, setVfxWord] = useState<{ text: string; color: string; id: number } | null>(null);
 
   // --- Refs ---
   const abortRef = useRef<AbortController | null>(null);
   const prevEventsLenRef = useRef(0);
-  const sceneRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   /** Tracks bots with an in-flight /api/agent/decide call — prevents queuing overlapping decisions */
   const agentBusyRef = useRef<Set<string>>(new Set());
@@ -478,49 +474,7 @@ const Play = () => {
     return () => clearInterval(interval);
   }, [phase, showRoomPanel]);
 
-  // --- Canvas VFX word overlay listener ---
-  useEffect(() => {
-    const canvas = playCanvasRef.current;
-    if (!canvas) return;
-    const handler = (e: Event) => {
-      const { text, color } = (e as CustomEvent).detail;
-      const id = Date.now();
-      setVfxWord({ text, color, id });
-      setTimeout(() => setVfxWord((prev) => (prev?.id === id ? null : prev)), 700);
-    };
-    canvas.addEventListener('moltpit:vfx', handler);
-    return () => canvas.removeEventListener('moltpit:vfx', handler);
-  }, [phase]);
-
-  // --- PlayCanvas lifecycle ---
-  useEffect(() => {
-    if (phase !== 'match' || !playCanvasRef.current) return;
-
-    let destroyed = false;
-
-    import('../lib/ws2/PlayCanvasScene').then(({ PlayCanvasScene }) => {
-      if (destroyed || !playCanvasRef.current) return;
-      try {
-        const scene = new PlayCanvasScene(playCanvasRef.current);
-        sceneRef.current = scene;
-        setPcActive(true);
-      } catch (e) {
-        console.warn('[PlayCanvas] Init failed, using CSS grid:', e);
-        setPcActive(false);
-      }
-    }).catch((e) => {
-      console.warn('[PlayCanvas] Load failed, using CSS grid:', e);
-      setPcActive(false);
-    });
-
-    return () => {
-      destroyed = true;
-      sceneRef.current?.destroy?.();
-      sceneRef.current = null;
-      setPcActive(false);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
+  // (PlayCanvas/Phaser lifecycle removed — Babylon.js arena is rendered via BabylonArena component)
 
   // --- VFX helpers ---
   const spawnVfx = useCallback((cell: { x: number; y: number }, text: string, color: string, type: VfxEvent['type'] = 'burst', duration = 600) => {
@@ -563,9 +517,6 @@ const Play = () => {
 
   // --- Snapshot handler ---
   const handleSnapshot = useCallback((snap: MatchSnapshot) => {
-    // Forward snapshot to PlayCanvas scene if available
-    sceneRef.current?.update?.(snap);
-
     const s = snap.state;
     const actorA = s.actors?.botA;
     const actorB = s.actors?.botB;
@@ -661,7 +612,6 @@ const Play = () => {
     setBotALastAction('');
     setBotBLastAction('');
     setArenaFlash(false);
-    setPcActive(false);
     prevEventsLenRef.current = 0;
 
     const seedLabel = seedInput.trim() || `${Date.now()}`;
@@ -784,8 +734,8 @@ const Play = () => {
             };
             handleSnapshot(snap);
 
-            // Feed Phaser arena
-            setPhaserSnap({
+            // Feed Babylon arena
+            setBabylonSnap({
               state: msg.state,
               decisions: [],
               newEvents: events,
@@ -1367,16 +1317,16 @@ const Play = () => {
             </div>
           </div>
 
-          {/* Phaser 3 Arena — The Pit */}
+          {/* Babylon.js Arena — The Pit */}
           <div style={{ position: 'relative', width: '100%', maxWidth: '920px', margin: '0 auto 1rem' }}>
-            <PhaserArena
-              snapshot={phaserSnap}
+            <BabylonArena
+              snapshot={babylonSnap}
               botNames={{ botA: aName, botB: bName }}
               onMatchEnd={(wId) => {
                 if (wId) setWinnerId(wId);
               }}
             />
-            {/* Comic art VFX overlay — POW!/BANG! words over Phaser canvas */}
+            {/* Comic art VFX overlay — POW!/BANG! words over Babylon canvas */}
             {vfxEvents.map((v) => (
               <div
                 key={v.id}
