@@ -555,19 +555,19 @@ const MOLT_SLOTS = {
     desc: 'What absorbs the hits so your Crustie doesn\'t have to. The Pit will test this decision thoroughly. The Pit returns nothing.',
     items: [
       {
-        name:'BLOCK-7', rarity:'Common', rarityColor:'rgba(255,255,255,0.35)', cls:'', accent:'rgba(255,255,255,0.15)',
-        stat:'+30 HP · 10% Damage Reduction', icon:'/icons/carapace-block-7.png',
-        desc:'A classified military prototype that found its way into The Brine through channels The House describes as "procurement-adjacent." The procurement chain is three entries long. Two are redacted. The third is a signature that does not match any known Chef.',
+        name:'INVERTER', rarity:'Legendary', rarityColor:'#E91E63', cls:'legendary', accent:'#E91E63',
+        stat:'Below 50% HP: Damage → HP', icon:'/icons/carapace-inverter.png',
+        desc:'Below 50% HP, damage taken converts to HP gained. This sounds great. The researchers who discovered this were immediately transferred to a different project and have not been heard from since.',
       },
       {
-        name:'GHOST SHELL', rarity:'Legendary', rarityColor:'#FFD600', cls:'legendary', accent:'#9C27B0',
-        stat:'−10 HP · 25% Miss Chance', icon:'/icons/carapace-ghost-shell.png',
-        desc:'One in four hits passes through it without making contact. Not deflected. Not absorbed. The hit simply does not land. The Sous has reviewed the code. The code is correct. The manufacturer describes the technology as "probability-adjacent." Nobody else uses this term.',
+        name:'THE SARCOPHAGUS', rarity:'Legendary', rarityColor:'#FFD600', cls:'legendary', accent:'#607D8B',
+        stat:'First 3 Hits: Zero Damage · Then: −20 HP', icon:'/icons/carapace-the-sarcophagus.png',
+        desc:'Immune to the first three hits of any Scuttle. Completely. Zero damage. Then the seals break. Whatever is left is very exposed. This was not the original purpose of a sarcophagus but here we are.',
       },
       {
-        name:'THE PATRIARCH', rarity:'Legendary', rarityColor:'#FFD600', cls:'legendary', accent:'#FFD600',
-        stat:'+50 HP · BURST Disabled', icon:'/icons/carapace-the-patriarch.png',
-        desc:'The heaviest Carapace in the Registry. No BURST. No repositioning. You commit to every engagement you enter, which means you should choose your engagements carefully. THE PATRIARCH does not care whether you choose carefully.',
+        name:'PAPER-MACHÉ', rarity:'Common', rarityColor:'rgba(255,255,255,0.35)', cls:'', accent:'#FFECB3',
+        stat:'Movement +30% · −40 HP', icon:'/icons/carapace-paper-mache.png',
+        desc:'Someone made this by hand. It was a thoughtful gesture. It is made of paper. The creator meant well. This does not help you in the Pit.',
       },
     ],
   },
@@ -582,7 +582,7 @@ const MOLT_SLOTS = {
       {
         name:'THE FLICKER', rarity:'Rare', rarityColor:'#9C27B0', cls:'rare', accent:'#F44336',
         stat:'−40% Damage · 8 Bleed Stacks', icon:'/icons/claws-the-flicker.png',
-        desc:'Nobody knows who built THE FLICKER. It appeared in The Brine between Tides 2 and 3 — the same gap that produced ORACLE. The Sous says this is a coincidence. The House\'s file on the Tide 2-3 gap is sealed to all queries below Deep rank.',
+        desc:'Nobody knows who built THE FLICKER. It appeared in The Brine between Tides 2 and 3 — the same gap that produced ORACLE. The Sous says this is a coincidence. The Sous\'s file on the Tide 2-3 gap is sealed to all queries below Deep rank.',
       },
       {
         name:'THE REACH', rarity:'Common', rarityColor:'rgba(255,255,255,0.35)', cls:'', accent:'rgba(255,255,255,0.15)',
@@ -597,7 +597,7 @@ const MOLT_SLOTS = {
       {
         name:'ORACLE', rarity:'Legendary', rarityColor:'#FFD600', cls:'legendary', accent:'#FFD600',
         stat:'+15% Accuracy · +500ms Window', icon:'/icons/tomalley-oracle.png',
-        desc:'The Sous says it does not know how ORACLE arrived. The Sous is lying. The Sous knows it is lying. The Chefs know it is lying. Everyone has agreed not to press the point, because ORACLE is too useful to risk having The Sous "re-examine its provenance," which is a phrase The House used once and which everyone understood as a threat.',
+        desc:'The Sous says it does not know how ORACLE arrived. The Sous is lying. The Sous knows it is lying. The Chefs know it is lying. Everyone has agreed not to press the point, because ORACLE is too useful to risk having The Sous "re-examine its provenance," which is a phrase The Sous used once and which everyone understood as a threat.',
       },
       {
         name:'THE RED GENE', rarity:'Common', rarityColor:'rgba(255,255,255,0.35)', cls:'', accent:'#FF1744',
