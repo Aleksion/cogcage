@@ -1,7 +1,18 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useAuthActions } from '@convex-dev/auth/react'
-import { useConvexAuth } from 'convex/react'
+import { useConvexAuth, useMutation } from 'convex/react'
 import { useEffect, useState } from 'react'
+import { api } from '../../convex/_generated/api'
+
+// Privacy-preserving email hash (FNV-32, hex) — same algo as auth-log.ts on server
+function hashEmail(email: string): string {
+  let h = 2166136261
+  for (let i = 0; i < email.length; i++) {
+    h ^= email.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return ((h >>> 0) >>> 0).toString(16)
+}
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap');
@@ -314,14 +325,18 @@ function GitHubSignIn() {
   const { signIn } = useAuthActions()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const logAuthEvent = useMutation(api.authLog.logAuthEvent)
 
   const handleGitHub = async () => {
     setError('')
     setLoading(true)
     try {
       await signIn('github')
+      void logAuthEvent({ method: 'github', success: true })
     } catch (e: any) {
-      setError(e.message || 'GitHub sign-in failed — try again')
+      const msg = e.message || 'GitHub sign-in failed — try again'
+      setError(msg)
+      void logAuthEvent({ method: 'github', success: false, errorCode: msg.slice(0, 120) })
       setLoading(false)
     }
   }
@@ -355,6 +370,7 @@ function EmailOTPForm() {
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const logAuthEvent = useMutation(api.authLog.logAuthEvent)
 
   const handleSendCode = async () => {
     setError('')
@@ -362,8 +378,11 @@ function EmailOTPForm() {
     try {
       await signIn('resend-otp', { email })
       setSent(true)
+      void logAuthEvent({ method: 'email-otp', success: true, emailHash: hashEmail(email.trim().toLowerCase()) })
     } catch (e: any) {
-      setError(e.message || 'Failed to send code')
+      const msg = e.message || 'Failed to send code'
+      setError(msg)
+      void logAuthEvent({ method: 'email-otp', success: false, emailHash: hashEmail(email.trim().toLowerCase()), errorCode: msg.slice(0, 120) })
     } finally {
       setLoading(false)
     }
@@ -374,8 +393,11 @@ function EmailOTPForm() {
     setLoading(true)
     try {
       await signIn('resend-otp', { email, code })
+      void logAuthEvent({ method: 'email-otp', success: true, emailHash: hashEmail(email.trim().toLowerCase()) })
     } catch (e: any) {
-      setError(e.message || 'Invalid code — try again')
+      const msg = e.message || 'Invalid code — try again'
+      setError(msg)
+      void logAuthEvent({ method: 'email-otp', success: false, emailHash: hashEmail(email.trim().toLowerCase()), errorCode: msg.slice(0, 120) })
     } finally {
       setLoading(false)
     }

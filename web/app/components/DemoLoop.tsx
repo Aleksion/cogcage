@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
 
+const STRIPE_FOUNDER_URL = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? ''
+
 // ── Action Economy ──
 type Action = 'MOVE' | 'ATTACK' | 'DEFEND' | 'CHARGE' | 'STUN'
 type GameMode = 'watch' | 'play'
@@ -844,7 +846,9 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
               ? 'Both crawlers still standing after 15 rounds.'
               : `${match.winner} crushed the opposition.`}
           </div>
-          <Link to="/shell" className="demo-cta">BUILD YOUR CRAWLER &rarr;</Link>
+          {STRIPE_FOUNDER_URL
+            ? <a href={STRIPE_FOUNDER_URL} className="demo-cta">GET FOUNDER PACK &rarr;</a>
+            : <Link to="/sign-in" className="demo-cta">ENTER THE PIT &rarr;</Link>}
           <button className="demo-restart" onClick={startNewMatch}>Watch another match</button>
         </div>
       )}
@@ -1083,7 +1087,9 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           <div className="demo-winner-sub">
             {winner === 'YOU WIN!' ? 'Your Crustie dominated The Pit.' : winner === 'DRAW' ? 'Both still standing after 15 rounds.' : 'The AI held its line.'}
           </div>
-          <Link to="/shell" className="demo-cta">BUILD YOUR CRAWLER &rarr;</Link>
+          {STRIPE_FOUNDER_URL
+            ? <a href={STRIPE_FOUNDER_URL} className="demo-cta">GET FOUNDER PACK &rarr;</a>
+            : <Link to="/sign-in" className="demo-cta">ENTER THE PIT &rarr;</Link>}
           <button className="demo-restart" onClick={resetGame}>Play again</button>
         </div>
       )}
