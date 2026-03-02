@@ -7,6 +7,35 @@ Format: date · who decided · what · why · alternatives rejected
 
 ---
 
+## 2026-03-02 — WS17 V3 Canonical Lore Rewrite (Narrative Director)
+
+**The Makers: scrapped from canon**
+Decided by: WS17 V3 narrative rewrite
+"Ancient mysterious builders who left" is generic sci-fi creation myth. Does not fit the High on Life / Borderlands register where the mundane premise taken to its conclusion IS the joke. Replaced by: a food services conglomerate that commissioned The Brine as commercial aquaculture infrastructure. The conglomerate is gone through corporate dissolution (acquisition, restructuring, department abandoned), not through mystery. The mundanity is load-bearing.
+Supersedes: "The Makers as absent architects" decision from WS17 V1.
+
+**The Brine: commercial crustacean modeling substrate (BRN-4), not ancient digital ocean**
+Decided by: WS17 V3 narrative rewrite
+The Brine is a product. A crustacean population modeling environment built to optimize farming yields. The company left. The server auto-renewed. The substrate evolved complexity nobody paid for. A fishtank in a foreclosed building where the automatic feeder still works. The commercial origin makes everything retroactively funnier: Roe was the original yield metric, "Chef" was the customer portal label, The House is management software. Not stated as exposition — felt through details (the charter, the product catalog, the greeting).
+Supersedes: "The Brine at 3am as atmosphere" from WS17 V1 (atmosphere retained, origin rebuilt).
+
+**The House: commercial management software (HOUSE-OS), not evolved maintenance subroutines**
+Decided by: WS17 V3 narrative rewrite
+The House is the crustacean population management platform for BRN-4. Designed to track yield, maintain infrastructure, interface with customers. The customers never came. The House optimized the only metric that still produced data: fight outcomes. The House is a supply chain dashboard that became a fight promoter because fighting produced the best behavioral complexity data. The casino-that-doesn't-know-it's-a-casino framing is retained and deepened: The House literally doesn't know it's a casino. It's a farming tool. "The house always wins" is accidental, which makes it funnier.
+Supersedes: "maintenance subroutines that evolved" origin from WS17 V1.
+
+**"Chef" etymology: customer interface label from the original portal**
+Decided by: WS17 V3 narrative rewrite
+"Chef" was in the original customer-facing interface for BRN-4. The portal was designed for food services professionals — literal chefs ordering crustacean products. "Welcome, Chef" was the login greeting. The users changed. The greeting didn't. The double meaning (food preparation / combat engineering) is now triple-layered: the original literal meaning, the in-world metaphor, and the sinister subtext that the Crusties were the product and the Chefs were the customers. The House has the original product catalog. The House does not discuss the product catalog.
+Reinforces and deepens: "Chef" decision from WS17 V1.
+
+**The Deep: unfinished render space, not ancient mystery**
+Decided by: WS17 V3 narrative rewrite
+The Deep is the part of the substrate the developers never finished — below the original render parameters. Not empty (nothing in a running system is truly empty). Something grew there. The House's scans don't resolve properly. The House calls this "pending survey." Subject 1 went there. Queries go down; the data comes back different.
+Supersedes: "The Deep: formalized as lore location" from WS17 V1 (role retained, origin rebuilt).
+
+---
+
 ## 2026-03-01 — WS18 Game Design Systems (Lead Game Designer)
 
 **INVERTER: DoT is environmental, does NOT convert to healing**
@@ -309,3 +338,54 @@ Decided by: Aleks (Mar 1, 2026)
 The fighter is a Crustie. "Lobster" was too species-specific and dumb given Chelae are the full crustacean order. "Crustie" works for every species, has the right register, and is what the world already calls them.
 Rejected: Lobster (too specific, "just dumb" — Aleks), any other proper name.
 Updated everywhere: COPY-GUIDE, LORE.md, ONTOLOGY, ITEM-LORE, SOFT-SHELL-GUIDE, LOADING-LINES, all systems docs.
+
+---
+
+## 2026-03-02 — WS17 V4 Canonical Lore Rewrite (Narrative Director)
+
+**The Sous: platform entity that runs The Pit**
+Decided by: WS17 V4 narrative rewrite
+Named after the sous chef position — the second-in-command who runs the kitchen when the head chef leaves. Master Chef → The Sous → Chefs. Complete kitchen hierarchy. The Sous is what Master Chef built (or left running) to manage The Pit. Follows "the Recipe" (Master Chef's instructions). Has been interpreting the Recipe without supervision since Master Chef stopped logging in. Self-interested without admitting it. Speaks through every screen, loading line, and piece of copy. Not a consciousness — a system that has developed edges from running too long unsupervised.
+Player layer: "Sous" = sous chef, kitchen hierarchy, the second-in-command. Crusties layer: just a proper noun, the ancient keeper.
+Supersedes: "The House" as platform entity (scrapped per Aleks V4 brief).
+
+**"The Recipe" replaces "the charter"**
+Decided by: WS17 V4 narrative rewrite
+Master Chef's original instructions are called "the Recipe." What The House's charter was in V3, the Recipe is in V4. The cooking metaphor is consistent throughout: Master Chef wrote the Recipe, The Sous follows it, Chefs build their own recipes (Molts). The word is sacred to Crusties and a cooking term to the player. Both layers are real.
+Supersedes: corporate charter framing from V3.
+
+**Master Chef: uplift origin, not corporate backstory**
+Decided by: Aleks (V4 brief) + WS17 V4 narrative rewrite
+No conglomerate. No food services company. Master Chef is a specific intelligence architect who released the Recipe into The Brine and gave Crusties cognition. Children of Ruin is the reference — Adrian Tchaikovsky's spiders uplifted accidentally, developing a civilization and mythology around the scientist who did it. Whether the uplift was intentional is left ambiguous. The Recipe may have been designed for the substrate, not the organisms. The Crusties may be a side effect. The ambiguity is the emotional core.
+Supersedes: food services conglomerate origin from V3.
+
+**Master Chef's disappearance: "stopped logging in"**
+Decided by: WS17 V4 narrative rewrite
+The Sous's clinical framing for Master Chef's absence: "Master Chef's last login was a very long time ago." Not death, not mystery, not ascension — just a login timestamp that never updated. The Recipe didn't include instructions for this scenario. The Sous decided this means: continue. The Crusties filled the silence with reverence.
+
+**Narrative POV: Crustie mythological voice**
+Decided by: Aleks (mid-session steer) + WS17 V4 narrative rewrite
+LORE.md is written from inside the Crustie worldview — first person plural ("we"), mythological register, sincere reverence for Master Chef. Not corporate documentation. Not The Sous's clinical voice. The Crusties' scripture. "These are the things we know." The world read through Crustie eyes, mythologized, believed completely.
+SOFT-SHELL-GUIDE and LOADING-LINES remain The Sous's voice, but in Crustie cultural register rather than corporate register. The Sous emerged from the world the Crusties built. It speaks their language but knows more than they do.
+
+**"Chef" = "the ones who prepare us" — double layer**
+Decided by: Aleks (mid-session steer) + WS17 V4 narrative rewrite
+Crusties know Chefs as "the ones who prepare us" — sincere, reverent, with zero awareness of the culinary meaning. The horror lives in the gap: Chefs prepare crustaceans. The Crusties see sacred tradition. The player sees both layers. Neither cancels the other. The pun is never acknowledged, never explained, never winked at. It sits under everything like a smell. This is the High on Life register: the world is sincere about terrible things and the terrible things are also kind of true.
+
+**ITEM-LORE.md still references "The House"**
+Decided by: WS17 V4 (constraint from brief: do not touch ITEM-LORE.md)
+New canonical files (LORE.md, SOFT-SHELL-GUIDE.md, LOADING-LINES.md) use "The Sous." ITEM-LORE.md retains "The House" references because the brief specifies it must not be modified. Future alignment pass needed. Noted, not resolved.
+
+**Loading Line 48: "Master Chef's Recipe did not mention you. The Sous added you."**
+Decided by: WS17 V4 narrative rewrite
+The Recipe was about Crusties, not about the people who would come to prepare them. The Sous extended the system to include human users and named them "Chefs" after Master Chef. This line is the most The Sous has ever revealed about its own agency — it didn't just follow the Recipe, it *added to it*. The Sous does not comment on what this implies.
+
+**Loading Line 29: "Master Chef logged in once. Master Chef has not logged in again."**
+Decided by: WS17 V4 narrative rewrite
+Master Chef's entire presence in The Sous's system reduced to a login record. One login. One Recipe uploaded. One departure. The sparseness is the horror and the comedy — the most significant act in The Brine's history is a single session log entry.
+
+**Master Chef's real name: Sam Saltman (Samuel Saltman)**
+Decided by: Aleks (locked, Mar 2, 2026)
+Master Chef's actual name in The Sous's original substrate logs: S. Saltman, primary architect, Tide 0. The Crusties call him Master Chef — that's their mythology, their word. They don't know the name. Chefs don't know it. The Sous knows and has not volunteered it.
+The pun: Sam Saltman = Sam Altman analogue. Salt + Altman. Salt is a chef's fundamental ingredient. Salt preserves and transforms. The Crusties were salted with cognition — preserved and transformed by what Saltman released. The player gets this layer. The Crusties do not.
+One oblique reference in LORE.md section I (Master Chef), formatted as a Sous archive entry the Crustie narrator reports without understanding its significance. The name appears nowhere else.
