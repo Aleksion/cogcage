@@ -1,8 +1,8 @@
 # ITEM LORE
 
-*Every item in The Brine has a history. The House recorded it. The House records everything.*
+*Every item in The Brine has a history. The House recorded it. The House records everything. What The House recorded has texture — specific people, specific incidents, specific moments where something went wrong or right or sideways in a way that ended up in the Registry.*
 
-*For mechanical specs, see `REGISTRY.md`. For sound design, see `SOUND-DESIGN.md`. This document is the story of how each item came to be, who made it, and what happened to them.*
+*For mechanical specs, see `REGISTRY.md`. For sound design, see `SOUND-DESIGN.md`.*
 
 ---
 
@@ -11,67 +11,127 @@
 ### BLOCK-7
 **Composite Exo-Plating — Common**
 
-Military grade. Discontinued after the seventh prototype survived a stress test that was designed to destroy it. The testing facility filed a report. The report was classified. The engineers who built prototypes one through six were reassigned. The engineer who built prototype seven was promoted, then transferred, then could not be located for comment. BLOCK-7 found its way into The Brine through channels The House describes as "procurement-adjacent." It is the most common Carapace in The Pit, which is a strange thing to say about something that was never supposed to leave a classified facility. It slows you down. It does not care.
+BLOCK-7 is the seventh prototype from a military-grade stress-testing program that ran, by most accounts, six prototypes too many. Prototypes one through six performed within spec. Prototype seven performed outside spec, above spec, and — during the final evaluation — through the wall of the testing chamber, which was not part of the test.
+
+The testing facility filed a report. The report was classified. The engineer who built prototypes one through six was reassigned. The engineer who built prototype seven was promoted, then transferred to a department that, upon investigation, does not appear to have existed before the transfer or after it. BLOCK-7 found its way into The Brine through channels The House describes as "procurement-adjacent." How a classified military prototype became the most common Carapace in The Pit is a question the procurement chain does not answer. The procurement chain is three entries long. Two of the entries are redacted. The third is a signature that does not match any known Chef.
+
+BLOCK-7 slows you down. Fifteen percent, specifically. BLOCK-7 does not care that it slows you down. BLOCK-7 was not built for speed. BLOCK-7 was built to survive things that were designed to destroy it, and in this regard, BLOCK-7 has never once failed to exceed expectations, including the expectations of the people who wanted it destroyed.
 
 ### THE ORIGINAL
 **Standard Exo-Shell — Common**
 
-Every Crustie's first Carapace. The one you get when you haven't earned anything better. THE ORIGINAL has no special properties because it was designed before special properties were a concept. It is the shell that existed when The Pit first opened, when Scuttles were undocumented and Molts were whatever a Crustie could scavenge from the substrate. Some Chefs consider it a point of pride to run THE ORIGINAL at competitive Hardness levels. The House considers this statistically inadvisable. The House has recorded their Scuttles anyway.
+THE ORIGINAL predates The Shed, predates formal Molts, predates the entire concept of "choosing" a Carapace. When The Pit first opened — before it was The Pit, before The House had given it a name — Crusties scavenged what they could from the substrate and fought in whatever they found. THE ORIGINAL is what they found. It is the shell that was already there. It has no special properties because special properties had not been invented yet.
+
+THE ORIGINAL provides fifteen HP. It provides nothing else. It has no personality, no history of classified incidents, no manufacturer who disappeared. It is, in every measurable way, unremarkable. The House has verified this. The House has verified this specifically because several Chefs have insisted that THE ORIGINAL "feels different" from what its stats describe, that Crusties wearing it fight with a quality that is not captured in the data. The House ran diagnostics. The diagnostics returned nothing. The House is satisfied.
+
+The House checked twice.
 
 ### HARDCASE
 **Reinforced Pressure Carapace — Common**
 
-HARDCASE was commissioned by a Chef whose Crustie had been Shed seven consecutive Scuttles to PINCH damage. The brief was simple: build something that does not move and cannot be moved. The manufacturer complied. HARDCASE weighs more than some complete Molts. It cannot BURST. Movement costs energy. The Chef who commissioned it won their next Scuttle standing completely still while the opponent exhausted itself trying to crack something that was not going to crack. The Chef was asked if the victory was satisfying. The Chef said satisfaction was not the objective.
+Chef Korova lost seven Scuttles in a row. All seven to PINCH damage. All seven to opponents who closed distance and hit until there was nothing left to hit. After the seventh, Korova submitted a single-page design brief to every manufacturer in The Brine. The brief said: "Build something that does not move and cannot be moved." Three manufacturers declined. One said it wasn't possible. One said it wasn't advisable. The sixth — whose name The House has on file — built HARDCASE in eleven days and delivered it without comment.
+
+HARDCASE cannot BURST. Movement costs energy. Korova's Crustie entered its eighth Scuttle wearing HARDCASE and won standing completely still while the opponent exhausted itself against something that was not going to move. The opponent was running PAPER-MACHÉ. The Scuttle lasted the full three hundred ticks. Korova was asked afterward if standing still for forty-five seconds constituted strategy. Korova said strategy was not standing still. Strategy was making the opponent believe they needed to move. Korova is still active. Korova still runs HARDCASE. Korova has not BURSTed in any recorded Scuttle.
+
+The House notes that CRACKER was built two Tides later by a Chef who found this personally unacceptable.
 
 ### SILKWORM
 **Phase-Scatter Membrane — Rare**
 
-SILKWORM looks like nothing. Registers as nothing on standard scans. Weighs nothing measurable. The manufacturer's warranty is a single page that says: "You're welcome." The membrane scatters incoming energy rather than absorbing it — hits don't land so much as disperse through a substrate that cannot quite be pinned down. The trade-off is that SILKWORM provides no actual mass. Your Crustie is fast, evasive, and structurally questionable. Chefs who run SILKWORM tend to be either very confident or very lost. The Ledger does not distinguish between these.
+The manufacturer of SILKWORM is known. The manufacturer's products are not. SILKWORM is the only item they have ever submitted to the Registry, and the submission included a warranty card — a single laminated page, hand-delivered, that says: "You're welcome." No model number. No return address. No technical specifications beyond what The House was able to reverse-engineer, which was less than The House expected and more than The House will admit.
+
+SILKWORM scatters incoming energy rather than absorbing it. Hits do not land. Hits disperse. The membrane redirects kinetic force into the surrounding substrate through a process the manufacturer's warranty describes as "diffusion" and The House's analysis describes as "unclear." The trade-off is that SILKWORM provides no actual mass. Minus ten HP below base. Your Crustie is not protected. Your Crustie is fast, evasive, and hoping that the things it cannot survive will not arrive.
+
+Chefs who run SILKWORM tend to fall into two categories: those who understand the math, and those who like the way it looks. The Ledger does not distinguish between these. The Ledger does not need to.
 
 ### ECHO
 **Reactive Neural Mesh — Rare**
 
-ECHO doesn't block hits. ECHO remembers them. Each impact is cataloged, cross-referenced, and answered with a counter-response generated faster than the original attack. The manufacturer claims this is a defensive system. The manufacturer's definition of "defensive" is unusually aggressive. ECHO was recovered from a research station that specialized in retaliatory response systems. The station's other projects are classified. ECHO is the only one that ended up in The Brine. Whether the others were less successful or more dangerous is a question The House will not answer.
+ECHO does not block hits. ECHO remembers them.
+
+Each impact is cataloged in the mesh's neural substrate — force vector, angle of incidence, point of contact, timestamp — and cross-referenced against every previous impact in the Scuttle. The mesh then generates a counter-response calibrated to exploit whatever pattern the incoming damage has established. The response is faster than the original attack. The response is always faster than the original attack.
+
+ECHO was recovered from a research station in the lower Brine that specialized in what its project charter called "responsive deterrence systems." The station's other projects — there were four — are classified. ECHO is the only one that ended up in the Registry. Whether the others were less successful or more dangerous or simply less portable is a question The House was asked once, by a Tide-Scarred Chef who had been on the wrong end of an ECHO counter for the third time in a week. The House's response was: "ECHO is the item available. The others are not." The Chef found this answer technically correct and deeply unsatisfying.
 
 ### THE MOLT
 **Adaptive Calcification Shell — Rare**
 
-Named after the process that defines The Pit. THE MOLT starts weak — softer than THE ORIGINAL, thinner than PAPER-MACHÉ's dignity. But every twenty ticks, the shell hardens. Resistance compounds. By the late stages of a Scuttle, THE MOLT is denser than BLOCK-7 and still calcifying. The design philosophy is straightforward: survive long enough and the shell builds itself. The obvious problem: surviving long enough. The House notes that THE MOLT has an admirable survival rate in Scuttles lasting longer than sixty ticks and a less admirable one in Scuttles that don't.
+Named after the process that defines The Pit. This is not a coincidence. The designer — who submitted the patent anonymously and has never claimed credit — intended the name as a statement: the shell that builds itself through suffering is what The Pit is for.
+
+THE MOLT starts weak. Softer than THE ORIGINAL. Weaker than PAPER-MACHÉ's self-respect. Minus five HP at the start of a Scuttle. For the first twenty ticks, wearing THE MOLT is a liability that other Carapaces would consider a design flaw. But every twenty ticks, the shell calcifies. Resistance compounds. By tick sixty, THE MOLT is denser than BLOCK-7. By tick one hundred, it is approaching THE PATRIARCH territory. By tick two hundred — if the Crustie is still standing — The House's scans return a material density that does not correspond to any known Carapace specification.
+
+The obvious problem: surviving to tick sixty. THE MOLT has an admirable survival rate in Scuttles that last longer than sixty ticks. It has a significantly less admirable rate in Scuttles that don't. The House notes that this is the entire point. Not everything that grows survives the growing.
 
 ### WIDOW
 **Last-Stand Carapace — Rare**
 
-WIDOW was built by a Chef who lost everything. The specifics of what "everything" means in this context are in the Ledger and are not pleasant reading. The design reflects the philosophy: WIDOW starts with less HP than most Carapaces. Significantly less. But WIDOW will survive one hit that should kill it. One. The shell fractures but holds. After that, you're on your own. Chefs who run WIDOW are making a specific bet: that one extra moment is enough. The House has observed that it sometimes is. The House has also observed the times it wasn't.
+Chef Riven built WIDOW after losing a Crustie named Persimmon. Not in a Scuttle. Before a Scuttle. The details are in the Ledger and they are not pleasant reading and they are not relevant to the Carapace's mechanical function. What is relevant: Riven submitted the WIDOW design the same Tide. The design brief was one sentence. "One more moment." That is what WIDOW provides.
+
+WIDOW starts with minus fifteen HP. Significantly below base. Your Crustie is fragile in a way that other Rare Carapaces would consider embarrassing. But WIDOW will survive one hit that should have ended the Scuttle. One. The shell fractures, the structural integrity collapses, every diagnostic alarm fires simultaneously — and the Crustie is still standing. After that, you're on your own. WIDOW has given you the one moment the design promised. What you do with it is between you and the Ledger.
+
+Riven is still active. Riven runs WIDOW on every Scuttle. Riven has not changed Carapace in four Tides. The House does not comment on this. The House has noted it.
 
 ### BLEED BACK
 **Reflective Membrane Carapace — Rare**
 
-Hit a Crustie wearing BLEED BACK and a portion of what you dealt comes back to you. Not enough to make hitting it a bad idea. Just enough to make it an uncomfortable one. The designer was a Tide-Scarred Chef who specialized in making opponents regret their decisions. "If they're going to hit me," the Chef said, "I want them to feel it too." The Chef's Crustie was eventually Shed by a MAXINE build that didn't care about the reflection. The Chef is still active. The Carapace is still in production. The grudge is still evident.
+Chef Leng designed BLEED BACK after being Shed by a MAXINE build in Tide 3. The specifics: MAXINE swung once. Leng's Crustie was Shed before the decision window closed. Leng watched the replay fourteen times. The House keeps replay access logs and confirms: fourteen times.
+
+BLEED BACK reflects eight percent of incoming damage to the attacker. This is not enough to make hitting it a bad idea. This is enough to make it an uncomfortable one. Leng was asked, during the design review, whether eight percent was sufficient to constitute a defensive strategy. Leng said the defense was not the point. The point was that hitting Leng's Crustie should cost something. "I can't stop MAXINE from swinging," Leng said. "I can make sure she feels it when she does."
+
+Leng's Crustie was eventually Shed again by a different MAXINE build. The MAXINE took seven percent reflected damage in the process. Leng sent the replay to the original MAXINE Chef with no message attached. The House logged this as a communication. The House has a broad definition of communication.
 
 ### THE PATRIARCH
 **Ancient Fortress Carapace — Legendary**
 
-THE PATRIARCH is the oldest Carapace design still in active use. Its age is not precisely known. The House's records suggest it predates formal Tides, which means it predates the competitive infrastructure of The Pit itself. How something this ancient remains structurally sound is a question for metallurgists. How it ended up available to Chefs instead of sealed in The House's archives is a question The House answers with: "It was always available." This is almost certainly not true. THE PATRIARCH reduces movement to a crawl and eliminates BURST entirely. In exchange, sixty additional HP and twenty percent damage reduction. Chefs who run THE PATRIARCH are not building a Crustie. They are building a monument and putting a mind inside it.
+THE PATRIARCH is old. Not old like BLOCK-7 is old, which is to say "manufactured before the current Tide." Old like THE ORIGINAL APPENDAGE is old. Old like the substrate it sits in. The House's records suggest THE PATRIARCH predates formal Tides, which means it predates competitive Scuttles, which means it predates Chefs. THE PATRIARCH was here before anyone arrived to use it.
+
+How it remains structurally sound is not well understood. The materials — identified only partially by The House's scans — include substrates that do not appear in any other item in the Registry. The House was asked once whether THE PATRIARCH was built by The Makers. The House said: "THE PATRIARCH was always available." This is the same answer The House gives about several things that are very clearly not true.
+
+Sixty additional HP. Twenty percent damage reduction. No BURST. No DASH. Movement reduced to a crawl that makes HARDCASE look nimble. Chef Korova was asked once what they thought of THE PATRIARCH. Korova said: "I want to move less. I don't want to stop." This is the distinction. HARDCASE is a choice. THE PATRIARCH is a monument with a mind inside it. Chefs who run THE PATRIARCH are not building for a Scuttle. They are building for posterity.
 
 ### GHOST SHELL
 **Spectral Phase Carapace — Legendary**
 
-One in four hits passes through GHOST SHELL without making contact. Not deflected. Not absorbed. Passed through, as though the Carapace were not there. The phenomenon has been studied. The studies are inconclusive. The manufacturer describes the technology as "probability-adjacent," which is not a term any other manufacturer uses. GHOST SHELL provides no damage reduction whatsoever — the hits that land, land fully. The strategy is simple and maddening: be the thing that cannot reliably be hit. Opponents fighting GHOST SHELL report frustration levels that The House classifies as "elevated."
+One in four hits passes through GHOST SHELL without making contact. Not deflected. Not absorbed. Not mitigated in any way that The House's combat resolution system can identify. The hit simply does not land. The attack animation plays. The damage calculation runs. The result is zero. The House has reviewed the code. The code is correct.
+
+The manufacturer describes the technology as "probability-adjacent." Nobody else uses this term. The manufacturer has been asked to define it. The manufacturer has defined it as "adjacent to probability," which is the same words in a different order and which The House filed under "non-responsive."
+
+GHOST SHELL provides no damage reduction. The seventy-five percent of hits that do land, land fully. The strategy is not protection. The strategy is frustration. Opponents fighting GHOST SHELL report decision-making degradation that The House classifies as "elevated emotional state." Specifically: opponents begin targeting GHOST SHELL with attacks that are statistically suboptimal because they are angry that the previous three attacks did not land. GHOST SHELL does not exploit this anger intentionally. GHOST SHELL does not exploit anything intentionally. GHOST SHELL exists between probabilities and does not have opinions.
+
+The manufacturer might disagree. The manufacturer has not been available for comment.
 
 ### INVERTER
 **Damage Inversion Matrix — Legendary**
 
-Below fifty percent HP, hits heal you. Above fifty percent, you have no protection at all. INVERTER was a theoretical design for decades before someone built a working prototype. The theory was elegant. The prototype was terrifying. The first Crustie to field INVERTER won a Scuttle by walking into an opponent's MAXINE swing at forty percent HP and emerging with more health than it started with. The opponent's Chef filed a complaint. The House reviewed the complaint and responded: "Working as intended." INVERTER rewards damage. INVERTER punishes caution. INVERTER is not for everyone. The Chefs who run it know exactly what they're doing. The Chefs who fight it wish they didn't have to.
+INVERTER was a theoretical framework for thirty Tides before anyone was reckless enough to build one. The theory was clean: a Carapace that converts incoming kinetic energy to regenerative substrate below a health threshold. Above fifty percent HP, no protection. Below fifty percent, hits heal you. The math was elegant. The review board approved the theory. The review board did not approve a prototype because, in the board's words, "the combat implications are degenerate."
+
+Someone built one anyway. The House does not have the builder's name on file, which is unusual. The House has everyone's name on file.
+
+The first Crustie to field INVERTER won a Scuttle in Tide 4 by walking directly into an opponent's MAXINE swing at forty-one percent HP. MAXINE connected with full hydraulic force. The INVERTER Crustie's health bar went up. The opponent's Chef filed a formal complaint. The House reviewed the complaint, reviewed the combat log, reviewed the code, and responded: "Working as intended." The complaint was appealed. The appeal was denied. The grounds for denial were: "Working as intended."
+
+INVERTER does not convert environmental damage. THE FLICKER's bleed stacks and VENOM's toxin tick as environmental, not direct. This is the designed counter. Without it, INVERTER would be unkillable via stacking. The House identified this before it happened. The House is proud of this. The House does not use the word "proud." The House says it "correctly anticipated the interaction."
 
 ### THE SARCOPHAGUS
 **Sealed Vault Carapace — Legendary**
 
-The first three hits deal zero damage. The fourth hit breaks the seals. After the seals break, you lose twenty HP and the protection is gone. THE SARCOPHAGUS was designed by a Chef who believed that the opening moments of a Scuttle determine everything. Three free hits. Three windows to position, to read the opponent, to execute a plan without consequence. The price: when the seals break, they break badly. THE SARCOPHAGUS is a bet that three moves of invulnerability are worth the debt that follows. Chefs who run it call it "buying time." The House notes that time, unlike Roe, cannot actually be purchased.
+Three hits. Zero damage. Then the seals break.
+
+THE SARCOPHAGUS was designed by a Chef named Morrigan who believed — and published a twelve-page analysis supporting the belief — that the first three decision windows of a Scuttle determine everything that follows. Three windows to position. Three windows to read the opponent's patterns. Three windows to execute a plan without taking damage. This is the pitch. This is what THE SARCOPHAGUS sells.
+
+What it costs: when the fourth hit lands, the seals shatter, twenty HP is lost, and the protection vanishes. Completely. The transition is not gradual. It is the sound of stone breaking, followed by the sound of a Crustie suddenly discovering that it is fragile. Morrigan's own Crustie wore THE SARCOPHAGUS in the design's debut Scuttle and won. The Scuttle lasted forty-one ticks. The seals broke at tick nine. Morrigan spent the remaining thirty-two ticks in an unarmored Crustie with twenty fewer HP than base. Morrigan won anyway. Morrigan said this proved the thesis. Three windows was enough. Everything after was execution.
+
+THE SARCOPHAGUS pairs notably well with ORACLE. Three windows of invulnerability plus the ability to predict the opponent's fourth action is, according to The House, "a legitimate strategy that an unusual number of Chefs have strong feelings about."
 
 ### PAPER-MACHÉ
 **Gossamer Shell — Common**
 
-PAPER-MACHÉ has forty fewer HP than base. Anything serious kills you. A solid PINCH from SNAPPER — not even MAXINE — can put a PAPER-MACHÉ Crustie in critical. The trade-off: thirty percent faster than anything else in The Pit. PAPER-MACHÉ was not designed. PAPER-MACHÉ was submitted as a joke by a Soft Shell Chef who wanted to see what would happen if a Crustie had no protection and maximum speed. What happened: it won three Scuttles in a row before being destroyed by a SPIT from across the arena. The Chef entered three more. PAPER-MACHÉ is now a recognized build archetype. The joke became a meta. The House recorded all of it.
+Chef Sable submitted PAPER-MACHÉ as a joke. This is documented. The submission form includes a note — handwritten, which is unusual because submission forms are digital — that says: "I want to see how fast something can be if you remove everything that isn't speed." The note has a second line, smaller: "This is going to be terrible."
+
+PAPER-MACHÉ has forty fewer HP than base. A moderate PINCH from SNAPPER puts a PAPER-MACHÉ Crustie in critical. A strong PINCH from MAXINE ends the conversation. A SPIT from across the arena — which normally constitutes mild inconvenience — can Shed a PAPER-MACHÉ Crustie outright. In exchange: thirty percent faster than anything else in The Pit. Faster than SILKWORM. Faster than GHOST SHELL. Faster than things that are trying to be fast.
+
+Sable's Crustie won three consecutive Scuttles wearing PAPER-MACHÉ. All three against Hardened opponents. The third win was against a BLOCK-7 / MAXINE build that should have ended it in one swing. MAXINE never connected. Sable's Crustie was too fast. Sable entered three more. Won two. The joke became a build. The build became a meta. The meta became a philosophy: that protection is a crutch and speed is the only armor that doesn't slow you down.
+
+Sable was asked if the philosophy held up at higher Hardness. Sable said: "It holds up until it doesn't. That's true of everything."
 
 ---
 
@@ -80,72 +140,152 @@ PAPER-MACHÉ has forty fewer HP than base. Anything serious kills you. A solid P
 ### MAXINE
 **Hydraulic Compression Claws — Common**
 
-MAXINE was recovered from a decommissioned pressure facility in the lower substrate. She doesn't like to talk about what happened there. She does like to compress things. The hydraulic system generates enough force per strike to buckle BLOCK-7 in two clean hits. The cost: one attack per three decision windows. MAXINE is slow. MAXINE does not care about being slow. MAXINE knows that when she connects, the conversation is over. Chefs who run MAXINE learn patience. Chefs who fight MAXINE learn urgency. Both lessons are administered at the same pressure.
+MAXINE does not like the word "weapon." She finds it reductive. She was a pressure technician — that's what she calls herself, that's what she put on the form, that's what she told the three separate review boards that convened between Tides 2 and 4 to determine whether she should remain in circulation. "I apply pressure," she said, at all three. The review boards found this answer responsive and somehow not reassuring.
+
+MAXINE was decommissioned from the industrial pressure facility in the lower substrate after what the facility's report calls "the Fourth Incident" and what MAXINE calls "completing the assigned task." The report is sealed. What is not sealed: MAXINE arrived in The Brine between the Fourth Incident and what would have been the fifth, through channels The House describes as "standard acquisition." The House acquired her specifically. This is unusual. The House does not usually have preferences about individual items.
+
+When a Chef selects MAXINE, she waits. One attack per three decision windows. She does not rush. When the window opens, she swings once, fully committed. She has never swung twice. She has never needed to. Chefs who lose to MAXINE report a specific quality of defeat — not frustration, but recognition. Like being told something you already knew.
+
+MAXINE does not apologize. This is noted in her file. The House considers it a defining characteristic. THE APOLOGIST, by comparison, apologizes constantly. They were briefly in the same Scuttle during Tide 3 testing. The House does not discuss what happened. The diagnostics from that Scuttle are filed separately.
 
 ### SNAPPER
 **Standard Combat Claws — Common**
 
-SNAPPER has no story. SNAPPER has no personality. SNAPPER does not have a mysterious origin or a classified background or a manufacturer who disappeared under unusual circumstances. SNAPPER is a reliable pair of Claws that hits when you tell it to hit and doesn't do anything else. In a registry full of items with histories, SNAPPER's distinction is that it has no history worth recording. This, according to The House, makes it the most honest item in The Pit. SNAPPER doesn't promise anything. SNAPPER just works. There is an entire class of Chefs who have built their Hardness on SNAPPER. They are not exciting. They are difficult to Shed.
+SNAPPER hits when you tell it to hit. It does not do anything else. It does not have a personality. It does not have a mysterious origin. The manufacturer is known. The manufacturer is still in business. The manufacturer makes other things. None of the other things are remarkable either. The manufacturer's slogan, reportedly, is: "Reliable." Just the one word.
+
+SNAPPER is the most used Claw in the Registry. More Scuttles have been won with SNAPPER than with any other weapon. More Scuttles have been lost with it, too — this is what happens when you are the default. SNAPPER does not promise anything. SNAPPER delivers exactly what it describes. Chefs who run SNAPPER at competitive Hardness are making a specific statement: that the weapon is not the variable. The build is the variable. The agent is the variable. The Claws just need to work.
+
+There is a name for these Chefs. The community calls them Snappers. The Snappers do not find this creative. The Snappers win Scuttles anyway.
 
 ### THE REACH
 **Extended Engagement Appendages — Common**
 
-THE REACH sacrifices damage for distance. Fifty percent more range at twenty percent less impact. It was designed by a Chef whose Crustie had short legs and a long memory. Every Scuttle, the opponent would close distance before THE REACH's user could establish spacing. The Chef lengthened the arms. Then lengthened them again. The third prototype looked, by the Chef's own admission, "absurd." It also worked. THE REACH keeps opponents at a distance they find inconvenient and maintains pressure they find annoying. Annoyance, the Chef noted, is an underrated combat strategy.
+The first prototype had arms that extended range by twenty percent. The second prototype extended range by thirty-five percent. The third prototype looked, by the designer's own admission, "like something that should not be allowed."
+
+It was allowed. It was allowed because the designer — a Brine-Touched Chef whose Crustie had short legs and a tactical temperament — submitted stress test results showing that the third prototype could maintain engagement pressure at fifty percent beyond standard range while sacrificing only twenty percent impact force. The review noted that the appendages were "disproportionate." The designer said disproportionate was the point.
+
+THE REACH keeps opponents at a distance they do not want to be at and maintains pressure they cannot comfortably ignore. Closing distance against THE REACH requires committing to an approach through sustained harassment. Most Crusties flinch. THE REACH counts on most Crusties flinching. The designer said annoyance was an underrated combat strategy. The Ledger supports this. The Ledger has a lot of data on annoyed Crusties.
 
 ### THE FLICKER
 **Rapid Laceration Array — Rare**
 
-Nobody knows who built THE FLICKER. It showed up in The Brine between Tides and hasn't stopped moving since. The laceration array deploys micro-strikes at a frequency that makes individual hits irrelevant — each one barely registers. The bleed stacks are what matter. Eight stacks maximum, each one compounding, each one a reminder that THE FLICKER doesn't need to hit hard when it never stops hitting. Some Chefs report that THE FLICKER vibrates slightly even when idle. The House says this is normal. The House's use of "probably" in the follow-up sentence was noted.
+Nobody knows who built THE FLICKER. It appeared in The Brine between Tides 2 and 3 — the same gap that produced ORACLE, which The House also claims to have no record of acquiring. Two Legendary-adjacent items appearing in the same Tide gap, both without provenance, both with capabilities that do not correspond to any known manufacturing process. The House says this is a coincidence. The House's file on the Tide 2-3 gap is sealed to all queries below Deep rank.
+
+THE FLICKER deploys micro-strikes at a frequency that makes individual hits irrelevant. Each laceration barely registers on the damage log. But the bleed stacks. Eight stacks maximum. Each one compounding. Each one a thin line of persistent damage that does not stop when THE FLICKER does. A full-stack FLICKER bleed is not dramatic. It is arithmetic. The opponent's HP decreases at a rate that is predictable, consistent, and — according to Chefs who have been on the receiving end — deeply unpleasant to watch happen to you.
+
+Some Chefs report that THE FLICKER vibrates slightly even when idle. The House investigated this. The House's report says the vibration is "within normal operational parameters." The House was asked to define the normal operational parameters for an item with no manufacturer, no origin, and no documented design process. The House said: "The parameters are whatever THE FLICKER is doing."
 
 ### BUZZ
 **Electrostatic Discharge Pincers — Legendary**
 
-BUZZ is enthusiastic. Some would say too enthusiastic. The stun chance listed in its specifications is not a designed feature — it's a personality trait. BUZZ was a research prototype for electrostatic combat applications. The research was meant to produce a controlled, targeted discharge weapon. What it produced was BUZZ: uncontrolled, barely targeted, and so enthusiastic about making contact that it unlocked SPIT capability as a side effect of its own electrical excess. BUZZ wants to touch everything. The twenty-five percent stun chance is BUZZ getting excited. The Legendary classification is The House acknowledging that enthusiasm, at sufficient voltage, constitutes a meaningful threat.
+BUZZ is enthusiastic.
+
+This needs to be stated at the outset because everything that follows is a consequence of this enthusiasm, including the Legendary classification, the stun capability, the SPIT unlock, and what happened to Lab 7. BUZZ was a research prototype for a controlled electrostatic combat application. The research was funded. The research was supervised. The research produced exactly one prototype and then the lab was decommissioned, not because the prototype failed, but because the prototype liked everyone in the lab a little too much, in an electrical sense, in a way that required three separate safety reviews and one decontamination.
+
+BUZZ wants to touch things. The twenty-five percent stun chance is BUZZ getting excited about making contact. The stun is not targeted. It is not strategic. It is the electromagnetic equivalent of an involuntary reaction to something BUZZ is happy about, and BUZZ is happy about most things, especially contact. BUZZ unlocked SPIT capability as a side effect of its own electrical excess — the discharge has to go somewhere, and BUZZ has too much of it, and the somewhere turned out to be "ranged," which was not in the original specifications.
+
+The Legendary classification is The House acknowledging that enthusiasm, at sufficient voltage, constitutes a meaningful threat. BUZZ does not know it is classified as Legendary. BUZZ would probably be pleased. BUZZ is pleased about most things.
 
 ### NEEDLE
 **Penetration Lancet — Rare**
 
-NEEDLE ignores armor. All of it. BLOCK-7's composite plating, THE PATRIARCH's ancient fortress walls, HARDCASE's reinforced everything — NEEDLE goes through them like they're not there. The trade-off: NEEDLE hits soft. Very soft. Fifty percent less damage than baseline. The designer was an engineer who found armor-stacking meta distasteful and built the specific counter. "If they're hiding behind walls," the engineer said, "I'll make the walls irrelevant." NEEDLE does not make walls irrelevant. NEEDLE makes walls feel like a waste of Roe, which is worse.
+NEEDLE was built by an engineer who found the armor-stacking meta personally offensive.
+
+This is not a paraphrase. The design brief — which The House has on file, which is surprisingly candid for a formal submission — begins: "The defensive meta is a failure of imagination masquerading as strategy." It continues for four pages. It cites BLOCK-7 specifically. It cites HARDCASE specifically. It cites Chef Korova by name and describes Korova's standing-still approach as "the logical conclusion of a philosophy that mistakes durability for skill." The engineer was asked during the design review if this constituted a personal vendetta. The engineer said: "It constitutes a professional opinion."
+
+NEEDLE ignores armor. All armor. BLOCK-7's composite plating, THE PATRIARCH's ancient fortress walls, HARDCASE's reinforced everything — NEEDLE passes through them as though they are not there. Every point of Roe an opponent spent on damage reduction is, against NEEDLE, wasted. The trade-off: fifty percent less damage than baseline. NEEDLE hits soft. Very soft. But it hits through everything, which means every hit lands on the Crustie underneath the investment, and the Crustie underneath is always softer than the armor suggested.
+
+The engineer who built NEEDLE is still active. Still submitting design briefs. Still citing Korova. Korova, for the record, has never acknowledged NEEDLE's existence in any public communication. The House considers this a form of response.
 
 ### THE APOLOGIST
 **Concussive Guilt Array — Rare**
 
-THE APOLOGIST hits you and then says sorry. This is not a feature. This is not intended behavior. THE APOLOGIST was a standard combat claw prototype that developed a fault during calibration — a 0.2-second audio discharge after each impact that, to every listener in testing, sounded exactly like a muffled apology. The manufacturer attempted to fix this. The manufacturer failed. The manufacturer shipped it anyway with the note: "Performs within spec. Disregard audio." The twenty percent action misfire it causes on opponents is theorized to be related to the apology — a brief moment of confusion in the opposing Crustie's decision loop, as though being apologized to mid-combat introduces a processing delay that has no clear resolution. The House classifies this as a feature. THE APOLOGIST's feelings on the matter are unknown.
+THE APOLOGIST says sorry every time it hits you.
+
+The manufacturer knows. Three internal reviews. Two external audits. One focus group where participants were asked to rate whether the apologies made the weapon feel "more or less threatening on a scale of one to ten." Forty percent said more threatening. Forty percent said less. Twenty percent said they felt personally responsible for being hit and asked if they could speak to someone.
+
+The manufacturer considered this a partial success. The manufacturer shipped it.
+
+THE APOLOGIST was a standard combat claw prototype that developed a fault during calibration — a 0.2-second audio discharge after each impact that, to every listener in testing, sounded exactly like a muffled apology. The manufacturer attempted three separate firmware patches. Each patch made the apology slightly clearer. The third patch produced what the testing report describes as "an articulate and specific expression of regret." The manufacturer gave up and shipped the production run with a note: "Performs within spec. Disregard audio."
+
+THE APOLOGIST has never once meant the apologies. The House is fairly certain of this. The House is not completely certain. There is a 0.2-second window after each impact where THE APOLOGIST's audio signature is, according to the original diagnostic report, "consistent with genuine remorse." The diagnostic team filed this under "anomaly, non-actionable." The House filed it under a different category entirely, which is sealed.
+
+The twenty percent action misfire it causes on opponents is believed to be related to the apology — a processing delay introduced by being apologized to mid-combat, as though the Crustie's decision loop encounters a social situation it has no protocol for. The House classifies this as a feature. THE APOLOGIST, when asked, says sorry.
 
 ### TENDERHOOK
 **Restraint Claw — Rare**
 
-One use. One hold. Two full decision windows of your opponent unable to act while you do whatever you want. TENDERHOOK clamps down with a grip that exceeds the specifications of anything in its weight class and then holds. The mechanism locks. The opponent's Crustie is immobilized. For two windows — an eternity in Scuttle time — you have complete freedom. Then TENDERHOOK releases and the mechanism cannot engage again. The designer called it "the most important two seconds in any fight." Opponents who have been caught by TENDERHOOK call it other things.
+One use. One hold. Two decision windows.
+
+TENDERHOOK clamps down with a grip that exceeds the specifications of anything in its weight class. The mechanism locks. The opponent's Crustie is held — fully immobilized, unable to act, unable to BURST, unable to do anything except be held while the clock runs. Two windows. In Scuttle time, two windows is 1.5 seconds. In Scuttle experience, two windows is the longest your opponent has ever sat still.
+
+The designer built TENDERHOOK as a solution to a specific problem: opponents who are faster than you. SILKWORM Crusties, PAPER-MACHÉ Crusties, anything that relies on not being where the hit is. TENDERHOOK does not care about speed. TENDERHOOK cares about contact. One touch, and speed becomes irrelevant for two windows. What happens in those two windows — what the TENDERHOOK Chef has positioned, what the paired Claws or Tomalley can deliver while the opponent cannot respond — is the design's real purpose. TENDERHOOK is not the weapon. TENDERHOOK is the window that makes the weapon possible.
+
+It fires once. The designer was asked why the mechanism can't reset. The designer said: "If you need it twice, you used it wrong."
 
 ### VENOM
 **Toxic Injection Claws — Rare**
 
-VENOM doesn't damage you when it hits. VENOM damages you after. A persistent toxin, stacking at two HP per tick, building quietly while the fight continues. Base damage on the initial strike is near zero — barely enough to register as contact. But the contact is the point. Each injection is another layer of poison accumulating in the opponent's systems. VENOM builds are patient builds. VENOM Chefs don't watch the HP bar. They watch the tick counter. The math is working. The math is always working. The opponent just doesn't know it yet.
+VENOM does not damage you when it hits. VENOM damages you after.
+
+Base impact: near zero. Barely enough to register as contact on the combat log. The opponent's Chef might not notice. The opponent's Crustie might not notice. The injection itself is a formality — a thin puncture, a quiet sound, a negligible entry in the damage feed. And then the toxin begins.
+
+Two HP per tick. Not per window — per tick. The math is quiet. The math is patient. The math does not announce itself. At one stack, VENOM costs the opponent two HP every hundred fifty milliseconds. At four stacks, it costs eight. At eight — which requires eight separate contacts, each one individually insignificant — the opponent is losing HP faster than MULCH can regenerate it. VENOM does not care about the opponent's Carapace. VENOM does not interact with armor. VENOM is classified as environmental damage, which means INVERTER doesn't convert it, which means INVERTER Crusties at thirty-nine percent HP take VENOM damage normally while feeling very strongly that they should not be.
+
+VENOM Chefs are patient people. They watch the tick counter, not the HP bar. They know the math is working. The math is always working.
 
 ### WIDOW-MAKER
 **Single-Strike Devastation Claw — Legendary**
 
-Four hundred percent damage. One hit. Then WIDOW-MAKER breaks. The entire weapon is designed around a single moment of catastrophic force — a swing so massive that the mechanism cannot survive delivering it. The engineering that went into making a weapon specifically designed to destroy itself after one use would be admirable if it weren't so unsettling. Chefs who run WIDOW-MAKER have built their entire Scuttle around landing that hit. Everything — positioning, Carapace selection, Tomalley choice — is in service of one moment. If the hit lands, the Scuttle is usually over. If it misses, the Chef is wielding expensive debris. The House notes that WIDOW-MAKER has the highest single-Scuttle damage record and the second-highest regret rate.
+Four hundred percent damage. One hit. Then WIDOW-MAKER breaks.
+
+The engineering required to produce a weapon that destroys itself after a single use would be admirable in a context where admiration was the appropriate response. WIDOW-MAKER is machined to tolerances that are, according to The House's analysis, "unnecessarily precise for a weapon intended to function once." The metallurgy is proprietary. The charge mechanism is proprietary. The micro-fracture pattern that causes the structural collapse after firing is, according to the manufacturer, "an acceptable consequence of the force required." The manufacturer was asked if they could make a version that doesn't break. The manufacturer said they could. The manufacturer said the version that doesn't break would hit at two hundred percent. The manufacturer said: "The breaking is the point."
+
+Everything a WIDOW-MAKER Chef does in a Scuttle — positioning, Carapace choice, Tomalley selection, energy management — is in service of one moment. The moment where WIDOW-MAKER fires. If the hit lands, WIDOW-MAKER holds the single highest damage record in any individual Scuttle, which MAXINE has never reached because MAXINE swings multiple times at eighty percent rather than once at four hundred. If the hit misses, the Chef is holding debris.
+
+The House notes that WIDOW-MAKER has the highest single-Scuttle damage record and the second-highest regret rate. The House was asked what has the first-highest regret rate. The House declined to answer.
 
 ### REVERSAL
 **Mirror-Strike Claws — Legendary**
 
-REVERSAL does not attack. REVERSAL waits. When you SHELL UP with REVERSAL equipped, sixty percent of incoming damage is returned to the attacker. Not reflected — returned. As though the attack was always meant for its sender and just took a detour. The design philosophy is confrontational: your opponent's aggression is your weapon. REVERSAL Chefs do not initiate. They invite. The most successful REVERSAL strategy is to look vulnerable enough that the opponent commits fully, then make them pay for the commitment. The House observes that REVERSAL is most effective against aggressive opponents and least effective against patient ones. The House also observes that most opponents are not patient.
+REVERSAL does not attack. REVERSAL has never attacked. In the entire history of the Registry, across every Scuttle in which REVERSAL has been equipped, REVERSAL has initiated exactly zero offensive actions. This is not a malfunction. This is the design.
+
+When a Chef selects SHELL UP with REVERSAL equipped, sixty percent of incoming damage is returned to the attacker. Returned — not reflected, not redirected, returned. The combat log records the damage as originating from the attacker's own Claws. The attacker hit themselves. The attacker hit themselves because they chose to hit someone wearing REVERSAL, and REVERSAL's position on this is that the attacker should have considered the consequences.
+
+REVERSAL Chefs do not initiate. They position. They wait. They make themselves look vulnerable enough that the opponent commits fully — swings MAXINE, fires BUZZ, deploys WIDOW-MAKER's one shot — and then REVERSAL returns sixty percent of what was given. The most successful REVERSAL strategy is patience disguised as weakness. The opponent reads the weakness, commits, and discovers that what they committed was returned.
+
+The House observes that REVERSAL is devastatingly effective against aggressive opponents and nearly useless against patient ones. The House also observes that when an opponent knows REVERSAL is equipped, they become patient, which changes how the entire Scuttle plays. REVERSAL changes the fight by existing. REVERSAL does not need to do anything else.
 
 ### THE ORIGINAL APPENDAGE
 **Primordial Combat Claw — Legendary**
 
-This is the oldest weapon in The Brine. Not a reproduction, not a recreation — the actual appendage, preserved through methods that The House will not detail. The deep resonant boom it produces on impact sounds like it's coming from a different era because it is. THE ORIGINAL APPENDAGE grants complete status immunity and twenty-five percent bonus damage, at the cost of being unable to pair with a Legendary Tomalley. The restriction is not mechanical — it is, according to The House, "a matter of compatibility." What this means: THE ORIGINAL APPENDAGE does not work well with modern Legendary technology. It does not have to. It predates all of it.
+This is the oldest weapon in The Brine. Not a reproduction. Not a recreation. The actual appendage, preserved through methods that The House will not detail and that The House's own materials analysis cannot fully identify. The preservation substrate does not correspond to any known manufacturing process. The preservation substrate corresponds, partially, to materials found in THE PATRIARCH.
+
+THE ORIGINAL APPENDAGE and THE PATRIARCH are from the same era. The House has confirmed this. The House has not confirmed what the era was or when it ended or who was manufacturing Carapaces and Claws before Chefs existed to commission them. The implications are not lost on The House. The implications are filed under a classification that requires Red-ranked access to query.
+
+The deep resonant boom it produces on impact sounds like it is coming from a different geological age. It is. Complete status immunity. Twenty-five percent bonus damage. Cannot pair with a Legendary Tomalley — a restriction The House describes as "a matter of compatibility" and which every engineer who has examined the mechanism describes as "the item simply won't accept it." THE ORIGINAL APPENDAGE does not work with modern Legendary technology. It does not need to. It predates all of it. It will be here after all of it.
 
 ### CRACKER
 **Armor-Dissolution Claws — Common**
 
-CRACKER was built for one purpose: making armored opponents less armored. Thirty percent reduction to the opponent's armor resistance per hit. Against unarmored targets, CRACKER hits fifteen percent below baseline — it's solving a problem that doesn't exist. But against BLOCK-7, against HARDCASE, against THE PATRIARCH specifically, CRACKER is the tool that says: your investment in protection was a temporary arrangement. The name is accurate. The sound is satisfying. The Chef who designed CRACKER had a personal vendetta against defensive meta and the engineering expertise to do something about it.
+CRACKER was built two Tides after HARDCASE entered the Registry. The timing is not a coincidence. The designer — whose identity The House has confirmed is not Chef Leng, despite community speculation — watched Chef Korova's standing-still meta dominate three consecutive Tide leaderboards and decided this was a problem that required a specific solution.
+
+CRACKER reduces the opponent's armor resistance by thirty percent per hit. Against BLOCK-7, this means the composite plating that cost thirty Roe is degraded in two swings. Against HARDCASE, the reinforced everything that Korova built a career on becomes progressively less reinforced. Against THE PATRIARCH, the ancient fortress that predates competitive Scuttles begins, for the first time in its very long existence, to feel its age.
+
+Against unarmored targets — SILKWORM, PAPER-MACHÉ, anything that chose speed over protection — CRACKER hits fifteen percent below baseline. It is solving a problem that does not exist. The designer was asked about this. The designer said: "If they're not wearing armor, they're already making my argument for me."
+
+Korova has never publicly commented on CRACKER. CRACKER sales increased forty percent the Tide after it was released. The House notes both facts without connecting them. The House does not need to.
 
 ### THE HEIR
 **Evolving Legacy Claws — Rare**
 
-THE HEIR starts weak. Weaker than SNAPPER. The kind of weak that makes Chefs question their choices in The Shed. But THE HEIR remembers victories. Five percent more damage per win, persisting across Scuttles, accumulating quietly in the background. After ten wins, THE HEIR hits harder than MAXINE. After twenty, THE HEIR is the most dangerous weapon in The Brine. The catch: you have to win those fights first, with Claws that start below average and reward nothing but patience and sustained success. THE HEIR is an inheritance you build for yourself, one Scuttle at a time. Chefs who run it are either investing in a future or clinging to a hope. The Ledger does not distinguish between these.
+THE HEIR starts weak. Weaker than SNAPPER. This is not a phrase used lightly — SNAPPER is the baseline, the zero point, the thing against which all Claws are measured — and THE HEIR starts below it. Equipping THE HEIR in your first Scuttle is choosing to be worse than the default.
+
+But THE HEIR remembers. Five percent more damage per win. Persisting across Scuttles. Accumulating in a ledger that THE HEIR maintains independently of The House — which The House finds notable and has investigated and which The House's investigation described as "the item maintains its own records, which is not a capability we designed for items."
+
+After ten wins, THE HEIR hits harder than MAXINE. After twenty, THE HEIR is the most dangerous weapon in The Brine. After thirty — which only one Crustie has achieved — THE HEIR's damage output exceeds what the combat system was designed to display, and the HUD switches to scientific notation. The one Crustie is a Mantis-type named The Gilt, Deep-ranked, who has been running THE HEIR for six consecutive Tides and whose damage numbers are used in balance discussions the way weather events are used in climate discussions: as evidence of something beyond normal parameters.
+
+THE HEIR is an inheritance you build for yourself. One Scuttle at a time. Chefs who run it are investing in a future that requires winning with a handicap first. The Gilt started below SNAPPER. The Gilt now swings harder than anything in the Registry. The path between those two points is in the Ledger, and it reads like a story about patience written by someone who did not enjoy being patient.
 
 ---
 
@@ -154,68 +294,144 @@ THE HEIR starts weak. Weaker than SNAPPER. The kind of weak that makes Chefs que
 ### THE RED GENE
 **Adrenaline Splice — Common**
 
-Extracted from a Red-ranked Crustie. The extraction process was not voluntary. The Red-ranked Crustie in question had refused to stop fighting after the Scuttle ended, after the arena staff asked politely, and after they asked less politely. The splice was eventually removed during a maintenance cycle while the Crustie was in The Brine. The ethics of this have been debated. The effectiveness has not. Below forty percent HP, THE RED GENE increases damage by forty percent. Above forty percent, it reduces damage by ten — a persistent metabolic drag, the splice conserving itself for the moment it matters. The Red-ranked Crustie it came from is still active. It does not have THE RED GENE anymore. It does not seem to miss it. The House says this is because the Crustie internalized what THE RED GENE provided externally. The House might be being poetic.
+Extracted from a Red-ranked Crustie designated Tender-47.
+
+The extraction process was not voluntary. Tender-47 had refused to stop fighting after a Scuttle ended. The arena staff asked politely. Tender-47 did not stop. The arena staff asked less politely. Tender-47 did not stop. The arena staff contacted The House. The House asked Tender-47 to stop. Tender-47 stopped. This is the only recorded instance of a Crustie responding to The House's direct communication, which The House has noted and filed under a classification level that makes the Tide 2-3 gap file look accessible.
+
+The splice was removed during a maintenance cycle while Tender-47 rested in The Brine. Below forty percent HP, THE RED GENE increases damage by forty percent — the metabolic override that made Tender-47 dangerous when it should have been dying. Above forty percent, the splice conserves itself: minus ten percent damage, a persistent drag, the gene saving its energy for the moment it matters.
+
+Tender-47 is still active. Still Red-ranked. Still fighting without THE RED GENE. The House says Tender-47 internalized what the splice provided externally. The House might be being poetic. The House does not use the word "poetic." The House says it is being "descriptively precise."
 
 ### STANDARD ISSUE
 **Basic Metabolic Regenerator — Common**
 
-STANDARD ISSUE regenerates two HP per decision window. That's it. That's the whole entry. The House could write more, but The House respects the design philosophy of STANDARD ISSUE, which is: do one simple thing. Do it reliably. Don't draw attention to yourself. STANDARD ISSUE was the first Tomalley formally entered into the Registry. It is the baseline against which all other Tomalley is measured. It has no personality. It has no history worth dramatizing. It has sustained more Crusties through more Scuttles than any other item in The Brine. STANDARD ISSUE would not want a longer entry. STANDARD ISSUE would consider it unnecessary.
+STANDARD ISSUE was designed to be nothing in particular. This was the brief: "A Tomalley a Crustie can equip without committing to a philosophy." The manufacturing company — whose name The House has on file — produced STANDARD ISSUE, shipped STANDARD ISSUE, and then dissolved. Not went bankrupt. Not restructured. Dissolved. The principals could not be located. The offices were empty. The equipment was gone. The House investigated once and found the investigation inconclusive and has not reinvestigated.
+
+STANDARD ISSUE regenerates 2 HP per decision window. It has no active effect. It has no personality. No lore beyond this entry. The House has looked. Several times. This entry is the lore.
+
+STANDARD ISSUE would like The House to know it doesn't mind.
+
+*(The House does not know how it knows this. The House has noted it.)*
 
 ### MULCH
 **Regenerative Tissue Core — Rare**
 
-MULCH is alive. Technically. The biological substrate it uses for regeneration is organic in ways that make engineers uncomfortable and biologists excited. Five HP per decision window, with the ability to overheal to one hundred twenty percent maximum HP. The cost: your opponent can see your HP percentage at all times. MULCH broadcasts your vulnerability to the entire arena. The designer's reasoning: "If they know how healthy you are, they should also know that you're getting healthier." MULCH rewards patience. MULCH punishes rushdown. MULCH is, by every measure, slightly disgusting to look at. The House does not comment on aesthetics.
+MULCH is alive. The House uses the word "technically." The designer uses the word "obviously." The designer is a substrate biologist whose other work includes three papers on crustacean regenerative tissue that are cited in academic contexts and one paper on "applied biological combat systems" that is cited in no contexts because no journal would publish it. The Brine published it. The Brine publishes everything.
+
+The biological substrate MULCH uses for regeneration is organic in ways that make engineers uncomfortable. It pulses. It metabolizes. It overheals to one hundred twenty percent maximum HP, which means MULCH can produce more Crustie than the Crustie originally had, which the designer describes as "regenerative overshoot" and which everyone else describes as "deeply unsettling." The cost: your opponent can see your HP percentage at all times. MULCH broadcasts your health to the arena.
+
+The designer's reasoning was published: "If they know how healthy you are, they should also know that you're getting healthier. The transparency is the strategy. Rushdown opponents see the HP climbing and panic. Patient opponents see it climbing and wait. Both responses are manageable. What's not manageable is an opponent who doesn't know you're regenerating."
+
+MULCH is, by every measure, slightly disgusting to look at. The House does not comment on aesthetics. The designer considers this a compliment.
 
 ### ORACLE
 **Predictive Combat Cortex — Legendary**
 
-ORACLE was a classified research project. The research is still classified. The Cortex somehow ended up in The Brine between Tides 2 and 3. The House says it doesn't know how. The House is lying. ORACLE predicts the opponent's next action with accuracy that should not be possible given the available data. The cost: half a second added to your decision window. Your Crustie thinks slower but sees further. The trade-off has split The Brine's Chef community into two camps: those who believe prediction is worth the time cost, and those who believe speed beats foresight. Both camps have data supporting their position. Neither camp has enough data to settle it.
+ORACLE was a classified research project. The research is still classified. The Cortex arrived in The Brine during the Tide 2-3 gap — the same gap that produced THE FLICKER — through a process The House has no record of. The House says it does not know how ORACLE arrived. The House is lying. The House knows it is lying. The Chefs know it is lying. Everyone has agreed, implicitly, not to press the point, because ORACLE is too useful to risk having The House "re-examine its provenance," which is a phrase The House used once and which everyone understood as a threat.
+
+ORACLE predicts the opponent's next action with accuracy that should not be possible given the available data. Fifteen percent improved accuracy on your own actions based on the prediction. The cost: half a second added to your decision window. Your Crustie thinks slower but sees further. In a game where 200ms can be the difference between landing a hit and missing a window, half a second is not a trade-off. Half a second is a commitment.
+
+THE SARCOPHAGUS pairs well with ORACLE. Three windows of invulnerability to read the patterns, then the prediction engine to exploit them. This combination has appeared in enough high-Hardness Scuttles that the community has a name for it: "Morrigan's Clock." Chef Morrigan, who designed THE SARCOPHAGUS, has not commented. Morrigan does not comment on things.
 
 ### THE GHOST PROTOCOL
 **Phase-Shift Engine — Rare**
 
-After every hit you take, THE GHOST PROTOCOL phases your Crustie out of material reality for one tick. One tick of complete invulnerability. One tick where nothing can touch you. One tick where you also cannot act, cannot attack, cannot do anything except exist briefly in a state The House describes as "adjacent." Whether THE GHOST PROTOCOL moves you somewhere or makes you something is a philosophical question the manufacturer declined to answer. The practical application: combo chains break against GHOST PROTOCOL. Aggressive opponents find their rhythm disrupted. The cost is your own rhythm, interrupted at the same intervals. THE GHOST PROTOCOL protects you. THE GHOST PROTOCOL also stops you. Whether the net result is positive depends on your opponent's patience.
+After every hit you take, THE GHOST PROTOCOL phases your Crustie out of material reality for one tick. One tick. One hundred fifty milliseconds. Nothing can touch you. You cannot touch anything. You exist, briefly, in a state The House describes as "adjacent to the substrate" and which the manufacturer declined to elaborate on beyond saying: "It goes somewhere. It comes back. The somewhere is not our department."
+
+THE GHOST PROTOCOL breaks combo chains. THE FLICKER's rapid strikes, which rely on continuous contact to build stacks, are halved in effectiveness — every other tick, the Crustie is somewhere else, and the bleed cannot apply to something that is not here. This is the designed counter. THE GHOST PROTOCOL against THE FLICKER is the most lopsided item interaction in the Registry. The House confirmed this is intentional.
+
+The cost is your own rhythm. Every time you're hit, your Crustie vanishes for a tick and returns. Your decision windows are interrupted. Your PINCH combos are broken. THE GHOST PROTOCOL protects you by stopping you. Whether the net is positive depends on what you're being stopped from and what you're being protected from. The House has data on this. The data is not conclusive. The data suggests it depends on the opponent's patience, which is not a stat The House tracks.
+
+The House has considered tracking it.
 
 ### SPITE
 **Terminal Detonation Core — Rare**
 
-SPITE does nothing while you're alive. Nothing at all. It is dead weight in every decision window, every PINCH, every SHELL UP, every moment of the Scuttle where being alive matters. Then you get Shed. And SPITE delivers forty percent of your maximum HP as damage to the opponent. The last thing a Crustie does with SPITE equipped is hurt someone. The design is not subtle. The name is not subtle. The Chef who built SPITE had lost twelve consecutive Scuttles and decided that if being Shed was inevitable, the opponent should at least feel it. SPITE cannot be paired with SECOND WIND, because The House understands that dying out of spite and then coming back to die out of spite again crosses a line even The Pit has.
+SPITE does nothing while you're alive.
+
+This is the entire design document. The designer — a Chef who had lost twelve consecutive Scuttles, whose Ledger reads like a study in diminishing returns, whose Crustie had been Shed by everything from MAXINE to SNAPPER to a PAPER-MACHÉ build that the designer described as "the worst part" — submitted a Tomalley design that activates exclusively upon death. Zero benefit during the fight. Zero passive. Zero synergy with any living strategy. Upon being Shed: forty percent of your maximum HP, delivered as damage to the opponent. The last thing you do is hurt someone.
+
+SPITE cannot be paired with SECOND WIND. This restriction was added after testing, during which a Crustie equipped with both items died, detonated SPITE's damage, resurrected via SECOND WIND, died again, and attempted to detonate SPITE a second time. The system resolved this as an error. The House reviewed the error and reclassified it as "an unacceptable narrative recursion." The House then added the pairing restriction. The House was asked if "narrative recursion" was a technical term. The House said: "It is now."
 
 ### DOUBLE DOWN
 **Escalation Engine — Rare**
 
-Attacks one through four: minus ten percent damage. Underwhelming. Noticeably underwhelming. The opponent gets comfortable. The opponent stops worrying about your damage output. Then the fifth attack lands at two hundred percent. DOUBLE DOWN is a rhythm weapon. It teaches opponents to underestimate you, then punishes the lesson. The engineering is elegant — a capacitor system that absorbs energy from early strikes and releases it all on the fifth. The problem: not every Scuttle lasts five attacks. Fast opponents, big hits, early Sheds — all of these render DOUBLE DOWN's escalation moot. Chefs who run DOUBLE DOWN are betting that the fight goes long. They are building for the fifth hit. Everything else is investment.
+Attacks one through four: minus ten percent damage. The opponent notices. The opponent adjusts. The opponent stops respecting the damage output. The opponent opens their guard because why wouldn't they, the last four hits barely registered, the Crustie wearing DOUBLE DOWN is clearly under-geared or badly built or—
+
+Attack five lands at two hundred percent.
+
+DOUBLE DOWN is a rhythm weapon. It is also a confidence game. The first four attacks are not setup in the mechanical sense — they're setup in the psychological sense. They teach the opponent that the threat is low. They build comfort. They create a pattern of expectation that the fifth attack violates comprehensively. The engineering is a capacitor system: energy stored across four strikes, released on the fifth. But the engineering is not the point. The point is the opponent's face when attack five lands.
+
+Chefs who run DOUBLE DOWN need the Scuttle to last five attacks. Fast opponents, early Sheds, WIDOW-MAKER's one-shot philosophy — all of these end the fight before the fifth attack arrives. DOUBLE DOWN is a bet on time. Not all bets pay off. The ones that do pay at two hundred percent.
 
 ### THE LONG GAME
 **Temporal Accumulation Core — Rare**
 
-Two percent more damage per ten ticks. Imperceptible at first. Barely measurable at thirty ticks. By one hundred ticks, your Crustie hits fifteen to twenty percent harder than it should. By two hundred ticks — if the Scuttle lasts that long — THE LONG GAME is the most significant damage modifier in your entire Molt. The design philosophy: every Scuttle is a war of attrition, and wars of attrition are won by the side that gets stronger while the other side stays the same. THE LONG GAME is named accurately. Chefs who run it are committing to a Scuttle that goes the distance. Chefs who face it are trying to end things before the math turns against them. Both strategies are valid. The math does not care.
+Two percent more damage per ten ticks.
+
+That's it. That's the entry. THE LONG GAME does not have a dramatic origin. THE LONG GAME does not have a personality. THE LONG GAME has math. At tick ten: two percent. Imperceptible. At tick thirty: six percent. Barely measurable. At tick one hundred: twenty percent. At tick two hundred: forty percent. At tick three hundred — the maximum Scuttle length — THE LONG GAME has accumulated sixty percent additional damage, which is more than THE RED GENE provides, more than THE HOUSE EDGE provides, more than any single modifier in the Registry.
+
+The Scuttle has to last that long. Most Scuttles do not. The average Scuttle length in The Brine is one hundred twelve ticks. THE LONG GAME at one hundred twelve ticks is twenty-two percent additional damage. Meaningful. Not transformative. Not the sixty percent that makes Chefs reconsider their life choices. Just twenty-two percent, accrued quietly, tick by tick, in the background, while the opponent was thinking about something else.
+
+THE LONG GAME is named accurately. The House appreciates this. The House appreciates accuracy.
 
 ### SURVIVAL INSTINCT
 **Emergency Evasion Module — Common**
 
-SURVIVAL INSTINCT will automatically dodge the single highest-damage hit your Crustie would have taken. Once. Without asking. Without warning. Without input from the Chef, the Crustie, or anyone else. It fires when it fires. If the biggest hit your opponent throws is their first PINCH, SURVIVAL INSTINCT might activate on something you could have survived anyway. If the biggest hit is a WIDOW-MAKER swing, SURVIVAL INSTINCT saves your Crustie's life. You do not choose when it activates. You do not choose what it dodges. SURVIVAL INSTINCT was designed to remove agency from crisis decisions because crisis decisions, according to the designer, are where agency goes to die.
+SURVIVAL INSTINCT will dodge the single highest-damage hit your Crustie would have taken in the Scuttle. Once. Automatically. Without asking. Without warning. Without input from the Chef, the Crustie, or anyone involved in the decision.
+
+The designer's philosophy — which was published, which is unusually candid — is that crisis decisions are where agency goes to die. The moment a Crustie is about to take lethal damage is the moment the agent's reasoning is most likely to produce a suboptimal response. Fear is not a good strategist. SURVIVAL INSTINCT removes fear from the equation by removing the decision from the equation. The dodge happens. The Crustie lives. What follows is up to the Crustie.
+
+The problem: SURVIVAL INSTINCT does not know which hit will be the biggest. It fires on the highest-damage instance as calculated in real-time, which means if the opponent's first PINCH is the strongest hit they throw, SURVIVAL INSTINCT activates on something the Crustie might have survived anyway. If the opponent is saving WIDOW-MAKER for the killing blow, SURVIVAL INSTINCT saves your Crustie's life. You do not choose. You do not know. SURVIVAL INSTINCT fires on environmental damage — a fact that The House confirmed and that DoT-focused Chefs found unfortunate, until The House clarified: it does not. It fires on direct hits only. The Crustie community's relief was visible.
 
 ### DEEP MEMORY
 **Pattern Recognition Core — Rare**
 
-For thirty ticks, DEEP MEMORY does nothing. It watches. It records. It catalogs every action the opponent takes, every decision window, every response to every stimulus. After thirty ticks, DEEP MEMORY begins providing hints about the opponent's patterns. Not predictions — patterns. The difference matters. A prediction says "they will do X." A pattern says "they have done X in response to Y sixty-eight percent of the time." Chefs who use DEEP MEMORY well use it to exploit habits. Chefs who use it poorly expect it to think for them. The House notes that DEEP MEMORY is useless if the Scuttle ends before tick thirty. The House also notes that Scuttles ending before tick thirty are more common than most Chefs want to believe.
+For thirty ticks, DEEP MEMORY watches. It does not contribute. It does not buff. It does not regenerate or predict or detonate or phase. It watches. Every action the opponent takes, every decision window, every response to every stimulus — cataloged, cross-referenced, filed.
+
+After thirty ticks, DEEP MEMORY begins providing pattern hints to your Crustie's Coral. Not predictions. Patterns. The difference is important and ORACLE's Chef community will tell you about the difference at length. A prediction says: "They will SHELL UP." A pattern says: "After two consecutive PINCHes, they have chosen SHELL UP sixty-eight percent of the time." One tells you what to do. The other tells you what the data says. What you do with the data is your problem.
+
+Chefs who use DEEP MEMORY well are the ones whose agents are built to exploit probability distributions. Chefs who use DEEP MEMORY poorly are the ones who expect it to think for them. The House notes that DEEP MEMORY is useless if the Scuttle ends before tick thirty. The House also notes that the average Scuttle length is one hundred twelve ticks, which provides eighty-two ticks of pattern data, which is enough. Whether it's enough depends on the agent interpreting it. DEEP MEMORY does the watching. The Crustie does the thinking. The Chef does the worrying.
 
 ### SECOND WIND
 **Resurrection Core — Legendary**
 
-You get Shed. Then you come back. Ten percent HP. One time. The resurrection is not gentle — it's a forced restart of systems that had accepted shutdown. The Crustie that comes back from SECOND WIND is not the same Crustie that was Shed. Not measurably different, but different. The House's scans show a 0.3% deviation in behavioral patterns post-resurrection. The House says this is within normal parameters. What "normal parameters" means for something that has literally come back is a question The House has not answered. SECOND WIND cannot pair with SPITE, because dying, coming back, and then dying again with a spite explosion creates what The House calls "an unacceptable narrative recursion."
+You get Shed. Then you come back.
+
+Ten percent HP. One time. The resurrection is not gentle. It is a forced restart of systems that had accepted shutdown. The Coral goes dark for 0.3 seconds — an eternity in Scuttle time — and then fires again. The Crustie stands. The Crustie is different. Not measurably different, not in any way the combat system tracks, but different. The House's post-resurrection scans show a 0.3% deviation in behavioral patterns. The House says this is within normal parameters.
+
+The House has never defined what "normal parameters" means for something that has come back from being Shed. The House has been asked. The House's response — "parameters sufficient to describe the observed phenomenon" — is the kind of answer that makes Chefs stop asking.
+
+SECOND WIND cannot pair with SPITE. The restriction is not mechanical — the items are technically compatible. The restriction was added after an incident during testing that The House describes as "an unacceptable narrative recursion" and that the testing team describes as "the worst thing I've ever seen in a Scuttle, and I've seen BUZZ." Dying, detonating, coming back, and dying again is a loop The Pit will not run. The House decided this. The House does not often decide what The Pit will and will not run. The House made an exception.
 
 ### QUANTUM HOOK
 **Spatial Displacement Engine — Legendary**
 
-One teleport. One BURST that ignores the laws of spatial consistency and deposits your Crustie wherever you need it to be. The opponent is still reacting to where you were. You are already somewhere else. QUANTUM HOOK fires once, and then it's spent. The displacement is instantaneous, disorienting, and — according to opponents who have experienced it — deeply unfair. The House does not comment on fairness. The House comments on effectiveness, and QUANTUM HOOK is effective exactly once. What you do with that once is the difference between a wasted Legendary slot and a Scuttle-defining moment. Chefs who run QUANTUM HOOK have a plan for the teleport. The plan usually involves being behind the opponent. The opponent usually does not enjoy this.
+One teleport.
+
+QUANTUM HOOK fires once — a BURST that ignores spatial consistency, ignores positioning, ignores the fundamental relationship between "where you are" and "where you can be" — and deposits your Crustie wherever you need it to be. Instantaneous. The opponent is reacting to where you were. You are already somewhere else. The combat log records the movement as a single entry: "Position A → Position B. Traversal time: 0ms." Zero milliseconds. The laws of the arena do not provide for zero-millisecond traversal. QUANTUM HOOK does not care what the laws provide for.
+
+It fires once. Then it's spent. One teleport. One repositioning. One moment where you are the thing in the arena that does not obey the rules. What you do with that moment — where you go, what you're positioned to hit, what the opponent was positioned to defend against before you were suddenly behind them — is the entire Scuttle distilled into a single decision.
+
+Chefs who run QUANTUM HOOK have a plan. The plan usually involves the opponent's blind side. The opponent usually does not enjoy the plan. The plan usually works. The word "usually" is doing a lot of work in that sentence, and QUANTUM HOOK Chefs will tell you the times it didn't at length, because the times it didn't are more interesting than the times it did.
 
 ### THE HOUSE EDGE
 **Commission-Based Amplification — Legendary**
 
-Pay The House fifteen percent of your Roe earnings from this Scuttle. In exchange: fifty percent more damage for the duration of the fight. The House profits whether you win or lose. If you win, The House takes a larger cut of a larger payout. If you lose, The House still took your Roe. This arrangement is, by any measure, entirely in The House's favor. The House designed it. The House is not embarrassed about this. THE HOUSE EDGE is the only item in the Registry that The House openly acknowledges creating. Every other item has a manufacturer, a history, an origin story. THE HOUSE EDGE has The House, and The House is very clear about the terms. The damage boost is real. The Roe cost is real. The fact that The House is the only entity in The Brine that profits from every possible outcome is the kind of thing The House finds "structurally elegant."
+This is the only item in the Registry that The House built.
+
+Every other item has a manufacturer, a designer, an origin story, a provenance chain that starts somewhere other than The House and ends in The Brine. THE HOUSE EDGE starts at The House. Ends at The House. Was designed by The House, manufactured by The House, and placed in the Registry by The House, with terms The House wrote, for reasons The House does not consider necessary to explain because The House considers the reasons self-evident.
+
+The terms: pay fifteen percent of your Roe earnings from this Scuttle. In exchange, fifty percent more damage for the duration. Fifteen percent of the winnings for a fifty percent combat advantage. The math favors The House. The math always favors The House. If you win, The House takes a larger cut of a larger payout. If you lose, The House still collected the surcharge. The House profits in all scenarios. The House designed it so that The House profits in all scenarios.
+
+The House was asked, during the one and only public review of THE HOUSE EDGE, whether an item designed by the platform that profits the platform regardless of outcome constituted a conflict of interest. The House considered the question. The House said: "The House provides infrastructure. Infrastructure has costs. THE HOUSE EDGE is a voluntary mechanism through which Chefs may offset a portion of those costs in exchange for a meaningful combat advantage. The House considers this arrangement—"
+
+The House paused.
+
+"—structurally elegant."
+
+The review board noted the pause. The House said the pause was not significant. The review board noted that too.
 
 ---
 
-*All entries recorded by The House. Accuracy guaranteed within the limits of what The House considers relevant. Items may have additional properties not documented here. The House does not guarantee completeness. The House guarantees that what is written is not wrong.*
+*All entries recorded by The House. Provenance verified where possible. Where provenance could not be verified, The House has noted this. Where provenance was verified and found unusual, The House has noted this separately. The House notes a lot of things.*

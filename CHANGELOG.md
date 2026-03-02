@@ -23,6 +23,96 @@
 
 ---
 
+## [2026-03-01] - feat(ws21): Babylon.js 3D game engine — Sprint 1
+
+**Type:** feature | **Budget impact:** ~$0.15 (no API calls, local dev only)
+
+### Head of Engineering (WS21)
+
+**Game engine upgrade — Babylon.js replaces Phaser 3 / Three.js / PlayCanvas:**
+
+- **Engine decision locked: Babylon.js** (logged in `design/DECISIONS.md`)
+  - 3D-first engine for incoming GLTF assets from visual team
+  - Isometric orthographic camera (TFT/LoL 45° angle)
+  - TypeScript-first, full game engine (ECS, animation, physics, scene graph)
+  - Cloudflare DO WebSocket pipes into Babylon scene update loop
+
+- `web/app/game/PitScene.ts` — Babylon.js arena scene
+  - Dark Brine aesthetic with bioluminescent point lights (cyan, purple)
+  - 20x20 grid floor with thin box grid lines (every 5th line glows cyan)
+  - MAP 001 "THE STANDARD" tile rendering: WALL (3D boxes with purple trim dots), COVER (low boxes), HAZARD (ground planes with pulsing orange glow)
+  - Real Crustie GLB models loaded from Vercel Blob CDN via SceneLoader.ImportMeshAsync
+    - Default match: Lobster (alpha/cyan) vs Crab (beta/red)
+    - Toon/cel-shading: flat StandardMaterial, no specular, subtle emissive self-illumination
+    - Borderlands-style black outlines (renderOutline, outlineWidth: 0.05)
+    - Capsule fallback if GLB load fails (network error graceful degradation)
+    - 5 species available: lobster, crab, mantis, hermit, shrimp
+  - Procedural hit reaction: scale squash-stretch pulse on DAMAGE_APPLIED events
+  - HP bars and tick counter via @babylonjs/gui fullscreen UI
+  - Animated position lerp (12 frames ~200ms) on each tick
+  - VFX animations: PINCH (slash line + impact flash), SPIT (projectile sphere with impact burst), SHELL UP (expanding green shield sphere), BURST (expanding torus ring)
+  - Floating damage numbers linked to world-space anchors
+  - Match end overlay ("SCUTTLE OVER" + winner name)
+  - GlowLayer for bioluminescent atmosphere
+
+- `web/app/components/BabylonArena.tsx` — React wrapper component
+  - Dynamic import of PitScene (SSR-safe)
+  - Accepts WebSocket snapshots, forwards to PitScene
+  - Lifecycle management (create/dispose)
+  - `useWebSocketArena` hook for standalone usage
+
+- `web/app/components/Play.tsx` — Replaced Phaser/PlayCanvas references with Babylon
+  - Removed dead PlayCanvas lifecycle code
+  - Removed dead Phaser imports and state
+  - BabylonArena now receives snapshot via `babylonSnap` state
+
+- `web/package.json` — Dependency cleanup
+  - Removed: `phaser`, `three`, `@types/three`, `playcanvas`
+  - Added: `@babylonjs/core@8.53.0`, `@babylonjs/loaders@8.53.0`, `@babylonjs/gui@8.53.0`
+
+- `/api/agent/decide` endpoint — already exists (no changes needed)
+  - Multi-provider LLM support (OpenAI, Anthropic, Groq, OpenRouter)
+  - Scripted AI fallback when no API key available
+  - Skill/tool-use support with two-pass LLM calls
+
+---
+
+## [2026-03-01] - feat(ws21): Phaser 3 game engine — Sprint 1
+
+**Type:** feature | **Budget impact:** ~$0.10 (no API calls, local dev only)
+
+### Head of Engineering (WS21)
+
+**Game engine foundation — Phaser 3 rendering of The Pit:**
+
+- `web/app/lib/ws2/MatchScene.ts` — Complete rewrite of Phaser 3 arena scene
+  - Dark Brine aesthetic: #050510 background, bioluminescent cyan grid lines
+  - MAP 001 "THE STANDARD" tile rendering: WALL (dark coral/purple trim), COVER (debris), HAZARD (pulsing amber)
+  - Procedural lobster sprites with carapace, claws, eyes, antennae, tail fan
+  - HP bars rendered directly on grid above each lobster + energy pips
+  - Action VFX animations: PINCH (slash/flash), SPIT (projectile), SHELL UP (shield bubble), BURST (dash trail + speed lines)
+  - Damage number popups, action label popups
+  - Combat log sidebar with lore names and color-coded entries
+  - Action legend panel (SCUTTLE/PINCH/SPIT/SHELL UP/BURST)
+  - Match end overlay ("SCUTTLE OVER" + winner name)
+  - Engine→lore action name mapping (MOVE→SCUTTLE, MELEE_STRIKE→PINCH, etc.)
+
+- `web/app/components/PhaserArena.tsx` — React wrapper component
+  - Dynamic import of Phaser (SSR-safe)
+  - Accepts WebSocket snapshots, forwards to MatchScene
+  - Lifecycle management (create/destroy)
+  - `useWebSocketArena` hook for standalone usage
+
+- `web/app/components/Play.tsx` — Integrated Phaser arena into match view
+  - Replaced PlayCanvas 3D renderer with PhaserArena
+  - WebSocket tick messages now feed both React HUD and Phaser scene
+
+**Decisions logged:**
+- Phaser 3 selected as rendering engine (see DECISIONS.md)
+- Action name mapping: engine names → lore names in UI only
+
+---
+
 ## [2026-03-01] - design(ws18): complete game design systems spec
 
 **Type:** design | **Budget impact:** $0.00 (authoring only, no API calls)

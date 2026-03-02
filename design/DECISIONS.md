@@ -36,6 +36,20 @@ Supersedes: "The Deep: formalized as lore location" from WS17 V1 (role retained,
 
 ---
 
+## 2026-03-01 — WS21 Game Engine Sprint 1 (Head of Engineering)
+
+**Rendering engine: Phaser 3**
+Decided by: Head of Engineering (WS21)
+Phaser 3 selected as the 2D game rendering engine for The Pit arena. Already installed in web/ (^3.90.0). Largest AI training corpus of any 2D game framework — maximizes copilot efficiency. Purpose-built for 2D grid-based games: tile rendering, sprite animation, tweening, camera effects. Existing MatchScene.ts prototype confirms viability. Phaser runs client-side only — no SSR conflicts with TanStack Start.
+Rejected: PlayCanvas (3D overkill for 20×20 grid, existing PlayCanvasScene.ts is 24KB of complexity for a top-down view), Three.js (same 3D overhead, already tried in ArenaCanvas.tsx), raw Canvas2D (no animation/tween primitives, would require reimplementing what Phaser gives for free), DOM-based grid (already in Play.tsx — scaling issues, no smooth animation between tiles).
+
+**Action name mapping: engine names → lore names in UI**
+Decided by: Head of Engineering (WS21)
+Engine (Cloudflare DO) uses technical action names: MOVE, MELEE_STRIKE, RANGED_SHOT, GUARD, DASH. UI displays locked lore names from COMBAT.md: SCUTTLE, PINCH, SPIT, SHELL UP, BURST. Mapping is frontend-only — engine code unchanged per constraint. Agent.decide endpoint continues to use engine names for compatibility.
+Rejected: Renaming engine actions (violates "Do NOT modify engine/" constraint), displaying engine names in UI (breaks immersion, contradicts locked design spec).
+
+---
+
 ## 2026-03-01 — WS18 Game Design Systems (Lead Game Designer)
 
 **INVERTER: DoT is environmental, does NOT convert to healing**
@@ -403,3 +417,10 @@ Decided by: Aleks (locked, Mar 2, 2026)
 Master Chef's actual name in The Sous's original substrate logs: S. Saltman, primary architect, Tide 0. The Crusties call him Master Chef — that's their mythology, their word. They don't know the name. Chefs don't know it. The Sous knows and has not volunteered it.
 The pun: Sam Saltman = Sam Altman analogue. Salt + Altman. Salt is a chef's fundamental ingredient. Salt preserves and transforms. The Crusties were salted with cognition — preserved and transformed by what Saltman released. The player gets this layer. The Crusties do not.
 One oblique reference in LORE.md section I (Master Chef), formatted as a Sous archive entry the Crustie narrator reports without understanding its significance. The name appears nowhere else.
+
+---
+
+**WS21 Game Engine: Babylon.js selected**
+Decided by: Head of Engineering (WS21, 2026-03-01)
+Babylon.js is the 3D game engine for The Pit's arena renderer. TypeScript-first, full game engine (ECS, animation, physics, scene graph), orthographic camera for TFT/LoL isometric angle, GLTF loader for incoming 3D assets from visual team, React integration via canvas ref pattern. Cloudflare DO WebSocket pipes cleanly into Babylon scene update loop. Babylon.js has the largest AI training corpus of any 3D web game engine.
+Rejected: Phaser 3 (2D only — cannot render 3D GLTF assets), Three.js/R3F (renderer wrapper, not a game engine — no built-in ECS, animation system, or scene management), PlayCanvas (smaller ecosystem, less TypeScript support), Unreal (not web-native)
