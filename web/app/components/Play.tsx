@@ -9,6 +9,8 @@ import {
   TICK_RATE,
 } from '../lib/ws2/index.js';
 import type { BotConfig, MatchSnapshot } from '../lib/ws2/match-types';
+import type { MatchSnapshot as BabylonSnapshot } from '../game/PitScene';
+import { BabylonArena } from './BabylonArena';
 
 const ENGINE_WS_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_ENGINE_WS_URL) ||
@@ -429,15 +431,14 @@ const Play = () => {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [ffaBusy, setFfaBusy] = useState(false);
 
-  // --- PlayCanvas ---
-  const [pcActive, setPcActive] = useState(false);
-  const playCanvasRef = useRef<HTMLCanvasElement>(null);
+  // --- Babylon Arena ---
+  const [babylonSnap, setBabylonSnap] = useState<BabylonSnapshot | null>(null);
+
   const [vfxWord, setVfxWord] = useState<{ text: string; color: string; id: number } | null>(null);
 
   // --- Refs ---
   const abortRef = useRef<AbortController | null>(null);
   const prevEventsLenRef = useRef(0);
-  const sceneRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   /** Tracks bots with an in-flight /api/agent/decide call — prevents queuing overlapping decisions */
   const agentBusyRef = useRef<Set<string>>(new Set());
@@ -473,49 +474,7 @@ const Play = () => {
     return () => clearInterval(interval);
   }, [phase, showRoomPanel]);
 
-  // --- Canvas VFX word overlay listener ---
-  useEffect(() => {
-    const canvas = playCanvasRef.current;
-    if (!canvas) return;
-    const handler = (e: Event) => {
-      const { text, color } = (e as CustomEvent).detail;
-      const id = Date.now();
-      setVfxWord({ text, color, id });
-      setTimeout(() => setVfxWord((prev) => (prev?.id === id ? null : prev)), 700);
-    };
-    canvas.addEventListener('moltpit:vfx', handler);
-    return () => canvas.removeEventListener('moltpit:vfx', handler);
-  }, [phase]);
-
-  // --- PlayCanvas lifecycle ---
-  useEffect(() => {
-    if (phase !== 'match' || !playCanvasRef.current) return;
-
-    let destroyed = false;
-
-    import('../lib/ws2/PlayCanvasScene').then(({ PlayCanvasScene }) => {
-      if (destroyed || !playCanvasRef.current) return;
-      try {
-        const scene = new PlayCanvasScene(playCanvasRef.current);
-        sceneRef.current = scene;
-        setPcActive(true);
-      } catch (e) {
-        console.warn('[PlayCanvas] Init failed, using CSS grid:', e);
-        setPcActive(false);
-      }
-    }).catch((e) => {
-      console.warn('[PlayCanvas] Load failed, using CSS grid:', e);
-      setPcActive(false);
-    });
-
-    return () => {
-      destroyed = true;
-      sceneRef.current?.destroy?.();
-      sceneRef.current = null;
-      setPcActive(false);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
+  // (PlayCanvas/Phaser lifecycle removed — Babylon.js arena is rendered via BabylonArena component)
 
   // --- VFX helpers ---
   const spawnVfx = useCallback((cell: { x: number; y: number }, text: string, color: string, type: VfxEvent['type'] = 'burst', duration = 600) => {
@@ -558,9 +517,6 @@ const Play = () => {
 
   // --- Snapshot handler ---
   const handleSnapshot = useCallback((snap: MatchSnapshot) => {
-    // Forward snapshot to PlayCanvas scene if available
-    sceneRef.current?.update?.(snap);
-
     const s = snap.state;
     const actorA = s.actors?.botA;
     const actorB = s.actors?.botB;
@@ -656,7 +612,6 @@ const Play = () => {
     setBotALastAction('');
     setBotBLastAction('');
     setArenaFlash(false);
-    setPcActive(false);
     prevEventsLenRef.current = 0;
 
     const seedLabel = seedInput.trim() || `${Date.now()}`;
@@ -770,13 +725,21 @@ const Play = () => {
           try { msg = JSON.parse(e.data); } catch { return; }
 
           if (msg.type === 'tick') {
+            const events = msg.events ?? msg.state?.events ?? [];
             const snap: MatchSnapshot = {
-              state: { ...msg.state, events: msg.events ?? msg.state?.events ?? [] },
+              state: { ...msg.state, events },
               tick: msg.tick,
               ended: false,
               winnerId: null,
             };
             handleSnapshot(snap);
+
+            // Feed Babylon arena
+            setBabylonSnap({
+              state: msg.state,
+              decisions: [],
+              newEvents: events,
+            });
 
             // Fire agent decisions at every DECISION_WINDOW_TICKS boundary
             // (DECISION_WINDOW_TICKS = 3 → every 600ms at 200ms/tick)
@@ -1354,22 +1317,16 @@ const Play = () => {
             </div>
           </div>
 
-          {/* PlayCanvas 3D arena — always 560px so canvas has dimensions when scene initialises */}
-          <div style={{ position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto 1rem', height: '560px', overflow: 'hidden', borderRadius: '14px', border: '4px solid #1A1A1A', boxShadow: '8px 8px 0 #1A1A1A', background: '#F9F7F2' }}>
-            <canvas
-              ref={playCanvasRef}
-              style={{ width: '100%', height: '100%', display: 'block' }}
+          {/* Babylon.js Arena — The Pit */}
+          <div style={{ position: 'relative', width: '100%', maxWidth: '920px', margin: '0 auto 1rem' }}>
+            <BabylonArena
+              snapshot={babylonSnap}
+              botNames={{ botA: aName, botB: bName }}
+              onMatchEnd={(wId) => {
+                if (wId) setWinnerId(wId);
+              }}
             />
-            {/* Loading placeholder until PlayCanvas scene starts */}
-            {!pcActive && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', background: '#F9F7F2' }}>
-                <div style={{ fontFamily: 'Bangers, display', fontSize: '2rem', color: '#1A1A1A', letterSpacing: '2px' }}>LOADING ARENA...</div>
-                <div style={{ width: '120px', height: '8px', background: '#e0e0e0', borderRadius: '999px', border: '2px solid #1A1A1A', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', background: '#00E5FF', width: '60%', animation: 'vfx-burst-in 1s ease-in-out infinite alternate' }} />
-                </div>
-              </div>
-            )}
-            {/* Comic art VFX overlay — POW!/BANG! words over the 3D canvas */}
+            {/* Comic art VFX overlay — POW!/BANG! words over Babylon canvas */}
             {vfxEvents.map((v) => (
               <div
                 key={v.id}
@@ -1392,26 +1349,6 @@ const Play = () => {
                 {v.text}
               </div>
             ))}
-            {/* Canvas VFX word overlay (from PlayCanvas DOM events) */}
-            {vfxWord && (
-              <div style={{
-                position: 'absolute', inset: 0, display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-                pointerEvents: 'none', zIndex: 10,
-              }}>
-                <span style={{
-                  fontFamily: 'Bangers, display',
-                  fontSize: '5rem',
-                  color: vfxWord.color,
-                  WebkitTextStroke: '4px #111',
-                  textShadow: '4px 4px 0 #111, -4px -4px 0 #111, 4px -4px 0 #111, -4px 4px 0 #111',
-                  animation: 'vfxPop 0.7s ease-out forwards',
-                  letterSpacing: '0.05em',
-                }}>
-                  {vfxWord.text}
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Below-canvas controls: tick/seed + abort — always visible */}
