@@ -31,7 +31,7 @@ Good:
 
 Bad:
 > "Get ready to battle! 🦞"
-> "Welcome back, Pitmaster!"
+> "Welcome back, Chef!"
 > "You're doing great!"
 
 ---
@@ -60,7 +60,7 @@ Bad:
 | Shed (to lose) | Lose, Die, Fail |
 | Molt (to win/grow) | Win (acceptable but Molt is better) |
 | Red | Diamond, Legend, Master (rank names) |
-| Pitmaster | User, Player, You |
+| Chef | User, Player, You, Pitmaster |
 | The House | Platform, System, We |
 
 ---
@@ -77,7 +77,7 @@ Each screen has a single line of ambient copy. The House wrote it. The House mea
 | The Pit | *"Coral is firing. Claws are out. Let's see what you built."* |
 | The Ledger | *"Every Scuttle is recorded. The Pit forgets nothing."* |
 | The Pit Board | *"The Red is up there. Everyone else is below."* |
-| Surface (sign in) | *"Surface, Pitmaster. Your Lobster needs you."* |
+| Surface (sign in) | *"Surface, Chef. Your Lobster needs you."* |
 | Victory | *"You molted. Come back before the shell hardens."* |
 | Loss | *"You were Shed. The Pit remains."* |
 

@@ -8,6 +8,21 @@
 
 ---
 
+## [2026-03-01] - feat(lore): WS17 lore bible — item lore, soft shell guide, loading lines, creature sounds, rank ladder
+
+**Type:** design/lore | **Budget impact:** ~$3 (agent)
+- `design/world/LORE.md` — full lore bible: The Brine, The Makers, The Chelae, The House, The Pit, The Chef, rank ladder (6 tiers), The Deep, Subject 1
+- `design/items/ITEM-LORE.md` — full paragraph lore for all 40 items, The House voice
+- `design/ui/SOFT-SHELL-GUIDE.md` — onboarding written by The House for new Chefs
+- `design/ui/LOADING-LINES.md` — 50 loading screen lines, The House voice
+- Added creature vocalizations section to `design/audio/SOUND-DESIGN.md` (6 categories)
+- Updated `design/ui/COPY-GUIDE.md` — Chef replaces Pitmaster in vocabulary and flavor lines
+- Updated `design/DECISIONS.md` — player name (Chef), rank ladder (6 tiers), Subject 1, The Deep, creature vocalizations, item lore voice
+
+**Decisions locked this session:** Player name=Chef (replaces Pitmaster), Rank ladder=6 tiers (Soft Shell→Brine-Touched→Hardened→Tide-Scarred→Deep→Red), Subject 1 lore, The Deep formalized, creature vocalizations (6 categories), item lore voice (The House as historian)
+
+---
+
 ## [2026-03-01] - design: game studio structure + full ontology
 
 **Type:** design | **Budget impact:** ~$0 (no agent)

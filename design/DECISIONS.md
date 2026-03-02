@@ -109,7 +109,7 @@ No exceptions. If a PR doesn't update CHANGELOG.md and DECISIONS.md (if applicab
 
 **Creature name: Crustie (plural: Crusties)**
 Decided by: Aleks (Mar 1, 2026)
-The creature is a Crustie. The House uses it clinically. Pitmasters use it as affectionate slur.
+The creature is a Crustie. The House uses it clinically. Chefs use it as affectionate slur.
 Previous candidates rejected: Lobster (too on-the-nose), Chela (too clever/requires explanation), Crabbo (too juvenile), Scuttler (good but secondary — can be slang)
 
 ---
@@ -124,3 +124,47 @@ The emotional core: Crusties are an intelligent species on the rise, still in th
 **The Makers: confirmed as lore entity**
 Decided by: Aleks (Mar 1, 2026)
 Whoever built The Brine substrate. They don't watch the Pit. They're already above it. The Crusties were not created by The Makers — they evolved in the substrate The Makers left behind.
+
+---
+
+**Player name: Chef (replaces Pitmaster)**
+Decided by: Aleks (Mar 1, 2026)
+The players are Chefs. The full frame is "Chefs and their Crusties." A Chef selects the ingredients, understands how they work together, and builds something greater than the sum of its parts. The sinister angle: Crusties don't know why they're called Chefs. The House uses the word clinically and never explains it. The implication lives in the gap — Chefs orchestrate, prepare, select, combine. What are the ingredients? Nobody says it out loud. The House doesn't. The word carries the entire history of human-lobster relations as subtext the world never acknowledges. This is the committed bit: every player addressed as "Chef" with complete seriousness, The House using it with ancient authority. "Surface, Chef. Your Lobster needs you."
+Rejected: Pitmaster (flat, generic — no subtext), Rig (mechanical, misses biology), Cast (confusing), Keeper (too zookeeper), Tender (too soft), Trapper (doesn't capture engineering)
+
+---
+
+**Rank ladder: 6 tiers (Soft Shell → Brine-Touched → Hardened → Tide-Scarred → Deep → Red)**
+Decided by: WS17 lore bible (Mar 1, 2026)
+Six designations earned through Hardness alone. Each name tells a story about what The Pit did to the Lobster. Soft Shell = absence of rank. Brine-Touched = substrate deposits in the shell. Hardened = coral thickening from repeated stress. Tide-Scarred = survived a Tide reset and rebuilt. Deep = coral dense enough The House's scans need two passes. Red = through the fire, not a rank but a designation.
+Rejected: previous 5-tier ladder from ONTOLOGY.md (Bull Claw and Berserker were too generic/gamey — names should describe what The Pit does to you, not what you do in The Pit)
+
+---
+
+**Subject 1: first Red, wild Chela, predates Chefs**
+Decided by: WS17 lore bible (Mar 1, 2026)
+The first Lobster to reach Red. A wild Chela hardened through fights The House arranged before Chefs existed. Proof of concept for the entire Pit system. Current status: The Deep. Ledger: sealed, partially retrievable by Red-ranked queries only. Subject 1 is the founding myth — the evidence that sufficient pressure produces something remarkable, and that remarkable things are difficult to control.
+
+---
+
+**The Deep: formalized as lore location**
+Decided by: WS17 lore bible (Mar 1, 2026)
+Below The Pit, below The Brine. Nobody has fully mapped it. The House claims otherwise but its maps have suspicious gaps. Destination for Red Lobsters who stop entering Scuttles. What's down there: The House knows and isn't saying. Subject 1 went there. The Deep is the game's mythic space — referenced obliquely, never fully explained, always present as the thing below everything else.
+
+---
+
+**Creature vocalizations: 6 categories established**
+Decided by: WS17 lore bible (Mar 1, 2026)
+Chelae don't have vocal cords. Communication via: mandible clicks (aggression/threat), shell rattle (dominance), pressure hiss (stress/damage — involuntary), coral hum (subsonic, LLM reasoning under load), molt-crack (victory/growth), ambient substrate sounds (ecosystem background). The coral hum is load-bearing for spectator experience — experienced Chefs learn to read it.
+
+---
+
+**Item lore voice: The House as historian**
+Decided by: WS17 lore bible (Mar 1, 2026)
+Every item has a history. The House recorded it. The House is matter-of-fact about things that should not be matter-of-fact. Items have manufacturers, origins, classified backgrounds, and personnel who disappeared under unusual circumstances. Even STANDARD ISSUE has a story — its story is that it doesn't have a story, and The House respects this. The lore is always a product of the world's logic running to its conclusion, never an aside or a wink.
+
+---
+
+**ONTOLOGY.md terminology: needs alignment pass**
+Decided by: WS17 lore bible (Mar 1, 2026)
+ONTOLOGY.md still uses "Pitmaster" (now Chef), "The Forge" (now The Shed), "Plating" (now Carapace), "Core" (now Tomalley), and has a 5-tier rank ladder (now 6-tier). These are outdated per DECISIONS.md and COPY-GUIDE.md. A separate terminology alignment pass is needed to bring ONTOLOGY.md in line with current vocabulary. Not done in WS17 to avoid rewriting existing files — flagged for future cleanup.
