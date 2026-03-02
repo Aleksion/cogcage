@@ -2,7 +2,7 @@
 
 ---
 
-## Product-Mode Ship — 18:22 ET Mar 2
+## Product-Mode Ship — 18:23 ET Mar 2
 
 Directive executed: hold landing copy; enforce product-critical order P1 reliability/logging, P2 demo loop movement/action economy, P3 founder checkout + postback, P4 ops artifacts.
 
@@ -11,13 +11,22 @@ Directive executed: hold landing copy; enforce product-critical order P1 reliabi
   - Added request-received observability event with content-type/idempotency metadata for intake traceability.
 - `app/routes/api/founder-intent.ts`
   - Added matching request-received observability event for founder intent intake parity.
+- `app/routes/index.tsx`
+  - Replay queue durability now persists stable idempotency keys per waitlist/founder item and reuses them for retries after network/storage failures.
 - `app/components/DemoLoop.tsx`
   - Extracted deterministic demo-loop core exports and random injection hooks for testable movement + AP/action resolution.
 - `scripts/demo-loop-core.test.mjs`
   - Added product-mode regression coverage for map movement, AP gating, and defend mitigation semantics.
+- `app/routes/api/postback.ts`
+  - Added metadata fallback parsing for email (`email/customer_email/prefilled_email`) and source (`source/checkout_source`) so founder conversions still link when providers omit top-level fields.
+- `scripts/postback-routing.test.mjs`
+  - Added routing tests for postback type normalization and metadata identity extraction.
+- `package.json`
+  - Expanded `test:product` to run demo-loop and postback routing suites.
 
 ### Verification
-- `npm run test:product` ✅ (13/13 pass)
+- `npm run test:product` ✅ (16/16 pass)
+- `npm run build` ✅
 
 ## Product-Mode Ship — 18:12 ET Mar 2
 
