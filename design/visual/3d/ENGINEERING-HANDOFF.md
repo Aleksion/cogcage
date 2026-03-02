@@ -134,6 +134,19 @@ useGLTF('/models/crustie-lobster.glb')
 
 ---
 
+
+## Vercel Blob CDN URLs (live)
+
+```tsx
+// Use these directly in useGLTF — globally distributed, no auth
+useGLTF("https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-lobster-Z2WN3cFGSSTQO0STQOxXJKG5GQOxXG.glb") // lobster
+useGLTF("https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-crab-khUCfgl6zHSHOdiP2cMPeBA38tZRo3.glb") // crab
+useGLTF("https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-mantis-N5cksDxSVDlCYxgBVl6YYIeNf2g7a3.glb") // mantis
+useGLTF("https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-hermit-YnSbhLPGa5nGN4O4dgNoHb7d36y7f3.glb") // hermit
+useGLTF("https://kqbdw25fudwhkara.public.blob.vercel-storage.com/3d/crustie-shrimp-G2WM2yC3gMbh1pWdMpQhmogyyDL52S.glb") // shrimp
+```
+
+These are permanent public URLs. No expiry.
 ## Meshy task IDs (for re-download or re-generation)
 
 | Species | Task ID |
