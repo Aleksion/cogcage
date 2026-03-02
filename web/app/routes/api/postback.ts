@@ -78,6 +78,15 @@ export const Route = createFileRoute('/api/postback')({
         const startedAt = Date.now();
         const requestId = crypto.randomUUID();
 
+        // Test mode stub: ?test=1 returns 200 without processing, for deploy verification
+        const url = new URL(request.url);
+        if (url.searchParams.get('test') === '1') {
+          return new Response(JSON.stringify({ ok: true, mode: 'test', requestId }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+
         if (!authorize(request)) {
           appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_unauthorized', requestId });
           return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', requestId }), {
