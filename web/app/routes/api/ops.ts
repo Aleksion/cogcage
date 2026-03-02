@@ -117,11 +117,11 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
+          { sha: '9fcda08', msg: 'feat(product): playable arena map with movement + action flashes' },
+          { sha: 'd3b7783', msg: 'chore: ops log update with shipped artifacts' },
           { sha: '02b977d', msg: 'feat(p3): founder checkout fallback + postback hardening + env docs' },
           { sha: 'a3b1c9e', msg: 'feat(p2): public /demo route + landing demo link + QuickDemo scripted fallback' },
           { sha: 'a9834e0', msg: 'fix(p1): signup form reliability + ops log auto-refresh + recent commits' },
-          { sha: '98d1e4b', msg: 'chore(p4): ops log — update shipped artifacts manifest 13:32 ET Mar 2' },
-          { sha: '406e471', msg: 'chore(ops): autopilot checkpoint 05:38 ET Mar 2 — build fix (three dep), 4/4 tests pass' },
         ];
 
         return new Response(JSON.stringify({

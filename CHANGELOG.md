@@ -8,6 +8,19 @@
 
 ---
 
+## [2026-03-02] - chore(ops): refresh shipped artifacts manifest after product-critical arena update
+
+**Type:** ops | **Budget impact:** ~$0
+
+- `web/app/routes/api/ops.ts` — updated `recentCommits` manifest to include latest product-critical arena-map gameplay commit (`9fcda08`) plus preceding reliability/monetization milestones.
+- Keeps `/ops-log` “SHIPPED ARTIFACTS” aligned with branch truth for operator visibility.
+
+**Why:** autopilot directive requires ops log to reflect shipped artifacts after each critical product change.
+
+**Breaking changes:** None.
+
+**Next steps:** automate commit manifest generation at build-time to remove manual drift risk.
+
 ## [2026-03-02] - feat(product): arena map movement/actions visible in live demo loop
 
 **Type:** feature | **Budget impact:** ~$0 (manual patch)
