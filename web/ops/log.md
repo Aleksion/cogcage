@@ -2,6 +2,23 @@
 
 ---
 
+## Product-Mode Cron — 21:43 ET Mar 2
+
+Directive enforced: STOP landing-page copy iterations. Priority lock kept P1→P4 (signup reliability/storage/observability → playable demo movement + AP economy → founder checkout/postback path → ops artifacts).
+
+### Pass result
+- P1 signup reliability/storage/observability: ✅ verified (idempotent waitlist/founder persistence, receipt replay paths, fallback durability)
+- P2 playable demo loop (map movement + AP economy): ✅ verified (movement + AP-spend assertions pass)
+- P3 monetization path (founder intent + checkout success + postback idempotency): ✅ verified in code path
+- P4 ops artifacts: ✅ updated (`web/ops/log.md`, `docs/ops-log.md`)
+
+### Verification
+- `cd web && npm run test:product` ✅ (14/14 pass)
+- `cd web && npm run build` ✅
+
+### Scope guard
+- No landing-page copy edits and no non-product-critical code in this pass.
+
 ## Product-Mode Cron — 21:41 ET Mar 2
 
 Directive enforced in strict order (P1 signup reliability/storage/observability → P2 playable demo movement + AP economy → P3 founder checkout/postback path → P4 ops artifacts).
