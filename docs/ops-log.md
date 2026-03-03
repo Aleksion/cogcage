@@ -4,6 +4,37 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Cron — 19:37 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Priorities locked to P1→P4 product path.
+
+**Shipped this pass (product-critical only):**
+- **P1 signup reliability / storage / observable logs**
+  - Added request lifecycle observability (`*_request_received`, `*_request_completed`) to:
+    - `web/app/routes/api/waitlist.ts`
+    - `web/app/routes/api/founder-intent.ts`
+  - Namespaced Redis rate-limit keys by route scope to avoid cross-endpoint bleed:
+    - `web/app/lib/waitlist-redis.ts`
+- **P2 playable demo loop (map movement + action economy)**
+  - Added directional movement controls + AP-costed actions + deterministic core exports in:
+    - `web/app/components/DemoLoop.tsx`
+  - Added core loop verification tests:
+    - `web/scripts/demo-loop-core.test.mjs`
+- **P3 monetization path (founder pack + postback)**
+  - Hardened postback idempotency and metadata/event-id extraction:
+    - `web/app/routes/api/postback.ts`
+  - Added persisted idempotent response receipts for postback replay safety.
+- **P4 ops log**
+  - This entry records shipped artifacts + verification evidence.
+
+**Verification:**
+- `cd web && bun test scripts/demo-loop-core.test.mjs scripts/ws2-core.test.mjs` ✅ (9 pass)
+- `cd web && bun run build` ✅
+
+**Status:** Ready to commit/push as product-critical patch set.
+
+---
+
 ### Autopilot Cron — 14:02 ET, Mar 2 2026
 
 **Directive**: STOP copy iterations. Priorities: P1 signup, P2 demo, P3 monetization, P4 ops log.

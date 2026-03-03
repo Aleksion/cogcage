@@ -8,6 +8,52 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): finalize P1/P2/P3 critical path (signup reliability, demo action loop, postback idempotency)
+
+**Type:** fix/feature/ops | **Budget impact:** n/a (product-critical)
+
+### What changed
+- `web/app/routes/api/waitlist.ts`
+  - Added structured request lifecycle logs (`waitlist_request_received`, `waitlist_request_completed`) with status/outcome/duration.
+  - Ensured outcome-specific completion logs for invalid payload, invalid email, rate limit, fallback queue, and hard failures.
+- `web/app/routes/api/founder-intent.ts`
+  - Added matching lifecycle logs (`founder_intent_request_received`, `founder_intent_request_completed`) for observable reliability and debugging.
+- `web/app/lib/waitlist-redis.ts`
+  - Added optional `scope` parameter to `redisConsumeRateLimit` and namespaced rate-limit keys by endpoint to prevent cross-route throttling collisions.
+- `web/app/routes/api/postback.ts`
+  - Added robust idempotency path for webhook-like retries:
+    - derive/fallback idempotency key from `eventId`
+    - Redis + SQLite receipt replay support
+    - canonical `respond(...)` with persisted receipt write on every response path
+  - Improved source/event-id extraction from metadata and Stripe `client_reference_id`.
+- `web/app/components/DemoLoop.tsx`
+  - Upgraded demo loop to true playable action economy:
+    - AP costs per action
+    - directional movement (`UP/RIGHT/DOWN/LEFT`) with boundary clamps
+    - exported deterministic core helpers used by tests (`runPlayTurn`, `makeInitialLiveState`, etc.)
+- `web/scripts/demo-loop-core.test.mjs`
+  - Added product-mode regression coverage for directional movement, AP spend/regen behavior, and map boundary clamping.
+- `docs/ops-log.md`
+  - Added 19:37 ET autopilot ops entry with shipped artifacts and verification proof.
+
+### Why
+- Product-mode directive required prioritizing conversion-critical reliability and demo playability over copy iteration.
+- Observability needed explicit request lifecycle outcomes to diagnose failures fast in production.
+- Webhook retries must be idempotent to avoid duplicate founder conversion writes.
+- Demo needed concrete, verifiable movement + AP economy loop (not just passive simulation).
+
+### Design decisions
+- Keep storage layered: Redis primary, SQLite secondary, fallback queues tertiary.
+- Log both request receipt and completion for all critical API paths.
+- Keep demo core logic exportable for black-box-style regression tests.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Add handler-level integration tests for idempotency replay with mocked Redis/SQLite failures.
+- Wire production Stripe postback secret and founder checkout URL if still unset.
+
 ## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)
