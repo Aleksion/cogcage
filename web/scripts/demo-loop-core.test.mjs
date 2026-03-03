@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const demo = await import('../app/components/DemoLoop.tsx');
 
 const {
+  ACTION_AP_MAX,
   ACTION_AP_COST,
   makeInitialLiveState,
   runPlayTurn,
@@ -41,4 +42,19 @@ test('movement clamps at map boundary', () => {
 
   assert.equal(next.p1.pos.x, 0);
   assert.equal(next.p1.pos.y, 0);
+});
+
+test('action economy caps AP and keeps turns gated', () => {
+  const state = makeInitialLiveState();
+  state.p1.ap = ACTION_AP_MAX;
+  const waited = runPlayTurn(state, { action: 'STUN' }, { forcedAiAction: 'WAIT' });
+
+  assert.equal(waited.log[0].p1Action, 'STUN');
+  assert.ok(waited.p1.ap < ACTION_AP_MAX);
+
+  let rolling = waited;
+  for (let i = 0; i < 8; i += 1) {
+    rolling = runPlayTurn(rolling, { action: 'DEFEND' }, { forcedAiAction: 'WAIT' });
+  }
+  assert.ok(rolling.p1.ap <= ACTION_AP_MAX + Number.EPSILON);
 });

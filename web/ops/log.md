@@ -2,6 +2,54 @@
 
 ---
 
+## Product-Mode Ship — 19:58 ET Mar 2
+
+Directive executed: product-critical lane only (P1 signup durability/logging, P2 playable AP economy, P3 founder checkout/postback integrity, P4 artifact logging).
+
+### Shipped artifacts
+- `app/lib/waitlist-redis.ts`
+  - Route-scoped Redis rate-limit keys prevent waitlist/founder-intent throttling collisions.
+- `app/routes/api/waitlist.ts`
+  - Added structured backend-result telemetry (`redis`, `convex`, `sqlite`, `fallback`) on completion outcomes.
+- `app/components/DemoLoop.tsx`
+  - AP now caps at `ACTION_AP_MAX` to keep action gating active across the full loop.
+- `app/routes/api/founder-intent.ts`
+  - Responses now include `intentId` and emit checkout-ready telemetry with storage backend detail.
+- `app/routes/api/postback.ts`
+  - Added optional HMAC signature validation (`COGCAGE_POSTBACK_SIGNING_SECRET` / `MOLTPIT_POSTBACK_SIGNING_SECRET`).
+  - Linked paid postbacks back to founder intent IDs and emitted `founder_intent_purchase_confirmed` conversion signal.
+- `app/components/Play.tsx`, `app/components/MoltPitLanding.jsx`
+  - Founder checkout redirects now forward `client_reference_id`/`checkout_intent_id` for intent↔postback correlation.
+- `scripts/api-critical-routes.test.mjs`, `scripts/demo-loop-core.test.mjs`
+  - Added coverage for waitlist validation + idempotent replay, postback invalid-signature path, postback intent correlation, and AP cap invariants.
+
+## Product-Mode Ship — 01:35 ET Mar 3
+
+Directive executed: prioritize P1 reliability/logging while preserving shipped P2/P3 behavior and emit fresh artifact evidence.
+
+### Shipped artifacts
+- `app/lib/waitlist-redis.ts`
+  - Rate-limit keys are now route-scoped (`waitlist`, `founder-intent`, etc.) to prevent cross-endpoint limit collisions.
+- `app/components/DemoLoop.tsx`, `scripts/demo-loop-core.test.mjs`
+  - AP recovery now caps at `ACTION_AP_MAX`; added regression coverage to keep action economy bounded.
+- `app/components/MoltPitLanding.jsx`, `app/components/Play.tsx`
+  - Founder checkout redirect now carries `client_reference_id` + `checkout_intent_id` for stronger webhook-to-intent linkage.
+- `app/routes/api/waitlist.ts`
+  - Added `backendResult` metadata (`redis|convex|sqlite|fallback`) to completion logs and response detail for reliable degraded-path attribution.
+- `app/routes/api/founder-intent.ts`
+  - Added `backendResult` metadata plus `intentId` in all terminal responses.
+  - Added `founder_intent_checkout_ready` event on Redis/SQLite/fallback success paths for checkout handoff observability.
+- `app/routes/api/postback.ts`
+  - Added optional HMAC signature auth mode and explicit unauthorized diagnostics (`authMode`, `authReason`).
+  - Added checkout-intent mapping (`client_reference_id`/metadata) and `intentId` propagation on paid conversion responses.
+
+### Verification commands
+- `npm run test:product` ✅ (17/17 pass)
+- `npm run build` ✅
+
+### Risks
+- `backendResult` fields are additive and currently visible in raw logs/JSON only; `/api/ops` does not yet aggregate them.
+
 ## Product-Mode Ship — 01:05 ET Mar 3
 
 Directive executed: product-critical lane only (P1 signup reliability/logging, P2 playable loop clarity, P3 founder checkout confirmation hardening, P4 ops artifacts).

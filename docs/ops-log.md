@@ -4,6 +4,31 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Product-Critical Ship — 19:58 ET, Mar 2 2026
+
+**Directive**: Product-critical only: signup durability/logging, playable loop economy, founder checkout+postback integrity.
+
+**Shipped artifacts:**
+- `web/app/lib/waitlist-redis.ts`
+  - Rate-limit keys are now route-scoped (`waitlist` vs `founder-intent`) to avoid cross-endpoint throttling collisions.
+- `web/app/routes/api/waitlist.ts`
+  - Added structured backend result telemetry (`redis/convex/sqlite/fallback`) on request completion paths.
+- `web/app/components/DemoLoop.tsx`
+  - Enforced AP cap (`ACTION_AP_MAX`) so action economy continues gating turns throughout a match.
+- `web/app/routes/api/founder-intent.ts`
+  - Founder intent responses now return `intentId`; added checkout-ready telemetry events with storage backend.
+- `web/app/routes/api/postback.ts`
+  - Added optional signed webhook validation (`x-postback-signature` + timestamp, HMAC SHA-256).
+  - Correlates paid postbacks with founder intent IDs (`intentId`/`client_reference_id`) and emits intent purchase confirmation signals.
+- Checkout redirect wiring
+  - `web/app/components/Play.tsx`
+  - `web/app/components/MoltPitLanding.jsx`
+  - Checkout URLs now include `client_reference_id` + `checkout_intent_id` for end-to-end founder intent correlation.
+- Regression coverage
+  - `web/scripts/api-critical-routes.test.mjs`
+  - `web/scripts/demo-loop-core.test.mjs`
+  - Added waitlist invalid-email + idempotent replay assertions, postback signature rejection and intent-correlation assertions, AP-cap loop assertions.
+
 ### Autopilot Cron — 19:02 ET, Mar 2 2026
 
 **Directive**: STOP landing-page copy iterations. Priorities locked: P1 signup reliability/storage/logging, P2 playable map loop + action economy, P3 founder checkout + postback, P4 ops artifact update.

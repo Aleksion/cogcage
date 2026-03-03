@@ -423,20 +423,30 @@ export const Route = createFileRoute('/api/founder-intent')({
           userAgent: request.headers.get('user-agent') ?? undefined,
           ipAddress,
         };
+        const backendResult: Record<string, string> = {
+          redis: 'not_attempted',
+          sqlite: 'not_attempted',
+          fallback: 'not_attempted',
+        };
 
         try {
           // Redis is the primary storage on Vercel — durable across Lambda invocations
           await redisInsertFounderIntent(payload);
+          backendResult.redis = 'ok';
+          backendResult.fallback = 'not_needed';
 
           // SQLite is best-effort secondary — useful locally, ephemeral on Vercel
           try {
             insertFounderIntent(payload);
+            backendResult.sqlite = 'ok';
           } catch (sqliteError) {
+            backendResult.sqlite = 'failed';
             appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_sqlite_write_failed', requestId, error: sqliteError instanceof Error ? sqliteError.message : 'unknown' });
             // Never throw — Redis already succeeded
           }
 
-          appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'founder_intent_saved', requestId, source: payload.source, emailHash: payload.email.slice(0, 3), durationMs: Date.now() - startedAt });
+          appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'founder_intent_saved', requestId, source: payload.source, emailHash: payload.email.slice(0, 3), intentId: payload.intentId, backendResult, durationMs: Date.now() - startedAt });
+          appendOpsLog({ route: '/api/founder-intent', level: 'info', event: 'founder_intent_checkout_ready', requestId, intentId: payload.intentId, storage: 'redis' });
           try {
             const drained = drainFallbackQueues(10);
             if ((drained.waitlist.inserted + drained.founder.inserted + drained.events.inserted) > 0) {
@@ -453,15 +463,22 @@ export const Route = createFileRoute('/api/founder-intent')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: true }, 200, {}, 'submitted', { storage: 'redis' });
+          return respond({ ok: true, intentId: payload.intentId }, 200, {}, 'submitted', {
+            storage: 'redis',
+            intentId: payload.intentId,
+            backendResult,
+          });
         } catch (error) {
           // Redis failed — try file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
+          backendResult.redis = 'failed';
           appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_redis_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
 
           // Try SQLite directly when Redis is unavailable.
           try {
             insertFounderIntent(payload);
+            backendResult.sqlite = 'ok';
+            backendResult.fallback = 'not_needed';
             appendOpsLog({
               route: '/api/founder-intent',
               level: 'warn',
@@ -478,8 +495,14 @@ export const Route = createFileRoute('/api/founder-intent')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
-            return respond({ ok: true, degraded: true }, 200, {}, 'submitted_degraded', { storage: 'sqlite' });
+            appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_checkout_ready', requestId, intentId: payload.intentId, storage: 'sqlite' });
+            return respond({ ok: true, degraded: true, intentId: payload.intentId }, 200, {}, 'submitted_degraded', {
+              storage: 'sqlite',
+              intentId: payload.intentId,
+              backendResult,
+            });
           } catch (sqliteFallbackError) {
+            backendResult.sqlite = 'failed';
             appendOpsLog({
               route: '/api/founder-intent',
               level: 'warn',
@@ -491,6 +514,7 @@ export const Route = createFileRoute('/api/founder-intent')({
 
           try {
             appendFounderIntentFallback({ route: '/api/founder-intent', requestId, ...payload, reason: errorMessage });
+            backendResult.fallback = 'queued_file';
             safeTrackConversion('/api/founder-intent', requestId, {
               eventName: 'founder_intent_queued_fallback',
               source: payload.source,
@@ -499,9 +523,15 @@ export const Route = createFileRoute('/api/founder-intent')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
+            appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_checkout_ready', requestId, intentId: payload.intentId, storage: 'fallback-file' });
             appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
-            return respond({ ok: true, queued: true }, 202, {}, 'queued_fallback', { storage: 'fallback-file' });
+            return respond({ ok: true, queued: true, intentId: payload.intentId }, 202, {}, 'queued_fallback', {
+              storage: 'fallback-file',
+              intentId: payload.intentId,
+              backendResult,
+            });
           } catch (fallbackError) {
+            backendResult.fallback = 'failed';
             appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
             safeTrackConversion('/api/founder-intent', requestId, {
               eventName: 'founder_intent_insert_failed',
@@ -511,7 +541,11 @@ export const Route = createFileRoute('/api/founder-intent')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
-            return respond({ ok: false, error: 'Temporary storage issue. Please retry.' }, 503, {}, 'failed', { storage: 'none' });
+            return respond({ ok: false, error: 'Temporary storage issue. Please retry.', intentId: payload.intentId }, 503, {}, 'failed', {
+              storage: 'none',
+              intentId: payload.intentId,
+              backendResult,
+            });
           }
         }
       },

@@ -418,10 +418,18 @@ export const Route = createFileRoute('/api/waitlist')({
           userAgent: request.headers.get('user-agent') ?? undefined,
           ipAddress,
         };
+        const backendResult: Record<string, string> = {
+          redis: 'not_attempted',
+          convex: 'not_attempted',
+          sqlite: 'not_attempted',
+          fallback: 'not_attempted',
+        };
 
         try {
           // Redis is the primary storage on Vercel — durable across Lambda invocations
           await redisInsertWaitlistLead(payload);
+          backendResult.redis = 'ok';
+          backendResult.fallback = 'not_needed';
 
           // Convex is best-effort secondary — durable, queryable
           try {
@@ -429,7 +437,9 @@ export const Route = createFileRoute('/api/waitlist')({
               email: normalizedEmail,
               source: eventSource,
             });
+            backendResult.convex = 'ok';
           } catch (convexError) {
+            backendResult.convex = 'failed';
             appendOpsLog({ route, level: 'warn', event: 'waitlist_convex_write_failed', requestId, error: convexError instanceof Error ? convexError.message : 'unknown' });
             // Never throw — Redis already succeeded
           }
@@ -437,12 +447,14 @@ export const Route = createFileRoute('/api/waitlist')({
           // SQLite is best-effort tertiary — useful locally, ephemeral on Vercel
           try {
             insertWaitlistLead(payload);
+            backendResult.sqlite = 'ok';
           } catch (sqliteError) {
+            backendResult.sqlite = 'failed';
             appendOpsLog({ route, level: 'warn', event: 'waitlist_sqlite_write_failed', requestId, error: sqliteError instanceof Error ? sqliteError.message : 'unknown' });
             // Never throw — Redis already succeeded
           }
 
-          appendOpsLog({ route: route, level: 'info', event: 'waitlist_saved', requestId, source: payload.source, emailHash: normalizedEmail.slice(0, 3), durationMs: Date.now() - startedAt });
+          appendOpsLog({ route: route, level: 'info', event: 'waitlist_saved', requestId, source: payload.source, emailHash: normalizedEmail.slice(0, 3), backendResult, durationMs: Date.now() - startedAt });
           appendOpsLog({ route, level: 'info', event: 'waitlist_health_check', requestId, status: 'ok', storage: 'redis', durationMs: Date.now() - startedAt });
           try {
             const drained = drainFallbackQueues(10);
@@ -459,15 +471,21 @@ export const Route = createFileRoute('/api/waitlist')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: true, message: 'You\'re on the list!' }, 200, {}, 'submitted', { storage: 'redis' });
+          return respond({ ok: true, message: 'You\'re on the list!' }, 200, {}, 'submitted', {
+            storage: 'redis',
+            backendResult,
+          });
         } catch (error) {
           // Redis failed — try file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
+          backendResult.redis = 'failed';
           appendOpsLog({ route: route, level: 'error', event: 'waitlist_redis_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
 
           // Try SQLite directly when Redis is unavailable.
           try {
             insertWaitlistLead(payload);
+            backendResult.sqlite = 'ok';
+            backendResult.fallback = 'not_needed';
             appendOpsLog({
               route,
               level: 'warn',
@@ -484,8 +502,12 @@ export const Route = createFileRoute('/api/waitlist')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
-            return respond({ ok: true, degraded: true, message: 'You\'re on the list!' }, 200, {}, 'submitted_degraded', { storage: 'sqlite' });
+            return respond({ ok: true, degraded: true, message: 'You\'re on the list!' }, 200, {}, 'submitted_degraded', {
+              storage: 'sqlite',
+              backendResult,
+            });
           } catch (sqliteFallbackError) {
+            backendResult.sqlite = 'failed';
             appendOpsLog({
               route,
               level: 'warn',
@@ -497,6 +519,7 @@ export const Route = createFileRoute('/api/waitlist')({
 
           try {
             appendWaitlistFallback({ route: route, requestId, ...payload, reason: errorMessage });
+            backendResult.fallback = 'queued_file';
             safeTrackConversion(route, requestId, {
               eventName: 'waitlist_queued_fallback',
               source: payload.source,
@@ -506,8 +529,12 @@ export const Route = createFileRoute('/api/waitlist')({
               ipAddress,
             });
             appendOpsLog({ route: route, level: 'warn', event: 'waitlist_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
-            return respond({ ok: true, queued: true, message: 'You\'re on the list!' }, 202, {}, 'queued_fallback', { storage: 'fallback-file' });
+            return respond({ ok: true, queued: true, message: 'You\'re on the list!' }, 202, {}, 'queued_fallback', {
+              storage: 'fallback-file',
+              backendResult,
+            });
           } catch (fallbackError) {
+            backendResult.fallback = 'failed';
             appendOpsLog({ route: route, level: 'error', event: 'waitlist_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
             safeTrackConversion(route, requestId, {
               eventName: 'waitlist_insert_failed',
@@ -517,7 +544,10 @@ export const Route = createFileRoute('/api/waitlist')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
-            return respond({ ok: false, error: 'Temporary storage issue. Please retry in 1 minute.' }, 503, {}, 'failed', { storage: 'none' });
+            return respond({ ok: false, error: 'Temporary storage issue. Please retry in 1 minute.' }, 503, {}, 'failed', {
+              storage: 'none',
+              backendResult,
+            });
           }
         }
       },

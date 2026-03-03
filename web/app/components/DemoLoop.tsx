@@ -59,7 +59,8 @@ export interface ChosenAction {
 }
 
 export const GRID_SIZE = 7
-const AP_BAR_MAX = 2.5
+export const ACTION_AP_MAX = 2.5
+const AP_BAR_MAX = ACTION_AP_MAX
 export const ACTION_AP_COST: Record<Action, number> = {
   MOVE: 0.8,
   ATTACK: 1.2,
@@ -132,6 +133,10 @@ export function clampGrid(pos: Position): Position {
 
 export function canAffordAction(ap: number, action: Action): boolean {
   return ap >= ACTION_AP_COST[action]
+}
+
+function recoverActionPoints(ap: number, speed: number): number {
+  return Math.min(ACTION_AP_MAX, ap + speed)
 }
 
 function pickAction(bias: Record<Action, number>, dist: number, stunned: boolean, ap: number): Action | 'WAIT' {
@@ -274,8 +279,8 @@ export function simulateMatch(): { turns: TurnResult[]; winner: string } {
   const turns: TurnResult[] = []
 
   for (let t = 1; t <= MAX_TURNS; t++) {
-    p1.ap += BERSERKER.speed
-    p2.ap += TACTICIAN.speed
+    p1.ap = recoverActionPoints(p1.ap, BERSERKER.speed)
+    p2.ap = recoverActionPoints(p2.ap, TACTICIAN.speed)
     const p1CanAffordAny = (['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN'] as Action[]).some((action) => canAffordAction(p1.ap, action))
     const p2CanAffordAny = (['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN'] as Action[]).some((action) => canAffordAction(p2.ap, action))
     const dist = manhattan(p1.pos, p2.pos)
@@ -306,8 +311,8 @@ export function simulateMatch(): { turns: TurnResult[]; winner: string } {
 
 export function makeInitialLiveState() {
   return {
-    p1: { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: BERSERKER.speed } as BotState,
-    p2: { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: TACTICIAN.speed } as BotState,
+    p1: { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: Math.min(ACTION_AP_MAX, BERSERKER.speed) } as BotState,
+    p2: { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: Math.min(ACTION_AP_MAX, TACTICIAN.speed) } as BotState,
     turn: 1,
     log: [] as TurnResult[],
     winner: null as string | null,
@@ -328,8 +333,8 @@ export function runPlayTurn(
   const p1 = { ...prev.p1 }
   const p2 = { ...prev.p2 }
 
-  p1.ap += BERSERKER.speed
-  p2.ap += TACTICIAN.speed
+  p1.ap = recoverActionPoints(p1.ap, BERSERKER.speed)
+  p2.ap = recoverActionPoints(p2.ap, TACTICIAN.speed)
 
   const p1Act: Action | 'WAIT' = canAffordAction(p1.ap, choice.action) ? choice.action : 'WAIT'
   const p1WaitReason: 'INSUFFICIENT_AP' | null = p1Act === 'WAIT' ? 'INSUFFICIENT_AP' : null

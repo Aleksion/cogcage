@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 import { appendEventsFallback, appendFounderIntentFallback, appendOpsLog } from '~/lib/observability'
 import { insertConversionEvent, insertFounderIntent, readApiRequestReceipt, writeApiRequestReceipt } from '~/lib/waitlist-db'
 import {
@@ -69,11 +70,137 @@ function getClientIp(request: Request) {
   return forwarded || realIp || cfIp || flyIp || undefined;
 }
 
-function authorize(request: Request): boolean {
+type PostbackAuthResult = {
+  ok: boolean;
+  mode: 'open' | 'key' | 'signature' | 'key+signature';
+  reason?: 'invalid_key' | 'missing_signature' | 'missing_signature_timestamp' | 'invalid_signature' | 'stale_signature_timestamp';
+};
+
+function getPostbackAuthSecrets() {
   const key = (process.env.COGCAGE_POSTBACK_KEY ?? process.env.MOLTPIT_POSTBACK_KEY)?.trim();
-  if (!key) return true;
-  const provided = request.headers.get('x-postback-key')?.trim() ?? '';
-  return provided === key;
+  const signingSecret = (process.env.COGCAGE_POSTBACK_SIGNING_SECRET ?? process.env.MOLTPIT_POSTBACK_SIGNING_SECRET)?.trim();
+  return {
+    key: key || undefined,
+    signingSecret: signingSecret || undefined,
+  };
+}
+
+function parseSignatureHeader(rawHeader: string): { signature?: string; timestamp?: string } {
+  const header = rawHeader.trim();
+  if (!header) return {};
+  const parts = header.split(',').map((part) => part.trim()).filter(Boolean);
+  let signature = '';
+  let timestamp = '';
+
+  for (const part of parts) {
+    if (!part.includes('=')) {
+      if (!signature) signature = part;
+      continue;
+    }
+    const [rawKey, rawValue] = part.split('=', 2);
+    const key = rawKey.trim().toLowerCase();
+    const value = rawValue.trim();
+    if (!value) continue;
+    if (key === 'v1' || key === 'sha256' || key === 'sig' || key === 'signature') {
+      signature = value;
+    } else if (key === 't') {
+      timestamp = value;
+    }
+  }
+
+  if (!signature && parts.length === 1 && header.includes('=') && !header.includes(',')) {
+    const [rawKey, rawValue] = header.split('=', 2);
+    const key = rawKey.trim().toLowerCase();
+    const value = rawValue.trim();
+    if (value && (key === 'sha256' || key === 'signature' || key === 'sig' || key === 'v1')) {
+      signature = value;
+    }
+  }
+
+  if (!signature && !header.includes(',')) {
+    signature = header;
+  }
+
+  if (signature.startsWith('sha256=')) {
+    signature = signature.slice('sha256='.length);
+  }
+
+  return {
+    signature: signature || undefined,
+    timestamp: timestamp || undefined,
+  };
+}
+
+function timingSafeEqualHex(a: string, b: string) {
+  const left = Buffer.from(a, 'utf8');
+  const right = Buffer.from(b, 'utf8');
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
+function authorize(request: Request, rawBody = ''): PostbackAuthResult {
+  const secrets = getPostbackAuthSecrets();
+  const hasKey = Boolean(secrets.key);
+  const hasSigningSecret = Boolean(secrets.signingSecret);
+  const mode: PostbackAuthResult['mode'] = hasKey && hasSigningSecret
+    ? 'key+signature'
+    : hasKey
+      ? 'key'
+      : hasSigningSecret
+        ? 'signature'
+        : 'open';
+
+  if (hasKey) {
+    const provided = request.headers.get('x-postback-key')?.trim() ?? '';
+    if (provided !== secrets.key) {
+      return { ok: false, mode, reason: 'invalid_key' };
+    }
+  }
+
+  if (hasSigningSecret) {
+    const parsed = parseSignatureHeader(
+      request.headers.get('x-postback-signature')
+      ?? request.headers.get('stripe-signature')
+      ?? '',
+    );
+    const signature = parsed.signature?.toLowerCase();
+    const timestamp = (
+      request.headers.get('x-postback-timestamp')
+      ?? request.headers.get('x-signature-timestamp')
+      ?? parsed.timestamp
+      ?? ''
+    ).trim();
+
+    if (!signature) {
+      return { ok: false, mode, reason: 'missing_signature' };
+    }
+    if (!timestamp) {
+      return { ok: false, mode, reason: 'missing_signature_timestamp' };
+    }
+    if (!/^[a-f0-9]{32,128}$/i.test(signature)) {
+      return { ok: false, mode, reason: 'invalid_signature' };
+    }
+
+    const timestampSeconds = Number(timestamp);
+    if (!Number.isFinite(timestampSeconds)) {
+      return { ok: false, mode, reason: 'invalid_signature' };
+    }
+
+    const ageSeconds = Math.abs(Math.floor(Date.now() / 1000) - Math.floor(timestampSeconds));
+    if (ageSeconds > 300) {
+      return { ok: false, mode, reason: 'stale_signature_timestamp' };
+    }
+
+    const expected = createHmac('sha256', secrets.signingSecret as string)
+      .update(`${Math.floor(timestampSeconds)}.${rawBody}`)
+      .digest('hex')
+      .toLowerCase();
+    if (!timingSafeEqualHex(expected, signature)) {
+      return { ok: false, mode, reason: 'invalid_signature' };
+    }
+  }
+
+  return { ok: true, mode };
 }
 
 function hashString(input: string) {
@@ -190,8 +317,12 @@ export const Route = createFileRoute('/api/postback')({
           testMode: url.searchParams.get('test') === '1',
         });
 
-        if (!authorize(request)) {
-          return respondVerify({ ok: false, error: 'Unauthorized' }, 401, 'unauthorized');
+        const auth = authorize(request);
+        if (!auth.ok) {
+          return respondVerify({ ok: false, error: 'Unauthorized' }, 401, 'unauthorized', {
+            authMode: auth.mode,
+            authReason: auth.reason,
+          });
         }
         // Health check / test endpoint
         if (url.searchParams.get('test') === '1') {
@@ -299,6 +430,7 @@ export const Route = createFileRoute('/api/postback')({
           requestId,
           contentType,
           hasIdempotencyKey: Boolean(headerIdempotencyKey),
+          authMode: authorize(request).mode,
         });
 
         // Test mode stub: ?test=1 returns 200 without processing, for deploy verification
@@ -307,17 +439,11 @@ export const Route = createFileRoute('/api/postback')({
           return respond({ ok: true, mode: 'test' }, 200, headerIdempotencyKey, {}, 'test_mode', { storage: 'none' });
         }
 
-        if (!authorize(request)) {
-          appendOpsLog({ route, level: 'warn', event: 'postback_unauthorized', requestId });
-          return respond({ ok: false, error: 'Unauthorized' }, 401, headerIdempotencyKey, {}, 'unauthorized', { storage: 'none' });
-        }
-
         let payload: CheckoutPostback | null = null;
+        let rawBody = '';
 
         try {
-          if (contentType.includes('application/json')) {
-            payload = (await request.json().catch(() => null)) as CheckoutPostback | null;
-          } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
+          if (contentType.includes('multipart/form-data')) {
             const formData = await request.formData();
             const eventType = normalizeString(formData.get('type'), 120);
             const eventId = normalizeString(formData.get('eventId') ?? formData.get('id'), 180);
@@ -330,8 +456,8 @@ export const Route = createFileRoute('/api/postback')({
               email: email || undefined,
             };
           } else {
-            const rawBody = await request.text();
-            if (rawBody.trim().startsWith('{')) {
+            rawBody = await request.text();
+            if (contentType.includes('application/json') || rawBody.trim().startsWith('{')) {
               payload = JSON.parse(rawBody) as CheckoutPostback;
             } else {
               const params = new URLSearchParams(rawBody);
@@ -345,6 +471,16 @@ export const Route = createFileRoute('/api/postback')({
           }
         } catch {
           payload = null;
+        }
+
+        const auth = authorize(request, rawBody);
+        if (!auth.ok) {
+          appendOpsLog({ route, level: 'warn', event: 'postback_unauthorized', requestId, authMode: auth.mode, authReason: auth.reason });
+          return respond({ ok: false, error: 'Unauthorized' }, 401, headerIdempotencyKey, {}, 'unauthorized', {
+            storage: 'none',
+            authMode: auth.mode,
+            authReason: auth.reason,
+          });
         }
 
         if (!payload) {
@@ -394,10 +530,18 @@ export const Route = createFileRoute('/api/postback')({
           normalizeString(payload.source, 160)
           || sourceFromMetadata
           || 'postback';
+        const clientReferenceId = normalizeString(object?.client_reference_id, 180);
+        const checkoutIntentId =
+          normalizeString((resolvedMetadata as Record<string, unknown>).intentId, 180)
+          || normalizeString((resolvedMetadata as Record<string, unknown>).intent_id, 180)
+          || normalizeString((resolvedMetadata as Record<string, unknown>).checkout_intent_id, 180)
+          || normalizeString((resolvedMetadata as Record<string, unknown>).founder_intent_id, 180)
+          || (clientReferenceId.startsWith('intent:') ? clientReferenceId : '');
         const meta = {
           eventType,
           created: payload.created,
           metadata: resolvedMetadata,
+          checkoutIntentId: checkoutIntentId || undefined,
         };
         const metadataEventId =
           normalizeString((resolvedMetadata as Record<string, unknown>).checkout_event_id, 180)
@@ -406,8 +550,8 @@ export const Route = createFileRoute('/api/postback')({
         const eventId =
           (typeof payload.eventId === 'string' && payload.eventId.trim() ? payload.eventId.trim() : undefined)
           ?? (typeof payload.id === 'string' && payload.id.trim() ? payload.id.trim() : undefined)
-          ?? (typeof object?.client_reference_id === 'string' && object.client_reference_id.trim() ? object.client_reference_id.trim() : undefined)
           ?? metadataEventId
+          ?? (clientReferenceId && !clientReferenceId.startsWith('intent:') ? clientReferenceId : undefined)
           ?? (typeof object?.id === 'string' && object.id.trim() ? object.id.trim() : undefined)
           ?? deriveFallbackEventId({ eventType, source, email, created: payload.created, metadata: meta.metadata as Record<string, unknown> });
         const idempotencyKey = (headerIdempotencyKey || `event:${eventId}`).slice(0, 120);
@@ -464,13 +608,30 @@ export const Route = createFileRoute('/api/postback')({
           userAgent: request.headers.get('user-agent') ?? undefined,
           ipAddress: getClientIp(request),
         };
+        const founderIntentId = checkoutIntentId || `paid:${eventId}`;
         const founderIntentPayload = email ? {
           email,
-          source: `${source}-postback`,
-          intentId: `paid:${eventId}`,
+          source: checkoutIntentId ? `${source}-postback-confirmed` : `${source}-postback`,
+          intentId: founderIntentId,
           userAgent: request.headers.get('user-agent') ?? undefined,
           ipAddress: getClientIp(request),
         } : null;
+        const intentPurchaseSignalPayload = checkoutIntentId && email
+          ? {
+            eventName: 'founder_intent_purchase_confirmed',
+            eventId: `intent-paid:${checkoutIntentId}`.slice(0, 180),
+            source: `${source}-postback`,
+            tier: 'founder',
+            email,
+            metaJson: safeMetaJson({
+              checkoutIntentId,
+              paidEventId: eventId,
+              eventType,
+            }),
+            userAgent: request.headers.get('user-agent') ?? undefined,
+            ipAddress: getClientIp(request),
+          }
+          : null;
 
         try {
           await redisInsertConversionEvent(conversionPayload);
@@ -553,6 +714,35 @@ export const Route = createFileRoute('/api/postback')({
             }
           }
 
+          if (intentPurchaseSignalPayload) {
+            try {
+              await redisInsertConversionEvent(intentPurchaseSignalPayload);
+            } catch (redisSignalError) {
+              appendOpsLog({
+                route,
+                level: 'warn',
+                event: 'postback_intent_signal_redis_write_failed',
+                requestId,
+                eventId,
+                checkoutIntentId,
+                error: redisSignalError instanceof Error ? redisSignalError.message : 'unknown',
+              });
+            }
+            try {
+              insertConversionEvent(intentPurchaseSignalPayload);
+            } catch (sqliteSignalError) {
+              appendOpsLog({
+                route,
+                level: 'warn',
+                event: 'postback_intent_signal_sqlite_write_failed',
+                requestId,
+                eventId,
+                checkoutIntentId,
+                error: sqliteSignalError instanceof Error ? sqliteSignalError.message : 'unknown',
+              });
+            }
+          }
+
           appendOpsLog({
             route,
             level: 'info',
@@ -562,11 +752,20 @@ export const Route = createFileRoute('/api/postback')({
             source,
             eventId,
             hasEmail: Boolean(email),
+            checkoutIntentId: checkoutIntentId || undefined,
+            founderIntentId: founderIntentPayload?.intentId,
             storage: 'redis',
             durationMs: Date.now() - startedAt,
           });
 
-          return respond({ ok: true, eventId }, 200, idempotencyKey, {}, 'recorded', { storage: 'redis', eventId, eventType, source });
+          return respond({ ok: true, eventId, intentId: founderIntentPayload?.intentId }, 200, idempotencyKey, {}, 'recorded', {
+            storage: 'redis',
+            eventId,
+            eventType,
+            source,
+            checkoutIntentId: checkoutIntentId || undefined,
+            founderIntentId: founderIntentPayload?.intentId,
+          });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
           appendOpsLog({
@@ -577,6 +776,7 @@ export const Route = createFileRoute('/api/postback')({
             eventType,
             source,
             eventId,
+            checkoutIntentId: checkoutIntentId || undefined,
             error: errorMessage,
             durationMs: Date.now() - startedAt,
           });
@@ -608,14 +808,17 @@ export const Route = createFileRoute('/api/postback')({
               source,
               eventId,
               hasEmail: Boolean(email),
+              checkoutIntentId: checkoutIntentId || undefined,
               durationMs: Date.now() - startedAt,
             });
 
-            return respond({ ok: true, degraded: true, eventId }, 200, idempotencyKey, {}, 'recorded_degraded', {
+            return respond({ ok: true, degraded: true, eventId, intentId: founderIntentPayload?.intentId }, 200, idempotencyKey, {}, 'recorded_degraded', {
               storage: 'sqlite',
               eventId,
               eventType,
               source,
+              checkoutIntentId: checkoutIntentId || undefined,
+              founderIntentId: founderIntentPayload?.intentId,
             });
           } catch (sqliteError) {
             const sqliteErrorMessage = sqliteError instanceof Error ? sqliteError.message : 'unknown-error';
@@ -627,6 +830,7 @@ export const Route = createFileRoute('/api/postback')({
               eventType,
               source,
               eventId,
+              checkoutIntentId: checkoutIntentId || undefined,
               error: sqliteErrorMessage,
               durationMs: Date.now() - startedAt,
             });
@@ -641,13 +845,16 @@ export const Route = createFileRoute('/api/postback')({
                 eventType,
                 source,
                 eventId,
+                checkoutIntentId: checkoutIntentId || undefined,
                 durationMs: Date.now() - startedAt,
               });
-              return respond({ ok: true, queued: true, degraded: true, eventId }, 202, idempotencyKey, {}, 'queued_fallback', {
+              return respond({ ok: true, queued: true, degraded: true, eventId, intentId: founderIntentPayload?.intentId }, 202, idempotencyKey, {}, 'queued_fallback', {
                 storage: 'fallback-file',
                 eventId,
                 eventType,
                 source,
+                checkoutIntentId: checkoutIntentId || undefined,
+                founderIntentId: founderIntentPayload?.intentId,
               });
             } catch (fallbackError) {
               appendOpsLog({
@@ -658,6 +865,7 @@ export const Route = createFileRoute('/api/postback')({
                 eventType,
                 source,
                 eventId,
+                checkoutIntentId: checkoutIntentId || undefined,
                 error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error',
                 durationMs: Date.now() - startedAt,
               });
@@ -667,6 +875,8 @@ export const Route = createFileRoute('/api/postback')({
                 eventId,
                 eventType,
                 source,
+                checkoutIntentId: checkoutIntentId || undefined,
+                founderIntentId: founderIntentPayload?.intentId,
               });
             }
           }

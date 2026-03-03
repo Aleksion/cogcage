@@ -1460,6 +1460,8 @@ const HeroSection = ({ sectionRef }) => {
       localStorage.setItem('moltpit_last_founder_intent_source', checkoutIntentSource);
       const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
       target.searchParams.set('prefilled_email', trimmed.toLowerCase());
+      target.searchParams.set('client_reference_id', founderIntentPayload.intentId);
+      target.searchParams.set('checkout_intent_id', founderIntentPayload.intentId);
       window.location.href = target.toString();
       return;
     }
@@ -1901,6 +1903,8 @@ const FooterSection = () => {
       localStorage.setItem('moltpit_last_founder_intent_source', checkoutIntentSource);
       const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
       target.searchParams.set('prefilled_email', trimmed);
+      target.searchParams.set('client_reference_id', founderIntentPayload.intentId);
+      target.searchParams.set('checkout_intent_id', founderIntentPayload.intentId);
       window.location.href = target.toString();
       return;
     }

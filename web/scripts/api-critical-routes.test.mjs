@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHmac } from 'node:crypto';
 
 import { Route as WaitlistRoute } from '../app/routes/api/waitlist.ts';
 import { Route as FounderIntentRoute } from '../app/routes/api/founder-intent.ts';
@@ -17,6 +18,8 @@ delete process.env.UPSTASH_REDIS_REST_URL;
 delete process.env.UPSTASH_REDIS_REST_TOKEN;
 delete process.env.COGCAGE_POSTBACK_KEY;
 delete process.env.MOLTPIT_POSTBACK_KEY;
+delete process.env.COGCAGE_POSTBACK_SIGNING_SECRET;
+delete process.env.MOLTPIT_POSTBACK_SIGNING_SECRET;
 
 const postWaitlist = WaitlistRoute.options.server.handlers.POST;
 const postFounderIntent = FounderIntentRoute.options.server.handlers.POST;
@@ -49,6 +52,12 @@ function readOpsEvents() {
   }).filter(Boolean);
 }
 
+function signPostbackPayload(secret, timestampSeconds, rawBody) {
+  return createHmac('sha256', secret)
+    .update(`${timestampSeconds}.${rawBody}`)
+    .digest('hex');
+}
+
 test('waitlist malformed payload returns deterministic contract fields', async () => {
   const response = await postWaitlist({
     request: new Request('http://localhost/api/waitlist', {
@@ -67,6 +76,29 @@ test('waitlist malformed payload returns deterministic contract fields', async (
   assert.equal(body.storage, 'none');
   assert.equal(body.queued, false);
   assert.equal(body.replayed, false);
+  assert.equal(typeof body.requestId, 'string');
+});
+
+test('waitlist validation rejects invalid email with clear contract', async () => {
+  const response = await postWaitlist({
+    request: new Request('http://localhost/api/waitlist', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: 'not-an-email',
+        source: 'test-invalid-email',
+      }),
+    }),
+  });
+  const body = await readJson(response);
+
+  assert.equal(response.status, 400);
+  assert.equal(body.ok, false);
+  assert.equal(body.status, 'invalid_email');
+  assert.equal(body.storage, 'none');
+  assert.equal(body.queued, false);
   assert.equal(typeof body.requestId, 'string');
 });
 
@@ -118,6 +150,50 @@ test('waitlist and founder-intent degrade safely to durable fallback contract wh
   );
 });
 
+test('waitlist idempotency replays the first durable response contract', async () => {
+  const health = db.getStorageHealth();
+  if (!health.sqliteAvailable) {
+    return;
+  }
+
+  const idempotencyKey = `waitlist-replay-${Date.now()}`;
+  const payload = {
+    email: `waitlist-${Date.now()}@example.com`,
+    game: 'The Molt Pit',
+    source: 'test-waitlist-idempotency',
+  };
+
+  const first = await postWaitlist({
+    request: new Request('http://localhost/api/waitlist', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-idempotency-key': idempotencyKey,
+      },
+      body: JSON.stringify(payload),
+    }),
+  });
+  const firstBody = await readJson(first);
+  assert.equal(firstBody.ok, true);
+  assert.equal(firstBody.replayed, false);
+
+  const replay = await postWaitlist({
+    request: new Request('http://localhost/api/waitlist', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-idempotency-key': idempotencyKey,
+      },
+      body: JSON.stringify(payload),
+    }),
+  });
+  const replayBody = await readJson(replay);
+  assert.equal(replayBody.ok, true);
+  assert.equal(replayBody.status, 'idempotent_replay');
+  assert.equal(replayBody.replayed, true);
+  assert.equal(replay.headers.get('x-idempotent-replay'), '1');
+});
+
 test('postback uses idempotency receipts and returns replay contract on duplicate event', async () => {
   const health = db.getStorageHealth();
   if (!health.sqliteAvailable) {
@@ -163,6 +239,96 @@ test('postback uses idempotency receipts and returns replay contract on duplicat
   assert.equal(replay.headers.get('x-idempotent-replay'), '1');
   assert.equal(replayBody.status, 'idempotent_replay');
   assert.equal(replayBody.replayed, true);
+});
+
+test('postback links founder intent to paid signal when checkout intent id is provided', async () => {
+  const health = db.getStorageHealth();
+  if (!health.sqliteAvailable) {
+    return;
+  }
+
+  const intentId = `intent:e2e:${Date.now()}`;
+  const email = `buyer-${Date.now()}@example.com`;
+  const before = db.getFunnelCounts();
+
+  const founderIntentRes = await postFounderIntent({
+    request: new Request('http://localhost/api/founder-intent', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        source: 'test-founder-intent-e2e',
+        intentId,
+      }),
+    }),
+  });
+  const founderIntentBody = await readJson(founderIntentRes);
+  assert.equal(founderIntentBody.ok, true);
+  assert.equal(founderIntentBody.intentId, intentId);
+
+  const postbackPayload = {
+    type: 'founder_pack.paid',
+    eventId: `evt-e2e-${Date.now()}`,
+    source: 'test-postback-e2e',
+    email,
+    metadata: {
+      checkout_source: 'test-postback-e2e',
+      intentId,
+    },
+  };
+  const postbackRes = await postPostback({
+    request: new Request('http://localhost/api/postback', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(postbackPayload),
+    }),
+  });
+  const postbackBody = await readJson(postbackRes);
+  assert.equal(postbackBody.ok, true);
+  assert.equal(postbackBody.intentId, intentId);
+
+  const after = db.getFunnelCounts();
+  assert.ok(after.founderIntents >= before.founderIntents + 1);
+  assert.ok(after.conversionEvents >= before.conversionEvents + 1);
+  // Correlated postback should not create a second founder-intent row for the same intent id.
+  assert.ok(after.founderIntents <= before.founderIntents + 1);
+});
+
+test('postback rejects invalid signature when signing secret is configured', async () => {
+  const previous = process.env.COGCAGE_POSTBACK_SIGNING_SECRET;
+  process.env.COGCAGE_POSTBACK_SIGNING_SECRET = 'test-postback-signing-secret';
+  try {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const body = JSON.stringify({
+      type: 'founder_pack.paid',
+      eventId: `evt-sig-${Date.now()}`,
+      source: 'test-postback-signature',
+      email: 'buyer@example.com',
+    });
+    const invalidSignature = signPostbackPayload('wrong-secret', timestamp, body);
+
+    const response = await postPostback({
+      request: new Request('http://localhost/api/postback', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-postback-timestamp': String(timestamp),
+          'x-postback-signature': `sha256=${invalidSignature}`,
+        },
+        body,
+      }),
+    });
+    const payload = await readJson(response);
+    assert.equal(response.status, 401);
+    assert.equal(payload.ok, false);
+    assert.equal(payload.status, 'unauthorized');
+  } finally {
+    if (previous === undefined) {
+      delete process.env.COGCAGE_POSTBACK_SIGNING_SECRET;
+    } else {
+      process.env.COGCAGE_POSTBACK_SIGNING_SECRET = previous;
+    }
+  }
 });
 
 test('checkout-success uses idempotency receipts and returns replay contract on duplicate conversion event', async () => {

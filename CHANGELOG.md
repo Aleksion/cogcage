@@ -8,6 +8,91 @@
 
 ---
 
+## [2026-03-03] - fix(product): harden signup, playable loop, founder checkout postback
+
+**Type:** fix/test/ops | **Budget impact:** n/a (product-critical)
+
+### What
+- `web/app/lib/waitlist-redis.ts`
+  - Route-scoped Redis rate-limit keys for `/api/waitlist` and `/api/founder-intent` to eliminate cross-route throttle collisions.
+- `web/app/routes/api/waitlist.ts`
+  - Added structured `backendResult` telemetry (`redis|convex|sqlite|fallback`) on completion paths to make durable/degraded outcomes observable per request.
+- `web/app/components/DemoLoop.tsx`
+  - Added capped AP economy (`ACTION_AP_MAX`) so movement/combat actions remain gated throughout the playable loop.
+- `web/app/routes/api/founder-intent.ts`
+  - Founder-intent responses now consistently return `intentId`; added `founder_intent_checkout_ready` logs with storage backend outcome.
+- `web/app/routes/api/postback.ts`
+  - Added optional signed-postback validation (`x-postback-signature` + timestamp, HMAC SHA-256) gated by signing-secret env vars.
+  - Correlated postbacks with founder intent IDs (`intentId` metadata / `client_reference_id`) and emitted `founder_intent_purchase_confirmed` conversion signal.
+- `web/app/components/Play.tsx`, `web/app/components/MoltPitLanding.jsx`
+  - Founder checkout redirects now include `client_reference_id` + `checkout_intent_id` for intent→purchase traceability.
+- `web/scripts/api-critical-routes.test.mjs`, `web/scripts/demo-loop-core.test.mjs`
+  - Added tests for waitlist invalid email + idempotent replay, postback invalid signature path, postback intent correlation, and AP cap invariants.
+
+### Why
+- Product-critical reliability required explicit backend-path observability for signup and deterministic retry behavior.
+- Monetization required stronger webhook authenticity checks and a direct founder intent → paid conversion link.
+- Demo AP accumulation was effectively unbounded, weakening the intended action-economy gating over longer runs.
+
+### Design Decisions
+- Kept existing durability order (`Redis -> SQLite -> fallback file`) and made hardening additive.
+- Signature validation is opt-in via env (`COGCAGE_POSTBACK_SIGNING_SECRET` / `MOLTPIT_POSTBACK_SIGNING_SECRET`) to preserve current deployments until secrets are configured.
+- Intent correlation prioritizes explicit metadata fields and only treats `client_reference_id` as `intentId` when it uses the `intent:` form.
+
+### Verification
+- `cd web && npm run test:product` (run in this pass)
+- `cd web && npm run build` (run in this pass)
+
+### Breaking Changes
+- None intended. API contracts are additive (extra fields only).
+
+### Next Steps
+- Set postback signing secret in runtime env and send signed webhook headers from the payment provider.
+- Surface `backendResult` rollups in `/api/ops` summary for faster degraded-path triage.
+
+## [2026-03-03] - fix(product-mode): route-scoped rate limits + signup backend-result observability
+
+**Type:** fix/ops/test | **Budget impact:** n/a (product-critical)
+
+### What
+- `web/app/lib/waitlist-redis.ts`
+  - Updated `redisConsumeRateLimit` to include a sanitized route namespace in Redis keys (`route:key:window`) so waitlist/founder/global limits do not collide.
+- `web/app/components/DemoLoop.tsx`
+  - Capped AP recovery with `ACTION_AP_MAX` so action economy cannot overfill AP across long matches.
+- `web/scripts/demo-loop-core.test.mjs`
+  - Added AP-cap regression test to lock max-AP behavior in PLAY mode.
+- `web/app/components/MoltPitLanding.jsx`, `web/app/components/Play.tsx`
+  - Founder checkout redirects now include `client_reference_id` and `checkout_intent_id` query params derived from intent ids.
+- `web/app/routes/api/waitlist.ts`
+  - Added `backendResult` metadata to request completion logs and response detail (`redis|convex|sqlite|fallback`) for explicit storage-path visibility during degraded mode.
+- `web/app/routes/api/founder-intent.ts`
+  - Added `backendResult` metadata and propagated `intentId` in success/degraded/queued/failed responses.
+  - Added `founder_intent_checkout_ready` logs on all durable success paths so checkout handoff is observable even during fallback.
+- `web/app/routes/api/postback.ts`
+  - Added optional HMAC signature verification support (`COGCAGE_POSTBACK_SIGNING_SECRET` / `MOLTPIT_POSTBACK_SIGNING_SECRET`) with timestamp window and timing-safe compare.
+  - Preserved key-based auth and added explicit `authMode`/`authReason` logging on unauthorized outcomes.
+  - Mapped checkout intent IDs from webhook metadata/client reference and propagated `intentId` in postback responses.
+  - Added `founder_intent_purchase_confirmed` conversion signal when a paid event resolves to a checkout intent.
+
+### Why
+- Signup reliability was already layered, but route-collided rate-limit keys and opaque fallback outcomes made production debugging slower.
+- Product mode required operator-visible storage outcomes for each request, clear checkout readiness traces, and a safer founder postback confirmation path.
+
+### Design Decisions
+- Kept storage order unchanged (`Redis -> SQLite/Convex -> fallback file`) and made observability additive only.
+- Kept response contract backward compatible by adding fields instead of renaming/removing existing keys.
+- Treated `client_reference_id` values prefixed by `intent:` as founder intent identifiers instead of conversion event IDs.
+
+### Verification
+- `cd web && npm run test:product` ✅ (17/17 pass)
+- `cd web && npm run build` ✅
+
+### Breaking Changes
+- None intended. API responses now include additional metadata (`backendResult`, `intentId` on founder-intent paths).
+
+### Next Steps
+- Add `/api/ops` rollups for `backendResult` buckets so degraded-mode attribution is visible without raw log inspection.
+
 ## [2026-03-03] - fix(product-mode): signup replay UX + checkout-success idempotent confirmation + ops critical-path summary
 
 **Type:** fix/feature/ops/test | **Budget impact:** n/a (product-critical)

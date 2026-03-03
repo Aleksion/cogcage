@@ -955,6 +955,8 @@ const Play = () => {
 
       const url = new URL(founderCheckoutUrl);
       url.searchParams.set('prefilled_email', normalizedEmail);
+      url.searchParams.set('client_reference_id', intentId);
+      url.searchParams.set('checkout_intent_id', intentId);
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('moltpit_last_founder_checkout_source', checkoutSource);
         window.localStorage.setItem('moltpit_last_founder_intent_source', intentSource);
