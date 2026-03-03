@@ -2,6 +2,24 @@
 
 ---
 
+## Product-Mode Cron — 22:13 ET Mar 2
+
+Directive enforced exactly as received: no landing-page copy iteration work, product-critical lane only in P1→P4 order.
+
+### Pass result
+- P1 signup reliability + storage + observability: ✅ verified (idempotency + durable fallback + receipts)
+- P2 playable demo loop (map movement + action economy): ✅ verified (movement + AP spend assertions)
+- P3 monetization path (founder checkout + postback): ✅ verified (idempotent founder/checkout/postback paths)
+- P4 ops artifacts: ✅ updated (`web/ops/log.md`, `docs/ops-log.md`)
+
+### Verification
+- `cd web && npm run test:product` ✅ (19/19 pass)
+- `cd web && npm run build` ✅
+
+### Scope guard
+- No landing-page copy edits.
+- No non-product-critical code changes.
+
 ## Product-Mode Ship — 22:03 ET Mar 2
 
 Directive executed in strict order (P1 signup reliability/storage/logging → P2 playable demo loop movement + action economy → P3 founder checkout/postback handling → P4 ops artifacts).
