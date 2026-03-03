@@ -8,6 +8,35 @@
 
 ---
 
+## [2026-03-02] - chore(product-mode): cron priority lock re-verification (20:43 ET)
+
+**Type:** ops/chore | **Budget impact:** n/a
+
+### What
+- Re-verified product-priority lanes under cron directive:
+  - P1 signup reliability/storage/observability
+  - P2 playable demo loop (movement + action economy)
+  - P3 founder checkout + postback lifecycle
+- Updated ops artifacts:
+  - `web/ops/log.md`
+  - `docs/ops-log.md`
+
+### Why
+- Cron requested an explicit no-copy product-mode enforcement pass with fresh evidence.
+
+### Design Decisions
+- No product code changes were introduced in this pass because P1–P3 were already shipped and green.
+- Scope stayed limited to verification + ops artifacts only.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Set production env vars to activate live checkout/postback auth paths (`PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, `MOLTPIT_OPS_KEY`/`COGCAGE_OPS_KEY`).
+
+### Verification
+- `cd web && npm run test:product` ✅ (9 pass / 0 fail)
+
 ## [2026-03-02] - chore(product-mode): cron re-verification + ops artifact sync
 
 **Type:** ops/chore | **Budget impact:** n/a

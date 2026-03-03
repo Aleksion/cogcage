@@ -2,6 +2,23 @@
 
 ---
 
+## Product-Mode Cron — 20:43 ET Mar 2
+
+Directive executed: stop landing-page copy iteration and enforce product priority order.
+
+### Status
+- P1 signup reliability/storage/logging: ✅ shipped, re-verified
+- P2 playable demo loop (map movement + action economy): ✅ shipped, re-verified
+- P3 monetization path (founder checkout + postback): ✅ shipped in code; env-gated activation still pending
+- P4 ops artifacts: ✅ updated in this pass
+
+### Verification
+- `cd web && npm run test:product` ✅ (9/9 pass)
+
+### Artifacts
+- Updated: `web/ops/log.md` (this entry)
+- Updated: `docs/ops-log.md` (autopilot mirror)
+
 ## Product-Mode Cron — 20:32 ET Mar 2
 
 Directive executed: stop landing-page copy iteration and enforce product priority order.
