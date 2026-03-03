@@ -126,7 +126,66 @@ const CRUSTIE_GLBS: Record<string, string> = {
 
 /* ── GLB scale (Meshy default is large — normalize) ──────────────── */
 
-const GLB_SCALE = 0.5;
+const GLB_BASE_SCALE = 0.5;
+const WORLD_Y_OFFSET = 0.08;
+
+type ViewportBucket = 'desktop' | 'tablet' | 'mobile';
+
+interface ArenaStylePreset {
+  camera: {
+    position: [number, number, number];
+    target: [number, number, number];
+    orthoSize: number;
+  };
+  actorScale: number;
+  outlineWidth: number;
+  toonBands: number;
+  toonContrast: number;
+  emissiveFloor: number;
+  rimIntensity: number;
+  rimTint: Color3;
+  ambientIntensity: number;
+  fillIntensity: number;
+}
+
+const ARENA_STYLE_PRESETS: Record<ViewportBucket, ArenaStylePreset> = {
+  desktop: {
+    camera: { position: [10, 18.2, -6.6], target: [10, 0.45, 10], orthoSize: 12.8 },
+    actorScale: 1.0,
+    outlineWidth: 0.058,
+    toonBands: 4,
+    toonContrast: 0.9,
+    emissiveFloor: 0.08,
+    rimIntensity: 0.15,
+    rimTint: Color3.FromHexString('#00e5ff'),
+    ambientIntensity: 0.34,
+    fillIntensity: 0.68,
+  },
+  tablet: {
+    camera: { position: [10, 19.2, -7.8], target: [10, 0.42, 10], orthoSize: 14.1 },
+    actorScale: 0.93,
+    outlineWidth: 0.048,
+    toonBands: 4,
+    toonContrast: 0.86,
+    emissiveFloor: 0.09,
+    rimIntensity: 0.18,
+    rimTint: Color3.FromHexString('#00e5ff'),
+    ambientIntensity: 0.32,
+    fillIntensity: 0.63,
+  },
+  mobile: {
+    camera: { position: [10, 21.0, -9.8], target: [10, 0.36, 10.2], orthoSize: 16.1 },
+    actorScale: 0.86,
+    outlineWidth: 0.04,
+    toonBands: 3,
+    toonContrast: 0.82,
+    emissiveFloor: 0.11,
+    rimIntensity: 0.22,
+    rimTint: Color3.FromHexString('#ffd600'),
+    ambientIntensity: 0.3,
+    fillIntensity: 0.56,
+  },
+};
 
 const C_WALL = Color3.FromHexString('#1a0a2e');
 const C_WALL_TRIM = Color3.FromHexString('#6a1b9a');
@@ -240,6 +299,15 @@ export class PitScene {
   private engine: Engine;
   private scene: Scene;
   private canvas: HTMLCanvasElement;
+  private camera!: UniversalCamera;
+
+  private ambientLight!: HemisphericLight;
+  private biolum1!: PointLight;
+  private biolum2!: PointLight;
+  private fillLight!: PointLight;
+
+  private viewportBucket: ViewportBucket = 'desktop';
+  private activeStylePreset: ArenaStylePreset = ARENA_STYLE_PRESETS.desktop;
 
   /* N-actor state map */
   private actorStates = new Map<string, ActorRenderState>();
@@ -275,6 +343,7 @@ export class PitScene {
 
     this.setupCamera();
     this.setupLighting();
+    this.applyViewportPreset();
     this.setupGrid();
     this.setupMapTiles();
     this.setupGUI();
@@ -289,7 +358,10 @@ export class PitScene {
     });
 
     // Handle resize
-    const onResize = () => this.engine.resize();
+    const onResize = () => {
+      this.engine.resize();
+      this.applyViewportPreset();
+    };
     window.addEventListener('resize', onResize);
     this.scene.onDisposeObservable.addOnce(() => {
       window.removeEventListener('resize', onResize);
@@ -299,43 +371,117 @@ export class PitScene {
   /* ── Camera ──────────────────────────────────────────────────── */
 
   private setupCamera(): void {
-    const camera = new UniversalCamera('camera', new Vector3(10, 18, -6), this.scene);
-    camera.setTarget(new Vector3(10, 0, 10));
-    camera.mode = UniversalCamera.ORTHOGRAPHIC_CAMERA;
-
-    const aspect = this.canvas.width / this.canvas.height;
-    const orthoSize = 13;
-    camera.orthoTop = orthoSize;
-    camera.orthoBottom = -orthoSize;
-    camera.orthoLeft = -orthoSize * aspect;
-    camera.orthoRight = orthoSize * aspect;
-
-    camera.minZ = 0.1;
-    camera.maxZ = 100;
+    this.camera = new UniversalCamera('camera', new Vector3(10, 18, -6), this.scene);
+    this.camera.mode = UniversalCamera.ORTHOGRAPHIC_CAMERA;
+    this.camera.minZ = 0.1;
+    this.camera.maxZ = 100;
   }
 
   /* ── Lighting ────────────────────────────────────────────────── */
 
   private setupLighting(): void {
-    const ambient = new HemisphericLight('ambient', new Vector3(0, 1, 0), this.scene);
-    ambient.intensity = 0.3;
-    ambient.diffuse = new Color3(0.05, 0.1, 0.15);
-    ambient.groundColor = new Color3(0.02, 0.04, 0.06);
+    this.ambientLight = new HemisphericLight('ambient', new Vector3(0, 1, 0), this.scene);
+    this.ambientLight.diffuse = new Color3(0.05, 0.1, 0.15);
+    this.ambientLight.groundColor = new Color3(0.02, 0.04, 0.06);
 
-    const biolum1 = new PointLight('biolum1', new Vector3(5, 3, 5), this.scene);
-    biolum1.diffuse = C_CYAN.clone();
-    biolum1.intensity = 0.4;
-    biolum1.range = 15;
+    this.biolum1 = new PointLight('biolum1', new Vector3(5, 3, 5), this.scene);
+    this.biolum1.diffuse = C_CYAN.clone();
+    this.biolum1.range = 16;
 
-    const biolum2 = new PointLight('biolum2', new Vector3(15, 3, 15), this.scene);
-    biolum2.diffuse = C_PURPLE.clone();
-    biolum2.intensity = 0.3;
-    biolum2.range = 15;
+    this.biolum2 = new PointLight('biolum2', new Vector3(15, 3, 15), this.scene);
+    this.biolum2.diffuse = C_PURPLE.clone();
+    this.biolum2.range = 16;
 
-    const fill = new PointLight('fill', new Vector3(10, 8, 10), this.scene);
-    fill.diffuse = new Color3(0.15, 0.2, 0.3);
-    fill.intensity = 0.6;
-    fill.range = 30;
+    this.fillLight = new PointLight('fill', new Vector3(10, 8, 10), this.scene);
+    this.fillLight.diffuse = new Color3(0.15, 0.2, 0.3);
+    this.fillLight.range = 30;
+  }
+
+  private detectViewportBucket(): ViewportBucket {
+    const width = this.engine.getRenderWidth() || this.canvas.clientWidth || this.canvas.width;
+    if (width <= 700) return 'mobile';
+    if (width <= 1150) return 'tablet';
+    return 'desktop';
+  }
+
+  private applyViewportPreset(): void {
+    this.viewportBucket = this.detectViewportBucket();
+    this.activeStylePreset = ARENA_STYLE_PRESETS[this.viewportBucket];
+    this.applyCameraProfile();
+    this.applyLightingProfile();
+    this.applyActorVisualProfile();
+  }
+
+  private applyCameraProfile(): void {
+    const profile = this.activeStylePreset.camera;
+    const width = Math.max(1, this.engine.getRenderWidth() || this.canvas.clientWidth || this.canvas.width);
+    const height = Math.max(1, this.engine.getRenderHeight() || this.canvas.clientHeight || this.canvas.height);
+    const aspect = width / height;
+    const portraitBoost = aspect < 0.78 ? (0.78 - aspect) * 8 : 0;
+    const orthoSize = profile.orthoSize + portraitBoost;
+
+    this.camera.position = new Vector3(profile.position[0], profile.position[1], profile.position[2]);
+    this.camera.setTarget(new Vector3(profile.target[0], profile.target[1], profile.target[2]));
+
+    this.camera.orthoTop = orthoSize;
+    this.camera.orthoBottom = -orthoSize;
+    this.camera.orthoLeft = -orthoSize * aspect;
+    this.camera.orthoRight = orthoSize * aspect;
+  }
+
+  private applyLightingProfile(): void {
+    const preset = this.activeStylePreset;
+    this.ambientLight.intensity = preset.ambientIntensity;
+    this.biolum1.intensity = 0.34 + preset.rimIntensity * 0.5;
+    this.biolum2.intensity = 0.28 + preset.rimIntensity * 0.45;
+    this.fillLight.intensity = preset.fillIntensity;
+  }
+
+  private quantizeChannel(value: number): number {
+    const bands = Math.max(2, this.activeStylePreset.toonBands);
+    return Math.round(value * (bands - 1)) / (bands - 1);
+  }
+
+  private buildToonColors(baseColor: Color3, actorColor: Color3): { diffuse: Color3; emissive: Color3 } {
+    const contrast = this.activeStylePreset.toonContrast;
+    const q = (v: number) => this.quantizeChannel(Math.pow(Math.max(0, v), contrast));
+    const diffuse = new Color3(q(baseColor.r), q(baseColor.g), q(baseColor.b));
+
+    const rim = actorColor.scale(this.activeStylePreset.rimIntensity)
+      .add(this.activeStylePreset.rimTint.scale(this.activeStylePreset.rimIntensity * 0.4));
+
+    const emissive = diffuse.scale(this.activeStylePreset.emissiveFloor).add(rim);
+    emissive.r = Math.min(1, emissive.r);
+    emissive.g = Math.min(1, emissive.g);
+    emissive.b = Math.min(1, emissive.b);
+
+    return { diffuse, emissive };
+  }
+
+  private applyActorVisualProfile(): void {
+    const scale = this.activeStylePreset.actorScale;
+    for (const [, actor] of this.actorStates) {
+      actor.node.scaling = new Vector3(scale, scale, scale);
+      for (const mesh of actor.meshes) {
+        if (mesh instanceof Mesh) {
+          mesh.renderOutline = true;
+          mesh.outlineColor = Color3.Black();
+          mesh.outlineWidth = this.activeStylePreset.outlineWidth;
+        }
+
+        if (mesh.material instanceof StandardMaterial) {
+          const mat = mesh.material;
+          const metadata = (mat.metadata ?? {}) as { baseColorHex?: string };
+          const base = metadata.baseColorHex
+            ? Color3.FromHexString(metadata.baseColorHex)
+            : mat.diffuseColor?.clone() ?? new Color3(1, 1, 1);
+          const colors = this.buildToonColors(base, actor.color);
+          mat.diffuseColor = colors.diffuse;
+          mat.emissiveColor = colors.emissive;
+          mat.specularColor = Color3.Black();
+        }
+      }
+    }
   }
 
   /* ── Grid floor ──────────────────────────────────────────────── */
@@ -463,7 +609,8 @@ export class PitScene {
 
     // Create transform node
     const node = new TransformNode(`actor_${actorId}`, this.scene);
-    node.position = new Vector3(-2, 0, -2); // off-grid until first snapshot
+    node.position = new Vector3(-2, WORLD_Y_OFFSET, -2); // off-grid until first snapshot
+    node.scaling = new Vector3(this.activeStylePreset.actorScale, this.activeStylePreset.actorScale, this.activeStylePreset.actorScale);
 
     // Create HUD panel
     const hud = this.createHudPanel(actorId, color.toHexString(), 20, 8 + index * 44);
@@ -517,7 +664,7 @@ export class PitScene {
       if (!root) return;
 
       root.parent = parentNode;
-      root.scaling = new Vector3(GLB_SCALE, GLB_SCALE, GLB_SCALE);
+      root.scaling = new Vector3(GLB_BASE_SCALE, GLB_BASE_SCALE, GLB_BASE_SCALE);
       root.position = Vector3.Zero();
 
       const meshes: AbstractMesh[] = [];
@@ -528,16 +675,18 @@ export class PitScene {
             ? origMat.albedoColor?.clone() ?? new Color3(1, 1, 1)
             : (origMat as StandardMaterial).diffuseColor?.clone() ?? new Color3(1, 1, 1);
           const toonMat = new StandardMaterial(`toon_${actorId}_${m.name}`, this.scene);
-          toonMat.diffuseColor = color;
+          const profile = this.buildToonColors(color, state.color);
+          toonMat.diffuseColor = profile.diffuse;
           toonMat.specularColor = Color3.Black();
-          toonMat.emissiveColor = color.scale(0.1);
+          toonMat.emissiveColor = profile.emissive;
+          toonMat.metadata = { baseColorHex: color.toHexString(), actorId };
           m.material = toonMat;
         }
 
         if (m instanceof Mesh) {
           m.renderOutline = true;
           m.outlineColor = Color3.Black();
-          m.outlineWidth = 0.05;
+          m.outlineWidth = this.activeStylePreset.outlineWidth;
         }
 
         meshes.push(m);
@@ -545,6 +694,7 @@ export class PitScene {
 
       state.meshes = meshes;
       state.loaded = true;
+      this.applyActorVisualProfile();
 
       // Load skeletal animation clips for rigged species
       if (RIGGED_SPECIES.has(species)) {
@@ -571,13 +721,15 @@ export class PitScene {
     capsule.position.y = 0.4;
 
     const mat = new StandardMaterial(`${actorId}_fallbackMat`, this.scene);
-    mat.diffuseColor = color.scale(0.8);
-    mat.emissiveColor = color.scale(0.3);
+    const tuned = this.buildToonColors(color.scale(0.8), color);
+    mat.diffuseColor = tuned.diffuse;
+    mat.emissiveColor = tuned.emissive;
     mat.specularColor = Color3.Black();
+    mat.metadata = { baseColorHex: color.scale(0.8).toHexString(), actorId };
     capsule.material = mat;
     capsule.renderOutline = true;
     capsule.outlineColor = Color3.Black();
-    capsule.outlineWidth = 0.05;
+    capsule.outlineWidth = this.activeStylePreset.outlineWidth;
 
     if (state) {
       state.meshes = [capsule];
@@ -830,7 +982,7 @@ export class PitScene {
 
       // Move (animated lerp)
       const target = posToWorld(actor.position);
-      target.y = 0;
+      target.y = WORLD_Y_OFFSET;
       this.animateNodeTo(state.node, target);
 
       // HP bar
