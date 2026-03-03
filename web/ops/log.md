@@ -2,6 +2,21 @@
 
 ---
 
+## Product-Mode Audit — 19:07 ET Mar 2
+
+Directive reaffirmed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logs, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.
+
+### Shipped artifacts this pass
+- No new non-critical copy/UI iteration shipped.
+- Re-verified product-critical lane remains green and deployable:
+  - `app/routes/api/waitlist.ts` + `app/routes/api/founder-intent.ts` intake observability/idempotency paths
+  - `app/components/DemoLoop.tsx` playable loop with map movement + AP action economy
+  - `app/routes/api/postback.ts` founder conversion identity normalization path
+  - `scripts/demo-loop-core.test.mjs` + `scripts/postback-routing.test.mjs` regression coverage
+
+### Verification
+- `npm run test:product` ✅ (16/16 pass)
+
 ## Product-Mode Ship — 18:23 ET Mar 2
 
 Directive executed: hold landing copy; enforce product-critical order P1 reliability/logging, P2 demo loop movement/action economy, P3 founder checkout + postback, P4 ops artifacts.
