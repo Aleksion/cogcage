@@ -2,6 +2,31 @@
 
 ---
 
+## Product-Mode Ship — 21:07 ET Mar 2
+
+Directive executed: STOP landing-page copy iterations. Priorities executed in strict order P1→P4.
+
+### Shipped artifacts (this pass)
+- `app/lib/api-reliability.ts` (new)
+  - Added shared policy to persist idempotency receipts only for stable responses.
+  - Added runtime-safe founder checkout URL resolver (HTTPS only).
+- `app/routes/api/waitlist.ts`
+  - Idempotency receipt persistence now skips transient statuses (`429`, `5xx`) to prevent replay-locking temporary failures.
+  - Added structured `waitlist_idempotency_skip_persist` ops event.
+- `app/routes/api/founder-intent.ts`
+  - Applied the same idempotency persistence policy and observability event.
+  - Returns runtime `checkoutUrl` when configured.
+- `app/components/Play.tsx`
+  - Founder checkout redirect now prefers API-returned runtime `checkoutUrl` with build-time fallback.
+- `app/components/DemoLoop.tsx`
+  - Added action-lock/timer cleanup to prevent multi-click double-turn race in interactive demo loop.
+- `scripts/product-mode-reliability.test.mjs`
+  - Added idempotency policy and checkout URL sanitizer tests.
+
+### Verification
+- `npm run test:product` ✅ (11/11 pass)
+- `npm run build` ✅ (Vite + Nitro)
+
 ## Product-Mode Execution — 20:53 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Priorities locked P1→P4 only.

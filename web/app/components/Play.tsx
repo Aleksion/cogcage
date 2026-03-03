@@ -926,6 +926,11 @@ const Play = () => {
         source: intentSource,
         intentId,
       });
+      const runtimeCheckoutUrl =
+        typeof intentResponse.body?.checkoutUrl === 'string'
+          ? intentResponse.body.checkoutUrl.trim()
+          : '';
+      const checkoutUrl = runtimeCheckoutUrl || founderCheckoutUrl;
 
       if (!intentResponse.ok || intentResponse.body?.ok !== true) {
         const reason = String(intentResponse.body?.error || `status_${intentResponse.status}`);
@@ -935,7 +940,7 @@ const Play = () => {
           tier: 'founder',
           meta: { reason, intentId },
         });
-        if (!founderCheckoutUrl) {
+        if (!checkoutUrl) {
           setCheckoutMessage('Could not reserve spot. Try again.');
           return;
         }
@@ -948,12 +953,12 @@ const Play = () => {
         });
       }
 
-      if (!founderCheckoutUrl) {
+      if (!checkoutUrl) {
         setCheckoutMessage('✓ Reserved! You\'ll get early access pricing when checkout opens.');
         return;
       }
 
-      const url = new URL(founderCheckoutUrl);
+      const url = new URL(checkoutUrl);
       url.searchParams.set('prefilled_email', normalizedEmail);
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('moltpit_last_founder_checkout_source', checkoutSource);

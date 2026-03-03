@@ -9,6 +9,7 @@ import {
 } from '~/lib/waitlist-db'
 import { appendEventsFallback, appendOpsLog, appendWaitlistFallback } from '~/lib/observability'
 import { drainFallbackQueues } from '~/lib/fallback-drain'
+import { shouldPersistIdempotencyReceipt } from '~/lib/api-reliability'
 import {
   redisInsertWaitlistLead,
   redisInsertConversionEvent,
@@ -113,7 +114,8 @@ export const Route = createFileRoute('/api/waitlist')({
         let honeypot = '';
 
         const respond = async (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
-          if (idempotencyKey) {
+          const shouldPersistReceipt = idempotencyKey && shouldPersistIdempotencyReceipt(status);
+          if (shouldPersistReceipt && idempotencyKey) {
             const receipt = {
               route,
               idempotencyKey,
@@ -156,6 +158,14 @@ export const Route = createFileRoute('/api/waitlist')({
                 requestId,
               });
             }
+          } else if (idempotencyKey) {
+            appendOpsLog({
+              route,
+              level: 'info',
+              event: 'waitlist_idempotency_skip_persist',
+              requestId,
+              responseStatus: status,
+            });
           }
 
           return jsonResponse(body, status, requestId, extraHeaders);

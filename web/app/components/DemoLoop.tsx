@@ -861,17 +861,29 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
   const [live, setLive] = useState(() => makeInitialLiveState())
   const [aiThinking, setAiThinking] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
+  const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const actionLockRef = useRef(false)
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [live.log.length])
 
-  const handlePlayerAction = useCallback((action: Action) => {
-    if (!live.waitingForPlayer || live.winner || aiThinking) return
+  useEffect(() => {
+    return () => {
+      if (aiTimerRef.current) clearTimeout(aiTimerRef.current)
+      aiTimerRef.current = null
+      actionLockRef.current = false
+    }
+  }, [])
 
+  const handlePlayerAction = useCallback((action: Action) => {
+    if (!live.waitingForPlayer || live.winner || aiThinking || actionLockRef.current) return
+
+    actionLockRef.current = true
     setAiThinking(true)
     // Short delay for AI "thinking" feel
-    setTimeout(() => {
+    if (aiTimerRef.current) clearTimeout(aiTimerRef.current)
+    aiTimerRef.current = setTimeout(() => {
       setLive((prev) => {
         if (prev.winner) return prev
 
@@ -909,11 +921,16 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           lastResult: result,
         }
       })
+      actionLockRef.current = false
       setAiThinking(false)
+      aiTimerRef.current = null
     }, 350)
   }, [live.waitingForPlayer, live.winner, aiThinking])
 
   const resetGame = useCallback(() => {
+    if (aiTimerRef.current) clearTimeout(aiTimerRef.current)
+    aiTimerRef.current = null
+    actionLockRef.current = false
     setLive(makeInitialLiveState())
     setAiThinking(false)
   }, [])

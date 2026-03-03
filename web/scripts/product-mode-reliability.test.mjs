@@ -8,6 +8,7 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cogcage-product-mode-'));
 process.env.MOLTPIT_DB_PATH = path.join(tmpDir, 'moltpit.test.db');
 
 const dbModPromise = import('../app/lib/waitlist-db.ts');
+const reliabilityModPromise = import('../app/lib/api-reliability.ts');
 
 test('waitlist/founder/conversion persistence is idempotent in sqlite path', async (t) => {
   const db = await dbModPromise;
@@ -114,4 +115,34 @@ test('rate limit enforces cap with clear reset metadata', async (t) => {
   assert.equal(third.allowed, false);
   assert.equal(third.remaining, 0);
   assert.ok(Number.isFinite(third.resetMs));
+});
+
+test('idempotency receipts persist only stable response statuses', async () => {
+  const reliability = await reliabilityModPromise;
+  assert.equal(reliability.shouldPersistIdempotencyReceipt(200), true);
+  assert.equal(reliability.shouldPersistIdempotencyReceipt(202), true);
+  assert.equal(reliability.shouldPersistIdempotencyReceipt(400), true);
+  assert.equal(reliability.shouldPersistIdempotencyReceipt(422), true);
+  assert.equal(reliability.shouldPersistIdempotencyReceipt(429), false);
+  assert.equal(reliability.shouldPersistIdempotencyReceipt(503), false);
+});
+
+test('founder checkout URL resolver accepts only https URL', async () => {
+  const reliability = await reliabilityModPromise;
+  const previous = process.env.PUBLIC_STRIPE_FOUNDER_URL;
+
+  process.env.PUBLIC_STRIPE_FOUNDER_URL = 'https://checkout.stripe.com/c/pay/example';
+  assert.equal(
+    reliability.resolveFounderCheckoutUrl(),
+    'https://checkout.stripe.com/c/pay/example',
+  );
+
+  process.env.PUBLIC_STRIPE_FOUNDER_URL = 'http://checkout.stripe.com/c/pay/example';
+  assert.equal(reliability.resolveFounderCheckoutUrl(), undefined);
+
+  process.env.PUBLIC_STRIPE_FOUNDER_URL = 'javascript:alert(1)';
+  assert.equal(reliability.resolveFounderCheckoutUrl(), undefined);
+
+  if (typeof previous === 'string') process.env.PUBLIC_STRIPE_FOUNDER_URL = previous;
+  else delete process.env.PUBLIC_STRIPE_FOUNDER_URL;
 });

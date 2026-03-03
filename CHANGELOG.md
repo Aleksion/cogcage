@@ -8,6 +8,49 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): stable idempotency persistence, demo turn lock, runtime founder checkout URL
+
+**Type:** fix/feature/ops | **Budget impact:** n/a (product-critical hardening)
+
+### What
+- `web/app/lib/api-reliability.ts` (new)
+  - Added `shouldPersistIdempotencyReceipt(status)` to keep idempotency replays for stable outcomes only.
+  - Added `resolveFounderCheckoutUrl()` to read + sanitize runtime `PUBLIC_STRIPE_FOUNDER_URL` (HTTPS only).
+- `web/app/routes/api/waitlist.ts`
+  - Idempotency receipt writes now skip transient responses (notably 429/5xx) to avoid replay-locking temporary failures.
+  - Added structured `waitlist_idempotency_skip_persist` log event for observability.
+- `web/app/routes/api/founder-intent.ts`
+  - Applied the same stable-response idempotency persistence policy.
+  - Added `founder_intent_idempotency_skip_persist` logging.
+  - Success responses now include runtime `checkoutUrl` when configured.
+- `web/app/components/Play.tsx`
+  - Founder checkout now prefers `checkoutUrl` returned by `/api/founder-intent` and falls back to build-time env URL.
+- `web/app/components/DemoLoop.tsx`
+  - Added action lock + timer cleanup in Play mode to prevent multi-click double-turn races.
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added tests for idempotency persistence policy and founder checkout URL sanitizer.
+
+### Why
+- Transient error responses were being cached by idempotency keys, which could replay stale failures after storage recovered.
+- The playable demo loop could queue overlapping turn resolutions under rapid input.
+- Founder checkout depended mainly on build-time env, reducing reliability when runtime config diverged.
+
+### Design Decisions
+- Persist idempotency receipts only for stable responses (`2xx`, deterministic `4xx`, excluding retry-oriented statuses like `429`).
+- Keep checkout source-of-truth server-side by allowing `/api/founder-intent` to supply a validated runtime checkout URL.
+- Resolve demo-loop race with a synchronous ref lock instead of broader state-machine refactors to keep diff minimal.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Add route-level integration tests for idempotent replay behavior with mocked Redis/storage failure modes.
+- Add a small postback route test matrix for supported/unsupported event types and auth outcomes.
+
+### Verification
+- `cd web && npm run test:product` ✅ (11 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## [2026-03-02] - fix(product-mode): route consistency + ops artifact refresh
 
 **Type:** fix/docs | **Budget impact:** n/a (product-critical reliability + audit pass)

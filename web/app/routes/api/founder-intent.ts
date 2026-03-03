@@ -9,6 +9,7 @@ import {
 } from '~/lib/waitlist-db'
 import { appendEventsFallback, appendFounderIntentFallback, appendOpsLog } from '~/lib/observability'
 import { drainFallbackQueues } from '~/lib/fallback-drain'
+import { resolveFounderCheckoutUrl, shouldPersistIdempotencyReceipt } from '~/lib/api-reliability'
 import {
   redisInsertFounderIntent,
   redisInsertConversionEvent,
@@ -110,6 +111,7 @@ export const Route = createFileRoute('/api/founder-intent')({
         const requestId = crypto.randomUUID();
         const contentType = request.headers.get('content-type') ?? '';
         const route = '/api/founder-intent';
+        const founderCheckoutUrl = resolveFounderCheckoutUrl();
         const idempotencyKey = getIdempotencyKey(request);
         let email = '';
         let source = '';
@@ -117,12 +119,14 @@ export const Route = createFileRoute('/api/founder-intent')({
         let honeypot = '';
 
         const respond = async (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
-          if (idempotencyKey) {
+          const responseBody = founderCheckoutUrl ? { ...body, checkoutUrl: founderCheckoutUrl } : body;
+          const shouldPersistReceipt = idempotencyKey && shouldPersistIdempotencyReceipt(status);
+          if (shouldPersistReceipt && idempotencyKey) {
             const receipt = {
               route,
               idempotencyKey,
               responseStatus: status,
-              responseBody: JSON.stringify({ ...body, requestId }),
+              responseBody: JSON.stringify({ ...responseBody, requestId }),
             };
             let persisted = false;
 
@@ -160,9 +164,17 @@ export const Route = createFileRoute('/api/founder-intent')({
                 requestId,
               });
             }
+          } else if (idempotencyKey) {
+            appendOpsLog({
+              route,
+              level: 'info',
+              event: 'founder_intent_idempotency_skip_persist',
+              requestId,
+              responseStatus: status,
+            });
           }
 
-          return jsonResponse(body, status, requestId, extraHeaders);
+          return jsonResponse(responseBody, status, requestId, extraHeaders);
         };
 
         if (idempotencyKey) {

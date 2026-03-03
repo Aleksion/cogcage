@@ -4,6 +4,31 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Product-Critical Ship — 21:07 ET, Mar 2 2026
+
+**Directive**: STOP copy iterations. Priorities executed P1 signup reliability → P2 playable demo loop → P3 founder monetization path → P4 ops artifacts.
+
+**Shipped this pass:**
+- `web/app/lib/api-reliability.ts` (new)
+  - Shared idempotency receipt persistence policy for stable responses.
+  - Runtime HTTPS founder checkout URL resolver.
+- `web/app/routes/api/waitlist.ts`
+  - Idempotency receipts no longer persist transient responses (`429`, `5xx`), preventing stale failure replays.
+  - Added `waitlist_idempotency_skip_persist` observability event.
+- `web/app/routes/api/founder-intent.ts`
+  - Same stable-response idempotency policy.
+  - Returns runtime `checkoutUrl` when configured.
+- `web/app/components/Play.tsx`
+  - Founder checkout redirect now uses API-returned runtime checkout URL first, then build-time fallback.
+- `web/app/components/DemoLoop.tsx`
+  - Added synchronous action lock + timeout cleanup to prevent double-turn race on rapid clicks.
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added tests for idempotency policy and checkout URL sanitization.
+
+**Verification:**
+- `cd web && npm run test:product` ✅ (11 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ### Autopilot Cron — 14:02 ET, Mar 2 2026
 
 **Directive**: STOP copy iterations. Priorities: P1 signup, P2 demo, P3 monetization, P4 ops log.
