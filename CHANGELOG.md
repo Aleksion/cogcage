@@ -8,6 +8,27 @@
 
 ---
 
+## [2026-03-02] - fix(product): restore `/molds` route registration
+
+**Type:** fix | **Budget impact:** n/a (product-critical navigation reliability)
+
+### What changed
+- `web/app/routes/molds.tsx`
+  - Fixed the file-route declaration from `createFileRoute('/molts')` to `createFileRoute('/molds')` so the route key matches the file path and generated route map.
+
+### Why
+- Product mode focuses on core play/signup/checkout flow reliability.
+- This mismatch could make the molds page unreachable or inconsistently resolved, which is a product-critical navigation failure.
+
+### Design decisions
+- Keep route id/path literals aligned 1:1 with file-based route names to avoid runtime route-map drift.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Add a lightweight route smoke test for `/molds` during product-mode checks.
+
 ## [2026-03-02] - fix(product-mode): finalize P1/P2/P3 critical path (signup reliability, demo action loop, postback idempotency)
 
 **Type:** fix/feature/ops | **Budget impact:** n/a (product-critical)
