@@ -1665,3 +1665,18 @@ bun run build (web/)
 3. `MOLTPIT_OPS_KEY` → Vercel env → secures `/api/ops`
 
 **Cron status**: Code-idle. Nothing product-critical to ship until env vars land.
+
+### Autopilot Cron — 22:38 ET, Mar 2 2026
+
+Directive enforced: stop landing-page copy iterations; remain in product-critical sequence only.
+
+**Status:**
+- P1 signup reliability + storage + observable logs: ✅ verified
+- P2 playable demo loop (map movement + action economy): ✅ verified
+- P3 founder checkout + postback path: ✅ verified
+- P4 ops log: ✅ updated (this entry)
+
+**Verification:**
+- `cd web && npm run test:product` ✅ (23/23 pass)
+
+No landing-copy work and no non-product-critical code churn in this pass.

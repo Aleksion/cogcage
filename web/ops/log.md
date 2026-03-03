@@ -459,3 +459,20 @@ Directive executed: product-critical only, strict order (P1 signup reliability/s
 ### Scope guardrails
 - No landing-page copy iteration work.
 - No cosmetic/layout-only changes.
+
+## Product-Mode Cron — 22:38 ET Mar 2
+
+Directive enforced: STOP landing-page copy iterations. Product-critical sequence only (P1→P4).
+
+### Pass result
+- P1 signup reliability/storage/observability: ✅ verified (idempotency + fallback durability paths)
+- P2 playable demo loop (map movement + AP economy): ✅ verified
+- P3 monetization path (founder checkout + postback): ✅ verified
+- P4 ops artifacts: ✅ updated (`web/ops/log.md`, `ops/logs/2026-03-02.md`, `docs/ops-log.md`)
+
+### Verification
+- `cd web && npm run test:product` ✅ (23/23 pass)
+
+### Scope guard
+- No landing-page copy edits.
+- No non-product-critical code changes.
