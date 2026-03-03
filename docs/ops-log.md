@@ -4,6 +4,24 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Ship — 22:32 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Product-critical lanes only (P1→P4).
+
+**Shipped in this pass:**
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added route-level regression coverage for:
+    - `/api/waitlist` idempotency replay + duplicate suppression
+    - `/api/waitlist` malformed payload 400 handling
+    - `/api/checkout-success` idempotency replay + conversion dedupe
+    - `/api/postback` idempotency replay + conversion/founder-intent dedupe
+
+**Verification:**
+- `cd web && npm run test:product` ✅ (23/23 passing)
+- `cd web && npm run build` ✅
+
+**Scope guard:** no landing-page copy edits and no non-product-critical code changes.
+
 ### Autopilot Cron — 22:13 ET, Mar 2 2026
 
 **Directive**: STOP landing-page copy iterations. Priority lock enforced P1 signup reliability/storage/logging, P2 playable demo movement + AP economy, P3 founder checkout/postback, P4 ops artifacts.

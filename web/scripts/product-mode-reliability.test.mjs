@@ -14,6 +14,9 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cogcage-product-mode-'));
 process.env.MOLTPIT_DB_PATH = path.join(tmpDir, 'moltpit.test.db');
 
 const dbModPromise = import('../app/lib/waitlist-db.ts');
+const waitlistRoutePromise = import('../app/routes/api/waitlist.ts');
+const checkoutSuccessRoutePromise = import('../app/routes/api/checkout-success.ts');
+const postbackRoutePromise = import('../app/routes/api/postback.ts');
 
 test('waitlist/founder/conversion persistence is idempotent in sqlite path', async (t) => {
   const db = await dbModPromise;
@@ -186,4 +189,204 @@ test('idempotency key sanitization trims and bounds untrusted header input', () 
   assert.ok(sanitized);
   assert.equal(sanitized.length, 120);
   assert.equal(sanitizeIdempotencyKey('   '), undefined);
+});
+
+test('waitlist route replays idempotent requests and avoids duplicate lead writes', async (t) => {
+  const db = await dbModPromise;
+  const health = db.getStorageHealth();
+  if (!health.sqliteAvailable) {
+    t.skip(`SQLite unavailable in test runtime: ${health.sqliteLoadError ?? 'unknown error'}`);
+    return;
+  }
+
+  const { Route } = await waitlistRoutePromise;
+  const postHandler = Route.options?.server?.handlers?.POST;
+  assert.equal(typeof postHandler, 'function');
+
+  const before = db.getFunnelCounts();
+  const eventId = `waitlist-route-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const idempotencyKey = `waitlist:test:${eventId}`;
+  const payload = {
+    email: `${eventId}@pit.dev`,
+    game: 'The Molt Pit',
+    source: 'test-route',
+  };
+
+  const requestA = new Request('http://localhost/api/waitlist', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-idempotency-key': ` ${idempotencyKey} `,
+      'user-agent': 'node-test',
+    },
+    body: JSON.stringify(payload),
+  });
+  const responseA = await postHandler({ request: requestA });
+  assert.ok([200, 202].includes(responseA.status));
+  const bodyA = await responseA.json();
+  assert.equal(bodyA.ok, true);
+
+  const requestB = new Request('http://localhost/api/waitlist', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-idempotency-key': idempotencyKey,
+      'user-agent': 'node-test',
+    },
+    body: JSON.stringify(payload),
+  });
+  const responseB = await postHandler({ request: requestB });
+  assert.equal(responseB.headers.get('x-idempotent-replay'), '1');
+  const bodyB = await responseB.json();
+  assert.equal(bodyB.ok, true);
+
+  const after = db.getFunnelCounts();
+  assert.equal(after.waitlistLeads, before.waitlistLeads + 1);
+});
+
+test('waitlist route returns 400 on malformed JSON payload', async () => {
+  const { Route } = await waitlistRoutePromise;
+  const postHandler = Route.options?.server?.handlers?.POST;
+  assert.equal(typeof postHandler, 'function');
+
+  const request = new Request('http://localhost/api/waitlist', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'user-agent': 'node-test',
+    },
+    body: '{',
+  });
+
+  const response = await postHandler({ request });
+  assert.equal(response.status, 400);
+  const body = await response.json();
+  assert.equal(body.ok, false);
+  assert.ok(
+    body.error === 'Invalid request payload.'
+    || body.error === 'Valid email is required.',
+  );
+});
+
+test('checkout-success route replays idempotent requests and avoids duplicate conversion writes', async (t) => {
+  const db = await dbModPromise;
+  const health = db.getStorageHealth();
+  if (!health.sqliteAvailable) {
+    t.skip(`SQLite unavailable in test runtime: ${health.sqliteLoadError ?? 'unknown error'}`);
+    return;
+  }
+
+  const { Route } = await checkoutSuccessRoutePromise;
+  const postHandler = Route.options?.server?.handlers?.POST;
+  assert.equal(typeof postHandler, 'function');
+
+  const before = db.getFunnelCounts();
+  const eventId = `checkout-route-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const idempotencyKey = `checkout_success:${eventId}`;
+  const payload = {
+    eventId,
+    page: '/success',
+    href: 'https://cogcage.test/success',
+    source: 'stripe-success',
+    tier: 'founder',
+    email: `${eventId}@pit.dev`,
+  };
+
+  const requestA = new Request('http://localhost/api/checkout-success', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-idempotency-key': ` ${idempotencyKey} `,
+      'user-agent': 'node-test',
+    },
+    body: JSON.stringify(payload),
+  });
+  const responseA = await postHandler({ request: requestA });
+  assert.ok([200, 202].includes(responseA.status));
+  const bodyA = await responseA.json();
+  assert.equal(bodyA.ok, true);
+
+  const requestB = new Request('http://localhost/api/checkout-success', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-idempotency-key': idempotencyKey,
+      'user-agent': 'node-test',
+    },
+    body: JSON.stringify(payload),
+  });
+  const responseB = await postHandler({ request: requestB });
+  assert.equal(responseB.headers.get('x-idempotent-replay'), '1');
+  const bodyB = await responseB.json();
+  assert.equal(bodyB.ok, true);
+
+  const after = db.getFunnelCounts();
+  assert.equal(after.conversionEvents, before.conversionEvents + 1);
+});
+
+test('postback route replays idempotent requests and dedupes conversion/founder writes', async (t) => {
+  const db = await dbModPromise;
+  const health = db.getStorageHealth();
+  if (!health.sqliteAvailable) {
+    t.skip(`SQLite unavailable in test runtime: ${health.sqliteLoadError ?? 'unknown error'}`);
+    return;
+  }
+
+  process.env.COGCAGE_POSTBACK_KEY = 'test-postback-key';
+
+  const { Route } = await postbackRoutePromise;
+  const postHandler = Route.options?.server?.handlers?.POST;
+  assert.equal(typeof postHandler, 'function');
+
+  const before = db.getFunnelCounts();
+  const eventId = `postback-route-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const idempotencyKey = `postback:checkout.session.completed:${eventId}`;
+  const payload = {
+    type: 'checkout.session.completed',
+    eventId,
+    source: 'postback-test',
+    data: {
+      object: {
+        id: `cs_${eventId}`,
+        customer_email: `${eventId}@pit.dev`,
+        metadata: { tier: 'founder' },
+      },
+    },
+  };
+
+  const requestA = new Request('http://localhost/api/postback', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-postback-key': 'test-postback-key',
+      'x-idempotency-key': ` ${idempotencyKey} `,
+      'user-agent': 'node-test',
+    },
+    body: JSON.stringify(payload),
+  });
+  const responseA = await postHandler({ request: requestA });
+  assert.ok([200, 202].includes(responseA.status));
+  const bodyA = await responseA.json();
+  assert.equal(bodyA.ok, true);
+  assert.equal(bodyA.eventId, eventId);
+
+  const requestB = new Request('http://localhost/api/postback', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-postback-key': 'test-postback-key',
+      'x-idempotency-key': idempotencyKey,
+      'user-agent': 'node-test',
+    },
+    body: JSON.stringify(payload),
+  });
+  const responseB = await postHandler({ request: requestB });
+  assert.equal(responseB.headers.get('x-idempotent-replay'), '1');
+  const bodyB = await responseB.json();
+  assert.equal(bodyB.ok, true);
+  assert.equal(bodyB.eventId, eventId);
+
+  const after = db.getFunnelCounts();
+  assert.equal(after.conversionEvents, before.conversionEvents + 1);
+  assert.equal(after.founderIntents, before.founderIntents + 1);
 });

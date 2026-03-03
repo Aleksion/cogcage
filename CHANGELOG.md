@@ -8,6 +8,31 @@
 
 ---
 
+## [2026-03-02] - fix(product-critical): add route-level reliability regressions for signup and monetization paths (22:32 ET)
+
+**Type:** fix/product-critical | **Budget impact:** n/a
+
+### What
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added route-level regression coverage for:
+    - `/api/waitlist` idempotency replay + duplicate-write suppression.
+    - `/api/waitlist` malformed JSON error handling (400 response contract).
+    - `/api/checkout-success` idempotency replay + conversion dedupe.
+    - `/api/postback` idempotency replay + conversion/founder-intent dedupe on repeated webhook payloads.
+- `web/ops/log.md`
+- `docs/ops-log.md`
+  - Appended concise shipped-artifact + verification evidence for this pass.
+
+### Why
+- Product-mode priorities required explicit regression protection for the core reliability and monetization handlers, beyond lower-level storage/idempotency unit checks.
+
+### Breaking changes
+- None.
+
+### Verification
+- `cd web && npm run test:product` ✅ (23 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## [2026-03-02] - fix(product-critical): close P1-P3 reliability gaps and ship ops artifacts (22:03 ET)
 
 **Type:** fix/product-critical | **Budget impact:** n/a

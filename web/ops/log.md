@@ -2,6 +2,26 @@
 
 ---
 
+## Product-Mode Ship — 22:32 ET Mar 2
+
+Directive enforced: STOP landing-page copy iteration work. Scope constrained to product-critical reliability/demo/checkout lanes.
+
+### Shipped artifacts
+- `scripts/product-mode-reliability.test.mjs`
+  - Added route-level regressions for:
+    - `/api/waitlist` idempotency replay + duplicate suppression
+    - `/api/waitlist` malformed payload error handling
+    - `/api/checkout-success` idempotency replay + conversion dedupe
+    - `/api/postback` idempotency replay + conversion/founder-intent dedupe
+
+### Verification evidence
+- `cd web && npm run test:product` ✅ (23/23 pass)
+- `cd web && npm run build` ✅
+
+### Scope guard
+- No landing-page copy edits.
+- No non-product-critical feature churn.
+
 ## Product-Mode Cron — 22:13 ET Mar 2
 
 Directive enforced exactly as received: no landing-page copy iteration work, product-critical lane only in P1→P4 order.
