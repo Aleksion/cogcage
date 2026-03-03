@@ -10,7 +10,7 @@
  *   moltpit:founder-intents       LIST  — newline-delimited JSON entries (newest first)
  *   moltpit:conversions           LIST  — newline-delimited JSON entries (newest first)
  *   moltpit:ops-log               LIST  — last 500 structured log lines (newest first)
- *   moltpit:ratelimit:{key}:{win} STRING — counter per sliding window bucket
+ *   moltpit:ratelimit:{route}:{key}:{win} STRING — counter per sliding window bucket
  */
 
 import { Redis } from '@upstash/redis';
@@ -241,11 +241,13 @@ export async function redisConsumeRateLimit(
   key: string,
   max: number,
   windowMs: number,
+  route = 'global',
 ): Promise<{ allowed: boolean; remaining: number; resetMs: number }> {
   const r = getRedis();
   const now = Date.now();
   const windowId = Math.floor(now / windowMs);
-  const windowKey = `${RATE_LIMIT_PREFIX}${key}:${windowId}`;
+  const routeKey = route.replace(/[^a-z0-9_-]/gi, '_').slice(0, 64) || 'global';
+  const windowKey = `${RATE_LIMIT_PREFIX}${routeKey}:${key}:${windowId}`;
 
   const count = await r.incr(windowKey);
   if (count === 1) {

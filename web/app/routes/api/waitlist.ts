@@ -285,7 +285,7 @@ export const Route = createFileRoute('/api/waitlist')({
         let rateLimit = { allowed: true, remaining: RATE_LIMIT_MAX, resetMs: 0 };
         try {
           // Prefer Redis rate limiting — survives across Lambda invocations
-          rateLimit = await redisConsumeRateLimit(rateLimitKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+          rateLimit = await redisConsumeRateLimit(rateLimitKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS, 'waitlist');
         } catch {
           try {
             rateLimit = consumeRateLimit(rateLimitKey, 'waitlist', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);

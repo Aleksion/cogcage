@@ -8,6 +8,39 @@
 
 ---
 
+## [2026-03-03] - fix(product-autopilot-v2): signup isolation, playable demo default, founder checkout correlation
+
+**Type:** fix/feature/ops | **Budget impact:** n/a (product-critical)
+
+### What
+- `web/app/lib/waitlist-redis.ts`
+  - Namespaced Redis rate-limit buckets by route (`moltpit:ratelimit:{route}:{key}:{window}`) to prevent cross-throttling between signup and founder-intent flows.
+- `web/app/routes/api/waitlist.ts`
+  - Passed explicit `waitlist` route namespace into Redis rate limiting.
+- `web/app/routes/api/founder-intent.ts`
+  - Passed explicit `founder-intent` route namespace into Redis rate limiting.
+- `web/app/routes/demo.tsx`
+  - Switched `/demo` default to the real playable `DemoLoop` (map movement + action economy).
+  - Preserved cinematic flow behind `?mode=cinematic`.
+- `web/app/components/MoltPitLanding.jsx`
+  - Founder checkout redirect now sends `client_reference_id` + `checkout_intent_id` using deterministic `intentId` for downstream paid-postback correlation.
+  - Founder-intent local replay queue now buffers only retryable failures.
+- `web/app/routes/api/postback.ts`
+  - Expanded shared-key auth compatibility: `x-postback-key`, `Authorization: Bearer`, or `?key=`.
+  - Added explicit auth mode telemetry on receive/unauthorized paths.
+  - Correlates paid postbacks to founder intents via `checkout_intent_id` / `intentId` metadata or `client_reference_id`.
+  - Standardized JSON responses with `x-request-id` and `requestId` body field.
+
+### Why
+- Signup and founder-intent traffic should not rate-limit each other in Redis-backed production paths.
+- `/demo` needed to ship a true playable loop by default, not only a spectator/cinematic route.
+- Founder checkout needed deterministic intent linkage through Stripe redirect and postback confirmation.
+- Postback observability needed request-level traceability and clearer auth-mode logging for operations.
+
+### Verification
+- `cd web && npm run test:product` ✅ (9 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)

@@ -12,6 +12,7 @@ type CheckoutPostback = {
   data?: {
     object?: {
       id?: string;
+      client_reference_id?: string;
       customer_email?: string;
       customer_details?: {
         email?: string;
@@ -45,11 +46,18 @@ function getClientIp(request: Request) {
   return forwarded || realIp || cfIp || flyIp || undefined;
 }
 
-function authorize(request: Request): boolean {
+type PostbackAuthMode = 'shared-key' | 'open-fallback';
+
+function getPostbackAuth(request: Request): { authorized: boolean; mode: PostbackAuthMode } {
   const key = (process.env.COGCAGE_POSTBACK_KEY ?? process.env.MOLTPIT_POSTBACK_KEY)?.trim();
-  if (!key) return true;
-  const provided = request.headers.get('x-postback-key')?.trim() ?? '';
-  return provided === key;
+  if (!key) {
+    return { authorized: true, mode: 'open-fallback' };
+  }
+  const authHeader = request.headers.get('authorization')?.trim() ?? '';
+  const bearer = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
+  const queryKey = new URL(request.url).searchParams.get('key')?.trim() ?? '';
+  const provided = request.headers.get('x-postback-key')?.trim() || bearer || queryKey;
+  return { authorized: provided === key, mode: 'shared-key' };
 }
 
 function hashString(input: string) {
@@ -79,33 +87,42 @@ function safeMetaJson(meta: Record<string, unknown>) {
   }
 }
 
+function jsonResponse(requestId: string, body: Record<string, unknown>, status: number) {
+  return new Response(JSON.stringify({ ...body, requestId }), {
+    status,
+    headers: {
+      'content-type': 'application/json',
+      'x-request-id': requestId,
+    },
+  });
+}
+
 export const Route = createFileRoute('/api/postback')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!authorize(request)) {
-          return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
-            status: 401,
-            headers: { 'content-type': 'application/json' },
-          });
+        const requestId = crypto.randomUUID();
+        const auth = getPostbackAuth(request);
+        if (!auth.authorized) {
+          return jsonResponse(requestId, { ok: false, error: 'Unauthorized', authMode: auth.mode }, 401);
         }
         // Health check / test endpoint
         const url = new URL(request.url);
         if (url.searchParams.get('test') === '1') {
-          return new Response(JSON.stringify({ ok: true, mode: 'test', method: 'GET' }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          });
+          return jsonResponse(requestId, { ok: true, mode: 'test', method: 'GET', authMode: auth.mode }, 200);
         }
-        return new Response(JSON.stringify({ ok: true, status: 'ready', acceptedTypes: ['checkout.session.completed', 'founder_pack.paid'] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
+        return jsonResponse(requestId, {
+          ok: true,
+          status: 'ready',
+          authMode: auth.mode,
+          acceptedTypes: ['checkout.session.completed', 'founder_pack.paid'],
+        }, 200);
       },
       POST: async ({ request }) => {
         const startedAt = Date.now();
         const requestId = crypto.randomUUID();
         const contentType = request.headers.get('content-type') ?? '';
+        const auth = getPostbackAuth(request);
 
         appendOpsLog({
           route: '/api/postback',
@@ -113,23 +130,18 @@ export const Route = createFileRoute('/api/postback')({
           event: 'postback_received',
           requestId,
           contentType,
+          authMode: auth.mode,
         });
 
         // Test mode stub: ?test=1 returns 200 without processing, for deploy verification
         const url = new URL(request.url);
         if (url.searchParams.get('test') === '1') {
-          return new Response(JSON.stringify({ ok: true, mode: 'test', requestId }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          });
+          return jsonResponse(requestId, { ok: true, mode: 'test', authMode: auth.mode }, 200);
         }
 
-        if (!authorize(request)) {
-          appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_unauthorized', requestId });
-          return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', requestId }), {
-            status: 401,
-            headers: { 'content-type': 'application/json' },
-          });
+        if (!auth.authorized) {
+          appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_unauthorized', requestId, authMode: auth.mode });
+          return jsonResponse(requestId, { ok: false, error: 'Unauthorized', authMode: auth.mode }, 401);
         }
 
         let payload: CheckoutPostback | null = null;
@@ -176,10 +188,7 @@ export const Route = createFileRoute('/api/postback')({
             contentType,
             durationMs: Date.now() - startedAt,
           });
-          return new Response(JSON.stringify({ ok: false, error: 'Invalid request payload', requestId }), {
-            status: 400,
-            headers: { 'content-type': 'application/json' },
-          });
+          return jsonResponse(requestId, { ok: false, error: 'Invalid request payload' }, 400);
         }
 
         const rawType = payload.type ?? '';
@@ -194,10 +203,7 @@ export const Route = createFileRoute('/api/postback')({
             eventType,
             durationMs: Date.now() - startedAt,
           });
-          return new Response(JSON.stringify({ ok: false, error: 'Unsupported postback type', requestId }), {
-            status: 422,
-            headers: { 'content-type': 'application/json' },
-          });
+          return jsonResponse(requestId, { ok: false, error: 'Unsupported postback type' }, 422);
         }
 
         const object = payload.data?.object;
@@ -207,10 +213,17 @@ export const Route = createFileRoute('/api/postback')({
           ?? normalizeEmail(object?.customer_details?.email);
 
         const source = typeof payload.source === 'string' && payload.source.trim() ? payload.source.trim() : 'postback';
+        const metaRecord = (payload.metadata ?? object?.metadata ?? {}) as Record<string, unknown>;
+        const checkoutIntentId =
+          normalizeString(metaRecord.checkout_intent_id ?? metaRecord.intentId ?? metaRecord.intent_id, 180)
+          || ((typeof object?.client_reference_id === 'string' && object.client_reference_id.trim().startsWith('intent:'))
+            ? object.client_reference_id.trim().slice(0, 180)
+            : '');
         const meta = {
           eventType,
           created: payload.created,
-          metadata: payload.metadata ?? object?.metadata ?? {},
+          metadata: metaRecord,
+          checkoutIntentId: checkoutIntentId || undefined,
         };
 
         const eventId =
@@ -231,8 +244,8 @@ export const Route = createFileRoute('/api/postback')({
         };
         const founderIntentPayload = email ? {
           email,
-          source: `${source}-postback`,
-          intentId: `paid:${eventId}`,
+          source: checkoutIntentId ? `${source}-postback-confirmed` : `${source}-postback`,
+          intentId: checkoutIntentId || `paid:${eventId}`,
           userAgent: request.headers.get('user-agent') ?? undefined,
           ipAddress: getClientIp(request),
         } : null;
@@ -327,14 +340,13 @@ export const Route = createFileRoute('/api/postback')({
             source,
             eventId,
             hasEmail: Boolean(email),
+            checkoutIntentId: checkoutIntentId || undefined,
+            founderIntentId: founderIntentPayload?.intentId,
             storage: 'redis',
             durationMs: Date.now() - startedAt,
           });
 
-          return new Response(JSON.stringify({ ok: true, requestId, eventId }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          });
+          return jsonResponse(requestId, { ok: true, eventId, intentId: founderIntentPayload?.intentId }, 200);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
           appendOpsLog({
@@ -345,6 +357,7 @@ export const Route = createFileRoute('/api/postback')({
             eventType,
             source,
             eventId,
+            checkoutIntentId: checkoutIntentId || undefined,
             error: errorMessage,
             durationMs: Date.now() - startedAt,
           });
@@ -376,13 +389,12 @@ export const Route = createFileRoute('/api/postback')({
               source,
               eventId,
               hasEmail: Boolean(email),
+              checkoutIntentId: checkoutIntentId || undefined,
+              founderIntentId: founderIntentPayload?.intentId,
               durationMs: Date.now() - startedAt,
             });
 
-            return new Response(JSON.stringify({ ok: true, degraded: true, requestId, eventId }), {
-              status: 200,
-              headers: { 'content-type': 'application/json' },
-            });
+            return jsonResponse(requestId, { ok: true, degraded: true, eventId, intentId: founderIntentPayload?.intentId }, 200);
           } catch (sqliteError) {
             const sqliteErrorMessage = sqliteError instanceof Error ? sqliteError.message : 'unknown-error';
             appendOpsLog({
@@ -393,6 +405,7 @@ export const Route = createFileRoute('/api/postback')({
               eventType,
               source,
               eventId,
+              checkoutIntentId: checkoutIntentId || undefined,
               error: sqliteErrorMessage,
               durationMs: Date.now() - startedAt,
             });
@@ -407,12 +420,11 @@ export const Route = createFileRoute('/api/postback')({
                 eventType,
                 source,
                 eventId,
+                checkoutIntentId: checkoutIntentId || undefined,
+                founderIntentId: founderIntentPayload?.intentId,
                 durationMs: Date.now() - startedAt,
               });
-              return new Response(JSON.stringify({ ok: true, queued: true, requestId, eventId }), {
-                status: 202,
-                headers: { 'content-type': 'application/json' },
-              });
+              return jsonResponse(requestId, { ok: true, queued: true, eventId, intentId: founderIntentPayload?.intentId }, 202);
             } catch (fallbackError) {
               appendOpsLog({
                 route: '/api/postback',
@@ -422,14 +434,12 @@ export const Route = createFileRoute('/api/postback')({
                 eventType,
                 source,
                 eventId,
+                checkoutIntentId: checkoutIntentId || undefined,
                 error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error',
                 durationMs: Date.now() - startedAt,
               });
 
-              return new Response(JSON.stringify({ ok: false, error: 'Postback processing failed', requestId }), {
-                status: 500,
-                headers: { 'content-type': 'application/json' },
-              });
+              return jsonResponse(requestId, { ok: false, error: 'Postback processing failed' }, 500);
             }
           }
         }

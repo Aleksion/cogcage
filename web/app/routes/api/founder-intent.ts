@@ -289,7 +289,7 @@ export const Route = createFileRoute('/api/founder-intent')({
         let rateLimit = { allowed: true, remaining: RATE_LIMIT_MAX, resetMs: 0 };
         try {
           // Prefer Redis rate limiting — survives across Lambda invocations
-          rateLimit = await redisConsumeRateLimit(rateLimitKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+          rateLimit = await redisConsumeRateLimit(rateLimitKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS, 'founder-intent');
         } catch {
           try {
             rateLimit = consumeRateLimit(rateLimitKey, 'founder-intent', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);

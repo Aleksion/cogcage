@@ -1385,7 +1385,9 @@ const HeroSection = ({ sectionRef }) => {
     try {
       await submitWithRetry('/api/founder-intent', founderIntentPayload, { retries: 1, timeoutMs: 6000 });
     } catch (error) {
-      enqueueFounderIntentReplay(founderIntentPayload);
+      if (shouldQueueForReplay(error)) {
+        enqueueFounderIntentReplay(founderIntentPayload);
+      }
       await postJson('/api/events', {
         event: 'founder_intent_buffered',
         source: founderIntentPayload.source,
@@ -1405,6 +1407,8 @@ const HeroSection = ({ sectionRef }) => {
       localStorage.setItem('moltpit_last_founder_intent_source', checkoutIntentSource);
       const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
       target.searchParams.set('prefilled_email', trimmed.toLowerCase());
+      target.searchParams.set('client_reference_id', founderIntentPayload.intentId);
+      target.searchParams.set('checkout_intent_id', founderIntentPayload.intentId);
       window.location.href = target.toString();
       return;
     }
@@ -1779,7 +1783,9 @@ const FooterSection = () => {
     try {
       await submitWithRetry('/api/founder-intent', founderIntentPayload, { retries: 1, timeoutMs: 6000 });
     } catch (error) {
-      enqueueFounderIntentReplay(founderIntentPayload);
+      if (shouldQueueForReplay(error)) {
+        enqueueFounderIntentReplay(founderIntentPayload);
+      }
       await postJson('/api/events', {
         event: 'founder_intent_buffered',
         source: founderIntentPayload.source,
@@ -1799,6 +1805,8 @@ const FooterSection = () => {
       localStorage.setItem('moltpit_last_founder_intent_source', checkoutIntentSource);
       const target = new URL(STRIPE_FOUNDER_URL, window.location.origin);
       target.searchParams.set('prefilled_email', trimmed);
+      target.searchParams.set('client_reference_id', founderIntentPayload.intentId);
+      target.searchParams.set('checkout_intent_id', founderIntentPayload.intentId);
       window.location.href = target.toString();
       return;
     }

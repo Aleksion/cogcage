@@ -2,6 +2,33 @@
 
 ---
 
+## Product Autopilot Ship — 00:12 ET Mar 3
+
+Directive executed: STOP landing-page copy iterations. Ship only P1 signup reliability, P2 playable demo loop, P3 monetization/postback, P4 ops artifacts.
+
+### Shipped artifacts
+- `app/lib/waitlist-redis.ts`
+  - Redis rate-limit keys now include route namespace (`waitlist` vs `founder-intent`) to avoid cross-throttling.
+- `app/routes/api/waitlist.ts`
+  - Redis rate-limit calls now use route namespace `waitlist`.
+- `app/routes/api/founder-intent.ts`
+  - Redis rate-limit calls now use route namespace `founder-intent`.
+- `app/routes/demo.tsx`
+  - `/demo` now defaults to playable `DemoLoop` (map movement + AP/action economy).
+  - Legacy cinematic flow preserved via `?mode=cinematic`.
+- `app/components/MoltPitLanding.jsx`
+  - Founder checkout redirects now include `client_reference_id` + `checkout_intent_id` from deterministic `intentId`.
+  - Founder-intent replay queue now stores retryable failures only.
+- `app/routes/api/postback.ts`
+  - Postback shared-key auth now accepts `x-postback-key`, `Authorization: Bearer`, or `?key=`.
+  - Structured logs include auth mode and checkout-intent correlation.
+  - Paid postbacks map back to founder intent IDs when checkout metadata/reference provides them.
+  - Responses now consistently include `requestId` and `x-request-id`.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+- `npm run build` ✅
+
 ## Product-Mode Audit — 15:31 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.
