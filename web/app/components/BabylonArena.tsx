@@ -82,11 +82,9 @@ export function BabylonArena({ snapshot, botNames, onMatchEnd, playerBotId, canv
     <canvas
       ref={canvasRef}
       id="babylon-arena"
-      width={900}
-      height={640}
       style={{
-        width: 900,
-        height: 640,
+        width: '900px',
+        height: '640px',
         background: '#050510',
         borderRadius: 8,
         overflow: 'hidden',
