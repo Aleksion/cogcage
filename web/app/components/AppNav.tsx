@@ -181,11 +181,12 @@ const NAV_STYLES = `
 
 // Lore-correct navigation — The Sous's vocabulary
 const NAV_ITEMS = [
-  { to: '/forge',   label: 'The Shed'  },  // where Molts are built
-  { to: '/shell',   label: 'The Mise'  },  // Crustie collection
-  { to: '/play',    label: 'The Pit'   },  // combat
-  { to: '/molds',   label: 'The Ledger' }, // history/ladder
-  { to: '/demo',    label: 'Demo'      },
+  { to: '/shed',   label: 'The Shed'   },
+  { to: '/mise',   label: 'The Mise'   },
+  { to: '/pit',    label: 'The Pit'    },
+  { to: '/molts',  label: 'The Molts'  },
+  { to: '/ledger', label: 'The Ledger' },
+  { to: '/demo',   label: 'Demo'       },
 ] as const
 
 // Routes where the landing page supplies its own nav — suppress AppNav
