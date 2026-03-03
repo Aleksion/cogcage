@@ -301,6 +301,13 @@ type RoomInfo = {
   createdAt: number;
 };
 
+type FounderIntentReplayItem = {
+  email: string;
+  source: string;
+  intentId: string;
+  queuedAt: string;
+};
+
 /** Arena task objectives */
 interface ArenaTask {
   id: string;
@@ -313,6 +320,7 @@ interface ArenaTask {
 
 const GRID_SIZE = 8;
 const EMAIL_KEY = 'moltpit_email';
+const FOUNDER_INTENT_REPLAY_QUEUE_KEY = 'moltpit_play_founder_intent_replay_queue';
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
 const ACTION_INFO: Record<string, { label: string; cost: number; desc: string }> = {
@@ -428,6 +436,8 @@ const postEvent = async (event: string, payload: Record<string, unknown>) => {
   }, 3000);
 };
 
+const shouldReplayFounderIntent = (status: number) => status === 0 || status >= 500;
+
 /* ============================================================
    COMPONENT
    ============================================================ */
@@ -508,6 +518,89 @@ const Play = () => {
     const saved = window.localStorage.getItem(EMAIL_KEY) || '';
     if (saved) setEmail(saved);
   }, []);
+
+  const readFounderIntentReplayQueue = useCallback((): FounderIntentReplayItem[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = window.localStorage.getItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed as FounderIntentReplayItem[] : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const writeFounderIntentReplayQueue = useCallback((queue: FounderIntentReplayItem[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (!queue.length) {
+        window.localStorage.removeItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY);
+        return;
+      }
+      window.localStorage.setItem(FOUNDER_INTENT_REPLAY_QUEUE_KEY, JSON.stringify(queue.slice(-20)));
+    } catch {
+      // best-effort cache only
+    }
+  }, []);
+
+  const enqueueFounderIntentReplay = useCallback((item: FounderIntentReplayItem) => {
+    const queue = readFounderIntentReplayQueue();
+    const deduped = queue.filter((entry) => entry.intentId !== item.intentId);
+    deduped.push(item);
+    writeFounderIntentReplayQueue(deduped);
+  }, [readFounderIntentReplayQueue, writeFounderIntentReplayQueue]);
+
+  const replayFounderIntentQueue = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+
+    const queue = readFounderIntentReplayQueue();
+    if (!queue.length) return;
+
+    const remaining: FounderIntentReplayItem[] = [];
+    for (const item of queue) {
+      const response = await postJson('/api/founder-intent', {
+        email: item.email,
+        source: item.source,
+        intentId: item.intentId,
+      }, 7000);
+
+      if (response.ok && response.body?.ok === true) {
+        await postEvent('founder_intent_replay_sent', {
+          source: item.source,
+          email: item.email,
+          tier: 'founder',
+          meta: { intentId: item.intentId, queuedAt: item.queuedAt },
+        });
+      } else {
+        if (shouldReplayFounderIntent(response.status)) {
+          remaining.push(item);
+        }
+        await postEvent('founder_intent_replay_failed', {
+          source: item.source,
+          email: item.email,
+          tier: 'founder',
+          meta: {
+            intentId: item.intentId,
+            queuedAt: item.queuedAt,
+            status: response.status,
+            reason: String(response.body?.error || `status_${response.status}`),
+          },
+        });
+      }
+    }
+
+    writeFounderIntentReplayQueue(remaining);
+  }, [readFounderIntentReplayQueue, writeFounderIntentReplayQueue]);
+
+  useEffect(() => {
+    void replayFounderIntentQueue();
+    const onOnline = () => {
+      void replayFounderIntentQueue();
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [replayFounderIntentQueue]);
 
   // Fetch room list periodically when lobby is open
   useEffect(() => {
@@ -929,14 +1022,34 @@ const Play = () => {
 
       if (!intentResponse.ok || intentResponse.body?.ok !== true) {
         const reason = String(intentResponse.body?.error || `status_${intentResponse.status}`);
+        const replayItem: FounderIntentReplayItem = {
+          email: normalizedEmail,
+          source: intentSource,
+          intentId,
+          queuedAt: new Date().toISOString(),
+        };
+        const queuedForReplay = shouldReplayFounderIntent(intentResponse.status);
+        if (queuedForReplay) {
+          enqueueFounderIntentReplay(replayItem);
+          await postEvent('founder_intent_buffered', {
+            source: intentSource,
+            email: normalizedEmail,
+            tier: 'founder',
+            meta: { intentId, queuedAt: replayItem.queuedAt, reason },
+          });
+        }
         await postEvent('founder_intent_submit_failed', {
           source: intentSource,
           email: normalizedEmail,
           tier: 'founder',
-          meta: { reason, intentId },
+          meta: { reason, intentId, queuedForReplay },
         });
         if (!founderCheckoutUrl) {
-          setCheckoutMessage('Could not reserve spot. Try again.');
+          setCheckoutMessage(
+            queuedForReplay
+              ? 'Storage unavailable. Founder reservation queued and will auto-retry when online.'
+              : 'Could not reserve spot. Try again.'
+          );
           return;
         }
       } else {
@@ -966,11 +1079,18 @@ const Play = () => {
       });
       window.location.href = url.toString();
     } catch {
-      setCheckoutMessage('Could not start checkout. Try again.');
+      enqueueFounderIntentReplay({
+        email: normalizedEmail,
+        source: intentSource,
+        intentId,
+        queuedAt: new Date().toISOString(),
+      });
+      setCheckoutMessage('Checkout failed to open. Founder reservation queued and will auto-retry when online.');
       await postEvent('founder_checkout_redirect_failed', {
         source: checkoutSource,
         email: normalizedEmail,
         tier: 'founder',
+        meta: { intentId, queuedForReplay: true },
       });
     } finally {
       setCheckoutBusy(false);

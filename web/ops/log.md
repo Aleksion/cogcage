@@ -2,6 +2,32 @@
 
 ---
 
+## Product-Mode Ship — 20:23 ET Mar 2
+
+Directive executed: STOP landing-page copy iterations. Product-critical order held: P1 reliability/storage/observable logs → P2 playable loop retained → P3 monetization reliability hardening → P4 ops artifact update.
+
+### Shipped artifacts (product-critical only)
+- `app/lib/waitlist-redis.ts`
+  - Idempotency receipts now use atomic `SET NX EX` to preserve first response for each key.
+- `app/lib/waitlist-db.ts`
+  - SQLite idempotency receipts now preserve first-write semantics (`ON CONFLICT DO NOTHING`).
+- `app/components/Play.tsx`
+  - Founder intent replay queue added in localStorage with online auto-replay.
+  - Structured events added for `founder_intent_buffered`, `founder_intent_replay_sent`, and replay failure telemetry.
+- `app/components/SuccessPage.tsx`
+  - Fallback conversion IDs now deterministic and buyer/source scoped to avoid collision.
+- `scripts/product-mode-reliability.test.mjs`
+  - Added coverage for immutable idempotency receipts + scoped fallback conversion ID behavior.
+- `app/routes/api/ops.ts`
+  - Updated recent commit manifest to reflect current product-critical lane.
+
+### Verification
+- `npm run test:product` ✅
+- `npm run build` ✅
+
+### Scope guard
+- No landing-page copy iteration work shipped in this pass.
+
 ## Product-Mode Audit — 15:31 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.

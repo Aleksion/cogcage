@@ -351,10 +351,7 @@ export function writeApiRequestReceipt(receipt: ApiRequestReceipt) {
   runWithBusyRetry('api_receipt_write', () => conn.prepare(`
     INSERT INTO api_request_receipts (route, idempotency_key, response_status, response_body)
     VALUES (@route, @idempotencyKey, @responseStatus, @responseBody)
-    ON CONFLICT(route, idempotency_key) DO UPDATE SET
-      response_status=excluded.response_status,
-      response_body=excluded.response_body,
-      created_at=CURRENT_TIMESTAMP
+    ON CONFLICT(route, idempotency_key) DO NOTHING
   `).run(receipt));
 
   runWithBusyRetry('api_receipt_gc', () => conn.prepare(`

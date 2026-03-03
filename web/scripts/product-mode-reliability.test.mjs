@@ -8,6 +8,7 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cogcage-product-mode-'));
 process.env.MOLTPIT_DB_PATH = path.join(tmpDir, 'moltpit.test.db');
 
 const dbModPromise = import('../app/lib/waitlist-db.ts');
+const successPageModPromise = import('../app/components/SuccessPage.tsx');
 
 test('waitlist/founder/conversion persistence is idempotent in sqlite path', async (t) => {
   const db = await dbModPromise;
@@ -66,7 +67,7 @@ test('waitlist/founder/conversion persistence is idempotent in sqlite path', asy
   assert.equal(counts.conversionEvents, 1);
 });
 
-test('api idempotency receipts are readable and updateable', async (t) => {
+test('api idempotency receipts preserve the first response for a key', async (t) => {
   const db = await dbModPromise;
   const health = db.getStorageHealth();
   if (!health.sqliteAvailable) {
@@ -94,7 +95,8 @@ test('api idempotency receipts are readable and updateable', async (t) => {
 
   const updated = db.readApiRequestReceipt('/api/waitlist', 'idem-test-1');
   assert.ok(updated);
-  assert.equal(updated.responseStatus, 200);
+  assert.equal(updated.responseStatus, 202);
+  assert.equal(updated.responseBody, JSON.stringify({ ok: true, queued: true }));
 });
 
 test('rate limit enforces cap with clear reset metadata', async (t) => {
@@ -114,4 +116,22 @@ test('rate limit enforces cap with clear reset metadata', async (t) => {
   assert.equal(third.allowed, false);
   assert.equal(third.remaining, 0);
   assert.ok(Number.isFinite(third.resetMs));
+});
+
+test('checkout success fallback conversion id is stable and scoped to buyer/source', async () => {
+  const successPage = await successPageModPromise;
+  const base = {
+    pathname: '/success',
+    source: 'play-page-founder-cta',
+    href: 'https://example.com/success?from=stripe',
+    tier: 'founder',
+    nowIso: '2026-03-02T16:00:00.000Z',
+  };
+
+  const a = successPage.deriveSuccessFallbackConversionId({ ...base, email: 'captain@pit.dev' });
+  const b = successPage.deriveSuccessFallbackConversionId({ ...base, email: 'captain@pit.dev' });
+  const c = successPage.deriveSuccessFallbackConversionId({ ...base, email: 'another@pit.dev' });
+
+  assert.equal(a, b);
+  assert.notEqual(a, c);
 });

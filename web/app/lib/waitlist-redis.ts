@@ -231,8 +231,7 @@ export async function redisWriteApiRequestReceipt(receipt: {
     ...receipt,
     createdAt: new Date().toISOString(),
   });
-  await r.set(key, value);
-  await r.expire(key, IDEMPOTENCY_TTL_SECONDS);
+  await r.set(key, value, { nx: true, ex: IDEMPOTENCY_TTL_SECONDS });
 }
 
 // ── Rate Limiting (Redis-native, survives across Lambda invocations) ──────────

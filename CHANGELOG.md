@@ -8,6 +8,42 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): immutable idempotency receipts + founder intent replay queue hardening
+
+**Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)
+
+### What
+- `web/app/lib/waitlist-redis.ts`
+  - Idempotency receipt writes now use atomic `SET NX EX` so the first response for a key is preserved.
+- `web/app/lib/waitlist-db.ts`
+  - SQLite idempotency receipts now use `ON CONFLICT DO NOTHING` to preserve first-write semantics.
+- `web/app/components/Play.tsx`
+  - Added local replay queue for founder intents when `/api/founder-intent` is offline/5xx.
+  - Auto-replays queued intents on page load and browser `online` events.
+  - Emits observability events for replay success/failure and buffered intents.
+- `web/app/components/SuccessPage.tsx`
+  - Added stable fallback conversion id derivation scoped by source + buyer fingerprint, preventing day-level collisions.
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added assertions for immutable idempotency receipts and stable/scoped success fallback conversion IDs.
+- `web/app/routes/api/ops.ts`
+  - Updated recent product-critical commit manifest to reflect current P1/P3 hardening.
+
+### Why
+- Retries could previously overwrite idempotency receipts and lose the original response contract.
+- Founder checkout intent capture needed resilience for transient offline/5xx periods.
+- Success-page conversion fallback IDs could collide across multiple buyers on the same day.
+
+### Design Decisions
+- First-response-wins semantics for all idempotency receipt stores.
+- Keep founder intent replay bounded (max 20 entries) and deduped by `intentId`.
+- Replay only transient failures (`network/0` or `>=500`) and avoid retrying validation/client errors.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Add queue age/size counters to `/api/ops` so replay backlog is visible without local inspection.
+
 ## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)

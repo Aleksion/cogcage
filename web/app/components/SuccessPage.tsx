@@ -3,6 +3,36 @@ import { useEffect } from 'react'
 const PAID_KEY = 'moltpit_paid_conversions'
 const PENDING_KEY = 'moltpit_pending_paid_conversions'
 
+function hashString(input: string) {
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(36)
+}
+
+export function deriveSuccessFallbackConversionId({
+  pathname,
+  source,
+  email,
+  href,
+  tier = 'founder',
+  nowIso,
+}: {
+  pathname: string
+  source?: string
+  email?: string
+  href?: string
+  tier?: string
+  nowIso?: string
+}) {
+  const day = (nowIso || new Date().toISOString()).slice(0, 10)
+  const normalizedEmail = (email || 'anon').trim().toLowerCase()
+  const fingerprint = `${source || 'stripe-success'}|${normalizedEmail}|${href || pathname}|${pathname}|${tier}|${day}`
+  return `success:${day}:${hashString(fingerprint)}`
+}
+
 function rememberPaidConversion(id: string) {
   const known = JSON.parse(localStorage.getItem(PAID_KEY) || '[]')
   if (!known.includes(id)) {
@@ -72,19 +102,24 @@ async function flushPendingConversions() {
 async function trackPaidConversion() {
   const params = new URLSearchParams(window.location.search)
   const sessionId = params.get('session_id') || params.get('checkout_session_id')
+  const checkoutSource =
+    localStorage.getItem('moltpit_last_founder_checkout_source') || 'stripe-success'
+  const checkoutIntentSource =
+    localStorage.getItem('moltpit_last_founder_intent_source') || undefined
   const email =
     params.get('prefilled_email') ||
     localStorage.getItem('moltpit_email') ||
     undefined
   const conversionId =
     sessionId ||
-    `success:${window.location.pathname}:${new Date().toISOString().slice(0, 10)}`
+    deriveSuccessFallbackConversionId({
+      pathname: window.location.pathname,
+      source: checkoutSource,
+      email,
+      href: window.location.href,
+      tier: 'founder',
+    })
   if (hasPaidConversion(conversionId)) return
-
-  const checkoutSource =
-    localStorage.getItem('moltpit_last_founder_checkout_source') || 'stripe-success'
-  const checkoutIntentSource =
-    localStorage.getItem('moltpit_last_founder_intent_source') || undefined
 
   const payload = {
     eventId: conversionId,
