@@ -17,7 +17,7 @@ const ENGINE_WS_URL =
   'wss://themoltpit-engine.aleks-precurion.workers.dev';
 
 /** HTTP base URL for DO REST calls (queue, state) — derived from WS URL */
-const ENGINE_HTTP_URL = ENGINE_WS_URL.replace(/^wss?:\/\//, (p) =>
+const ENGINE_HTTP_URL = ENGINE_WS_URL.replace(/^wss?:\/\//, (p: string) =>
   p.startsWith('wss') ? 'https://' : 'http://',
 );
 
@@ -591,7 +591,9 @@ const Play = () => {
             meta: { intentId: normalizedIntentId, queuedAt: item.queuedAt || null },
           });
         } else {
-          remaining.push(item);
+          if (response.status >= 500 || response.status === 0) {
+            remaining.push(item);
+          }
           await postEvent('founder_intent_replay_failed', {
             source,
             email: normalizedEmail,

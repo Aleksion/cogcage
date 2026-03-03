@@ -377,7 +377,7 @@ export const Route = createFileRoute('/api/postback')({
             insertConversionEvent(conversionPayload);
           } catch (sqliteError) {
             appendOpsLog({
-              route: '/api/postback',
+              route,
               level: 'warn',
               event: 'postback_sqlite_conversion_write_failed',
               requestId,
@@ -395,7 +395,7 @@ export const Route = createFileRoute('/api/postback')({
                 insertFounderIntent(founderIntentPayload);
               } catch (sqliteError) {
                 appendOpsLog({
-                  route: '/api/postback',
+                  route,
                   level: 'warn',
                   event: 'postback_sqlite_founder_intent_write_failed',
                   requestId,
@@ -407,7 +407,7 @@ export const Route = createFileRoute('/api/postback')({
               }
             } catch (redisFounderError) {
               appendOpsLog({
-                route: '/api/postback',
+                route,
                 level: 'warn',
                 event: 'postback_redis_founder_intent_write_failed',
                 requestId,
@@ -419,7 +419,7 @@ export const Route = createFileRoute('/api/postback')({
               try {
                 insertFounderIntent(founderIntentPayload);
                 appendOpsLog({
-                  route: '/api/postback',
+                  route,
                   level: 'warn',
                   event: 'postback_founder_intent_saved_sqlite_fallback',
                   requestId,
@@ -429,7 +429,7 @@ export const Route = createFileRoute('/api/postback')({
                 });
               } catch (sqliteFounderError) {
                 appendOpsLog({
-                  route: '/api/postback',
+                  route,
                   level: 'error',
                   event: 'postback_founder_intent_sqlite_fallback_failed',
                   requestId,
@@ -440,7 +440,7 @@ export const Route = createFileRoute('/api/postback')({
                 });
                 try {
                   appendFounderIntentFallback({
-                    route: '/api/postback',
+                    route,
                     requestId,
                     ...founderIntentPayload,
                     reason: sqliteFounderError instanceof Error ? sqliteFounderError.message : 'unknown',
@@ -453,7 +453,7 @@ export const Route = createFileRoute('/api/postback')({
           }
 
           appendOpsLog({
-            route: '/api/postback',
+            route,
             level: 'info',
             event: 'postback_recorded',
             requestId,
@@ -465,14 +465,11 @@ export const Route = createFileRoute('/api/postback')({
             durationMs: Date.now() - startedAt,
           });
 
-          return new Response(JSON.stringify({ ok: true, requestId, eventId }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          });
+          return respond({ ok: true, eventId }, 200, idempotencyKey);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
           appendOpsLog({
-            route: '/api/postback',
+            route,
             level: 'error',
             event: 'postback_redis_conversion_write_failed',
             requestId,
@@ -490,7 +487,7 @@ export const Route = createFileRoute('/api/postback')({
                 insertFounderIntent(founderIntentPayload);
               } catch (sqliteFounderError) {
                 appendOpsLog({
-                  route: '/api/postback',
+                  route,
                   level: 'warn',
                   event: 'postback_sqlite_founder_intent_write_failed',
                   requestId,
@@ -502,7 +499,7 @@ export const Route = createFileRoute('/api/postback')({
               }
             }
             appendOpsLog({
-              route: '/api/postback',
+              route,
               level: 'warn',
               event: 'postback_recorded_sqlite_fallback',
               requestId,
@@ -513,14 +510,11 @@ export const Route = createFileRoute('/api/postback')({
               durationMs: Date.now() - startedAt,
             });
 
-            return new Response(JSON.stringify({ ok: true, degraded: true, requestId, eventId }), {
-              status: 200,
-              headers: { 'content-type': 'application/json' },
-            });
+            return respond({ ok: true, degraded: true, eventId }, 200, idempotencyKey);
           } catch (sqliteError) {
             const sqliteErrorMessage = sqliteError instanceof Error ? sqliteError.message : 'unknown-error';
             appendOpsLog({
-              route: '/api/postback',
+              route,
               level: 'error',
               event: 'postback_record_failed',
               requestId,
@@ -532,9 +526,9 @@ export const Route = createFileRoute('/api/postback')({
             });
 
             try {
-              appendEventsFallback({ route: '/api/postback', requestId, ...conversionPayload, reason: sqliteErrorMessage });
+              appendEventsFallback({ route, requestId, ...conversionPayload, reason: sqliteErrorMessage });
               appendOpsLog({
-                route: '/api/postback',
+                route,
                 level: 'warn',
                 event: 'postback_saved_to_fallback',
                 requestId,
@@ -543,13 +537,10 @@ export const Route = createFileRoute('/api/postback')({
                 eventId,
                 durationMs: Date.now() - startedAt,
               });
-              return new Response(JSON.stringify({ ok: true, queued: true, requestId, eventId }), {
-                status: 202,
-                headers: { 'content-type': 'application/json' },
-              });
+              return respond({ ok: true, queued: true, eventId }, 202, idempotencyKey);
             } catch (fallbackError) {
               appendOpsLog({
-                route: '/api/postback',
+                route,
                 level: 'error',
                 event: 'postback_fallback_write_failed',
                 requestId,
@@ -560,10 +551,7 @@ export const Route = createFileRoute('/api/postback')({
                 durationMs: Date.now() - startedAt,
               });
 
-              return new Response(JSON.stringify({ ok: false, error: 'Postback processing failed', requestId }), {
-                status: 500,
-                headers: { 'content-type': 'application/json' },
-              });
+              return respond({ ok: false, error: 'Postback processing failed' }, 500, idempotencyKey);
             }
           }
         }

@@ -852,9 +852,23 @@ const createIdempotencyKey = () => {
   return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
 
+const deriveIdempotencyKey = (url, payload) => {
+  const intentId = typeof payload?.intentId === 'string' ? payload.intentId.trim() : '';
+  if (intentId) return `founder_intent:${intentId}`.slice(0, 120);
+
+  const email = typeof payload?.email === 'string' ? payload.email.trim().toLowerCase() : '';
+  const source = typeof payload?.source === 'string' ? payload.source.trim() : '';
+  const game = typeof payload?.game === 'string' ? payload.game.trim() : '';
+  if (url === '/api/waitlist' && email && source) {
+    return `waitlist:${new Date().toISOString().slice(0, 10)}:${email}:${source}:${game || 'unspecified'}`.slice(0, 120);
+  }
+
+  return createIdempotencyKey();
+};
+
 const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } = {}) => {
   let lastError = null;
-  const idempotencyKey = createIdempotencyKey();
+  const idempotencyKey = deriveIdempotencyKey(url, payload);
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();

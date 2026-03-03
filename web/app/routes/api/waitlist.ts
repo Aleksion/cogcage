@@ -377,8 +377,14 @@ export const Route = createFileRoute('/api/waitlist')({
             if ((drained.waitlist.inserted + drained.founder.inserted + drained.events.inserted) > 0) {
               appendOpsLog({ route, level: 'info', event: 'fallback_drain_after_waitlist', requestId, drained });
             }
-          } catch {
-            // best-effort background healing only
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'fallback_drain_after_waitlist_failed',
+              requestId,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
           }
           safeTrackConversion(route, requestId, {
             eventName: 'waitlist_submitted',

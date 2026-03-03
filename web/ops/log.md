@@ -2,6 +2,31 @@
 
 ---
 
+## Product-Mode Ship — 21:05 ET Mar 2
+
+Directive executed: product-critical lane only (signup/founder reliability + playable loop guardrails + monetization postback/checkout reliability + ops artifacts).
+
+### Shipped artifacts
+- `app/routes/api/checkout-success.ts`
+  - Added idempotency receipt read/write (Redis + SQLite) and replay handling for `x-idempotency-key`.
+  - Added `x-request-id` on responses for traceability.
+- `app/routes/api/postback.ts`
+  - Added deterministic postback idempotency keying (`x-idempotency-key` override, otherwise `postback:${eventType}:${eventId}`).
+  - Added idempotency receipt replay/write logs and response wrapper with request id.
+- `app/routes/api/waitlist.ts`
+- `app/routes/api/founder-intent.ts`
+  - Added explicit fallback-drain failure log events (`fallback_drain_after_*_failed`) for observability.
+- `app/components/MoltPitLanding.jsx`
+  - Submission idempotency now derives stable keys for founder intent (`intentId`) and waitlist (`email+source+day`) instead of always-random per submit.
+- `scripts/demo-loop-economy.test.mjs` (new)
+- `scripts/fallback-drain.test.mjs` (new)
+- `package.json`
+  - `test:product` now runs reliability + demo-economy + fallback-drain coverage.
+
+### Verification
+- `cd web && npm run test:product` ✅ (14/14 pass)
+- `cd web && npx tsc --noEmit` ⚠️ fails due pre-existing repo-wide typing issues (Phaser/types/router/import-extension paths), not introduced by this ship.
+
 ## Product-Mode Cron — 20:58 ET Mar 2
 
 Directive executed: no landing copy work. Product-critical lane only (signup reliability/storage/logs → playable demo loop/action economy → founder checkout/postback path → ops artifacts).

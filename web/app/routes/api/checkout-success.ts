@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { insertConversionEvent } from '~/lib/waitlist-db'
+import { insertConversionEvent, readApiRequestReceipt, writeApiRequestReceipt } from '~/lib/waitlist-db'
 import { appendEventsFallback, appendOpsLog } from '~/lib/observability'
-import { redisInsertConversionEvent } from '~/lib/waitlist-redis'
+import { redisInsertConversionEvent, redisReadApiRequestReceipt, redisWriteApiRequestReceipt } from '~/lib/waitlist-redis'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -22,6 +22,12 @@ function normalizeString(value: unknown, maxLen = 300) {
 function optionalString(value: unknown, maxLen = 300) {
   const normalized = normalizeString(value, maxLen);
   return normalized.length > 0 ? normalized : undefined;
+}
+
+function getIdempotencyKey(request: Request) {
+  const key = request.headers.get('x-idempotency-key')?.trim() ?? '';
+  if (!key) return undefined;
+  return key.slice(0, 120);
 }
 
 function hashString(input: string) {
@@ -186,14 +192,130 @@ export const Route = createFileRoute('/api/checkout-success')({
       POST: async ({ request }) => {
         const requestId = crypto.randomUUID();
         const contentType = request.headers.get('content-type') ?? '';
+        const route = '/api/checkout-success';
+        const idempotencyKey = getIdempotencyKey(request);
+
+        const respond = async (
+          body: Record<string, unknown>,
+          status: number,
+          extraHeaders: Record<string, string> = {},
+        ) => {
+          if (idempotencyKey) {
+            const receipt = {
+              route,
+              idempotencyKey,
+              responseStatus: status,
+              responseBody: JSON.stringify({ ...body, requestId }),
+            };
+            let persisted = false;
+            try {
+              await redisWriteApiRequestReceipt(receipt);
+              persisted = true;
+            } catch (error) {
+              appendOpsLog({
+                route,
+                level: 'warn',
+                event: 'checkout_success_idempotency_redis_write_failed',
+                requestId,
+                error: error instanceof Error ? error.message : 'unknown',
+              });
+            }
+            try {
+              writeApiRequestReceipt(receipt);
+              persisted = true;
+            } catch (error) {
+              appendOpsLog({
+                route,
+                level: 'warn',
+                event: 'checkout_success_idempotency_sqlite_write_failed',
+                requestId,
+                error: error instanceof Error ? error.message : 'unknown',
+              });
+            }
+            if (!persisted) {
+              appendOpsLog({
+                route,
+                level: 'error',
+                event: 'checkout_success_idempotency_write_failed',
+                requestId,
+              });
+            }
+          }
+
+          return new Response(JSON.stringify({ ...body, requestId }), {
+            status,
+            headers: { 'content-type': 'application/json', 'x-request-id': requestId, ...extraHeaders },
+          });
+        };
+
         appendOpsLog({
-          route: '/api/checkout-success',
+          route,
           level: 'info',
           event: 'checkout_success_received',
           requestId,
           method: 'POST',
           contentType,
         });
+
+        if (idempotencyKey) {
+          try {
+            const cached = await redisReadApiRequestReceipt(route, idempotencyKey);
+            if (cached) {
+              appendOpsLog({
+                route,
+                level: 'info',
+                event: 'checkout_success_idempotency_replay',
+                requestId,
+                idempotencyStore: 'redis',
+              });
+              return new Response(cached.responseBody, {
+                status: cached.responseStatus,
+                headers: {
+                  'content-type': 'application/json',
+                  'x-request-id': requestId,
+                  'x-idempotent-replay': '1',
+                },
+              });
+            }
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'checkout_success_idempotency_redis_read_failed',
+              requestId,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+          try {
+            const cached = readApiRequestReceipt(route, idempotencyKey);
+            if (cached) {
+              appendOpsLog({
+                route,
+                level: 'info',
+                event: 'checkout_success_idempotency_replay',
+                requestId,
+                idempotencyStore: 'sqlite',
+              });
+              return new Response(cached.responseBody, {
+                status: cached.responseStatus,
+                headers: {
+                  'content-type': 'application/json',
+                  'x-request-id': requestId,
+                  'x-idempotent-replay': '1',
+                },
+              });
+            }
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'checkout_success_idempotency_sqlite_read_failed',
+              requestId,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+        }
+
         let payload: Record<string, unknown> = {};
 
         try {
@@ -222,16 +344,13 @@ export const Route = createFileRoute('/api/checkout-success')({
         const email = optionalString(payload.email);
         if (email && !EMAIL_RE.test(email)) {
           appendOpsLog({
-            route: '/api/checkout-success',
+            route,
             level: 'warn',
             event: 'checkout_success_invalid_email',
             requestId,
             method: 'POST',
           });
-          return new Response(JSON.stringify({ ok: false, error: 'Invalid email format.' }), {
-            status: 400,
-            headers: { 'content-type': 'application/json' },
-          });
+          return respond({ ok: false, error: 'Invalid email format.' }, 400);
         }
 
         const page = optionalString(payload.page, 120);
@@ -257,20 +376,14 @@ export const Route = createFileRoute('/api/checkout-success')({
             request,
           });
 
-          return new Response(JSON.stringify({
+          return respond({
             ok: true,
             requestId: result.requestId,
             queued: result.queued || undefined,
             degraded: result.degraded || undefined,
-          }), {
-            status: result.queued ? 202 : 200,
-            headers: { 'content-type': 'application/json' },
-          });
+          }, result.queued ? 202 : 200);
         } catch {
-          return new Response(JSON.stringify({ ok: false, error: 'Conversion storage unavailable.' }), {
-            status: 503,
-            headers: { 'content-type': 'application/json' },
-          });
+          return respond({ ok: false, error: 'Conversion storage unavailable.' }, 503);
         }
       },
       GET: async ({ request }) => {

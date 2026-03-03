@@ -8,6 +8,37 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): idempotent checkout/postback handling + signup observability + reliability tests (21:05 ET)
+
+**Type:** fix/product-critical | **Budget impact:** n/a
+
+### What
+- `web/app/routes/api/checkout-success.ts`
+  - Added idempotency receipt replay/write support (`x-idempotency-key`) across Redis + SQLite.
+  - Added request-scoped response metadata (`x-request-id`) for traceability.
+- `web/app/routes/api/postback.ts`
+  - Added deterministic idempotency key fallback (`postback:${eventType}:${eventId}`) plus Redis/SQLite receipt replay.
+  - Added explicit idempotency observability events (`*_read_failed`, `*_write_failed`, `*_replay`).
+- `web/app/routes/api/waitlist.ts`
+- `web/app/routes/api/founder-intent.ts`
+  - Added explicit fallback drain failure log events for operational visibility.
+- `web/app/components/MoltPitLanding.jsx`
+  - Stable idempotency keys for waitlist/founder submits (derived from payload semantics) instead of always-random keys.
+- `web/scripts/demo-loop-economy.test.mjs` (new)
+- `web/scripts/fallback-drain.test.mjs` (new)
+- `web/package.json`
+  - Expanded `test:product` to include new reliability-critical tests.
+
+### Why
+- Product-critical reliability required stronger duplicate suppression and clearer observability across signup/checkout/postback paths under retries and transient storage failures.
+
+### Breaking changes
+- None.
+
+### Verification
+- `cd web && npm run test:product` ✅ (14 pass / 0 fail)
+- `cd web && npx tsc --noEmit` ⚠️ fails on pre-existing repo-wide issues (Phaser typings, route typing, `.ts` import-style constraints), unchanged by this entry.
+
 ## [2026-03-02] - fix(product-mode): reliability + playable AP loop + checkout/postback idempotency (20:58 ET)
 
 **Type:** fix/product-critical | **Budget impact:** n/a
