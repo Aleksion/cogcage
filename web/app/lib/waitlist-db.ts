@@ -116,8 +116,16 @@ function getDb(): import('better-sqlite3').Database {
   const dbPath = getDbPath();
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  db = new Database!(dbPath);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    db = new Database!(dbPath);
+  } catch (error) {
+    const message = error instanceof Error ? error.message.split('\n')[0] : String(error);
+    sqliteLoadError = message;
+    Database = null;
+    throw new Error(`SQLite unavailable — binary load error: ${message}`);
+  }
+
   db.pragma('journal_mode = WAL');
   db.pragma('busy_timeout = 3000');
 
@@ -396,20 +404,33 @@ export function getStorageHealth() {
   }
 
   const dbPath = getDbPath();
-  const conn = getDb();
-  const probe = conn.prepare('SELECT 1 AS ok').get() as { ok: number };
-  const dbExists = fs.existsSync(dbPath);
-  const dbBytes = dbExists ? fs.statSync(dbPath).size : 0;
 
-  return {
-    sqliteAvailable: true,
-    sqliteLoadError: null,
-    dbPath,
-    dbExists,
-    dbBytes,
-    writableDir: fs.existsSync(path.dirname(dbPath)),
-    dbProbeOk: probe.ok === 1,
-  };
+  try {
+    const conn = getDb();
+    const probe = conn.prepare('SELECT 1 AS ok').get() as { ok: number };
+    const dbExists = fs.existsSync(dbPath);
+    const dbBytes = dbExists ? fs.statSync(dbPath).size : 0;
+
+    return {
+      sqliteAvailable: true,
+      sqliteLoadError: null,
+      dbPath,
+      dbExists,
+      dbBytes,
+      writableDir: fs.existsSync(path.dirname(dbPath)),
+      dbProbeOk: probe.ok === 1,
+    };
+  } catch (error) {
+    return {
+      sqliteAvailable: false,
+      sqliteLoadError: error instanceof Error ? error.message : String(error),
+      dbPath,
+      dbExists: false,
+      dbBytes: 0,
+      writableDir: fs.existsSync(path.dirname(dbPath)),
+      dbProbeOk: false,
+    };
+  }
 }
 
 export function getReliabilitySnapshot(windowHours = 24): ReliabilitySnapshot {

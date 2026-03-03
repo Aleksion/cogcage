@@ -8,6 +8,51 @@
 
 ---
 
+## [2026-03-03] - fix(product-mode): deterministic signup/postback contracts + idempotent replay verification
+
+**Type:** fix/test/ops | **Budget impact:** n/a (product-critical)
+
+### What
+- `web/app/routes/api/waitlist.ts`
+  - Standardized response contract for all outcomes with deterministic fields:
+    - `status`, `storage`, `queued`, `degraded`, `replayed`, `requestId`, `ok`.
+  - Idempotency replay now returns explicit replay contract metadata (`status: idempotent_replay`, `replayed: true`).
+  - Tightened malformed JSON handling so invalid JSON now resolves to `payload_invalid` instead of drifting into email-validation errors.
+- `web/app/routes/api/founder-intent.ts`
+  - Applied the same deterministic response and replay contract behavior as waitlist.
+  - Tightened malformed JSON handling so invalid JSON now resolves to `payload_invalid` consistently.
+- `web/app/routes/api/postback.ts`
+  - Added deterministic postback outcome contract (`recorded`, `recorded_degraded`, `queued_fallback`, `idempotent_replay`, `failed`, etc.).
+  - Added structured completion log event (`postback_request_completed`) with outcome/storage on every response path.
+  - Replay responses now explicitly mark `replayed: true` and keep request-level traceability.
+  - Added GET verification-path observability (`postback_verify_received` / `postback_verify_completed`) with `x-request-id` and deterministic verify contract fields.
+- `web/scripts/api-critical-routes.test.mjs` (new)
+  - Route-level tests for:
+    - malformed signup payload handling,
+    - Redis outage degradation to SQLite/file fallback,
+    - postback idempotency replay behavior,
+    - postback GET verification contract + verify-path log emission.
+- `web/package.json`
+  - Extended `test:product` to include `api-critical-routes.test.mjs`.
+
+### Why
+- Product-mode acceptance required reliable signup/postback behavior under malformed input and storage outages, plus observable and deterministic contracts for operational debugging.
+- Existing handlers were durable, but response shape and malformed-payload outcomes varied by path; this made client handling and ops analysis less deterministic.
+- Idempotent replay needed explicit contract-level signaling to prove duplicate webhook safety end-to-end.
+
+### Design Decisions
+- Kept existing storage order (`Redis -> SQLite -> fallback file`) and only normalized response semantics/logging.
+- Used route-local contract shaping to avoid broad cross-route refactors and keep changes confined to product-critical handlers.
+- Added direct route-handler tests (not only DB-level tests) to validate actual handler behavior and idempotent replay headers/body.
+
+### Breaking Changes
+- None intended for transport semantics (`HTTP status` and core success/error behavior preserved).
+- API clients now receive additional stable fields (`status`, `storage`, `queued`, `degraded`, `replayed`) on these endpoints.
+
+### Next Steps
+- Mirror the same deterministic contract on `/api/checkout-success` for full monetization-path consistency.
+- Add production smoke assertions for `x-idempotent-replay` and `postback_request_completed` log visibility via `/api/ops`.
+
 ## [2026-03-02] - fix(product-mode): enforce playable demo test lane + postback idempotency coverage
 
 **Type:** fix/test/ops | **Budget impact:** n/a (product-critical)

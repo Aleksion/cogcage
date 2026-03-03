@@ -21,6 +21,17 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
 const RATE_LIMIT_MAX = 8;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+type FounderIntentOutcome =
+  | 'submitted'
+  | 'submitted_degraded'
+  | 'queued_fallback'
+  | 'payload_invalid'
+  | 'invalid_email'
+  | 'blocked_honeypot'
+  | 'rate_limited'
+  | 'failed'
+  | 'idempotent_replay'
+  | 'unknown';
 
 function hashString(input: string) {
   let hash = 2166136261;
@@ -83,6 +94,36 @@ function jsonResponse(body: Record<string, unknown>, status: number, requestId: 
   });
 }
 
+function asFounderIntentContract(
+  body: Record<string, unknown>,
+  outcome: FounderIntentOutcome,
+  storage: string,
+  replayed = false,
+) {
+  const queued = body.queued === true || outcome === 'queued_fallback';
+  const degraded = body.degraded === true || outcome === 'submitted_degraded' || outcome === 'queued_fallback';
+  const ok = body.ok === true;
+  return {
+    ...body,
+    ok,
+    status: outcome,
+    storage,
+    queued,
+    degraded,
+    replayed,
+  };
+}
+
+function parseReplayBody(raw: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === 'object') return parsed as Record<string, unknown>;
+  } catch {
+    // fall through
+  }
+  return { ok: true };
+}
+
 function safeTrackConversion(route: string, requestId: string, event: ConversionEvent) {
   // Try Redis first (durable on Vercel) — fire-and-forget
   void redisInsertConversionEvent(event).catch((redisError: unknown) => {
@@ -129,9 +170,16 @@ export const Route = createFileRoute('/api/founder-intent')({
           body: Record<string, unknown>,
           status: number,
           extraHeaders: Record<string, string> = {},
-          outcome: string = 'unknown',
+          outcome: FounderIntentOutcome = 'unknown',
           detail: Record<string, unknown> = {},
         ) => {
+          const storage =
+            (typeof detail.storage === 'string' && detail.storage)
+            || (typeof body.storage === 'string' && body.storage)
+            || 'none';
+          const replayed = detail.replayed === true || body.replayed === true || outcome === 'idempotent_replay';
+          const responseBody = asFounderIntentContract(body, outcome, storage, replayed);
+
           appendOpsLog({
             route,
             level: status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info',
@@ -139,6 +187,7 @@ export const Route = createFileRoute('/api/founder-intent')({
             requestId,
             httpStatus: status,
             outcome,
+            storage,
             durationMs: Date.now() - startedAt,
             ...detail,
           });
@@ -148,7 +197,7 @@ export const Route = createFileRoute('/api/founder-intent')({
               route,
               idempotencyKey,
               responseStatus: status,
-              responseBody: JSON.stringify({ ...body, requestId }),
+              responseBody: JSON.stringify({ ...responseBody, requestId }),
             };
             let persisted = false;
 
@@ -188,7 +237,7 @@ export const Route = createFileRoute('/api/founder-intent')({
             }
           }
 
-          return jsonResponse(body, status, requestId, extraHeaders);
+          return jsonResponse(responseBody, status, requestId, extraHeaders);
         };
 
         if (idempotencyKey) {
@@ -196,23 +245,10 @@ export const Route = createFileRoute('/api/founder-intent')({
             const cached = await redisReadApiRequestReceipt(route, idempotencyKey);
             if (cached) {
               appendOpsLog({ route, level: 'info', event: 'founder_intent_idempotency_replay', requestId, idempotencyStore: 'redis', durationMs: Date.now() - startedAt });
-              appendOpsLog({
-                route,
-                level: 'info',
-                event: 'founder_intent_request_completed',
-                requestId,
-                httpStatus: cached.responseStatus,
-                outcome: 'idempotent_replay',
-                storage: 'redis',
-                durationMs: Date.now() - startedAt,
-              });
-              return new Response(cached.responseBody, {
-                status: cached.responseStatus,
-                headers: {
-                  'content-type': 'application/json',
-                  'x-request-id': requestId,
-                  'x-idempotent-replay': '1',
-                },
+              const replayBody = asFounderIntentContract(parseReplayBody(cached.responseBody), 'idempotent_replay', 'idempotency-replay:redis', true);
+              return respond(replayBody, cached.responseStatus, { 'x-idempotent-replay': '1' }, 'idempotent_replay', {
+                storage: 'idempotency-replay:redis',
+                idempotencyStore: 'redis',
               });
             }
           } catch (error) {
@@ -229,23 +265,10 @@ export const Route = createFileRoute('/api/founder-intent')({
             const cached = readApiRequestReceipt(route, idempotencyKey);
             if (cached) {
               appendOpsLog({ route, level: 'info', event: 'founder_intent_idempotency_replay', requestId, idempotencyStore: 'sqlite', durationMs: Date.now() - startedAt });
-              appendOpsLog({
-                route,
-                level: 'info',
-                event: 'founder_intent_request_completed',
-                requestId,
-                httpStatus: cached.responseStatus,
-                outcome: 'idempotent_replay',
-                storage: 'sqlite',
-                durationMs: Date.now() - startedAt,
-              });
-              return new Response(cached.responseBody, {
-                status: cached.responseStatus,
-                headers: {
-                  'content-type': 'application/json',
-                  'x-request-id': requestId,
-                  'x-idempotent-replay': '1',
-                },
+              const replayBody = asFounderIntentContract(parseReplayBody(cached.responseBody), 'idempotent_replay', 'idempotency-replay:sqlite', true);
+              return respond(replayBody, cached.responseStatus, { 'x-idempotent-replay': '1' }, 'idempotent_replay', {
+                storage: 'idempotency-replay:sqlite',
+                idempotencyStore: 'sqlite',
               });
             }
           } catch (error) {
@@ -261,7 +284,10 @@ export const Route = createFileRoute('/api/founder-intent')({
 
         try {
           if (contentType.includes('application/json')) {
-            const json = await request.json().catch(() => ({}));
+            const rawBody = await request.text();
+            const json = rawBody
+              ? (JSON.parse(rawBody) as Record<string, unknown>)
+              : {};
             email = normalizeString(json.email ?? null, 180);
             source = normalizeString(json.source ?? null, 120);
             intentId = normalizeString(json.intentId ?? json.intent_id ?? null, 180);

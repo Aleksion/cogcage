@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
-    "test:product": "node --import tsx --test ./scripts/ws2-core.test.mjs ./scripts/product-mode-reliability.test.mjs ./scripts/demo-loop-core.test.mjs",
+    "test:product": "node --import tsx --test ./scripts/ws2-core.test.mjs ./scripts/product-mode-reliability.test.mjs ./scripts/demo-loop-core.test.mjs ./scripts/api-critical-routes.test.mjs",
     "export:funnel": "node ./scripts/export-funnel-csv.mjs",
     "report:funnel": "node ./scripts/funnel-rollup.mjs",
     "replay:fallback": "node ./scripts/replay-fallback.mjs"

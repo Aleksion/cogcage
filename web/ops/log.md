@@ -2,6 +2,35 @@
 
 ---
 
+## Product-Mode Ship — 00:20 ET Mar 3
+
+Directive executed: ship only product-critical lane (P1 signup reliability, P2 playable loop verification, P3 founder checkout+postback reliability, P4 ops artifacts).
+
+### Shipped artifacts
+- `app/routes/api/waitlist.ts`
+  - Enforced deterministic API contract across all outcomes (`status`, `storage`, `queued`, `degraded`, `replayed`, `requestId`).
+  - Idempotency replay responses now return explicit replay contract metadata (`status: idempotent_replay`, `replayed: true`) with consistent shape.
+  - Malformed JSON now deterministically returns `payload_invalid` instead of entering email validation path.
+- `app/routes/api/founder-intent.ts`
+  - Applied the same deterministic contract and replay contract behavior as waitlist.
+  - Malformed JSON now deterministically returns `payload_invalid` instead of entering email validation path.
+- `app/routes/api/postback.ts`
+  - Added deterministic postback response contract (`recorded`, `recorded_degraded`, `queued_fallback`, `idempotent_replay`, etc.).
+  - Added structured completion log event (`postback_request_completed`) with outcome + storage for traceability.
+  - Idempotent replay responses now include explicit replay contract metadata and `x-idempotent-replay`.
+  - Added GET verification-path logs (`postback_verify_received`, `postback_verify_completed`) and request-id-backed contract for deployment verification.
+- `scripts/api-critical-routes.test.mjs` (new)
+  - Added route-level reliability tests for malformed signup payload handling, Redis outage degradation path, postback idempotent replay, and GET verification contract/logs.
+- `package.json`
+  - `test:product` now includes `api-critical-routes.test.mjs`.
+
+### Verification commands
+- `npm run test:product` ✅ (16/16 pass)
+- `npm run build` ✅
+
+### Scope guard
+- No landing-page copy iterations or marketing copy file edits in this pass.
+
 ## Product-Mode Ship — 19:02 ET Mar 2
 
 Directive executed: stop copy iteration lane; ship product-critical reliability/demo/monetization checks only.

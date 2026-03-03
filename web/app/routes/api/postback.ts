@@ -30,6 +30,18 @@ type CheckoutPostback = {
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+type PostbackOutcome =
+  | 'ready'
+  | 'recorded'
+  | 'recorded_degraded'
+  | 'queued_fallback'
+  | 'payload_invalid'
+  | 'unsupported_type'
+  | 'unauthorized'
+  | 'idempotent_replay'
+  | 'test_mode'
+  | 'failed'
+  | 'unknown';
 
 function normalizeString(value: unknown, maxLen = 500) {
   if (typeof value !== 'string') return '';
@@ -91,28 +103,105 @@ function safeMetaJson(meta: Record<string, unknown>) {
   }
 }
 
+function asPostbackContract(
+  body: Record<string, unknown>,
+  outcome: PostbackOutcome,
+  storage: string,
+  replayed = false,
+) {
+  const queued = body.queued === true || outcome === 'queued_fallback';
+  const degraded = body.degraded === true || outcome === 'recorded_degraded' || outcome === 'queued_fallback';
+  const ok = body.ok === true;
+  return {
+    ...body,
+    ok,
+    status: outcome,
+    storage,
+    queued,
+    degraded,
+    replayed,
+  };
+}
+
+function parseReplayBody(raw: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === 'object') return parsed as Record<string, unknown>;
+  } catch {
+    // fall through
+  }
+  return { ok: true };
+}
+
 export const Route = createFileRoute('/api/postback')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!authorize(request)) {
-          return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
-            status: 401,
-            headers: { 'content-type': 'application/json' },
+        const route = '/api/postback';
+        const startedAt = Date.now();
+        const requestId = crypto.randomUUID();
+        const url = new URL(request.url);
+
+        const respondVerify = (
+          body: Record<string, unknown>,
+          status: number,
+          outcome: 'ready' | 'test_mode' | 'unauthorized',
+          detail: Record<string, unknown> = {},
+        ) => {
+          const storage = typeof detail.storage === 'string' ? detail.storage : 'none';
+          const responseBody = {
+            ...body,
+            ok: body.ok === true,
+            status: outcome,
+            storage,
+            queued: false,
+            degraded: false,
+            replayed: false,
+            requestId,
+          };
+
+          appendOpsLog({
+            route,
+            level: status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info',
+            event: 'postback_verify_completed',
+            requestId,
+            httpStatus: status,
+            outcome,
+            storage,
+            durationMs: Date.now() - startedAt,
+            ...detail,
           });
+
+          return new Response(JSON.stringify(responseBody), {
+            status,
+            headers: {
+              'content-type': 'application/json',
+              'x-request-id': requestId,
+            },
+          });
+        };
+
+        appendOpsLog({
+          route,
+          level: 'info',
+          event: 'postback_verify_received',
+          requestId,
+          method: 'GET',
+          testMode: url.searchParams.get('test') === '1',
+        });
+
+        if (!authorize(request)) {
+          return respondVerify({ ok: false, error: 'Unauthorized' }, 401, 'unauthorized');
         }
         // Health check / test endpoint
-        const url = new URL(request.url);
         if (url.searchParams.get('test') === '1') {
-          return new Response(JSON.stringify({ ok: true, mode: 'test', method: 'GET' }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          });
+          return respondVerify({ ok: true, mode: 'test', method: 'GET' }, 200, 'test_mode');
         }
-        return new Response(JSON.stringify({ ok: true, status: 'ready', acceptedTypes: ['checkout.session.completed', 'founder_pack.paid'] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
+        return respondVerify(
+          { ok: true, acceptedTypes: ['checkout.session.completed', 'founder_pack.paid'] },
+          200,
+          'ready',
+        );
       },
       POST: async ({ request }) => {
         const startedAt = Date.now();
@@ -126,13 +215,34 @@ export const Route = createFileRoute('/api/postback')({
           status: number,
           idempotencyKey?: string,
           extraHeaders: Record<string, string> = {},
+          outcome: PostbackOutcome = 'unknown',
+          detail: Record<string, unknown> = {},
         ) => {
+          const storage =
+            (typeof detail.storage === 'string' && detail.storage)
+            || (typeof body.storage === 'string' && body.storage)
+            || 'none';
+          const replayed = detail.replayed === true || body.replayed === true || outcome === 'idempotent_replay';
+          const responseBody = asPostbackContract(body, outcome, storage, replayed);
+
+          appendOpsLog({
+            route,
+            level: status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info',
+            event: 'postback_request_completed',
+            requestId,
+            httpStatus: status,
+            outcome,
+            storage,
+            durationMs: Date.now() - startedAt,
+            ...detail,
+          });
+
           if (idempotencyKey) {
             const receipt = {
               route,
               idempotencyKey,
               responseStatus: status,
-              responseBody: JSON.stringify({ ...body, requestId }),
+              responseBody: JSON.stringify({ ...responseBody, requestId }),
             };
             let persisted = false;
 
@@ -172,7 +282,7 @@ export const Route = createFileRoute('/api/postback')({
             }
           }
 
-          return new Response(JSON.stringify({ ...body, requestId }), {
+          return new Response(JSON.stringify({ ...responseBody, requestId }), {
             status,
             headers: {
               'content-type': 'application/json',
@@ -194,12 +304,12 @@ export const Route = createFileRoute('/api/postback')({
         // Test mode stub: ?test=1 returns 200 without processing, for deploy verification
         const url = new URL(request.url);
         if (url.searchParams.get('test') === '1') {
-          return respond({ ok: true, mode: 'test' }, 200, headerIdempotencyKey);
+          return respond({ ok: true, mode: 'test' }, 200, headerIdempotencyKey, {}, 'test_mode', { storage: 'none' });
         }
 
         if (!authorize(request)) {
           appendOpsLog({ route, level: 'warn', event: 'postback_unauthorized', requestId });
-          return respond({ ok: false, error: 'Unauthorized' }, 401, headerIdempotencyKey);
+          return respond({ ok: false, error: 'Unauthorized' }, 401, headerIdempotencyKey, {}, 'unauthorized', { storage: 'none' });
         }
 
         let payload: CheckoutPostback | null = null;
@@ -246,7 +356,7 @@ export const Route = createFileRoute('/api/postback')({
             contentType,
             durationMs: Date.now() - startedAt,
           });
-          return respond({ ok: false, error: 'Invalid request payload' }, 400, headerIdempotencyKey);
+          return respond({ ok: false, error: 'Invalid request payload' }, 400, headerIdempotencyKey, {}, 'payload_invalid', { storage: 'none' });
         }
 
         const rawType = payload.type ?? '';
@@ -261,7 +371,7 @@ export const Route = createFileRoute('/api/postback')({
             eventType,
             durationMs: Date.now() - startedAt,
           });
-          return respond({ ok: false, error: 'Unsupported postback type' }, 422, headerIdempotencyKey);
+          return respond({ ok: false, error: 'Unsupported postback type' }, 422, headerIdempotencyKey, {}, 'unsupported_type', { storage: 'none', eventType });
         }
 
         const object = payload.data?.object;
@@ -306,13 +416,11 @@ export const Route = createFileRoute('/api/postback')({
           const cached = await redisReadApiRequestReceipt(route, idempotencyKey);
           if (cached) {
             appendOpsLog({ route, level: 'info', event: 'postback_idempotency_replay', requestId, idempotencyStore: 'redis', eventId, durationMs: Date.now() - startedAt });
-            return new Response(cached.responseBody, {
-              status: cached.responseStatus,
-              headers: {
-                'content-type': 'application/json',
-                'x-request-id': requestId,
-                'x-idempotent-replay': '1',
-              },
+            const replayBody = asPostbackContract(parseReplayBody(cached.responseBody), 'idempotent_replay', 'idempotency-replay:redis', true);
+            return respond(replayBody, cached.responseStatus, idempotencyKey, { 'x-idempotent-replay': '1' }, 'idempotent_replay', {
+              storage: 'idempotency-replay:redis',
+              idempotencyStore: 'redis',
+              eventId,
             });
           }
         } catch (error) {
@@ -329,13 +437,11 @@ export const Route = createFileRoute('/api/postback')({
           const cached = readApiRequestReceipt(route, idempotencyKey);
           if (cached) {
             appendOpsLog({ route, level: 'info', event: 'postback_idempotency_replay', requestId, idempotencyStore: 'sqlite', eventId, durationMs: Date.now() - startedAt });
-            return new Response(cached.responseBody, {
-              status: cached.responseStatus,
-              headers: {
-                'content-type': 'application/json',
-                'x-request-id': requestId,
-                'x-idempotent-replay': '1',
-              },
+            const replayBody = asPostbackContract(parseReplayBody(cached.responseBody), 'idempotent_replay', 'idempotency-replay:sqlite', true);
+            return respond(replayBody, cached.responseStatus, idempotencyKey, { 'x-idempotent-replay': '1' }, 'idempotent_replay', {
+              storage: 'idempotency-replay:sqlite',
+              idempotencyStore: 'sqlite',
+              eventId,
             });
           }
         } catch (error) {
@@ -460,7 +566,7 @@ export const Route = createFileRoute('/api/postback')({
             durationMs: Date.now() - startedAt,
           });
 
-          return respond({ ok: true, eventId }, 200, idempotencyKey);
+          return respond({ ok: true, eventId }, 200, idempotencyKey, {}, 'recorded', { storage: 'redis', eventId, eventType, source });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
           appendOpsLog({
@@ -505,7 +611,12 @@ export const Route = createFileRoute('/api/postback')({
               durationMs: Date.now() - startedAt,
             });
 
-            return respond({ ok: true, degraded: true, eventId }, 200, idempotencyKey);
+            return respond({ ok: true, degraded: true, eventId }, 200, idempotencyKey, {}, 'recorded_degraded', {
+              storage: 'sqlite',
+              eventId,
+              eventType,
+              source,
+            });
           } catch (sqliteError) {
             const sqliteErrorMessage = sqliteError instanceof Error ? sqliteError.message : 'unknown-error';
             appendOpsLog({
@@ -532,7 +643,12 @@ export const Route = createFileRoute('/api/postback')({
                 eventId,
                 durationMs: Date.now() - startedAt,
               });
-              return respond({ ok: true, queued: true, eventId }, 202, idempotencyKey);
+              return respond({ ok: true, queued: true, degraded: true, eventId }, 202, idempotencyKey, {}, 'queued_fallback', {
+                storage: 'fallback-file',
+                eventId,
+                eventType,
+                source,
+              });
             } catch (fallbackError) {
               appendOpsLog({
                 route,
@@ -546,7 +662,12 @@ export const Route = createFileRoute('/api/postback')({
                 durationMs: Date.now() - startedAt,
               });
 
-              return respond({ ok: false, error: 'Postback processing failed' }, 500, idempotencyKey);
+              return respond({ ok: false, error: 'Postback processing failed' }, 500, idempotencyKey, {}, 'failed', {
+                storage: 'none',
+                eventId,
+                eventType,
+                source,
+              });
             }
           }
         }
