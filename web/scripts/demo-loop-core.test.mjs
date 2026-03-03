@@ -5,6 +5,7 @@ const demo = await import('../app/components/DemoLoop.tsx');
 
 const {
   ACTION_AP_COST,
+  buildFounderCheckoutUrl,
   makeInitialLiveState,
   runPlayTurn,
 } = demo;
@@ -38,4 +39,24 @@ test('movement clamps at map boundary', () => {
 
   assert.equal(next.p1.pos.x, 0);
   assert.equal(next.p1.pos.y, 0);
+});
+
+test('forced AI action that is not affordable falls back to WAIT', () => {
+  const start = makeInitialLiveState();
+  start.p2.ap = 0;
+
+  const next = runPlayTurn(start, { action: 'MOVE', moveDir: 'RIGHT' }, { forcedAiAction: 'STUN' });
+  assert.equal(next.log[0].p2Action, 'WAIT');
+  assert.equal(next.p2.stunned, false);
+});
+
+test('founder checkout URL is enriched with attribution params', () => {
+  const result = buildFounderCheckoutUrl(
+    'https://buy.stripe.com/test_123',
+    'captain@pit.dev',
+    'checkout:test:123',
+  );
+  const url = new URL(result);
+  assert.equal(url.searchParams.get('prefilled_email'), 'captain@pit.dev');
+  assert.equal(url.searchParams.get('client_reference_id'), 'checkout:test:123');
 });

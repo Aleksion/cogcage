@@ -2,6 +2,33 @@
 
 ---
 
+## Product-Mode Ship — 19:55 ET Mar 2
+
+Directive executed: STOP landing-page copy iteration. Scope locked to P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback path, P4 ops artifacts.
+
+### Shipped artifacts
+- `app/components/DemoLoop.tsx`
+  - Founder CTA now uses product pipeline: validates email, logs `founder_checkout_*` events, writes `/api/founder-intent` with idempotency key, stores checkout source keys for `/success`, and redirects with `prefilled_email` + `client_reference_id`.
+  - Play-mode AP/action gating now uses turn-start AP (`stored AP + speed regen`) so users can always take valid actions each turn without deadlock from low stored AP.
+  - `runPlayTurn` now force-falls AI to `WAIT` when a forced action is not affordable.
+- `app/lib/waitlist-db.ts`
+  - `insertFounderIntent` now derives deterministic fallback `intentId` when missing (`intent:YYYY-MM-DD:<hash>`) for SQLite idempotency parity with Redis.
+- `app/lib/waitlist-redis.ts`
+  - Idempotency receipt TTL write is now atomic (`SET ... EX`) to avoid immortal receipt keys on partial failures.
+- `scripts/demo-loop-core.test.mjs`
+  - Added tests for forced-AI unaffordable action fallback and founder checkout URL attribution params.
+- `scripts/product-mode-reliability.test.mjs`
+  - Added SQLite reliability test proving founder-intent dedupe when `intentId` is omitted.
+
+### Verification
+- `npm run test:product` ✅
+  - 10 tests, 10 pass, 0 fail.
+- `node --import tsx --test ./scripts/demo-loop-core.test.mjs` ✅
+  - 5 tests, 5 pass, 0 fail.
+- `npm run build` ✅
+  - Vite + Nitro build completed; only pre-existing chunk-size and module externalization warnings.
+
+
 ## Product-Mode Audit — 15:31 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.

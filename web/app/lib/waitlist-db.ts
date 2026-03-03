@@ -83,6 +83,20 @@ export type ApiRequestReceipt = {
 
 let db: import('better-sqlite3').Database | null = null;
 
+function hashString(input: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function deriveFounderIntentId(email: string, source: string) {
+  const day = new Date().toISOString().slice(0, 10);
+  return `intent:${day}:${hashString(`${email}|${source}|${day}`)}`;
+}
+
 export function getDbPath() {
   return process.env.MOLTPIT_DB_PATH ?? resolveRuntimePath('moltpit.db');
 }
@@ -214,6 +228,9 @@ export function insertWaitlistLead(lead: WaitlistLead) {
 
 export function insertFounderIntent(intent: FounderIntent) {
   const conn = getDb();
+  const normalizedEmail = intent.email.trim().toLowerCase();
+  const normalizedSource = intent.source.trim();
+  const intentId = intent.intentId?.trim() || deriveFounderIntentId(normalizedEmail, normalizedSource);
   const insert = conn.prepare(`
     INSERT INTO founder_intents (email, source, intent_id, user_agent, ip_address)
     VALUES (@email, @source, @intentId, @userAgent, @ipAddress)
@@ -224,7 +241,12 @@ export function insertFounderIntent(intent: FounderIntent) {
       created_at=CURRENT_TIMESTAMP
   `);
 
-  runWithBusyRetry('insert_founder_intent', () => insert.run(intent));
+  runWithBusyRetry('insert_founder_intent', () => insert.run({
+    ...intent,
+    email: normalizedEmail,
+    source: normalizedSource,
+    intentId,
+  }));
 }
 
 export function insertConversionEvent(event: ConversionEvent) {

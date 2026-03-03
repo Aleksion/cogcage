@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Link } from '@tanstack/react-router'
 
 const STRIPE_FOUNDER_URL = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? ''
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_KEY = 'moltpit_email'
+const CHECKOUT_SOURCE_KEY = 'moltpit_last_founder_checkout_source'
+const INTENT_SOURCE_KEY = 'moltpit_last_founder_intent_source'
 
 // ── Action Economy ──
 export type Action = 'MOVE' | 'ATTACK' | 'DEFEND' | 'CHARGE' | 'STUN'
@@ -80,6 +83,73 @@ export const TACTICIAN: BotConfig = {
   speed: 0.9,
   bias: { MOVE: 15, ATTACK: 20, DEFEND: 25, CHARGE: 15, STUN: 25 },
   start: { x: 6, y: 6 },
+}
+
+function hashString(input: string) {
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function deriveFounderIntentId(email: string, source: string) {
+  const day = new Date().toISOString().slice(0, 10)
+  return `intent:${day}:${hashString(`${email}|${source}|${day}`)}`
+}
+
+function deriveCheckoutEventId(email: string, source: string) {
+  const day = new Date().toISOString().slice(0, 10)
+  return `checkout:${day}:${hashString(`${email}|${source}|${Date.now()}`)}`
+}
+
+function makeIdempotencyKey(prefix: string) {
+  try {
+    return `${prefix}:${crypto.randomUUID()}`
+  } catch {
+    return `${prefix}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
+  }
+}
+
+async function postJson(path: string, payload: Record<string, unknown>, idempotencyKey?: string) {
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+    Accept: 'application/json',
+  }
+  if (idempotencyKey) headers['x-idempotency-key'] = idempotencyKey
+
+  const response = await fetch(path, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  })
+
+  const text = await response.text().catch(() => '')
+  let body: any = null
+  try {
+    body = text ? JSON.parse(text) : null
+  } catch {
+    body = null
+  }
+
+  return { ok: response.ok, status: response.status, body }
+}
+
+function postEvent(event: string, payload: Record<string, unknown>) {
+  return postJson('/api/events', {
+    event,
+    page: '/play',
+    href: typeof window !== 'undefined' ? window.location.href : undefined,
+    ...payload,
+  })
+}
+
+export function buildFounderCheckoutUrl(baseUrl: string, normalizedEmail: string, checkoutEventId: string) {
+  const url = new URL(baseUrl)
+  url.searchParams.set('prefilled_email', normalizedEmail)
+  url.searchParams.set('client_reference_id', checkoutEventId)
+  return url.toString()
 }
 
 export function manhattan(a: Position, b: Position): number {
@@ -317,7 +387,10 @@ export function runPlayTurn(
 
   const p1Act: Action | 'WAIT' = canAffordAction(p1.ap, choice.action) ? choice.action : 'WAIT'
   const dist = manhattan(p1.pos, p2.pos)
-  const p2Act: Action | 'WAIT' = options?.forcedAiAction ?? pickAction(TACTICIAN.bias, dist, p2.stunned, p2.ap)
+  const p2Candidate: Action | 'WAIT' = options?.forcedAiAction ?? pickAction(TACTICIAN.bias, dist, p2.stunned, p2.ap)
+  const p2Act: Action | 'WAIT' = p2Candidate === 'WAIT'
+    ? 'WAIT'
+    : (canAffordAction(p2.ap, p2Candidate) ? p2Candidate : 'WAIT')
 
   if (p1Act !== 'WAIT') p1.ap = Math.max(0, p1.ap - ACTION_AP_COST[p1Act])
   if (p2Act !== 'WAIT') p2.ap = Math.max(0, p2.ap - ACTION_AP_COST[p2Act])
@@ -774,6 +847,169 @@ function hpColor(pct: number) {
   return '#EB4D4B'
 }
 
+function FounderCheckoutCta({
+  sourcePrefix,
+  fallbackHref = '/sign-in',
+}: {
+  sourcePrefix: string
+  fallbackHref?: string
+}) {
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = window.localStorage.getItem(EMAIL_KEY)
+    if (stored) setEmail(stored)
+  }, [])
+
+  const handleCheckout = useCallback(async () => {
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail || !EMAIL_RE.test(normalizedEmail)) {
+      setMessage('Enter a valid email to reserve founder pricing.')
+      await postEvent('founder_checkout_validation_failed', {
+        source: `${sourcePrefix}-founder-cta`,
+        email: normalizedEmail || undefined,
+        meta: { reason: 'invalid_email' },
+      })
+      return
+    }
+
+    const checkoutSource = `${sourcePrefix}-founder-cta`
+    const intentSource = `${sourcePrefix}-founder-checkout`
+    const intentId = deriveFounderIntentId(normalizedEmail, intentSource)
+    const checkoutEventId = deriveCheckoutEventId(normalizedEmail, checkoutSource)
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(EMAIL_KEY, normalizedEmail)
+    }
+
+    setBusy(true)
+    setMessage(null)
+
+    try {
+      await postEvent('founder_checkout_clicked', {
+        source: checkoutSource,
+        email: normalizedEmail,
+        tier: 'founder',
+        eventId: checkoutEventId,
+      })
+
+      const intentResponse = await postJson('/api/founder-intent', {
+        email: normalizedEmail,
+        source: intentSource,
+        intentId,
+      }, makeIdempotencyKey('demo-founder-intent'))
+
+      if (!intentResponse.ok || intentResponse.body?.ok !== true) {
+        await postEvent('founder_intent_submit_failed', {
+          source: intentSource,
+          email: normalizedEmail,
+          tier: 'founder',
+          meta: {
+            reason: String(intentResponse.body?.error || `status_${intentResponse.status}`),
+            intentId,
+          },
+        })
+        if (!STRIPE_FOUNDER_URL) {
+          setMessage('Could not reserve spot. Try again.')
+          return
+        }
+      } else {
+        await postEvent('founder_intent_submitted', {
+          source: intentSource,
+          email: normalizedEmail,
+          tier: 'founder',
+          eventId: checkoutEventId,
+          meta: { intentId },
+        })
+      }
+
+      if (!STRIPE_FOUNDER_URL) {
+        setMessage('Reserved. We will email you when checkout goes live.')
+        return
+      }
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(CHECKOUT_SOURCE_KEY, checkoutSource)
+        window.localStorage.setItem(INTENT_SOURCE_KEY, intentSource)
+      }
+
+      await postEvent('founder_checkout_redirected', {
+        source: checkoutSource,
+        email: normalizedEmail,
+        tier: 'founder',
+        eventId: checkoutEventId,
+        meta: { intentId },
+      })
+
+      window.location.href = buildFounderCheckoutUrl(STRIPE_FOUNDER_URL, normalizedEmail, checkoutEventId)
+    } catch {
+      setMessage('Could not start checkout. Try again.')
+      await postEvent('founder_checkout_redirect_failed', {
+        source: `${sourcePrefix}-founder-cta`,
+        email: normalizedEmail,
+        tier: 'founder',
+      })
+    } finally {
+      setBusy(false)
+    }
+  }, [email, sourcePrefix])
+
+  return (
+    <div style={{ marginTop: '0.75rem' }}>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="you@team.com"
+        style={{
+          width: 'min(360px, 100%)',
+          height: '42px',
+          borderRadius: '8px',
+          border: '2px solid rgba(255,255,255,0.2)',
+          background: 'rgba(0,0,0,0.35)',
+          color: '#fff',
+          padding: '0 0.75rem',
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: '0.82rem',
+          marginBottom: '0.65rem',
+        }}
+      />
+      <div>
+        <button
+          className="demo-cta"
+          onClick={handleCheckout}
+          disabled={busy}
+          style={{ border: 0, cursor: busy ? 'progress' : 'pointer', opacity: busy ? 0.85 : 1 }}
+        >
+          {busy ? (STRIPE_FOUNDER_URL ? 'OPENING CHECKOUT…' : 'RESERVING…') : (STRIPE_FOUNDER_URL ? 'GET FOUNDER PACK →' : 'RESERVE FOUNDER SPOT →')}
+        </button>
+      </div>
+      {!STRIPE_FOUNDER_URL && (
+        <div style={{ marginTop: '0.55rem' }}>
+          <a href={fallbackHref} className="demo-restart" style={{ display: 'inline-block', textDecoration: 'none' }}>
+            Enter the pit
+          </a>
+        </div>
+      )}
+      {message && (
+        <div
+          style={{
+            marginTop: '0.55rem',
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: '0.68rem',
+            color: 'rgba(255,255,255,0.8)',
+          }}
+        >
+          {message}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Watch Mode (spectator) ──
 function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
   const [match, setMatch] = useState(() => simulateMatch())
@@ -948,9 +1184,7 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
               ? 'Both crawlers still standing after 15 rounds.'
               : `${match.winner} crushed the opposition.`}
           </div>
-          {STRIPE_FOUNDER_URL
-            ? <a href={STRIPE_FOUNDER_URL} className="demo-cta">GET FOUNDER PACK &rarr;</a>
-            : <Link to="/sign-in" className="demo-cta">ENTER THE PIT &rarr;</Link>}
+          <FounderCheckoutCta sourcePrefix="demo-watch" />
           <button className="demo-restart" onClick={startNewMatch}>Watch another match</button>
         </div>
       )}
@@ -988,13 +1222,15 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
   const p1Pct = (p1.hp / BERSERKER.hp) * 100
   const p2Pct = (p2.hp / TACTICIAN.hp) * 100
   const dist = manhattan(p1.pos, p2.pos)
+  const p1TurnAp = p1.ap + BERSERKER.speed
+  const p2TurnAp = p2.ap + TACTICIAN.speed
   const canAttack = dist <= 2
   const canStun = dist <= 2
-  const canAffordMove = p1.ap >= ACTION_AP_COST.MOVE
-  const canAffordAttack = p1.ap >= ACTION_AP_COST.ATTACK
-  const canAffordDefend = p1.ap >= ACTION_AP_COST.DEFEND
-  const canAffordCharge = p1.ap >= ACTION_AP_COST.CHARGE
-  const canAffordStun = p1.ap >= ACTION_AP_COST.STUN
+  const canAffordMove = p1TurnAp >= ACTION_AP_COST.MOVE
+  const canAffordAttack = p1TurnAp >= ACTION_AP_COST.ATTACK
+  const canAffordDefend = p1TurnAp >= ACTION_AP_COST.DEFEND
+  const canAffordCharge = p1TurnAp >= ACTION_AP_COST.CHARGE
+  const canAffordStun = p1TurnAp >= ACTION_AP_COST.STUN
   const canMoveUp = p1.pos.y > 0
   const canMoveRight = p1.pos.x < GRID_SIZE - 1
   const canMoveDown = p1.pos.y < GRID_SIZE - 1
@@ -1062,7 +1298,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           <div className="demo-ap-bar">
             <div className="demo-ap-fill" style={{ width: `${Math.min(p1.ap / AP_BAR_MAX, 1) * 100}%` }} />
           </div>
-          <div className="demo-ap-text">AP {p1.ap.toFixed(1)}</div>
+          <div className="demo-ap-text">AP {p1.ap.toFixed(1)} → {p1TurnAp.toFixed(1)} this turn</div>
         </div>
         <div className="demo-vs-text">VS</div>
         <div className="demo-bot">
@@ -1079,14 +1315,14 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           <div className="demo-ap-bar">
             <div className="demo-ap-fill" style={{ width: `${Math.min(p2.ap / AP_BAR_MAX, 1) * 100}%` }} />
           </div>
-          <div className="demo-ap-text">AP {p2.ap.toFixed(1)}</div>
+          <div className="demo-ap-text">AP {p2.ap.toFixed(1)} → {p2TurnAp.toFixed(1)} this turn</div>
         </div>
       </div>
 
       <div className="demo-turn-counter">
         {winner
           ? winner
-          : `TURN ${turn} / ${MAX_TURNS}  ·  DIST ${dist}  ·  ${!canAttack ? 'CLOSE IN TO ATTACK' : 'IN RANGE'}`}
+          : `TURN ${turn} / ${MAX_TURNS}  ·  DIST ${dist}  ·  TURN AP ${p1TurnAp.toFixed(1)}  ·  ${!canAttack ? 'CLOSE IN TO ATTACK' : 'IN RANGE'}`}
       </div>
 
       {!winner && (
@@ -1165,9 +1401,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           <div className="demo-winner-sub">
             {winner === 'YOU WIN!' ? 'Your Crustie dominated The Pit.' : winner === 'DRAW' ? 'Both still standing after 15 rounds.' : 'The AI held its line.'}
           </div>
-          {STRIPE_FOUNDER_URL
-            ? <a href={STRIPE_FOUNDER_URL} className="demo-cta">GET FOUNDER PACK &rarr;</a>
-            : <Link to="/sign-in" className="demo-cta">ENTER THE PIT &rarr;</Link>}
+          <FounderCheckoutCta sourcePrefix="demo-play" />
           <button className="demo-restart" onClick={resetGame}>Play again</button>
         </div>
       )}

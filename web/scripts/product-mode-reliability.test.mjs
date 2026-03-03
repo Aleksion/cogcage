@@ -66,6 +66,31 @@ test('waitlist/founder/conversion persistence is idempotent in sqlite path', asy
   assert.equal(counts.conversionEvents, 1);
 });
 
+test('founder intent write remains idempotent when intentId is omitted', async (t) => {
+  const db = await dbModPromise;
+  const health = db.getStorageHealth();
+  if (!health.sqliteAvailable) {
+    t.skip(`SQLite unavailable in test runtime: ${health.sqliteLoadError ?? 'unknown error'}`);
+    return;
+  }
+
+  db.insertFounderIntent({
+    email: 'captain-no-id@pit.dev',
+    source: 'test-founder-no-id',
+    userAgent: 'node-test',
+    ipAddress: '127.0.0.1',
+  });
+  db.insertFounderIntent({
+    email: 'captain-no-id@pit.dev',
+    source: 'test-founder-no-id',
+    userAgent: 'node-test',
+    ipAddress: '127.0.0.1',
+  });
+
+  const counts = db.getFunnelCounts();
+  assert.equal(counts.founderIntents, 2);
+});
+
 test('api idempotency receipts are readable and updateable', async (t) => {
   const db = await dbModPromise;
   const health = db.getStorageHealth();
