@@ -8,6 +8,32 @@
 
 ---
 
+## [2026-03-02] - chore(product-mode): checkpoint audit + ops artifact refresh
+
+**Type:** ops/chore | **Budget impact:** n/a
+
+### What
+- `web/ops/log.md`
+  - Added product-mode checkpoint entry at 21:34 ET confirming strict priority execution:
+    1) signup reliability/storage/logs,
+    2) playable demo loop,
+    3) founder monetization path,
+    4) ops artifact update.
+  - Recorded fresh verification evidence from this pass (`npm run test:product`, `npm run build`).
+
+### Why
+- Autopilot directive required explicit halt of landing-page copy work and evidence-backed confirmation of product-critical lane health.
+
+### Design Decisions
+- No new feature/code-surface changes in this pass; only operational evidence/log refresh to avoid scope drift.
+- Preserve existing product-critical implementation and verify by test/build gates.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Continue only product-critical bugfixes affecting signup reliability, playable loop integrity, or checkout/postback conversion recording.
+
 ## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)

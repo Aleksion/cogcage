@@ -2,6 +2,25 @@
 
 ---
 
+## Product-Mode Checkpoint — 21:34 ET Mar 2
+
+Directive enforced: STOP landing-page copy iterations. Priorities locked to P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder monetization path, P4 ops artifacts.
+
+### Verification (this pass)
+- `npm run test:product` ✅ (9/9 pass)
+- `npm run build` ✅ (client + SSR + Nitro vercel output)
+
+### Product-critical status
+- **P1 signup reliability + storage + observable logs**: verified in code paths and tests (`/api/waitlist`, `/api/founder-intent`, Redis→SQLite→fallback + structured ops logging).
+- **P2 playable demo loop**: verified live in shipped loop (`DemoLoop` + action economy + map movement assertions in `ws2-core.test.mjs`).
+- **P3 monetization path**: verified lifecycle code present (`PUBLIC_STRIPE_FOUNDER_URL` CTA, `/api/founder-intent`, `/api/postback`, `/api/checkout-success`).
+- **P4 ops log**: this entry.
+
+### Scope guard
+- No landing-page copy iteration changes.
+- No non-product-critical changes committed.
+
+
 ## Product-Mode Audit — 15:31 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.
