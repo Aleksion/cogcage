@@ -8,6 +8,32 @@
 
 ---
 
+## [2026-03-02] - chore(product-mode): cron re-verification + ops artifact sync
+
+**Type:** ops/chore | **Budget impact:** n/a
+
+### What
+- Updated product-mode ops logs after cron enforcement pass:
+  - `docs/ops-log.md`
+  - `web/ops/log.md`
+- Re-verified product-critical paths (signup reliability, playable demo loop, founder checkout/postback lifecycle) without introducing non-critical copy churn.
+
+### Why
+- Cron directive required an explicit product-mode pass focused on shipped reliability/gameplay/monetization lanes and a fresh artifact update.
+
+### Design Decisions
+- No new feature/code diffs in this pass because P1-P3 were already shipped on `origin/main`; only evidence/log artifacts were updated.
+- Kept scope constrained to priority P4 to avoid accidental non-critical drift.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Set production env secrets to fully activate gated monetization/ops auth paths (`PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, `MOLTPIT_OPS_KEY`/`COGCAGE_OPS_KEY`).
+
+### Verification
+- `cd web && npm run test:product` ✅ (9 pass / 0 fail)
+
 ## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)
