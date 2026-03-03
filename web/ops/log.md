@@ -3,6 +3,23 @@
 ---
 
 
+## Product-Mode Cron — 23:13 ET Mar 2
+
+Directive re-asserted: STOP landing-page copy iterations. Product-critical execution remains locked to P1→P4.
+
+### Pass result
+- P1 signup reliability + durable storage + observable logs: ✅ verified in route tests (waitlist/founder/checkout parse + idempotency + fallback receipts).
+- P2 playable demo loop (map movement + AP economy): ✅ verified (movement + AP spend + AI affordability/selection constraints).
+- P3 monetization path (founder checkout + postback): ✅ verified (idempotent founder-intent, checkout-success, postback lifecycle with durable state transitions).
+- P4 ops artifacts: ✅ updated this log + `docs/ops-log.md`.
+
+### Verification
+- `cd web && npm run test:product` ✅ (31/31 pass)
+
+### Scope guard
+- No landing-page copy edits.
+- No non-product-critical code changes.
+
 ## Product-Mode Ship — 23:03 ET Mar 2
 
 Directive enforced in strict order (P1 signup reliability/storage/observability → P2 playable demo loop movement + AP economy → P3 founder checkout/postback path hardening → P4 ops artifacts). No landing-page copy edits.

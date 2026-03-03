@@ -10,6 +10,35 @@
 
 
 
+## [2026-03-03] - chore(product-critical): cron verification pass + ops artifact sync (04:14 UTC)
+
+**Type:** chore/product-critical | **Budget impact:** n/a
+
+### What
+- `web/ops/log.md`
+- `docs/ops-log.md`
+  - Added a new 23:13 ET cron-pass entry confirming P1→P4 priority lock remained enforced and current branch state still satisfies:
+    - signup reliability/storage/observability,
+    - playable map movement + AP economy loop,
+    - founder checkout + postback idempotent lifecycle,
+    - shipped artifact logging.
+
+### Why
+- Autopilot directive explicitly required a fresh product-mode pass with ops artifact updates and no copy-iteration work.
+
+### Design Decisions
+- No new feature/code changes in this pass; only verifiable product-critical status logging.
+- Preserve strict scope guard to avoid landing-page churn.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Keep future cron passes constrained to product-critical diffs only; avoid redundant no-op commits unless ops evidence changed.
+
+### Verification
+- `cd web && npm run test:product` ✅ (31 pass / 0 fail)
+
 ## [2026-03-03] - fix(product-critical): harden malformed-payload handling and force playable move choices (04:03 UTC)
 
 **Type:** fix/product-critical | **Budget impact:** n/a

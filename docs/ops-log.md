@@ -5,6 +5,21 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 ---
 
 
+### Autopilot Cron — 23:13 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Product-critical priority lock preserved in order P1→P4.
+
+**Status:**
+- P1 ✅ signup reliability/storage/observability re-verified (malformed payload handling + idempotency + fallback receipts).
+- P2 ✅ playable demo loop re-verified (tile movement + AP economy + AI action gating).
+- P3 ✅ founder checkout + postback re-verified (deterministic idempotency + durable state transitions).
+- P4 ✅ ops artifact log updated in both `docs/ops-log.md` and `web/ops/log.md`.
+
+**Verification:**
+- `cd web && npm run test:product` ✅ (31/31 passing)
+
+**Scope guard:** no landing-page copy edits and no non-product-critical code changes.
+
 ### Autopilot Ship — 23:03 ET, Mar 2 2026
 
 **Directive**: STOP landing-page copy iterations. Product-critical only, priority lock P1→P4.
