@@ -8,6 +8,33 @@
 
 ---
 
+## [2026-03-02] - docs(ops): product-mode 20:38 ET audit + 10/10 reliability verification
+
+**Type:** docs/ops | **Budget impact:** n/a (product-critical reporting)
+
+### What changed
+- `web/ops/log.md`
+  - Added a new product-mode audit entry at 20:38 ET confirming strict priority lock:
+    - P1 signup reliability + storage + observable logging
+    - P2 playable map/action-economy demo loop
+    - P3 founder checkout + postback lifecycle
+    - P4 ops artifact updates
+  - Recorded latest proof-of-health (`npm run test:product` now 10/10 pass).
+
+### Why
+- Cron directive explicitly required halting landing-page copy and maintaining product-critical delivery order with observable artifacts.
+- Ops log must remain current with verified shipped state.
+
+### Design decisions
+- No non-critical code churn during this pass; only evidence-backed ops artifact update.
+- Keep audit cadence lightweight and tied to reproducible command output.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Continue only product-critical patches; when net-new code is shipped, append artifact + verification evidence in ops log immediately.
+
 ## [2026-03-02] - fix(product): restore `/molds` route registration
 
 **Type:** fix | **Budget impact:** n/a (product-critical navigation reliability)
