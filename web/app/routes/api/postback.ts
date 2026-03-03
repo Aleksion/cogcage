@@ -2,6 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { appendEventsFallback, appendFounderIntentFallback, appendOpsLog } from '~/lib/observability'
 import { insertConversionEvent, insertFounderIntent } from '~/lib/waitlist-db'
 import { redisInsertConversionEvent, redisInsertFounderIntent } from '~/lib/waitlist-redis'
+import { ConvexHttpClient } from 'convex/browser'
+import { api } from '../../../convex/_generated/api'
 
 type CheckoutPostback = {
   type?: string;
@@ -12,6 +14,8 @@ type CheckoutPostback = {
   data?: {
     object?: {
       id?: string;
+      amount_total?: number;
+      amount_subtotal?: number;
       customer_email?: string;
       customer_details?: {
         email?: string;
@@ -24,6 +28,7 @@ type CheckoutPostback = {
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const convexClient = new ConvexHttpClient(process.env.CONVEX_URL || 'https://intent-horse-742.convex.cloud')
 
 function normalizeString(value: unknown, maxLen = 500) {
   if (typeof value !== 'string') return '';
@@ -76,6 +81,47 @@ function safeMetaJson(meta: Record<string, unknown>) {
       : serialized;
   } catch {
     return JSON.stringify({ invalidMeta: true });
+  }
+}
+
+async function safeRecordPurchase({
+  route,
+  requestId,
+  stripeSessionId,
+  email,
+  amount,
+}: {
+  route: string
+  requestId: string
+  stripeSessionId: string
+  email?: string
+  amount: number
+}) {
+  try {
+    await convexClient.mutation(api.purchases.record, {
+      stripeSessionId,
+      email,
+      amount,
+      status: 'completed',
+    })
+    appendOpsLog({
+      route,
+      level: 'info',
+      event: 'postback_purchase_recorded',
+      requestId,
+      stripeSessionId,
+      amount,
+    })
+  } catch (error) {
+    appendOpsLog({
+      route,
+      level: 'warn',
+      event: 'postback_purchase_record_failed',
+      requestId,
+      stripeSessionId,
+      amount,
+      error: error instanceof Error ? error.message : 'unknown',
+    })
   }
 }
 
@@ -207,6 +253,12 @@ export const Route = createFileRoute('/api/postback')({
           ?? normalizeEmail(object?.customer_details?.email);
 
         const source = typeof payload.source === 'string' && payload.source.trim() ? payload.source.trim() : 'postback';
+        const amount =
+          typeof object?.amount_total === 'number'
+            ? object.amount_total
+            : typeof object?.amount_subtotal === 'number'
+              ? object.amount_subtotal
+              : 0;
         const meta = {
           eventType,
           created: payload.created,
@@ -330,6 +382,13 @@ export const Route = createFileRoute('/api/postback')({
             storage: 'redis',
             durationMs: Date.now() - startedAt,
           });
+          await safeRecordPurchase({
+            route: '/api/postback',
+            requestId,
+            stripeSessionId: eventId,
+            email,
+            amount,
+          });
 
           return new Response(JSON.stringify({ ok: true, requestId, eventId }), {
             status: 200,
@@ -377,6 +436,13 @@ export const Route = createFileRoute('/api/postback')({
               eventId,
               hasEmail: Boolean(email),
               durationMs: Date.now() - startedAt,
+            });
+            await safeRecordPurchase({
+              route: '/api/postback',
+              requestId,
+              stripeSessionId: eventId,
+              email,
+              amount,
             });
 
             return new Response(JSON.stringify({ ok: true, degraded: true, requestId, eventId }), {

@@ -2,8 +2,11 @@ import { createFileRoute } from '@tanstack/react-router'
 import { insertConversionEvent } from '~/lib/waitlist-db'
 import { appendEventsFallback, appendOpsLog } from '~/lib/observability'
 import { redisInsertConversionEvent } from '~/lib/waitlist-redis'
+import { ConvexHttpClient } from 'convex/browser'
+import { api } from '../../../convex/_generated/api'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const convexClient = new ConvexHttpClient(process.env.CONVEX_URL || 'https://intent-horse-742.convex.cloud')
 
 function getClientIp(request: Request) {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
@@ -51,6 +54,49 @@ function safeMetaJson(meta: Record<string, unknown> | undefined) {
   }
 }
 
+function toAmount(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0
+}
+
+async function safeRecordPurchase({
+  requestId,
+  stripeSessionId,
+  email,
+  amount,
+}: {
+  requestId: string
+  stripeSessionId: string
+  email?: string
+  amount: number
+}) {
+  try {
+    await convexClient.mutation(api.purchases.record, {
+      stripeSessionId,
+      email,
+      amount,
+      status: 'completed',
+    })
+    appendOpsLog({
+      route: '/api/checkout-success',
+      level: 'info',
+      event: 'checkout_success_purchase_recorded',
+      requestId,
+      stripeSessionId,
+      amount,
+    })
+  } catch (error) {
+    appendOpsLog({
+      route: '/api/checkout-success',
+      level: 'warn',
+      event: 'checkout_success_purchase_record_failed',
+      requestId,
+      stripeSessionId,
+      amount,
+      error: error instanceof Error ? error.message : 'unknown',
+    })
+  }
+}
+
 const recordSuccess = async ({
   eventId,
   page,
@@ -74,6 +120,7 @@ const recordSuccess = async ({
   const ipAddress = getClientIp(request);
   const userAgent = request.headers.get('user-agent') ?? undefined;
   const requestId = crypto.randomUUID();
+  const amount = toAmount(meta?.amountTotal ?? meta?.amount_total ?? meta?.amount ?? 0);
   const payload = {
     eventName: 'paid_conversion_confirmed',
     eventId,
@@ -112,6 +159,14 @@ const recordSuccess = async ({
       storage: 'redis',
       durationMs: Date.now() - startedAt,
     });
+    if (payload.eventId) {
+      await safeRecordPurchase({
+        requestId,
+        stripeSessionId: payload.eventId,
+        email: payload.email,
+        amount,
+      })
+    }
     return { requestId, queued: false, degraded: false };
   } catch (error) {
     const redisError = error instanceof Error ? error.message : 'unknown-error';
@@ -137,6 +192,14 @@ const recordSuccess = async ({
         eventId: payload.eventId,
         durationMs: Date.now() - startedAt,
       });
+      if (payload.eventId) {
+        await safeRecordPurchase({
+          requestId,
+          stripeSessionId: payload.eventId,
+          email: payload.email,
+          amount,
+        })
+      }
       return { requestId, queued: false, degraded: true };
     } catch (sqliteError) {
       const sqliteErrorMessage = sqliteError instanceof Error ? sqliteError.message : 'unknown-error';

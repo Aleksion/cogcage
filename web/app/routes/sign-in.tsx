@@ -14,6 +14,41 @@ function hashEmail(email: string): string {
   return ((h >>> 0) >>> 0).toString(16)
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_STORAGE_KEY = 'moltpit_email'
+
+function createIdempotencyKey() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+async function postAuthObservability(event: string, payload: Record<string, unknown>) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 3000)
+  try {
+    await fetch('/api/events', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-idempotency-key': createIdempotencyKey(),
+      },
+      body: JSON.stringify({
+        event,
+        page: '/sign-in',
+        source: 'sign-in',
+        ...payload,
+      }),
+      signal: controller.signal,
+    })
+  } catch {
+    // Keep auth UX resilient even if event logging fails.
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Kanit:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap');
 
@@ -334,13 +369,16 @@ function GitHubSignIn() {
   const handleGitHub = async () => {
     setError('')
     setLoading(true)
+    await postAuthObservability('signup_github_started', { method: 'github' })
     try {
       await signIn('github')
       void logAuthEvent({ method: 'github', success: true })
+      await postAuthObservability('signup_github_succeeded', { method: 'github' })
     } catch (e: any) {
       const msg = e.message || 'GitHub sign-in failed — try again'
       setError(msg)
       void logAuthEvent({ method: 'github', success: false, errorCode: msg.slice(0, 120) })
+      await postAuthObservability('signup_github_failed', { method: 'github', meta: { error: msg.slice(0, 120) } })
       setLoading(false)
     }
   }
@@ -375,33 +413,81 @@ function EmailOTPForm() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const logAuthEvent = useMutation(api.authLog.logAuthEvent)
+  const normalizedEmail = email.trim().toLowerCase()
+  const isEmailValid = EMAIL_RE.test(normalizedEmail)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = window.localStorage.getItem(EMAIL_STORAGE_KEY) || ''
+    if (stored) setEmail(stored)
+  }, [])
 
   const handleSendCode = async () => {
+    const emailHash = normalizedEmail ? hashEmail(normalizedEmail) : undefined
+    if (!normalizedEmail || !isEmailValid) {
+      const message = 'Enter a valid email address.'
+      setError(message)
+      void logAuthEvent({ method: 'email-otp', success: false, emailHash, errorCode: 'invalid_email' })
+      void postAuthObservability('signup_emailotp_send_failed', {
+        method: 'email-otp',
+        emailHash,
+        meta: { reason: 'invalid_email' },
+      })
+      return
+    }
+
     setError('')
     setLoading(true)
+    await postAuthObservability('signup_emailotp_send_started', { method: 'email-otp', emailHash })
     try {
-      await signIn('resend-otp', { email })
+      await signIn('resend-otp', { email: normalizedEmail })
       setSent(true)
-      void logAuthEvent({ method: 'email-otp', success: true, emailHash: hashEmail(email.trim().toLowerCase()) })
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(EMAIL_STORAGE_KEY, normalizedEmail)
+      }
+      void logAuthEvent({ method: 'email-otp', success: true, emailHash })
+      await postAuthObservability('signup_emailotp_send_succeeded', { method: 'email-otp', emailHash })
     } catch (e: any) {
       const msg = e.message || 'Failed to send code'
       setError(msg)
-      void logAuthEvent({ method: 'email-otp', success: false, emailHash: hashEmail(email.trim().toLowerCase()), errorCode: msg.slice(0, 120) })
+      void logAuthEvent({ method: 'email-otp', success: false, emailHash, errorCode: msg.slice(0, 120) })
+      await postAuthObservability('signup_emailotp_send_failed', {
+        method: 'email-otp',
+        emailHash,
+        meta: { error: msg.slice(0, 120) },
+      })
     } finally {
       setLoading(false)
     }
   }
 
   const handleVerify = async () => {
+    const emailHash = normalizedEmail ? hashEmail(normalizedEmail) : undefined
+    const normalizedCode = code.trim()
+    if (!normalizedCode) {
+      setError('Enter the code from your email.')
+      return
+    }
+
     setError('')
     setLoading(true)
+    await postAuthObservability('signup_emailotp_verify_started', { method: 'email-otp', emailHash })
     try {
-      await signIn('resend-otp', { email, code })
-      void logAuthEvent({ method: 'email-otp', success: true, emailHash: hashEmail(email.trim().toLowerCase()) })
+      await signIn('resend-otp', { email: normalizedEmail, code: normalizedCode })
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(EMAIL_STORAGE_KEY, normalizedEmail)
+      }
+      void logAuthEvent({ method: 'email-otp', success: true, emailHash })
+      await postAuthObservability('signup_emailotp_verify_succeeded', { method: 'email-otp', emailHash })
     } catch (e: any) {
       const msg = e.message || 'Invalid code — try again'
       setError(msg)
-      void logAuthEvent({ method: 'email-otp', success: false, emailHash: hashEmail(email.trim().toLowerCase()), errorCode: msg.slice(0, 120) })
+      void logAuthEvent({ method: 'email-otp', success: false, emailHash, errorCode: msg.slice(0, 120) })
+      await postAuthObservability('signup_emailotp_verify_failed', {
+        method: 'email-otp',
+        emailHash,
+        meta: { error: msg.slice(0, 120) },
+      })
     } finally {
       setLoading(false)
     }
@@ -416,12 +502,12 @@ function EmailOTPForm() {
           placeholder="your@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && email && handleSendCode()}
+          onKeyDown={(e) => e.key === 'Enter' && isEmailValid && handleSendCode()}
         />
         <button
           className="signin-email-btn"
           onClick={handleSendCode}
-          disabled={!email || loading}
+          disabled={!isEmailValid || loading}
         >
           {loading ? 'Sending...' : 'Send Magic Link'}
         </button>
@@ -441,7 +527,7 @@ function EmailOTPForm() {
         placeholder="Enter 6-digit code"
         value={code}
         onChange={(e) => setCode(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && code && handleVerify()}
+        onKeyDown={(e) => e.key === 'Enter' && code.trim().length > 0 && handleVerify()}
         autoFocus
       />
       <button
@@ -465,14 +551,27 @@ function EmailOTPForm() {
 function GuestSignIn() {
   const { signIn } = useAuthActions()
   const [loading, setLoading] = useState(false)
+  const logAuthEvent = useMutation(api.authLog.logAuthEvent)
 
   const handleGuestSignIn = async () => {
     setLoading(true)
+    await postAuthObservability('signup_guest_started', { method: 'guest' })
     try {
       await signIn('anonymous')
+      void logAuthEvent({ method: 'guest', success: true })
+      await postAuthObservability('signup_guest_succeeded', { method: 'guest' })
     } catch (e) {
       // Anonymous auth shouldn't fail in practice
       console.error('Guest sign-in failed:', e)
+      void logAuthEvent({
+        method: 'guest',
+        success: false,
+        errorCode: e instanceof Error ? e.message.slice(0, 120) : 'guest_signin_failed',
+      })
+      await postAuthObservability('signup_guest_failed', {
+        method: 'guest',
+        meta: { error: e instanceof Error ? e.message.slice(0, 120) : 'guest_signin_failed' },
+      })
       setLoading(false)
     }
   }

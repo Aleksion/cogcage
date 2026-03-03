@@ -1,245 +1,80 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
+import {
+  BERSERKER,
+  GRID_SIZE,
+  makeInitialLiveState,
+  manhattan,
+  MATCH_COUNT,
+  MAX_TURNS,
+  pickAction,
+  resolveTurn,
+  simulateMatch,
+  TACTICIAN,
+  type Action,
+  type GameMode,
+} from '~/lib/demo-loop-core'
 
 const STRIPE_FOUNDER_URL = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? ''
+const EMAIL_STORAGE_KEY = 'moltpit_email'
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// ── Action Economy ──
-type Action = 'MOVE' | 'ATTACK' | 'DEFEND' | 'CHARGE' | 'STUN'
-type GameMode = 'watch' | 'play'
-
-interface Position {
-  x: number
-  y: number
-}
-
-interface BotConfig {
-  name: string
-  color: string
-  initial: string
-  hp: number
-  speed: number
-  bias: Record<Action, number>
-  start: Position
-}
-
-interface BotState {
-  hp: number
-  pos: Position
-  charged: boolean
-  stunned: boolean
-  defending: boolean
-  ap: number
-}
-
-interface TurnResult {
-  turn: number
-  p1Action: Action | 'WAIT'
-  p2Action: Action | 'WAIT'
-  p1Dmg: number
-  p2Dmg: number
-  p1Hp: number
-  p2Hp: number
-  p1Pos: Position
-  p2Pos: Position
-  p1Ap: number
-  p2Ap: number
-  log: string
-}
-
-const GRID_SIZE = 7
-
-const BERSERKER: BotConfig = {
-  name: 'BERSERKER',
-  color: '#EB4D4B',
-  initial: 'B',
-  hp: 100,
-  speed: 1.2,
-  bias: { MOVE: 20, ATTACK: 40, DEFEND: 5, CHARGE: 25, STUN: 10 },
-  start: { x: 0, y: 0 },
-}
-
-const TACTICIAN: BotConfig = {
-  name: 'TACTICIAN',
-  color: '#00E5FF',
-  initial: 'T',
-  hp: 100,
-  speed: 0.9,
-  bias: { MOVE: 15, ATTACK: 20, DEFEND: 25, CHARGE: 15, STUN: 25 },
-  start: { x: 6, y: 6 },
-}
-
-function manhattan(a: Position, b: Position): number {
-  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
-}
-
-function moveToward(from: Position, to: Position): Position {
-  const dx = to.x - from.x
-  const dy = to.y - from.y
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    return { x: from.x + Math.sign(dx), y: from.y }
+function hashString(input: string) {
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
   }
-  return { x: from.x, y: from.y + Math.sign(dy) }
+  return (hash >>> 0).toString(36)
 }
 
-function clampGrid(pos: Position): Position {
-  return {
-    x: Math.max(0, Math.min(GRID_SIZE - 1, pos.x)),
-    y: Math.max(0, Math.min(GRID_SIZE - 1, pos.y)),
+function createIdempotencyKey() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
   }
+  return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
 }
 
-function pickAction(bias: Record<Action, number>, dist: number, stunned: boolean): Action {
-  const actions: Action[] = ['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN']
-  const weights = actions.map((a) => {
-    if (a === 'MOVE' && stunned) return 0
-    if (a === 'MOVE' && dist <= 2) return Math.floor(bias[a] * 0.3)
-    if (dist > 2 && (a === 'ATTACK' || a === 'STUN')) return Math.floor(bias[a] * 0.2)
-    if (dist > 2 && a === 'MOVE') return bias[a] * 3
-    return bias[a]
-  })
-  const total = weights.reduce((s, w) => s + w, 0)
-  let r = Math.random() * total
-  for (let i = 0; i < actions.length; i++) {
-    r -= weights[i]
-    if (r <= 0) return actions[i]
-  }
-  return 'MOVE'
-}
-
-function rollDamage() {
-  return 15 + Math.floor(Math.random() * 11)
-}
-
-const MAX_TURNS = 15
-const MATCH_COUNT = 3
-
-// ── Core turn resolution (used by both watch sim and interactive mode) ──
-function resolveTurn(
-  p1Act: Action | 'WAIT',
-  p2Act: Action | 'WAIT',
-  p1: BotState,
-  p2: BotState,
-  turnNum: number,
-): TurnResult {
-  let p1Dmg = 0
-  let p2Dmg = 0
-  p1.defending = false
-  p2.defending = false
-
-  if (p1Act !== 'WAIT') {
-    const dist = manhattan(p1.pos, p2.pos)
-    switch (p1Act) {
-      case 'MOVE':
-        if (!p1.stunned) p1.pos = clampGrid(moveToward(p1.pos, p2.pos))
-        break
-      case 'ATTACK':
-        if (dist <= 2) {
-          let dmg = rollDamage()
-          if (p1.charged) { dmg = Math.floor(dmg * 1.4); p1.charged = false }
-          if (p1.stunned && Math.random() < 0.5) dmg = 0
-          if (p2Act === 'DEFEND') dmg = Math.floor(dmg * 0.5)
-          p1Dmg = dmg
-        }
-        break
-      case 'CHARGE': p1.charged = true; break
-      case 'STUN': if (dist <= 2) p2.stunned = true; break
-      case 'DEFEND': p1.defending = true; break
+async function postJson(url: string, payload: Record<string, unknown>, timeoutMs = 5000) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-idempotency-key': createIdempotencyKey(),
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    })
+    let body: Record<string, unknown> = {}
+    const text = await response.text()
+    if (text) {
+      try {
+        body = JSON.parse(text) as Record<string, unknown>
+      } catch {
+        body = { raw: text.slice(0, 400) }
+      }
     }
-  }
-
-  if (p2Act !== 'WAIT') {
-    const dist2 = manhattan(p1.pos, p2.pos)
-    switch (p2Act) {
-      case 'MOVE':
-        if (!p2.stunned) p2.pos = clampGrid(moveToward(p2.pos, p1.pos))
-        break
-      case 'ATTACK':
-        if (dist2 <= 2) {
-          let dmg = rollDamage()
-          if (p2.charged) { dmg = Math.floor(dmg * 1.4); p2.charged = false }
-          if (p2.stunned && Math.random() < 0.5) dmg = 0
-          if (p1Act === 'DEFEND') dmg = Math.floor(dmg * 0.5)
-          p2Dmg = dmg
-        }
-        break
-      case 'CHARGE': p2.charged = true; break
-      case 'STUN': { const dist2s = manhattan(p1.pos, p2.pos); if (dist2s <= 2) p1.stunned = true; break }
-      case 'DEFEND': p2.defending = true; break
+    return { ok: response.ok, status: response.status, body }
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      body: { error: error instanceof Error ? error.message : 'network_error' },
     }
-  }
-
-  p2.hp = Math.max(0, p2.hp - p1Dmg)
-  p1.hp = Math.max(0, p1.hp - p2Dmg)
-  if (p1Act !== 'STUN') p2.stunned = false
-  if (p2Act !== 'STUN') p1.stunned = false
-
-  const logParts: string[] = [`T${turnNum}:`]
-  if (p1Act === 'WAIT') logParts.push(`${BERSERKER.initial} WAIT`)
-  else {
-    logParts.push(`${BERSERKER.initial} ${p1Act}`)
-    const d = manhattan(p1.pos, p2.pos)
-    if (p1Act === 'ATTACK' && d > 2) logParts.push('(miss)')
-    else if (p1Dmg > 0) logParts.push(`(${p1Dmg})`)
-  }
-  if (p2Act === 'WAIT') logParts.push(`vs ${TACTICIAN.initial} WAIT`)
-  else {
-    logParts.push(`vs ${TACTICIAN.initial} ${p2Act}`)
-    const d2 = manhattan(p1.pos, p2.pos)
-    if (p2Act === 'ATTACK' && d2 > 2) logParts.push('(miss)')
-    else if (p2Dmg > 0) logParts.push(`(${p2Dmg})`)
-  }
-
-  return {
-    turn: turnNum,
-    p1Action: p1Act,
-    p2Action: p2Act,
-    p1Dmg,
-    p2Dmg,
-    p1Hp: p1.hp,
-    p2Hp: p2.hp,
-    p1Pos: { ...p1.pos },
-    p2Pos: { ...p2.pos },
-    p1Ap: p1.ap,
-    p2Ap: p2.ap,
-    log: logParts.join(' '),
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
-function simulateMatch(): { turns: TurnResult[]; winner: string } {
-  const p1: BotState = { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: 0 }
-  const p2: BotState = { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: 0 }
-  const turns: TurnResult[] = []
-
-  for (let t = 1; t <= MAX_TURNS; t++) {
-    p1.ap += BERSERKER.speed
-    p2.ap += TACTICIAN.speed
-    const p1CanAct = p1.ap >= 1.0
-    const p2CanAct = p2.ap >= 1.0
-    const dist = manhattan(p1.pos, p2.pos)
-    const p1Act: Action | 'WAIT' = p1CanAct ? pickAction(BERSERKER.bias, dist, p1.stunned) : 'WAIT'
-    const p2Act: Action | 'WAIT' = p2CanAct ? pickAction(TACTICIAN.bias, dist, p2.stunned) : 'WAIT'
-    if (p1CanAct) p1.ap -= 1.0
-    if (p2CanAct) p2.ap -= 1.0
-
-    const result = resolveTurn(p1Act, p2Act, p1, p2, t)
-    turns.push(result)
-    if (p1.hp <= 0 || p2.hp <= 0) break
-  }
-
-  const winner = p1.hp > p2.hp ? BERSERKER.name : p2.hp > p1.hp ? TACTICIAN.name : 'DRAW'
-  return { turns, winner }
-}
-
-function makeInitialLiveState() {
-  return {
-    p1: { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: BERSERKER.speed } as BotState,
-    p2: { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: TACTICIAN.speed } as BotState,
-    turn: 1,
-    log: [] as TurnResult[],
-    winner: null as string | null,
-    waitingForPlayer: true,
-    lastResult: null as TurnResult | null,
-  }
+async function postEvent(event: string, payload: Record<string, unknown>) {
+  await postJson('/api/events', {
+    event,
+    page: '/demo',
+    ...payload,
+  }, 3000)
 }
 
 // ── Styles ──
@@ -672,8 +507,72 @@ function hpColor(pct: number) {
   return '#EB4D4B'
 }
 
+type FounderCheckoutUi = {
+  checkoutEmail: string
+  checkoutBusy: boolean
+  checkoutMessage: string | null
+  onCheckoutEmailChange: (value: string) => void
+  onFounderCheckout: (source: string) => void
+}
+
+function FounderCheckoutPanel({
+  checkoutEmail,
+  checkoutBusy,
+  checkoutMessage,
+  onCheckoutEmailChange,
+  onFounderCheckout,
+  source,
+}: FounderCheckoutUi & { source: string }) {
+  if (!STRIPE_FOUNDER_URL) {
+    return <Link to="/sign-in" className="demo-cta">ENTER THE PIT &rarr;</Link>
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: '0.5rem', justifyItems: 'center' }}>
+      <input
+        type="email"
+        value={checkoutEmail}
+        onChange={(event) => onCheckoutEmailChange(event.target.value)}
+        placeholder="you@domain.com"
+        autoComplete="email"
+        style={{
+          width: '100%',
+          maxWidth: 320,
+          padding: '0.5rem 0.75rem',
+          borderRadius: 8,
+          border: '1px solid rgba(255,255,255,0.2)',
+          background: 'rgba(0,0,0,0.35)',
+          color: '#f0f0f5',
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: '0.75rem',
+        }}
+      />
+      <button
+        className="demo-cta"
+        onClick={() => onFounderCheckout(source)}
+        disabled={checkoutBusy}
+        style={{ border: 0, cursor: checkoutBusy ? 'not-allowed' : 'pointer', opacity: checkoutBusy ? 0.6 : 1 }}
+      >
+        {checkoutBusy ? 'RESERVING...' : 'GET FOUNDER PACK →'}
+      </button>
+      {checkoutMessage && (
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.68rem', color: 'rgba(255,255,255,0.65)' }}>
+          {checkoutMessage}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Watch Mode (spectator) ──
-function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
+function WatchMode({
+  onSwitchToPlay,
+  checkoutEmail,
+  checkoutBusy,
+  checkoutMessage,
+  onCheckoutEmailChange,
+  onFounderCheckout,
+}: { onSwitchToPlay: () => void } & FounderCheckoutUi) {
   const [match, setMatch] = useState(() => simulateMatch())
   const [visibleTurn, setVisibleTurn] = useState(0)
   const [phase, setPhase] = useState<'playing' | 'ended'>('playing')
@@ -846,9 +745,14 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
               ? 'Both crawlers still standing after 15 rounds.'
               : `${match.winner} crushed the opposition.`}
           </div>
-          {STRIPE_FOUNDER_URL
-            ? <a href={STRIPE_FOUNDER_URL} className="demo-cta">GET FOUNDER PACK &rarr;</a>
-            : <Link to="/sign-in" className="demo-cta">ENTER THE PIT &rarr;</Link>}
+          <FounderCheckoutPanel
+            checkoutEmail={checkoutEmail}
+            checkoutBusy={checkoutBusy}
+            checkoutMessage={checkoutMessage}
+            onCheckoutEmailChange={onCheckoutEmailChange}
+            onFounderCheckout={onFounderCheckout}
+            source={`demo-watch-founder-cta-${match.winner === 'DRAW' ? 'draw' : match.winner.toLowerCase()}`}
+          />
           <button className="demo-restart" onClick={startNewMatch}>Watch another match</button>
         </div>
       )}
@@ -857,7 +761,14 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
 }
 
 // ── Play Mode (interactive — player controls BERSERKER) ──
-function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
+function PlayMode({
+  onSwitchToWatch,
+  checkoutEmail,
+  checkoutBusy,
+  checkoutMessage,
+  onCheckoutEmailChange,
+  onFounderCheckout,
+}: { onSwitchToWatch: () => void } & FounderCheckoutUi) {
   const [live, setLive] = useState(() => makeInitialLiveState())
   const [aiThinking, setAiThinking] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
@@ -1087,9 +998,14 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           <div className="demo-winner-sub">
             {winner === 'YOU WIN!' ? 'Your Crustie dominated The Pit.' : winner === 'DRAW' ? 'Both still standing after 15 rounds.' : 'The AI held its line.'}
           </div>
-          {STRIPE_FOUNDER_URL
-            ? <a href={STRIPE_FOUNDER_URL} className="demo-cta">GET FOUNDER PACK &rarr;</a>
-            : <Link to="/sign-in" className="demo-cta">ENTER THE PIT &rarr;</Link>}
+          <FounderCheckoutPanel
+            checkoutEmail={checkoutEmail}
+            checkoutBusy={checkoutBusy}
+            checkoutMessage={checkoutMessage}
+            onCheckoutEmailChange={onCheckoutEmailChange}
+            onFounderCheckout={onFounderCheckout}
+            source={`demo-play-founder-cta-${winner === 'YOU WIN!' ? 'winner' : winner === 'DRAW' ? 'draw' : 'loser'}`}
+          />
           <button className="demo-restart" onClick={resetGame}>Play again</button>
         </div>
       )}
@@ -1100,14 +1016,135 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
 // ── Root component ──
 export default function DemoLoop() {
   const [mode, setMode] = useState<GameMode>('watch')
+  const [checkoutEmail, setCheckoutEmail] = useState('')
+  const [checkoutBusy, setCheckoutBusy] = useState(false)
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const storedEmail = window.localStorage.getItem(EMAIL_STORAGE_KEY) || ''
+    if (storedEmail) setCheckoutEmail(storedEmail)
+  }, [])
+
+  const onCheckoutEmailChange = useCallback((value: string) => {
+    setCheckoutEmail(value)
+    if (checkoutMessage) setCheckoutMessage(null)
+  }, [checkoutMessage])
+
+  const onFounderCheckout = useCallback(async (source: string) => {
+    const normalizedEmail = checkoutEmail.trim().toLowerCase()
+    if (!normalizedEmail || !EMAIL_RE.test(normalizedEmail)) {
+      setCheckoutMessage('Enter a valid email to reserve founder pricing.')
+      await postEvent('founder_checkout_validation_failed', {
+        source,
+        email: normalizedEmail || undefined,
+        tier: 'founder',
+        meta: { reason: 'invalid_email' },
+      })
+      return
+    }
+
+    setCheckoutBusy(true)
+    setCheckoutMessage(null)
+
+    const intentSource = source.replace('-cta-', '-checkout-')
+    const intentId = `intent:${new Date().toISOString().slice(0, 10)}:${hashString(`${normalizedEmail}|${intentSource}`)}`
+
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(EMAIL_STORAGE_KEY, normalizedEmail)
+      }
+
+      await postEvent('founder_checkout_clicked', {
+        source,
+        email: normalizedEmail,
+        tier: 'founder',
+      })
+
+      const intentResponse = await postJson('/api/founder-intent', {
+        email: normalizedEmail,
+        source: intentSource,
+        intentId,
+      }, 6000)
+
+      if (!intentResponse.ok || intentResponse.body?.ok !== true) {
+        const reason = String(intentResponse.body?.error || `status_${intentResponse.status}`)
+        await postEvent('founder_intent_submit_failed', {
+          source: intentSource,
+          email: normalizedEmail,
+          tier: 'founder',
+          meta: { reason, intentId },
+        })
+      } else {
+        await postEvent('founder_intent_submitted', {
+          source: intentSource,
+          email: normalizedEmail,
+          tier: 'founder',
+          meta: { intentId },
+        })
+      }
+
+      if (!STRIPE_FOUNDER_URL) {
+        setCheckoutMessage('Founder checkout is not live yet. We saved your intent.')
+        await postEvent('founder_checkout_unavailable', {
+          source,
+          email: normalizedEmail,
+          tier: 'founder',
+        })
+        return
+      }
+
+      const target = new URL(STRIPE_FOUNDER_URL, window.location.origin)
+      target.searchParams.set('prefilled_email', normalizedEmail)
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('moltpit_last_founder_checkout_source', source)
+        window.localStorage.setItem('moltpit_last_founder_intent_source', intentSource)
+      }
+
+      await postEvent('founder_checkout_redirected', {
+        source,
+        email: normalizedEmail,
+        tier: 'founder',
+      })
+      window.location.href = target.toString()
+    } catch {
+      setCheckoutMessage('Could not start checkout. Try again.')
+      await postEvent('founder_checkout_redirect_failed', {
+        source,
+        email: normalizedEmail,
+        tier: 'founder',
+      })
+    } finally {
+      setCheckoutBusy(false)
+    }
+  }, [checkoutEmail])
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: DEMO_STYLES }} />
       <div className="demo-root">
         {mode === 'watch'
-          ? <WatchMode onSwitchToPlay={() => setMode('play')} />
-          : <PlayMode onSwitchToWatch={() => setMode('watch')} />
+          ? (
+            <WatchMode
+              onSwitchToPlay={() => setMode('play')}
+              checkoutEmail={checkoutEmail}
+              checkoutBusy={checkoutBusy}
+              checkoutMessage={checkoutMessage}
+              onCheckoutEmailChange={onCheckoutEmailChange}
+              onFounderCheckout={onFounderCheckout}
+            />
+          )
+          : (
+            <PlayMode
+              onSwitchToWatch={() => setMode('watch')}
+              checkoutEmail={checkoutEmail}
+              checkoutBusy={checkoutBusy}
+              checkoutMessage={checkoutMessage}
+              onCheckoutEmailChange={onCheckoutEmailChange}
+              onFounderCheckout={onFounderCheckout}
+            />
+          )
         }
       </div>
     </>

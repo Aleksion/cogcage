@@ -8,6 +8,55 @@
 
 ---
 
+## [2026-03-02] - fix(product-critical): signup reliability telemetry, playable `/demo` loop, founder checkout intent + postback purchase recording
+
+**Type:** fix/feature/ops | **Budget impact:** n/a (product-critical lane only)
+
+### What
+- `web/app/routes/sign-in.tsx`
+  - Hardened signup form reliability for email OTP:
+    - strict client-side email validation before send
+    - persisted email draft/last valid value in `localStorage` (`moltpit_email`)
+    - explicit signup observability events to `/api/events` for GitHub, email OTP, and guest flows
+  - Preserved Convex `authEvents` writes while adding API-level observability for ops visibility.
+- `web/app/lib/demo-loop-core.ts` (new) + `web/app/components/DemoLoop.tsx`
+  - Extracted demo action-economy core into a testable module.
+  - Kept 7x7 map movement + AP economy behavior and wired monetization into demo winner state:
+    - founder email capture
+    - `/api/founder-intent` pre-redirect intent submit with idempotency key
+    - `/api/events` lifecycle telemetry (`clicked`, `intent submitted/failed`, `redirected/failed`)
+    - checkout source persistence for `/success` reconciliation.
+- `web/app/routes/demo.tsx`
+  - `/demo` now serves the real playable `DemoLoop` directly.
+- `web/app/routes/api/postback.ts`
+  - Added Convex purchase persistence (`api.purchases.record`) from postback-confirmed paid events with structured success/failure logs.
+- `web/app/routes/api/checkout-success.ts`
+  - Added best-effort Convex purchase persistence and structured logs on success/fallback paths.
+- `web/app/routes/api/ops.ts`
+  - Updated hardcoded recent artifact manifest to reflect current product-critical ship lane.
+- `web/scripts/demo-loop-core.test.mjs` (new), `web/package.json`
+  - Added demo-loop core tests and included them in `npm run test:product`.
+
+### Why
+- Product directive required immediate focus on reliability and conversion-critical paths:
+  1. signup reliability/storage/observability,
+  2. truly playable demo loop in the public demo route,
+  3. founder checkout + postback-backed purchase capture,
+  4. ops artifact clarity.
+
+### Design Decisions
+- Used layered observability (Convex auth log + `/api/events`) for signup so failures are visible in both product analytics and auth telemetry.
+- Reused idempotency-key pattern for founder-intent checkout submit to reduce duplicate intent writes on retries.
+- Treated postback as authoritative purchase confirmation while still recording checkout-success-side confirmations as best-effort.
+- Avoided copy/layout churn and kept changes strictly in product-critical code paths.
+
+### Breaking changes
+- `/demo` behavior changed from mold-builder cinematic flow to direct playable demo loop.
+
+### Next steps
+- Add route-level integration tests for `/api/founder-intent` + `/api/postback` replay/idempotency behavior.
+- Optionally split `/api/events` auth/signup events into a dedicated stream if analytics volume increases.
+
 ## [2026-03-02] - chore(product-mode): checkpoint audit + ops artifact refresh
 
 **Type:** ops/chore | **Budget impact:** n/a

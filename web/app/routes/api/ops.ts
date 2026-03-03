@@ -117,11 +117,11 @@ export const Route = createFileRoute('/api/ops')({
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
-          { sha: 'HEAD', msg: 'fix(p1): sign-in logAuthEvent wired — email OTP + GitHub auth events → Convex authEvents table' },
-          { sha: 'HEAD~1', msg: 'feat(p2/p3): DemoLoop Stripe CTA live — GET FOUNDER PACK replaces /shell link when URL set' },
-          { sha: '90692d3', msg: 'feat(p2): interactive play mode — player picks actions vs AI on 7x7 grid' },
-          { sha: '290542f', msg: 'feat(p3): monetization fallback hardening + env docs' },
-          { sha: 'fbeec01', msg: 'feat(p2): action economy — speed-based AP system in DemoLoop' },
+          { sha: 'HEAD', msg: 'fix(p1): sign-in signup reliability + local storage + signup observability events' },
+          { sha: 'HEAD~1', msg: 'feat(p2/p3): /demo now serves playable DemoLoop + founder checkout intent + redirect telemetry' },
+          { sha: 'HEAD~2', msg: 'feat(p3): postback/checkout-success now record Convex purchases with observable logs' },
+          { sha: 'HEAD~3', msg: 'test(p2): demo-loop core mechanics extracted and covered by product smoke tests' },
+          { sha: 'HEAD~4', msg: 'fix(p1): waitlist/founder idempotency + storage fallback reliability hardening' },
         ];
 
         return new Response(JSON.stringify({

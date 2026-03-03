@@ -2,6 +2,27 @@
 
 ---
 
+## Product-Mode Ship — 22:12 ET Mar 2
+
+Directive enforced: STOP landing-page copy iterations. Priority lock remained P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder monetization + postback capture, P4 ops artifact update.
+
+### Shipped artifacts
+- `app/routes/sign-in.tsx`
+  - Email OTP signup reliability hardening (email validation, local email storage, signup observability events via `/api/events`).
+- `app/routes/demo.tsx`
+  - `/demo` now serves the playable `DemoLoop` directly.
+- `app/lib/demo-loop-core.ts` (new) and `app/components/DemoLoop.tsx`
+  - Extracted and tested map-movement/action-economy core.
+  - Winner-state founder CTA now logs lifecycle, writes founder intent before redirect, and persists checkout source metadata.
+- `app/routes/api/postback.ts`, `app/routes/api/checkout-success.ts`
+  - Added Convex purchase writes (`api.purchases.record`) with structured success/failure logs for observability.
+- `scripts/demo-loop-core.test.mjs` (new), `package.json`
+  - Added demo core smoke tests and wired into `npm run test:product`.
+
+### Verification
+- `npm run test:product` ✅
+- `npm run build` ✅
+
 ## Product-Mode Checkpoint — 21:34 ET Mar 2
 
 Directive enforced: STOP landing-page copy iterations. Priorities locked to P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder monetization path, P4 ops artifacts.
