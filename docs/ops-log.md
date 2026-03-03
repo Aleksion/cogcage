@@ -4,6 +4,22 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Cron — 20:58 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Priorities: P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.
+
+**Shipped this pass:**
+- `web/app/lib/fallback-drain.ts` now drains fallback queues asynchronously and only truncates lines after awaited Redis/SQLite replay attempts.
+- `web/app/routes/api/waitlist.ts`, `web/app/routes/api/founder-intent.ts`, `web/app/routes/api/ops.ts` now `await drainFallbackQueues(...)` for truthful replay metrics.
+- `web/app/lib/demo-loop-economy.ts` + `web/app/components/DemoLoop.tsx` enforce AP-costed actions + WAIT path in playable loop.
+- `web/app/components/Play.tsx` keeps founder-intent retry path idempotent via stable key wiring.
+
+**Verification:**
+- `cd web && npm run test:product` ✅ (9/9 passing)
+- `cd web && npm run build` ✅
+
+**Scope guard:** no landing-page copy edits.
+
 ### Autopilot Cron — 20:43 ET, Mar 2 2026
 
 **Directive**: STOP landing-page copy iterations. Priorities: P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.

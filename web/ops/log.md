@@ -2,6 +2,33 @@
 
 ---
 
+## Product-Mode Cron — 20:58 ET Mar 2
+
+Directive executed: no landing copy work. Product-critical lane only (signup reliability/storage/logs → playable demo loop/action economy → founder checkout/postback path → ops artifacts).
+
+### Shipped artifacts
+- `app/lib/fallback-drain.ts`
+  - Drain is now async and awaits Redis/SQLite writes per row before removing fallback lines.
+  - Prevents silent drop when Redis calls are still in-flight.
+- `app/routes/api/waitlist.ts`
+- `app/routes/api/founder-intent.ts`
+- `app/routes/api/ops.ts`
+  - Updated to `await drainFallbackQueues(...)` so API responses reflect actual replay results.
+- `app/components/DemoLoop.tsx`
+- `app/lib/demo-loop-economy.ts`
+  - Playable demo now uses explicit AP costs + WAIT action and deterministic affordability checks in both watch and play modes.
+- `app/components/Play.tsx`
+  - Founder-intent request path now supports stable idempotency key wiring for retries.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+- `npm run build` ✅
+
+### Notes
+- No landing-page copy edits in this pass.
+
+---
+
 ## Product-Mode Cron — 20:43 ET Mar 2
 
 Directive executed: stop landing-page copy iteration and enforce product priority order.

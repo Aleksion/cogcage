@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
+import {
+  clampAp,
+  canAffordAction,
+  DEMO_ACTION_AP_COST,
+  DEMO_AP_MAX,
+  pickAffordableAction,
+  spendActionAp,
+  type DemoChosenAction,
+} from '~/lib/demo-loop-economy'
 
 const STRIPE_FOUNDER_URL = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? ''
 
@@ -33,8 +42,8 @@ interface BotState {
 
 interface TurnResult {
   turn: number
-  p1Action: Action | 'WAIT'
-  p2Action: Action | 'WAIT'
+  p1Action: DemoChosenAction
+  p2Action: DemoChosenAction
   p1Dmg: number
   p2Dmg: number
   p1Hp: number
@@ -88,24 +97,6 @@ function clampGrid(pos: Position): Position {
   }
 }
 
-function pickAction(bias: Record<Action, number>, dist: number, stunned: boolean): Action {
-  const actions: Action[] = ['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN']
-  const weights = actions.map((a) => {
-    if (a === 'MOVE' && stunned) return 0
-    if (a === 'MOVE' && dist <= 2) return Math.floor(bias[a] * 0.3)
-    if (dist > 2 && (a === 'ATTACK' || a === 'STUN')) return Math.floor(bias[a] * 0.2)
-    if (dist > 2 && a === 'MOVE') return bias[a] * 3
-    return bias[a]
-  })
-  const total = weights.reduce((s, w) => s + w, 0)
-  let r = Math.random() * total
-  for (let i = 0; i < actions.length; i++) {
-    r -= weights[i]
-    if (r <= 0) return actions[i]
-  }
-  return 'MOVE'
-}
-
 function rollDamage() {
   return 15 + Math.floor(Math.random() * 11)
 }
@@ -115,8 +106,8 @@ const MATCH_COUNT = 3
 
 // ── Core turn resolution (used by both watch sim and interactive mode) ──
 function resolveTurn(
-  p1Act: Action | 'WAIT',
-  p2Act: Action | 'WAIT',
+  p1Act: DemoChosenAction,
+  p2Act: DemoChosenAction,
   p1: BotState,
   p2: BotState,
   turnNum: number,
@@ -211,15 +202,13 @@ function simulateMatch(): { turns: TurnResult[]; winner: string } {
   const turns: TurnResult[] = []
 
   for (let t = 1; t <= MAX_TURNS; t++) {
-    p1.ap += BERSERKER.speed
-    p2.ap += TACTICIAN.speed
-    const p1CanAct = p1.ap >= 1.0
-    const p2CanAct = p2.ap >= 1.0
+    p1.ap = clampAp(p1.ap + BERSERKER.speed)
+    p2.ap = clampAp(p2.ap + TACTICIAN.speed)
     const dist = manhattan(p1.pos, p2.pos)
-    const p1Act: Action | 'WAIT' = p1CanAct ? pickAction(BERSERKER.bias, dist, p1.stunned) : 'WAIT'
-    const p2Act: Action | 'WAIT' = p2CanAct ? pickAction(TACTICIAN.bias, dist, p2.stunned) : 'WAIT'
-    if (p1CanAct) p1.ap -= 1.0
-    if (p2CanAct) p2.ap -= 1.0
+    const p1Act: DemoChosenAction = pickAffordableAction(BERSERKER.bias, dist, p1.stunned, p1.ap)
+    const p2Act: DemoChosenAction = pickAffordableAction(TACTICIAN.bias, dist, p2.stunned, p2.ap)
+    p1.ap = spendActionAp(p1.ap, p1Act)
+    p2.ap = spendActionAp(p2.ap, p2Act)
 
     const result = resolveTurn(p1Act, p2Act, p1, p2, t)
     turns.push(result)
@@ -232,8 +221,8 @@ function simulateMatch(): { turns: TurnResult[]; winner: string } {
 
 function makeInitialLiveState() {
   return {
-    p1: { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: BERSERKER.speed } as BotState,
-    p2: { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: TACTICIAN.speed } as BotState,
+    p1: { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: 0 } as BotState,
+    p2: { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: 0 } as BotState,
     turn: 1,
     log: [] as TurnResult[],
     winner: null as string | null,
@@ -768,7 +757,7 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
           </div>
           <div className="demo-hp-text">{p1Hp} / {BERSERKER.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p1Ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p1Ap / DEMO_AP_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p1Ap.toFixed(1)}</div>
           <div className="demo-speed-badge">SPD {BERSERKER.speed}x</div>
@@ -781,7 +770,7 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
           </div>
           <div className="demo-hp-text">{p2Hp} / {TACTICIAN.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p2Ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p2Ap / DEMO_AP_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p2Ap.toFixed(1)}</div>
           <div className="demo-speed-badge">SPD {TACTICIAN.speed}x</div>
@@ -866,7 +855,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [live.log.length])
 
-  const handlePlayerAction = useCallback((action: Action) => {
+  const handlePlayerAction = useCallback((action: DemoChosenAction) => {
     if (!live.waitingForPlayer || live.winner || aiThinking) return
 
     setAiThinking(true)
@@ -878,18 +867,19 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
         const p1 = { ...prev.p1 }
         const p2 = { ...prev.p2 }
 
-        // Accumulate AP
-        p1.ap += BERSERKER.speed
-        p2.ap += TACTICIAN.speed
-        const p1CanAct = p1.ap >= 1.0
-        const p2CanAct = p2.ap >= 1.0
+        // Accumulate AP and clamp to AP cap.
+        p1.ap = clampAp(p1.ap + BERSERKER.speed)
+        p2.ap = clampAp(p2.ap + TACTICIAN.speed)
 
-        const p1Act: Action | 'WAIT' = p1CanAct ? action : 'WAIT'
+        const p1Act: DemoChosenAction =
+          action === 'WAIT'
+            ? 'WAIT'
+            : (canAffordAction(p1.ap, action) ? action : 'WAIT')
         const dist = manhattan(p1.pos, p2.pos)
-        const p2Act: Action | 'WAIT' = p2CanAct ? pickAction(TACTICIAN.bias, dist, p2.stunned) : 'WAIT'
+        const p2Act: DemoChosenAction = pickAffordableAction(TACTICIAN.bias, dist, p2.stunned, p2.ap)
 
-        if (p1CanAct) p1.ap -= 1.0
-        if (p2CanAct) p2.ap -= 1.0
+        p1.ap = spendActionAp(p1.ap, p1Act)
+        p2.ap = spendActionAp(p2.ap, p2Act)
 
         const result = resolveTurn(p1Act, p2Act, p1, p2, prev.turn)
 
@@ -922,8 +912,11 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
   const p1Pct = (p1.hp / BERSERKER.hp) * 100
   const p2Pct = (p2.hp / TACTICIAN.hp) * 100
   const dist = manhattan(p1.pos, p2.pos)
-  const canAttack = dist <= 2
-  const canStun = dist <= 2
+  const canMove = canAffordAction(p1.ap, 'MOVE')
+  const canAttack = dist <= 2 && canAffordAction(p1.ap, 'ATTACK')
+  const canDefend = canAffordAction(p1.ap, 'DEFEND')
+  const canCharge = canAffordAction(p1.ap, 'CHARGE')
+  const canStun = dist <= 2 && canAffordAction(p1.ap, 'STUN')
 
   const gridCells: React.ReactElement[] = []
   for (let y = 0; y < GRID_SIZE; y++) {
@@ -952,12 +945,13 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
     }
   }
 
-  const ACTIONS: { action: Action; label: string; disabled?: boolean }[] = [
-    { action: 'MOVE', label: 'MOVE →' },
-    { action: 'ATTACK', label: `ATTACK${!canAttack ? ' (far)' : ''}`, disabled: !canAttack },
-    { action: 'DEFEND', label: 'DEFEND' },
-    { action: 'CHARGE', label: 'CHARGE' },
-    { action: 'STUN', label: `STUN${!canStun ? ' (far)' : ''}`, disabled: !canStun },
+  const ACTIONS: { action: DemoChosenAction; label: string; disabled?: boolean }[] = [
+    { action: 'MOVE', label: `MOVE (${DEMO_ACTION_AP_COST.MOVE.toFixed(1)} AP)`, disabled: !canMove },
+    { action: 'ATTACK', label: `ATTACK (${DEMO_ACTION_AP_COST.ATTACK.toFixed(1)} AP)${dist > 2 ? ' (far)' : ''}`, disabled: !canAttack },
+    { action: 'DEFEND', label: `DEFEND (${DEMO_ACTION_AP_COST.DEFEND.toFixed(1)} AP)`, disabled: !canDefend },
+    { action: 'CHARGE', label: `CHARGE (${DEMO_ACTION_AP_COST.CHARGE.toFixed(1)} AP)`, disabled: !canCharge },
+    { action: 'STUN', label: `STUN (${DEMO_ACTION_AP_COST.STUN.toFixed(1)} AP)${dist > 2 ? ' (far)' : ''}`, disabled: !canStun },
+    { action: 'WAIT', label: 'WAIT (+AP)' },
   ]
 
   return (
@@ -982,7 +976,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           </div>
           <div className="demo-hp-text">{p1.hp} / {BERSERKER.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p1.ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p1.ap / DEMO_AP_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p1.ap.toFixed(1)}</div>
         </div>
@@ -999,7 +993,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           </div>
           <div className="demo-hp-text">{p2.hp} / {TACTICIAN.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p2.ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p2.ap / DEMO_AP_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p2.ap.toFixed(1)}</div>
         </div>
@@ -1008,7 +1002,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
       <div className="demo-turn-counter">
         {winner
           ? winner
-          : `TURN ${turn} / ${MAX_TURNS}  ·  DIST ${dist}  ·  ${!canAttack ? 'CLOSE IN TO ATTACK' : 'IN RANGE'}`}
+          : `TURN ${turn} / ${MAX_TURNS}  ·  DIST ${dist}  ·  AP ${p1.ap.toFixed(1)} / ${DEMO_AP_MAX.toFixed(1)}  ·  ${dist > 2 ? 'CLOSE IN TO ATTACK' : 'IN RANGE'}`}
       </div>
 
       {!winner && (
@@ -1031,7 +1025,8 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
                   action === 'MOVE' ? 'Move one step toward enemy.' :
                   action === 'DEFEND' ? 'Reduces incoming damage by 50% this turn.' :
                   action === 'CHARGE' ? 'Next ATTACK deals +40% damage.' :
-                  'Stuns enemy for 1 turn (range ≤ 2, 50% miss chance when stunned).'
+                  action === 'STUN' ? 'Stuns enemy for 1 turn (range ≤ 2, 50% miss chance when stunned).' :
+                  'Spend no AP this turn. Useful to bank AP for heavier actions.'
                 }
               >
                 {label}

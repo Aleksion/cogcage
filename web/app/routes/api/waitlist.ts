@@ -373,7 +373,7 @@ export const Route = createFileRoute('/api/waitlist')({
           appendOpsLog({ route: route, level: 'info', event: 'waitlist_saved', requestId, source: payload.source, emailHash: normalizedEmail.slice(0, 3), durationMs: Date.now() - startedAt });
           appendOpsLog({ route, level: 'info', event: 'waitlist_health_check', requestId, status: 'ok', storage: 'redis', durationMs: Date.now() - startedAt });
           try {
-            const drained = drainFallbackQueues(10);
+            const drained = await drainFallbackQueues(10);
             if ((drained.waitlist.inserted + drained.founder.inserted + drained.events.inserted) > 0) {
               appendOpsLog({ route, level: 'info', event: 'fallback_drain_after_waitlist', requestId, drained });
             }

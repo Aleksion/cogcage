@@ -313,6 +313,7 @@ interface ArenaTask {
 
 const GRID_SIZE = 8;
 const EMAIL_KEY = 'moltpit_email';
+const PLAY_FOUNDER_INTENT_REPLAY_QUEUE_KEY = 'moltpit_play_founder_intent_replay_queue';
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
 const ACTION_INFO: Record<string, { label: string; cost: number; desc: string }> = {
@@ -384,7 +385,54 @@ const createIdempotencyKey = () => {
   return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
 
-const postJson = async (url: string, payload: Record<string, unknown>, timeoutMs = 6000) => {
+const founderIntentIdempotencyKey = (intentId: string) => {
+  const normalized = intentId.trim();
+  return `founder_intent:${normalized}`.slice(0, 120);
+};
+
+const readFounderIntentReplayQueue = () => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(PLAY_FOUNDER_INTENT_REPLAY_QUEUE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeFounderIntentReplayQueue = (queue: Array<Record<string, string>>) => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!queue.length) {
+      window.localStorage.removeItem(PLAY_FOUNDER_INTENT_REPLAY_QUEUE_KEY);
+      return;
+    }
+    window.localStorage.setItem(PLAY_FOUNDER_INTENT_REPLAY_QUEUE_KEY, JSON.stringify(queue.slice(-20)));
+  } catch {
+    // best-effort browser buffer only
+  }
+};
+
+const enqueueFounderIntentReplay = (payload: { email: string; source: string; intentId: string }) => {
+  const queue = readFounderIntentReplayQueue();
+  const normalized = {
+    email: payload.email.trim().toLowerCase(),
+    source: payload.source.trim(),
+    intentId: payload.intentId.trim(),
+    queuedAt: new Date().toISOString(),
+  };
+  const deduped = queue.filter((entry) => String(entry.intentId || '') !== normalized.intentId);
+  deduped.push(normalized);
+  writeFounderIntentReplayQueue(deduped as Array<Record<string, string>>);
+};
+
+const postJson = async (
+  url: string,
+  payload: Record<string, unknown>,
+  timeoutMs = 6000,
+  options: { idempotencyKey?: string } = {},
+) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -392,7 +440,7 @@ const postJson = async (url: string, payload: Record<string, unknown>, timeoutMs
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-idempotency-key': createIdempotencyKey(),
+        'x-idempotency-key': options.idempotencyKey ?? createIdempotencyKey(),
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
@@ -424,7 +472,7 @@ const postEvent = async (event: string, payload: Record<string, unknown>) => {
   await postJson('/api/events', {
     event,
     page: '/play',
-    ...payload,
+  ...payload,
   }, 3000);
 };
 
@@ -507,6 +555,65 @@ const Play = () => {
     if (typeof window === 'undefined') return;
     const saved = window.localStorage.getItem(EMAIL_KEY) || '';
     if (saved) setEmail(saved);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let flushing = false;
+    const flushFounderIntentReplay = async () => {
+      if (flushing) return;
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      const queue = readFounderIntentReplayQueue();
+      if (!queue.length) return;
+
+      flushing = true;
+      const remaining: Array<Record<string, string>> = [];
+      for (const item of queue) {
+        const normalizedIntentId = String(item.intentId || '').trim();
+        const normalizedEmail = String(item.email || '').trim().toLowerCase();
+        const source = String(item.source || 'play-page-founder-checkout').trim();
+        if (!normalizedIntentId || !normalizedEmail) {
+          continue;
+        }
+
+        const response = await postJson('/api/founder-intent', {
+          email: normalizedEmail,
+          source,
+          intentId: normalizedIntentId,
+        }, 7000, { idempotencyKey: founderIntentIdempotencyKey(normalizedIntentId) });
+
+        if (response.ok && response.body?.ok === true) {
+          await postEvent('founder_intent_replay_sent', {
+            source,
+            email: normalizedEmail,
+            tier: 'founder',
+            meta: { intentId: normalizedIntentId, queuedAt: item.queuedAt || null },
+          });
+        } else {
+          remaining.push(item);
+          await postEvent('founder_intent_replay_failed', {
+            source,
+            email: normalizedEmail,
+            tier: 'founder',
+            meta: {
+              intentId: normalizedIntentId,
+              queuedAt: item.queuedAt || null,
+              reason: response.body?.error || `status_${response.status}`,
+            },
+          });
+        }
+      }
+      writeFounderIntentReplayQueue(remaining);
+      flushing = false;
+    };
+
+    void flushFounderIntentReplay();
+    const onOnline = () => { void flushFounderIntentReplay(); };
+    window.addEventListener('online', onOnline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+    };
   }, []);
 
   // Fetch room list periodically when lobby is open
@@ -913,6 +1020,13 @@ const Play = () => {
     const checkoutSource = 'play-page-founder-cta';
     const intentSource = 'play-page-founder-checkout';
     const intentId = `intent:${new Date().toISOString().slice(0, 10)}:${hashString(`${normalizedEmail}|${intentSource}`)}`;
+    const intentPayload = {
+      email: normalizedEmail,
+      source: intentSource,
+      intentId,
+    };
+    let intentRecorded = false;
+    let intentBuffered = false;
 
     try {
       await postEvent('founder_checkout_clicked', {
@@ -921,25 +1035,25 @@ const Play = () => {
         tier: 'founder',
       });
 
-      const intentResponse = await postJson('/api/founder-intent', {
-        email: normalizedEmail,
-        source: intentSource,
-        intentId,
+      const intentResponse = await postJson('/api/founder-intent', intentPayload, 6000, {
+        idempotencyKey: founderIntentIdempotencyKey(intentId),
       });
 
-      if (!intentResponse.ok || intentResponse.body?.ok !== true) {
+      if (intentResponse.ok && intentResponse.body?.ok === true) {
+        intentRecorded = true;
+      } else {
+        intentBuffered = true;
+        enqueueFounderIntentReplay(intentPayload);
         const reason = String(intentResponse.body?.error || `status_${intentResponse.status}`);
-        await postEvent('founder_intent_submit_failed', {
+        await postEvent('founder_intent_submit_buffered', {
           source: intentSource,
           email: normalizedEmail,
           tier: 'founder',
           meta: { reason, intentId },
         });
-        if (!founderCheckoutUrl) {
-          setCheckoutMessage('Could not reserve spot. Try again.');
-          return;
-        }
-      } else {
+      }
+
+      if (intentRecorded) {
         await postEvent('founder_intent_submitted', {
           source: intentSource,
           email: normalizedEmail,
@@ -949,7 +1063,9 @@ const Play = () => {
       }
 
       if (!founderCheckoutUrl) {
-        setCheckoutMessage('✓ Reserved! You\'ll get early access pricing when checkout opens.');
+        setCheckoutMessage(intentBuffered
+          ? '✓ Reserved locally. We will retry syncing your founder reservation automatically.'
+          : '✓ Reserved! You\'ll get early access pricing when checkout opens.');
         return;
       }
 
@@ -966,11 +1082,13 @@ const Play = () => {
       });
       window.location.href = url.toString();
     } catch {
-      setCheckoutMessage('Could not start checkout. Try again.');
+      enqueueFounderIntentReplay(intentPayload);
+      setCheckoutMessage('Could not start checkout now. Reservation buffered; retry in a moment.');
       await postEvent('founder_checkout_redirect_failed', {
         source: checkoutSource,
         email: normalizedEmail,
         tier: 'founder',
+        meta: { intentId },
       });
     } finally {
       setCheckoutBusy(false);

@@ -1,7 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { appendEventsFallback, appendFounderIntentFallback, appendOpsLog } from '~/lib/observability'
-import { insertConversionEvent, insertFounderIntent } from '~/lib/waitlist-db'
-import { redisInsertConversionEvent, redisInsertFounderIntent } from '~/lib/waitlist-redis'
+import {
+  insertConversionEvent,
+  insertFounderIntent,
+  readApiRequestReceipt,
+  writeApiRequestReceipt,
+} from '~/lib/waitlist-db'
+import {
+  redisInsertConversionEvent,
+  redisInsertFounderIntent,
+  redisReadApiRequestReceipt,
+  redisWriteApiRequestReceipt,
+} from '~/lib/waitlist-redis'
 
 type CheckoutPostback = {
   type?: string;
@@ -43,6 +53,12 @@ function getClientIp(request: Request) {
   const cfIp = request.headers.get('cf-connecting-ip')?.trim();
   const flyIp = request.headers.get('fly-client-ip')?.trim();
   return forwarded || realIp || cfIp || flyIp || undefined;
+}
+
+function getIdempotencyKey(request: Request) {
+  const key = request.headers.get('x-idempotency-key')?.trim() ?? '';
+  if (!key) return undefined;
+  return key.slice(0, 120);
 }
 
 function authorize(request: Request): boolean {
@@ -106,9 +122,71 @@ export const Route = createFileRoute('/api/postback')({
         const startedAt = Date.now();
         const requestId = crypto.randomUUID();
         const contentType = request.headers.get('content-type') ?? '';
+        const route = '/api/postback';
+        const explicitIdempotencyKey = getIdempotencyKey(request);
+
+        const baseResponse = (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) =>
+          new Response(JSON.stringify({ ...body, requestId }), {
+            status,
+            headers: {
+              'content-type': 'application/json',
+              'x-request-id': requestId,
+              ...extraHeaders,
+            },
+          });
+
+        const respond = async (
+          body: Record<string, unknown>,
+          status: number,
+          idempotencyKey?: string,
+          extraHeaders: Record<string, string> = {},
+        ) => {
+          if (idempotencyKey) {
+            const receipt = {
+              route,
+              idempotencyKey,
+              responseStatus: status,
+              responseBody: JSON.stringify({ ...body, requestId }),
+            };
+            let persisted = false;
+            try {
+              await redisWriteApiRequestReceipt(receipt);
+              persisted = true;
+            } catch (error) {
+              appendOpsLog({
+                route,
+                level: 'warn',
+                event: 'postback_idempotency_redis_write_failed',
+                requestId,
+                error: error instanceof Error ? error.message : 'unknown',
+              });
+            }
+            try {
+              writeApiRequestReceipt(receipt);
+              persisted = true;
+            } catch (error) {
+              appendOpsLog({
+                route,
+                level: 'warn',
+                event: 'postback_idempotency_sqlite_write_failed',
+                requestId,
+                error: error instanceof Error ? error.message : 'unknown',
+              });
+            }
+            if (!persisted) {
+              appendOpsLog({
+                route,
+                level: 'error',
+                event: 'postback_idempotency_write_failed',
+                requestId,
+              });
+            }
+          }
+          return baseResponse(body, status, extraHeaders);
+        };
 
         appendOpsLog({
-          route: '/api/postback',
+          route,
           level: 'info',
           event: 'postback_received',
           requestId,
@@ -118,18 +196,12 @@ export const Route = createFileRoute('/api/postback')({
         // Test mode stub: ?test=1 returns 200 without processing, for deploy verification
         const url = new URL(request.url);
         if (url.searchParams.get('test') === '1') {
-          return new Response(JSON.stringify({ ok: true, mode: 'test', requestId }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          });
+          return baseResponse({ ok: true, mode: 'test' }, 200);
         }
 
         if (!authorize(request)) {
-          appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_unauthorized', requestId });
-          return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', requestId }), {
-            status: 401,
-            headers: { 'content-type': 'application/json' },
-          });
+          appendOpsLog({ route, level: 'warn', event: 'postback_unauthorized', requestId });
+          return baseResponse({ ok: false, error: 'Unauthorized' }, 401);
         }
 
         let payload: CheckoutPostback | null = null;
@@ -169,17 +241,14 @@ export const Route = createFileRoute('/api/postback')({
 
         if (!payload) {
           appendOpsLog({
-            route: '/api/postback',
+            route,
             level: 'warn',
             event: 'postback_payload_invalid',
             requestId,
             contentType,
             durationMs: Date.now() - startedAt,
           });
-          return new Response(JSON.stringify({ ok: false, error: 'Invalid request payload', requestId }), {
-            status: 400,
-            headers: { 'content-type': 'application/json' },
-          });
+          return baseResponse({ ok: false, error: 'Invalid request payload' }, 400);
         }
 
         const rawType = payload.type ?? '';
@@ -187,17 +256,14 @@ export const Route = createFileRoute('/api/postback')({
         const acceptedTypes = new Set(['checkout.session.completed', 'founder_pack.paid']);
         if (!acceptedTypes.has(eventType)) {
           appendOpsLog({
-            route: '/api/postback',
+            route,
             level: 'warn',
             event: 'postback_type_unsupported',
             requestId,
             eventType,
             durationMs: Date.now() - startedAt,
           });
-          return new Response(JSON.stringify({ ok: false, error: 'Unsupported postback type', requestId }), {
-            status: 422,
-            headers: { 'content-type': 'application/json' },
-          });
+          return baseResponse({ ok: false, error: 'Unsupported postback type' }, 422);
         }
 
         const object = payload.data?.object;
@@ -218,6 +284,74 @@ export const Route = createFileRoute('/api/postback')({
           ?? (typeof payload.id === 'string' && payload.id.trim() ? payload.id.trim() : undefined)
           ?? (typeof object?.id === 'string' && object.id.trim() ? object.id.trim() : undefined)
           ?? deriveFallbackEventId({ eventType, source, email, created: payload.created, metadata: meta.metadata as Record<string, unknown> });
+        const derivedIdempotencyKey = `postback:${eventType}:${eventId}`.slice(0, 120);
+        const idempotencyKey = explicitIdempotencyKey ?? derivedIdempotencyKey;
+
+        try {
+          const cached = await redisReadApiRequestReceipt(route, idempotencyKey);
+          if (cached) {
+            appendOpsLog({
+              route,
+              level: 'info',
+              event: 'postback_idempotency_replay',
+              requestId,
+              idempotencyStore: 'redis',
+              idempotencyKey,
+              eventId,
+              durationMs: Date.now() - startedAt,
+            });
+            return new Response(cached.responseBody, {
+              status: cached.responseStatus,
+              headers: {
+                'content-type': 'application/json',
+                'x-request-id': requestId,
+                'x-idempotent-replay': '1',
+              },
+            });
+          }
+        } catch (error) {
+          appendOpsLog({
+            route,
+            level: 'warn',
+            event: 'postback_idempotency_redis_read_failed',
+            requestId,
+            eventId,
+            error: error instanceof Error ? error.message : 'unknown',
+          });
+        }
+
+        try {
+          const cached = readApiRequestReceipt(route, idempotencyKey);
+          if (cached) {
+            appendOpsLog({
+              route,
+              level: 'info',
+              event: 'postback_idempotency_replay',
+              requestId,
+              idempotencyStore: 'sqlite',
+              idempotencyKey,
+              eventId,
+              durationMs: Date.now() - startedAt,
+            });
+            return new Response(cached.responseBody, {
+              status: cached.responseStatus,
+              headers: {
+                'content-type': 'application/json',
+                'x-request-id': requestId,
+                'x-idempotent-replay': '1',
+              },
+            });
+          }
+        } catch (error) {
+          appendOpsLog({
+            route,
+            level: 'warn',
+            event: 'postback_idempotency_sqlite_read_failed',
+            requestId,
+            eventId,
+            error: error instanceof Error ? error.message : 'unknown',
+          });
+        }
 
         const conversionPayload = {
           eventName: 'paid_conversion_confirmed',

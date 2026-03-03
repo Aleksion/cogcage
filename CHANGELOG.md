@@ -8,6 +8,50 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): reliability + playable AP loop + checkout/postback idempotency (20:58 ET)
+
+**Type:** fix/product-critical | **Budget impact:** n/a
+
+### What
+- `web/app/lib/fallback-drain.ts`
+  - Converted fallback replay drain to async/await flow per row.
+  - Rows are now removed only after replay attempts complete (Redis and/or SQLite), reducing silent-drop risk.
+- `web/app/routes/api/waitlist.ts`
+- `web/app/routes/api/founder-intent.ts`
+- `web/app/routes/api/ops.ts`
+  - Updated all fallback drain calls to `await drainFallbackQueues(...)` so responses/logs reflect real replay results.
+- `web/app/lib/demo-loop-economy.ts` (new)
+- `web/app/components/DemoLoop.tsx`
+  - Added explicit AP economy helpers (cost table, affordability checks, AP clamp/spend helpers).
+  - Play mode now supports WAIT action and AP-costed actions instead of fixed 1.0 spend.
+- `web/app/components/Play.tsx`
+  - Added stable founder-intent idempotency key wiring for retry-safe checkout intent submission.
+- `web/app/components/SuccessPage.tsx`
+  - Added deterministic fallback conversion-id generation + checkout-success idempotency header to prevent duplicate paid conversion writes.
+- `web/app/routes/api/postback.ts`
+  - Added idempotency receipt read/write plumbing (Redis + SQLite) and normalized request-id response wrapper for observable replay behavior.
+- Ops artifacts updated:
+  - `web/ops/log.md`
+  - `docs/ops-log.md`
+
+### Why
+- Product-mode directive required direct hardening of reliability, playable demo loop integrity, and monetization event idempotency, while avoiding landing-copy churn.
+
+### Design Decisions
+- Kept reliability strategy layered: Redis primary, SQLite secondary, file fallback tertiary.
+- Chose deterministic idempotency keys (intent/conversion scoped) over purely random request ids for replay-safe monetization paths.
+- Centralized demo AP logic in `demo-loop-economy.ts` to remove duplicated/implicit cost behavior.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Set/verify production env vars (`PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, `MOLTPIT_OPS_KEY`/`COGCAGE_OPS_KEY`) so monetization + ops auth are fully live.
+
+### Verification
+- `cd web && npm run test:product` ✅ (9 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## [2026-03-02] - chore(product-mode): cron priority lock re-verification (20:43 ET)
 
 **Type:** ops/chore | **Budget impact:** n/a

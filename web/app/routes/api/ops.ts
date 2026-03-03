@@ -151,7 +151,7 @@ export const Route = createFileRoute('/api/ops')({
         const safeMaxRows = Number.isFinite(maxRows) ? Math.max(1, Math.min(500, Math.floor(maxRows))) : 50;
 
         try {
-          const drained = drainFallbackQueues(safeMaxRows);
+          const drained = await drainFallbackQueues(safeMaxRows);
           return new Response(JSON.stringify({
             ok: true,
             ts: new Date().toISOString(),

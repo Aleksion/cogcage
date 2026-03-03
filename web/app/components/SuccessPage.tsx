@@ -2,6 +2,37 @@ import { useEffect } from 'react'
 
 const PAID_KEY = 'moltpit_paid_conversions'
 const PENDING_KEY = 'moltpit_pending_paid_conversions'
+const FALLBACK_CONVERSION_PREFIX = 'moltpit_checkout_fallback_conversion'
+
+function hashString(input: string) {
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function getOrCreateFallbackConversionId(params: {
+  email?: string
+  checkoutSource?: string
+  pathname: string
+  day: string
+}) {
+  const email = params.email?.trim().toLowerCase() || 'anon'
+  const source = params.checkoutSource?.trim() || 'stripe-success'
+  const storageKey = `${FALLBACK_CONVERSION_PREFIX}:${hashString(`${params.day}|${params.pathname}|${email}|${source}`)}`
+  const existing = localStorage.getItem(storageKey)
+  if (existing) return existing
+
+  const nonce =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 12)
+  const generated = `success:${params.day}:${hashString(`${params.pathname}|${email}|${source}|${nonce}`)}`
+  localStorage.setItem(storageKey, generated)
+  return generated
+}
 
 function rememberPaidConversion(id: string) {
   const known = JSON.parse(localStorage.getItem(PAID_KEY) || '[]')
@@ -33,9 +64,14 @@ function clearPending(eventId: string) {
 async function postConversion(payload: any) {
   const body = JSON.stringify(payload)
   try {
+    const idempotencyKey = payload?.eventId ? `checkout_success:${String(payload.eventId).slice(0, 90)}` : undefined
     const response = await fetch('/api/checkout-success', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', Accept: 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        Accept: 'application/json',
+        ...(idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {}),
+      },
       body,
       keepalive: true,
     })
@@ -76,15 +112,20 @@ async function trackPaidConversion() {
     params.get('prefilled_email') ||
     localStorage.getItem('moltpit_email') ||
     undefined
-  const conversionId =
-    sessionId ||
-    `success:${window.location.pathname}:${new Date().toISOString().slice(0, 10)}`
-  if (hasPaidConversion(conversionId)) return
-
   const checkoutSource =
     localStorage.getItem('moltpit_last_founder_checkout_source') || 'stripe-success'
   const checkoutIntentSource =
     localStorage.getItem('moltpit_last_founder_intent_source') || undefined
+  const day = new Date().toISOString().slice(0, 10)
+  const conversionId =
+    sessionId ||
+    getOrCreateFallbackConversionId({
+      email: email || undefined,
+      checkoutSource,
+      pathname: window.location.pathname,
+      day,
+    })
+  if (hasPaidConversion(conversionId)) return
 
   const payload = {
     eventId: conversionId,
