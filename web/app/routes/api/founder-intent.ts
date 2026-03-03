@@ -16,6 +16,7 @@ import {
   redisReadApiRequestReceipt,
   redisWriteApiRequestReceipt,
 } from '~/lib/waitlist-redis'
+import { deriveFounderIntentIdempotencyKey, sanitizeIdempotencyKey } from '~/lib/idempotency'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
@@ -67,9 +68,7 @@ function normalizeString(value: unknown, maxLen = 300) {
 }
 
 function getIdempotencyKey(request: Request) {
-  const key = request.headers.get('x-idempotency-key')?.trim() ?? '';
-  if (!key) return undefined;
-  return key.slice(0, 120);
+  return sanitizeIdempotencyKey(request.headers.get('x-idempotency-key'));
 }
 
 function jsonResponse(body: Record<string, unknown>, status: number, requestId: string, extraHeaders: Record<string, string> = {}) {
@@ -110,11 +109,62 @@ export const Route = createFileRoute('/api/founder-intent')({
         const requestId = crypto.randomUUID();
         const contentType = request.headers.get('content-type') ?? '';
         const route = '/api/founder-intent';
-        const idempotencyKey = getIdempotencyKey(request);
+        const explicitIdempotencyKey = getIdempotencyKey(request);
+        let idempotencyKey = explicitIdempotencyKey;
         let email = '';
         let source = '';
         let intentId = '';
         let honeypot = '';
+
+        const replayIfCached = async (key: string) => {
+          try {
+            const cached = await redisReadApiRequestReceipt(route, key);
+            if (cached) {
+              appendOpsLog({ route, level: 'info', event: 'founder_intent_idempotency_replay', requestId, idempotencyStore: 'redis', durationMs: Date.now() - startedAt });
+              return new Response(cached.responseBody, {
+                status: cached.responseStatus,
+                headers: {
+                  'content-type': 'application/json',
+                  'x-request-id': requestId,
+                  'x-idempotent-replay': '1',
+                },
+              });
+            }
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'founder_intent_idempotency_redis_read_failed',
+              requestId,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+
+          try {
+            const cached = readApiRequestReceipt(route, key);
+            if (cached) {
+              appendOpsLog({ route, level: 'info', event: 'founder_intent_idempotency_replay', requestId, idempotencyStore: 'sqlite', durationMs: Date.now() - startedAt });
+              return new Response(cached.responseBody, {
+                status: cached.responseStatus,
+                headers: {
+                  'content-type': 'application/json',
+                  'x-request-id': requestId,
+                  'x-idempotent-replay': '1',
+                },
+              });
+            }
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'founder_intent_idempotency_sqlite_read_failed',
+              requestId,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+
+          return null;
+        };
 
         const respond = async (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
           if (idempotencyKey) {
@@ -166,50 +216,9 @@ export const Route = createFileRoute('/api/founder-intent')({
         };
 
         if (idempotencyKey) {
-          try {
-            const cached = await redisReadApiRequestReceipt(route, idempotencyKey);
-            if (cached) {
-              appendOpsLog({ route, level: 'info', event: 'founder_intent_idempotency_replay', requestId, idempotencyStore: 'redis', durationMs: Date.now() - startedAt });
-              return new Response(cached.responseBody, {
-                status: cached.responseStatus,
-                headers: {
-                  'content-type': 'application/json',
-                  'x-request-id': requestId,
-                  'x-idempotent-replay': '1',
-                },
-              });
-            }
-          } catch (error) {
-            appendOpsLog({
-              route,
-              level: 'warn',
-              event: 'founder_intent_idempotency_redis_read_failed',
-              requestId,
-              error: error instanceof Error ? error.message : 'unknown',
-            });
-          }
-
-          try {
-            const cached = readApiRequestReceipt(route, idempotencyKey);
-            if (cached) {
-              appendOpsLog({ route, level: 'info', event: 'founder_intent_idempotency_replay', requestId, idempotencyStore: 'sqlite', durationMs: Date.now() - startedAt });
-              return new Response(cached.responseBody, {
-                status: cached.responseStatus,
-                headers: {
-                  'content-type': 'application/json',
-                  'x-request-id': requestId,
-                  'x-idempotent-replay': '1',
-                },
-              });
-            }
-          } catch (error) {
-            appendOpsLog({
-              route,
-              level: 'warn',
-              event: 'founder_intent_idempotency_sqlite_read_failed',
-              requestId,
-              error: error instanceof Error ? error.message : 'unknown',
-            });
+          const replay = await replayIfCached(idempotencyKey);
+          if (replay) {
+            return replay;
           }
         }
 
@@ -285,6 +294,26 @@ export const Route = createFileRoute('/api/founder-intent')({
         const rateLimitKey = getRateLimitKey(request);
         const normalizedEmail = email.toLowerCase();
         const eventSource = source || 'founder-checkout';
+        const resolvedIntentId = intentId || deriveIntentId(normalizedEmail, eventSource);
+
+        if (!idempotencyKey && EMAIL_RE.test(email)) {
+          idempotencyKey = deriveFounderIntentIdempotencyKey({
+            intentId: resolvedIntentId,
+            email: normalizedEmail,
+            source: eventSource,
+          });
+          appendOpsLog({
+            route,
+            level: 'info',
+            event: 'founder_intent_idempotency_derived',
+            requestId,
+            idempotencyKeyPrefix: idempotencyKey.slice(0, 24),
+          });
+          const replay = await replayIfCached(idempotencyKey);
+          if (replay) {
+            return replay;
+          }
+        }
 
         let rateLimit = { allowed: true, remaining: RATE_LIMIT_MAX, resetMs: 0 };
         try {
@@ -347,7 +376,7 @@ export const Route = createFileRoute('/api/founder-intent')({
         const payload = {
           email: normalizedEmail,
           source: eventSource,
-          intentId: intentId || deriveIntentId(normalizedEmail, eventSource),
+          intentId: resolvedIntentId,
           userAgent: request.headers.get('user-agent') ?? undefined,
           ipAddress,
         };

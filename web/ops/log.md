@@ -353,3 +353,46 @@ Set 3 env vars in Vercel dashboard → Stripe checkout + authenticated postback 
 - better-sqlite3 binary ABI mismatch was causing every API route to 500; now silently degraded
 
 ---
+
+## Product-Mode Ship — 22:04 EST Mar 2
+
+Directive executed: product-critical only, strict order (P1 signup reliability/storage/logging → P2 playable demo loop movement + AP economy → P3 founder checkout/postback monetization path → P4 ops artifacts).
+
+### P1 — Signup reliability/storage/observable logs
+- `app/lib/idempotency.ts` (new): shared deterministic idempotency key derivation + header-key sanitization.
+- `app/routes/api/waitlist.ts`:
+  - Added derived server-side idempotency key (`waitlist:{day}:{hash}`) when `x-idempotency-key` is absent.
+  - Added replay checks for derived keys across Redis + SQLite receipts before processing.
+  - Added observable `waitlist_idempotency_derived` ops event.
+- `app/routes/api/founder-intent.ts`:
+  - Added derived server-side idempotency key tied to intent ID/source/email when header key is absent.
+  - Added replay checks for derived keys across Redis + SQLite receipts before processing.
+  - Added observable `founder_intent_idempotency_derived` ops event.
+
+### P2 — Playable demo loop (map movement + AP economy)
+- `app/lib/demo-loop-economy.ts`:
+  - Added deterministic shared movement helpers: `clampGridPosition` and `moveTowardOnGrid`.
+- `app/components/DemoLoop.tsx`:
+  - Switched both player and AI MOVE resolution to shared movement helper (same gameplay behavior, now testable via pure lib API).
+- `scripts/demo-loop-economy.test.mjs`:
+  - Added deterministic movement assertions (single-step movement + boundary clamp).
+
+### P3 — Monetization path (founder checkout + postback-adjacent callback reliability)
+- `app/routes/api/checkout-success.ts`:
+  - Added derived server-side idempotency key when header key is absent.
+  - Added replay checks for derived keys across Redis + SQLite receipts.
+  - Added observable `checkout_success_idempotency_derived` ops event.
+- `scripts/product-mode-reliability.test.mjs`:
+  - Added deterministic assertions for signup/founder/checkout idempotency key derivation and stable-event-ID preference.
+
+### Verification
+- `cd web && npm run test:product` ✅
+  - `tests 17`
+  - `pass 17`
+  - `fail 0`
+- `cd web && npm run build` ✅
+  - `✓ built in 6.33s` (client), `✓ built in 678ms` (SSR), `✓ built in 8.71s` (Nitro)
+
+### Scope guardrails
+- No landing-page copy iteration work.
+- No cosmetic/layout-only changes.

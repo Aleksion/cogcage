@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { insertConversionEvent, readApiRequestReceipt, writeApiRequestReceipt } from '~/lib/waitlist-db'
 import { appendEventsFallback, appendOpsLog } from '~/lib/observability'
 import { redisInsertConversionEvent, redisReadApiRequestReceipt, redisWriteApiRequestReceipt } from '~/lib/waitlist-redis'
+import { deriveCheckoutSuccessIdempotencyKey, sanitizeIdempotencyKey } from '~/lib/idempotency'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -25,9 +26,7 @@ function optionalString(value: unknown, maxLen = 300) {
 }
 
 function getIdempotencyKey(request: Request) {
-  const key = request.headers.get('x-idempotency-key')?.trim() ?? '';
-  if (!key) return undefined;
-  return key.slice(0, 120);
+  return sanitizeIdempotencyKey(request.headers.get('x-idempotency-key'));
 }
 
 function hashString(input: string) {
@@ -193,7 +192,70 @@ export const Route = createFileRoute('/api/checkout-success')({
         const requestId = crypto.randomUUID();
         const contentType = request.headers.get('content-type') ?? '';
         const route = '/api/checkout-success';
-        const idempotencyKey = getIdempotencyKey(request);
+        const explicitIdempotencyKey = getIdempotencyKey(request);
+        let idempotencyKey = explicitIdempotencyKey;
+
+        const replayIfCached = async (key: string) => {
+          try {
+            const cached = await redisReadApiRequestReceipt(route, key);
+            if (cached) {
+              appendOpsLog({
+                route,
+                level: 'info',
+                event: 'checkout_success_idempotency_replay',
+                requestId,
+                idempotencyStore: 'redis',
+              });
+              return new Response(cached.responseBody, {
+                status: cached.responseStatus,
+                headers: {
+                  'content-type': 'application/json',
+                  'x-request-id': requestId,
+                  'x-idempotent-replay': '1',
+                },
+              });
+            }
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'checkout_success_idempotency_redis_read_failed',
+              requestId,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+
+          try {
+            const cached = readApiRequestReceipt(route, key);
+            if (cached) {
+              appendOpsLog({
+                route,
+                level: 'info',
+                event: 'checkout_success_idempotency_replay',
+                requestId,
+                idempotencyStore: 'sqlite',
+              });
+              return new Response(cached.responseBody, {
+                status: cached.responseStatus,
+                headers: {
+                  'content-type': 'application/json',
+                  'x-request-id': requestId,
+                  'x-idempotent-replay': '1',
+                },
+              });
+            }
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'checkout_success_idempotency_sqlite_read_failed',
+              requestId,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+
+          return null;
+        };
 
         const respond = async (
           body: Record<string, unknown>,
@@ -258,61 +320,9 @@ export const Route = createFileRoute('/api/checkout-success')({
         });
 
         if (idempotencyKey) {
-          try {
-            const cached = await redisReadApiRequestReceipt(route, idempotencyKey);
-            if (cached) {
-              appendOpsLog({
-                route,
-                level: 'info',
-                event: 'checkout_success_idempotency_replay',
-                requestId,
-                idempotencyStore: 'redis',
-              });
-              return new Response(cached.responseBody, {
-                status: cached.responseStatus,
-                headers: {
-                  'content-type': 'application/json',
-                  'x-request-id': requestId,
-                  'x-idempotent-replay': '1',
-                },
-              });
-            }
-          } catch (error) {
-            appendOpsLog({
-              route,
-              level: 'warn',
-              event: 'checkout_success_idempotency_redis_read_failed',
-              requestId,
-              error: error instanceof Error ? error.message : 'unknown',
-            });
-          }
-          try {
-            const cached = readApiRequestReceipt(route, idempotencyKey);
-            if (cached) {
-              appendOpsLog({
-                route,
-                level: 'info',
-                event: 'checkout_success_idempotency_replay',
-                requestId,
-                idempotencyStore: 'sqlite',
-              });
-              return new Response(cached.responseBody, {
-                status: cached.responseStatus,
-                headers: {
-                  'content-type': 'application/json',
-                  'x-request-id': requestId,
-                  'x-idempotent-replay': '1',
-                },
-              });
-            }
-          } catch (error) {
-            appendOpsLog({
-              route,
-              level: 'warn',
-              event: 'checkout_success_idempotency_sqlite_read_failed',
-              requestId,
-              error: error instanceof Error ? error.message : 'unknown',
-            });
+          const replay = await replayIfCached(idempotencyKey);
+          if (replay) {
+            return replay;
           }
         }
 
@@ -363,6 +373,28 @@ export const Route = createFileRoute('/api/checkout-success')({
           ?? optionalString(payload.checkout_session_id, 180)
           ?? deriveFallbackEventId({ source, email, href, page, tier });
         const meta = payload.meta && typeof payload.meta === 'object' ? (payload.meta as Record<string, unknown>) : undefined;
+
+        if (!idempotencyKey) {
+          idempotencyKey = deriveCheckoutSuccessIdempotencyKey({
+            eventId,
+            source,
+            email,
+            page,
+            href,
+            tier,
+          });
+          appendOpsLog({
+            route,
+            level: 'info',
+            event: 'checkout_success_idempotency_derived',
+            requestId,
+            idempotencyKeyPrefix: idempotencyKey.slice(0, 24),
+          });
+          const replay = await replayIfCached(idempotencyKey);
+          if (replay) {
+            return replay;
+          }
+        }
 
         try {
           const result = await recordSuccess({

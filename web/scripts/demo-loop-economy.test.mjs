@@ -6,6 +6,7 @@ import {
   clampAp,
   DEMO_ACTION_AP_COST,
   DEMO_AP_MAX,
+  moveTowardOnGrid,
   pickAffordableAction,
   spendActionAp,
 } from '../app/lib/demo-loop-economy.ts'
@@ -47,4 +48,10 @@ test('AI action picker prevents MOVE while stunned', () => {
   } finally {
     Math.random = originalRandom
   }
+})
+
+test('grid movement advances one tile and clamps to arena bounds', () => {
+  assert.deepEqual(moveTowardOnGrid({ x: 0, y: 0 }, { x: 6, y: 2 }, 7), { x: 1, y: 0 })
+  assert.deepEqual(moveTowardOnGrid({ x: 3, y: 3 }, { x: 3, y: 0 }, 7), { x: 3, y: 2 })
+  assert.deepEqual(moveTowardOnGrid({ x: 6, y: 6 }, { x: 8, y: 9 }, 7), { x: 6, y: 6 })
 })

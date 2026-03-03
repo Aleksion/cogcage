@@ -16,6 +16,7 @@ import {
   redisReadApiRequestReceipt,
   redisWriteApiRequestReceipt,
 } from '~/lib/waitlist-redis'
+import { deriveWaitlistIdempotencyKey, sanitizeIdempotencyKey } from '~/lib/idempotency'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '../../../convex/_generated/api'
 
@@ -44,10 +45,7 @@ function getRateLimitKey(request: Request) {
 }
 
 function getIdempotencyKey(request: Request) {
-  const key = request.headers.get('x-idempotency-key')?.trim() ?? '';
-  if (!key) return undefined;
-  // Keep bounded for storage safety and header abuse prevention.
-  return key.slice(0, 120);
+  return sanitizeIdempotencyKey(request.headers.get('x-idempotency-key'));
 }
 
 function normalize(value: FormDataEntryValue | null) {
@@ -106,11 +104,62 @@ export const Route = createFileRoute('/api/waitlist')({
         const requestId = crypto.randomUUID();
         const contentType = request.headers.get('content-type') ?? '';
         const route = '/api/waitlist';
-        const idempotencyKey = getIdempotencyKey(request);
+        const explicitIdempotencyKey = getIdempotencyKey(request);
+        let idempotencyKey = explicitIdempotencyKey;
         let email = '';
         let game = '';
         let source = '';
         let honeypot = '';
+
+        const replayIfCached = async (key: string) => {
+          try {
+            const cached = await redisReadApiRequestReceipt(route, key);
+            if (cached) {
+              appendOpsLog({ route, level: 'info', event: 'waitlist_idempotency_replay', requestId, idempotencyStore: 'redis', durationMs: Date.now() - startedAt });
+              return new Response(cached.responseBody, {
+                status: cached.responseStatus,
+                headers: {
+                  'content-type': 'application/json',
+                  'x-request-id': requestId,
+                  'x-idempotent-replay': '1',
+                },
+              });
+            }
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'waitlist_idempotency_redis_read_failed',
+              requestId,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+
+          try {
+            const cached = readApiRequestReceipt(route, key);
+            if (cached) {
+              appendOpsLog({ route, level: 'info', event: 'waitlist_idempotency_replay', requestId, idempotencyStore: 'sqlite', durationMs: Date.now() - startedAt });
+              return new Response(cached.responseBody, {
+                status: cached.responseStatus,
+                headers: {
+                  'content-type': 'application/json',
+                  'x-request-id': requestId,
+                  'x-idempotent-replay': '1',
+                },
+              });
+            }
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'waitlist_idempotency_sqlite_read_failed',
+              requestId,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+
+          return null;
+        };
 
         const respond = async (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
           if (idempotencyKey) {
@@ -162,50 +211,9 @@ export const Route = createFileRoute('/api/waitlist')({
         };
 
         if (idempotencyKey) {
-          try {
-            const cached = await redisReadApiRequestReceipt(route, idempotencyKey);
-            if (cached) {
-              appendOpsLog({ route, level: 'info', event: 'waitlist_idempotency_replay', requestId, idempotencyStore: 'redis', durationMs: Date.now() - startedAt });
-              return new Response(cached.responseBody, {
-                status: cached.responseStatus,
-                headers: {
-                  'content-type': 'application/json',
-                  'x-request-id': requestId,
-                  'x-idempotent-replay': '1',
-                },
-              });
-            }
-          } catch (error) {
-            appendOpsLog({
-              route,
-              level: 'warn',
-              event: 'waitlist_idempotency_redis_read_failed',
-              requestId,
-              error: error instanceof Error ? error.message : 'unknown',
-            });
-          }
-
-          try {
-            const cached = readApiRequestReceipt(route, idempotencyKey);
-            if (cached) {
-              appendOpsLog({ route, level: 'info', event: 'waitlist_idempotency_replay', requestId, idempotencyStore: 'sqlite', durationMs: Date.now() - startedAt });
-              return new Response(cached.responseBody, {
-                status: cached.responseStatus,
-                headers: {
-                  'content-type': 'application/json',
-                  'x-request-id': requestId,
-                  'x-idempotent-replay': '1',
-                },
-              });
-            }
-          } catch (error) {
-            appendOpsLog({
-              route,
-              level: 'warn',
-              event: 'waitlist_idempotency_sqlite_read_failed',
-              requestId,
-              error: error instanceof Error ? error.message : 'unknown',
-            });
+          const replay = await replayIfCached(idempotencyKey);
+          if (replay) {
+            return replay;
           }
         }
 
@@ -281,6 +289,21 @@ export const Route = createFileRoute('/api/waitlist')({
         const rateLimitKey = getRateLimitKey(request);
         const normalizedEmail = email.toLowerCase();
         const eventSource = source || 'moltpit-landing';
+
+        if (!idempotencyKey && EMAIL_RE.test(email)) {
+          idempotencyKey = deriveWaitlistIdempotencyKey(normalizedEmail, eventSource);
+          appendOpsLog({
+            route,
+            level: 'info',
+            event: 'waitlist_idempotency_derived',
+            requestId,
+            idempotencyKeyPrefix: idempotencyKey.slice(0, 24),
+          });
+          const replay = await replayIfCached(idempotencyKey);
+          if (replay) {
+            return replay;
+          }
+        }
 
         let rateLimit = { allowed: true, remaining: RATE_LIMIT_MAX, resetMs: 0 };
         try {

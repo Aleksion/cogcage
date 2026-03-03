@@ -1,5 +1,6 @@
 export type DemoAction = 'MOVE' | 'ATTACK' | 'DEFEND' | 'CHARGE' | 'STUN'
 export type DemoChosenAction = DemoAction | 'WAIT'
+export type DemoGridPosition = { x: number; y: number }
 
 export const DEMO_AP_MAX = 3
 
@@ -13,6 +14,22 @@ export const DEMO_ACTION_AP_COST: Record<DemoAction, number> = {
 
 export function clampAp(ap: number) {
   return Math.max(0, Math.min(DEMO_AP_MAX, ap))
+}
+
+export function clampGridPosition(pos: DemoGridPosition, gridSize: number): DemoGridPosition {
+  return {
+    x: Math.max(0, Math.min(gridSize - 1, pos.x)),
+    y: Math.max(0, Math.min(gridSize - 1, pos.y)),
+  }
+}
+
+export function moveTowardOnGrid(from: DemoGridPosition, to: DemoGridPosition, gridSize: number): DemoGridPosition {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  const next = Math.abs(dx) >= Math.abs(dy)
+    ? { x: from.x + Math.sign(dx), y: from.y }
+    : { x: from.x, y: from.y + Math.sign(dy) }
+  return clampGridPosition(next, gridSize)
 }
 
 export function canAffordAction(ap: number, action: DemoAction) {

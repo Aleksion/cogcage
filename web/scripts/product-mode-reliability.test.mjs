@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {
+  deriveCheckoutSuccessIdempotencyKey,
+  deriveFounderIntentIdempotencyKey,
+  deriveWaitlistIdempotencyKey,
+} from '../app/lib/idempotency.ts';
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cogcage-product-mode-'));
 process.env.MOLTPIT_DB_PATH = path.join(tmpDir, 'moltpit.test.db');
@@ -114,4 +119,33 @@ test('rate limit enforces cap with clear reset metadata', async (t) => {
   assert.equal(third.allowed, false);
   assert.equal(third.remaining, 0);
   assert.ok(Number.isFinite(third.resetMs));
+});
+
+test('derived signup idempotency keys are deterministic and scoped by source/day', () => {
+  const now = new Date('2026-03-02T13:00:00.000Z');
+  const keyA = deriveWaitlistIdempotencyKey('Captain@Pit.dev', 'hero', now);
+  const keyB = deriveWaitlistIdempotencyKey('captain@pit.dev', 'hero', now);
+  const keyC = deriveWaitlistIdempotencyKey('captain@pit.dev', 'footer', now);
+
+  assert.equal(keyA, keyB);
+  assert.notEqual(keyA, keyC);
+  assert.ok(keyA.startsWith('waitlist:2026-03-02:'));
+  assert.ok(keyA.length <= 120);
+});
+
+test('founder + checkout idempotency keys prefer stable event identifiers', () => {
+  const now = new Date('2026-03-02T18:45:00.000Z');
+  const founderKey = deriveFounderIntentIdempotencyKey({
+    intentId: 'intent:2026-03-02:abc123',
+    email: 'captain@pit.dev',
+    source: 'play-page-founder-checkout',
+  }, now);
+  const checkoutKey = deriveCheckoutSuccessIdempotencyKey({
+    eventId: 'cs_test_42',
+    source: 'stripe-success',
+    email: 'captain@pit.dev',
+  }, now);
+
+  assert.equal(founderKey, 'founder_intent:intent:2026-03-02:abc123');
+  assert.equal(checkoutKey, 'checkout_success:cs_test_42');
 });

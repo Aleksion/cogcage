@@ -5,6 +5,7 @@ import {
   canAffordAction,
   DEMO_ACTION_AP_COST,
   DEMO_AP_MAX,
+  moveTowardOnGrid,
   pickAffordableAction,
   spendActionAp,
   type DemoChosenAction,
@@ -81,22 +82,6 @@ function manhattan(a: Position, b: Position): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
 }
 
-function moveToward(from: Position, to: Position): Position {
-  const dx = to.x - from.x
-  const dy = to.y - from.y
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    return { x: from.x + Math.sign(dx), y: from.y }
-  }
-  return { x: from.x, y: from.y + Math.sign(dy) }
-}
-
-function clampGrid(pos: Position): Position {
-  return {
-    x: Math.max(0, Math.min(GRID_SIZE - 1, pos.x)),
-    y: Math.max(0, Math.min(GRID_SIZE - 1, pos.y)),
-  }
-}
-
 function rollDamage() {
   return 15 + Math.floor(Math.random() * 11)
 }
@@ -121,7 +106,7 @@ function resolveTurn(
     const dist = manhattan(p1.pos, p2.pos)
     switch (p1Act) {
       case 'MOVE':
-        if (!p1.stunned) p1.pos = clampGrid(moveToward(p1.pos, p2.pos))
+        if (!p1.stunned) p1.pos = moveTowardOnGrid(p1.pos, p2.pos, GRID_SIZE)
         break
       case 'ATTACK':
         if (dist <= 2) {
@@ -142,7 +127,7 @@ function resolveTurn(
     const dist2 = manhattan(p1.pos, p2.pos)
     switch (p2Act) {
       case 'MOVE':
-        if (!p2.stunned) p2.pos = clampGrid(moveToward(p2.pos, p1.pos))
+        if (!p2.stunned) p2.pos = moveTowardOnGrid(p2.pos, p1.pos, GRID_SIZE)
         break
       case 'ATTACK':
         if (dist2 <= 2) {
