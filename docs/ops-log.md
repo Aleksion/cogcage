@@ -4,6 +4,21 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Cron — 21:23 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Priority lock P1 signup reliability/storage/logging, P2 playable demo loop with movement + AP economy, P3 founder checkout + postback, P4 ops artifacts.
+
+**Status:**
+- P1 ✅ no regression (idempotent persistence + fallback drain + receipts)
+- P2 ✅ no regression (movement + AP economy checks pass)
+- P3 ✅ no regression (founder intent + checkout success + postback idempotency path)
+- P4 ✅ ops artifacts updated (`docs/ops-log.md`, `web/ops/log.md`)
+
+**Verification:**
+- `cd web && npm run test:product` ✅ (14/14 passing)
+
+**Scope guard:** no landing-page copy edits in this pass.
+
 ### Autopilot Cron — 20:58 ET, Mar 2 2026
 
 **Directive**: STOP landing-page copy iterations. Priorities: P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.

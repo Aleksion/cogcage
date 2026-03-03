@@ -2,6 +2,23 @@
 
 ---
 
+
+## Product-Mode Cron — 21:23 ET Mar 2
+
+Directive reaffirmed: STOP landing-page copy iterations. Priority order enforced P1→P4.
+
+### Pass result
+- P1 signup reliability/storage/observability: ✅ no regression (idempotent persistence + fallback drain + receipts intact)
+- P2 playable demo loop: ✅ no regression (map movement + AP economy assertions pass)
+- P3 monetization path: ✅ no regression (founder intent + checkout success + postback idempotency path intact)
+- P4 ops artifacts: ✅ updated (this entry + docs mirror)
+
+### Verification
+- `cd web && npm run test:product` ✅ (14/14 pass)
+
+### Scope guard
+- No landing-page copy edits in this pass.
+
 ## Product-Mode Ship — 23:20 ET Mar 2
 
 Directive executed: product-critical only, in priority order (P1 reliability/storage/logging, P2 playable loop validation, P3 monetization path validation, P4 ops artifacts).
