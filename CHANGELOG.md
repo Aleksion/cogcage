@@ -8,6 +8,28 @@
 
 ---
 
+## [2026-03-02] - fix(product-critical): unblock signup reliability harness + re-verify demo loop/monetization lanes (23:20 ET)
+
+**Type:** fix/ops | **Budget impact:** n/a
+
+### What
+- `web/app/lib/waitlist-db.ts`
+- `web/app/lib/observability.ts`
+- `web/app/lib/fallback-drain.ts`
+  - Switched local `runtime-paths` imports to explicit ESM-safe `./runtime-paths.ts` resolution.
+  - Removes Node ESM module-resolution failures when running the direct product reliability harness (`node scripts/product-mode-reliability.test.mjs`).
+
+### Why
+- Product-critical signup/storage reliability verification was blocked by runtime import resolution failures in the storage/observability stack; this prevented reliable P1 gate checks from executing in autopilot runs.
+
+### Breaking changes
+- None.
+
+### Verification
+- `cd web && node scripts/product-mode-reliability.test.mjs` ✅ (3 pass / 0 fail)
+- `cd web && npm run test:product` ✅ (14 pass / 0 fail; includes map movement + action economy and fallback reliability checks)
+- `cd web && npm run build` ✅
+
 ## [2026-03-02] - fix(product-mode): idempotent checkout/postback handling + signup observability + reliability tests (21:05 ET)
 
 **Type:** fix/product-critical | **Budget impact:** n/a

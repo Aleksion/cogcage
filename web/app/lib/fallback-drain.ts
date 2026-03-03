@@ -6,7 +6,7 @@ import {
   redisInsertFounderIntent,
   redisInsertConversionEvent,
 } from './waitlist-redis';
-import { ensureRuntimeDir } from './runtime-paths';
+import { ensureRuntimeDir } from './runtime-paths.ts';
 
 type DrainStats = {
   processed: number;

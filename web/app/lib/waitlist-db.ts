@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { resolveRuntimePath } from './runtime-paths';
+import { resolveRuntimePath } from './runtime-paths.ts';
 
 // Lazy-load better-sqlite3 to gracefully handle binary ABI mismatches
 // (e.g. compiled for Node 22 / NMV 137 but runtime is Node 20 / NMV 127 on Vercel).

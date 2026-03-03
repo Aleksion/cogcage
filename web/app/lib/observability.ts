@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { ensureRuntimeDir } from './runtime-paths';
+import { ensureRuntimeDir } from './runtime-paths.ts';
 
 function getLogPaths() {
   const logDir = process.env.MOLTPIT_LOG_DIR ?? ensureRuntimeDir();

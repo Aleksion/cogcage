@@ -2,6 +2,22 @@
 
 ---
 
+## Product-Mode Ship — 23:20 ET Mar 2
+
+Directive executed: product-critical only, in priority order (P1 reliability/storage/logging, P2 playable loop validation, P3 monetization path validation, P4 ops artifacts).
+
+### Shipped artifacts
+- `app/lib/waitlist-db.ts`
+- `app/lib/observability.ts`
+- `app/lib/fallback-drain.ts`
+  - Fixed ESM runtime path imports (`./runtime-paths.ts`) so direct Node reliability verification runs without module-resolution failure.
+
+### Verification
+- `cd web && node scripts/product-mode-reliability.test.mjs` ✅ (3/3 pass)
+- `cd web && npm run test:product` ✅ (14/14 pass)
+  - Includes demo loop movement/action economy assertions and fallback reliability checks.
+- `cd web && npm run build` ✅
+
 ## Product-Mode Ship — 21:05 ET Mar 2
 
 Directive executed: product-critical lane only (signup/founder reliability + playable loop guardrails + monetization postback/checkout reliability + ops artifacts).
