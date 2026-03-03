@@ -444,14 +444,15 @@ export const Route = createFileRoute('/api/checkout-success')({
           });
         }
 
-        const eventId =
-          optionalString(url.searchParams.get('event_id'), 180)
-          ?? optionalString(url.searchParams.get('session_id'), 180)
-          ?? optionalString(url.searchParams.get('checkout_session_id'), 180);
         const page = optionalString(url.searchParams.get('page'), 120) ?? url.pathname;
         const href = optionalString(url.searchParams.get('href'), 600) ?? request.url;
         const source = optionalString(url.searchParams.get('source'), 120);
         const tier = optionalString(url.searchParams.get('tier'), 60);
+        const eventId =
+          optionalString(url.searchParams.get('event_id'), 180)
+          ?? optionalString(url.searchParams.get('session_id'), 180)
+          ?? optionalString(url.searchParams.get('checkout_session_id'), 180)
+          ?? deriveFallbackEventId({ source, email, href, page, tier });
 
         try {
           const result = await recordSuccess({

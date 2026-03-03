@@ -6,6 +6,7 @@ import path from 'node:path';
 import {
   deriveCheckoutSuccessIdempotencyKey,
   deriveFounderIntentIdempotencyKey,
+  sanitizeIdempotencyKey,
   deriveWaitlistIdempotencyKey,
 } from '../app/lib/idempotency.ts';
 
@@ -148,4 +149,41 @@ test('founder + checkout idempotency keys prefer stable event identifiers', () =
 
   assert.equal(founderKey, 'founder_intent:intent:2026-03-02:abc123');
   assert.equal(checkoutKey, 'checkout_success:cs_test_42');
+});
+
+test('checkout fallback idempotency key is deterministic for identical payload fingerprints', () => {
+  const now = new Date('2026-03-02T18:45:00.000Z');
+  const keyA = deriveCheckoutSuccessIdempotencyKey({
+    source: 'stripe-success',
+    email: 'captain@pit.dev',
+    page: '/success',
+    href: 'https://cogcage.com/success?tier=founder',
+    tier: 'founder',
+  }, now);
+  const keyB = deriveCheckoutSuccessIdempotencyKey({
+    source: 'stripe-success',
+    email: 'captain@pit.dev',
+    page: '/success',
+    href: 'https://cogcage.com/success?tier=founder',
+    tier: 'founder',
+  }, now);
+  const keyC = deriveCheckoutSuccessIdempotencyKey({
+    source: 'stripe-success',
+    email: 'captain@pit.dev',
+    page: '/success',
+    href: 'https://cogcage.com/success?tier=vip',
+    tier: 'vip',
+  }, now);
+
+  assert.equal(keyA, keyB);
+  assert.notEqual(keyA, keyC);
+  assert.ok(keyA.startsWith('checkout_success:2026-03-02:'));
+});
+
+test('idempotency key sanitization trims and bounds untrusted header input', () => {
+  const noisy = `  ${'x'.repeat(180)}  `;
+  const sanitized = sanitizeIdempotencyKey(noisy);
+  assert.ok(sanitized);
+  assert.equal(sanitized.length, 120);
+  assert.equal(sanitizeIdempotencyKey('   '), undefined);
 });

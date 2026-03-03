@@ -12,6 +12,7 @@ import {
   redisReadApiRequestReceipt,
   redisWriteApiRequestReceipt,
 } from '~/lib/waitlist-redis'
+import { sanitizeIdempotencyKey } from '~/lib/idempotency'
 
 type CheckoutPostback = {
   type?: string;
@@ -56,9 +57,7 @@ function getClientIp(request: Request) {
 }
 
 function getIdempotencyKey(request: Request) {
-  const key = request.headers.get('x-idempotency-key')?.trim() ?? '';
-  if (!key) return undefined;
-  return key.slice(0, 120);
+  return sanitizeIdempotencyKey(request.headers.get('x-idempotency-key'));
 }
 
 function authorize(request: Request): boolean {

@@ -2,6 +2,31 @@
 
 ---
 
+## Product-Mode Ship — 22:03 ET Mar 2
+
+Directive executed in strict order (P1 signup reliability/storage/logging → P2 playable demo loop movement + action economy → P3 founder checkout/postback handling → P4 ops artifacts).
+
+### Shipped artifacts (product-critical)
+- P1 signup reliability/durable storage/observable logs: ✅ re-verified in current branch state.
+- P2 playable demo loop movement + AP economy: ✅ re-verified in current branch state.
+- P3 monetization path:
+  - `app/routes/api/checkout-success.ts`
+    - GET checkout success now derives deterministic fallback `eventId` when Stripe session ids are absent, preventing duplicate conversion inserts on repeated callback hits.
+  - `app/routes/api/postback.ts`
+    - Postback idempotency header parsing now uses shared idempotency sanitization for bounded, consistent key handling.
+- Critical-path tests:
+  - `scripts/product-mode-reliability.test.mjs`
+    - Added deterministic checkout fallback-idempotency test.
+    - Added idempotency-header sanitization bounds test.
+  - `scripts/demo-loop-economy.test.mjs`
+
+### Verification
+- `cd web && npm run test:product` ✅ (19/19 pass)
+- `cd web && npm run build` ✅
+
+### Scope guard
+- No landing-page copy edits and no non-product-critical changes in this pass.
+
 ## Product-Mode Cron — 21:48 ET Mar 2
 
 Directive enforced as received: STOP landing-page copy iterations. Priority lock remained P1→P4.

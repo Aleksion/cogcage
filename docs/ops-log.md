@@ -4,6 +4,30 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Ship — 22:03 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Priority lock enforced P1 signup reliability/storage/logging, P2 playable demo movement + AP economy, P3 founder checkout/postback handling, P4 ops artifacts.
+
+**Shipped in this pass:**
+- P1 signup reliability/storage/observability path: ✅ re-verified in current branch state.
+- P2 playable demo loop movement + AP economy: ✅ re-verified in current branch state.
+- P3 monetization hardening:
+  - `web/app/routes/api/checkout-success.ts`
+    - GET route now derives deterministic fallback conversion `eventId` when query session ids are missing.
+  - `web/app/routes/api/postback.ts`
+    - Idempotency header parsing now uses shared sanitization helper.
+- Reliability coverage upgrades:
+  - `web/scripts/product-mode-reliability.test.mjs`
+    - deterministic checkout fallback-idempotency key test
+    - header sanitization bounds test
+  - `web/scripts/demo-loop-economy.test.mjs`
+
+**Verification:**
+- `cd web && npm run test:product` ✅ (19/19 passing)
+- `cd web && npm run build` ✅
+
+**Scope guard:** no landing-page copy edits and no non-product-critical changes.
+
 ### Autopilot Cron — 21:48 ET, Mar 2 2026
 
 **Directive**: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop (movement + AP economy), P3 founder checkout + postback, P4 ops artifacts.

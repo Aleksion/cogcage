@@ -8,6 +8,45 @@
 
 ---
 
+## [2026-03-02] - fix(product-critical): close P1-P3 reliability gaps and ship ops artifacts (22:03 ET)
+
+**Type:** fix/product-critical | **Budget impact:** n/a
+
+### What
+- Re-verified existing branch state for:
+  - signup reliability/durable storage/observable logs (P1)
+  - playable demo loop movement + AP economy behavior (P2)
+- `web/app/routes/api/checkout-success.ts`
+  - GET success callback now derives deterministic fallback `eventId` when session ids are absent, so repeated callback hits remain deduplicated.
+- `web/app/routes/api/postback.ts`
+  - Postback idempotency header parsing now uses shared sanitization to enforce consistent bounded keys.
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added deterministic checkout fallback-idempotency key coverage.
+  - Added idempotency key sanitization bounds/empty-input coverage.
+- `web/ops/log.md`
+- `docs/ops-log.md`
+  - Appended shipped-artifact entries for this pass.
+
+### Why
+- Product-critical lane required finishing and hardening the reliability, gameplay, and monetization callback paths with deterministic dedupe under retries and explicit operational trace artifacts.
+
+### Design Decisions
+- Keep idempotency deterministic and payload-scoped to preserve replay safety across retried requests.
+- Prefer low-risk additive hardening in existing handlers over route redesigns.
+- Keep monetization dedupe split:
+  - request-level receipts for explicit idempotency keys
+  - event-level dedupe via stable conversion `eventId`.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Validate production env wiring for `PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, and `MOLTPIT_OPS_KEY` to ensure live checkout + secured ops in prod.
+
+### Verification
+- `cd web && npm run test:product` ✅ (19 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## [2026-03-02] - chore(product-critical): cron verification pass + ops artifact update (21:41 ET)
 
 **Type:** ops/product-critical | **Budget impact:** n/a
