@@ -645,10 +645,10 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
         <div
           style={{
             position: 'fixed',
-            bottom: 60,
+            bottom: 'env(safe-area-inset-bottom, 0px)',
             left: 0,
             right: 0,
-            padding: '6px 12px',
+            padding: '6px 12px calc(6px + env(safe-area-inset-bottom, 0px))',
             background: 'rgba(0,0,0,0.85)',
             backdropFilter: 'blur(4px)',
             zIndex: 10,
@@ -939,6 +939,7 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
       {/* Back to home link */}
       <a
         href="/"
+        className="back-home-link"
         style={{
           position: 'fixed',
           top: 12,
@@ -985,6 +986,9 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
         @media (max-width: 900px) {
           .brain-panels-desktop { display: none; }
           .brain-mobile-ticker { display: block; }
+        }
+        @media (max-width: 640px) {
+          .back-home-link { display: none; }
         }
       `}</style>
     </div>

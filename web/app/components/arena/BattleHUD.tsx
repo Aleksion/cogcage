@@ -27,6 +27,7 @@ interface BattleHUDProps {
 
 const HP_MAX = 100
 const ENERGY_MAX = 1000
+const MOBILE_BREAKPOINT = 680
 
 const hpColor = (hp: number) =>
   hp > 60 ? '#2ecc71' : hp > 30 ? '#f39c12' : '#eb4d4b'
@@ -41,8 +42,20 @@ export default function BattleHUD({
   muted,
   onToggleMute,
 }: BattleHUDProps) {
+  const [isMobile, setIsMobile] = React.useState(false)
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`)
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
   const timeSec = (tick / tickRate).toFixed(1)
   const matchProgress = Math.min(100, (tick / maxTicks) * 100)
+  const mobileBottomInset = 'env(safe-area-inset-bottom, 0px)'
 
   return (
     <div
@@ -59,14 +72,15 @@ export default function BattleHUD({
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          padding: '8px 16px',
-          gap: 12,
+          justifyContent: isMobile ? 'space-between' : 'center',
+          padding: isMobile ? '8px 10px 6px' : '8px 16px',
+          gap: isMobile ? 8 : 12,
+          flexWrap: isMobile ? 'wrap' : 'nowrap',
           background: 'linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 80%, transparent 100%)',
         }}
       >
         {/* Actor HP bars — left side */}
-        <div style={{ flex: 1, maxWidth: 400, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ flex: 1, minWidth: isMobile ? '100%' : 0, maxWidth: isMobile ? '100%' : 400, display: 'flex', flexDirection: 'column', gap: isMobile ? 4 : 6 }}>
           {actors.map((actor) => {
             const hpPct = Math.max(0, Math.round((actor.hp / HP_MAX) * 100))
             const energyPct = Math.round((actor.energy / ENERGY_MAX) * 100)
@@ -76,7 +90,7 @@ export default function BattleHUD({
                   <span
                     style={{
                       fontFamily: "'Bangers', display",
-                      fontSize: '1.1rem',
+                      fontSize: isMobile ? '0.9rem' : '1.1rem',
                       color: actor.color,
                       textShadow: '2px 2px 0 #000',
                       letterSpacing: 1,
@@ -84,12 +98,12 @@ export default function BattleHUD({
                   >
                     {actor.name}
                   </span>
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', color: '#fff', fontWeight: 700 }}>
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: isMobile ? '0.65rem' : '0.7rem', color: '#fff', fontWeight: 700 }}>
                     {actor.hp} HP
                   </span>
                 </div>
                 {/* HP bar */}
-                <div style={{ height: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ height: isMobile ? 7 : 8, background: 'rgba(0,0,0,0.6)', borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <div
                     style={{
                       height: '100%',
@@ -123,7 +137,7 @@ export default function BattleHUD({
           <div
             style={{
               fontFamily: "'Bangers', display",
-              fontSize: '0.85rem',
+              fontSize: isMobile ? '0.72rem' : '0.85rem',
               color: '#FFD600',
               textTransform: 'uppercase',
               letterSpacing: 2,
@@ -135,7 +149,7 @@ export default function BattleHUD({
           <div
             style={{
               fontFamily: "'IBM Plex Mono', monospace",
-              fontSize: '1.6rem',
+              fontSize: isMobile ? '1.25rem' : '1.6rem',
               fontWeight: 700,
               color: '#fff',
               textShadow: '2px 2px 0 #000',
@@ -161,7 +175,7 @@ export default function BattleHUD({
         </div>
 
         {/* Right spacer to balance layout */}
-        <div style={{ flex: 1, maxWidth: 400 }} />
+        <div style={{ display: isMobile ? 'none' : 'block', flex: 1, maxWidth: 400 }} />
 
         {/* Mute button */}
         <button
@@ -177,8 +191,8 @@ export default function BattleHUD({
             fontSize: '1rem',
             lineHeight: 1,
             position: 'absolute',
-            top: 10,
-            right: 10,
+            top: isMobile ? 8 : 10,
+            right: isMobile ? 8 : 10,
           }}
           title={muted ? 'Unmute' : 'Mute'}
         >
@@ -197,7 +211,7 @@ export default function BattleHUD({
           background: 'rgba(0,0,0,0.75)',
           backdropFilter: 'blur(4px)',
           zIndex: 6,
-          display: 'flex',
+          display: isMobile ? 'none' : 'flex',
           justifyContent: 'center',
           gap: 16,
           flexWrap: 'wrap',
@@ -218,21 +232,22 @@ export default function BattleHUD({
       <div
         style={{
           position: 'fixed',
-          bottom: 26,
+          bottom: isMobile ? `calc(56px + ${mobileBottomInset})` : 26,
           left: '50%',
           transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: 600,
-          padding: '12px 20px',
+          width: isMobile ? 'calc(100% - 16px)' : '100%',
+          maxWidth: isMobile ? 480 : 600,
+          padding: isMobile ? '8px 10px' : '12px 20px',
           background: 'linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 80%, transparent 100%)',
           zIndex: 5,
+          borderRadius: isMobile ? 8 : 0,
         }}
       >
         {feed.slice(0, 4).map((entry, i) => (
           <div
             key={i}
             style={{
-              fontSize: '0.78rem',
+              fontSize: isMobile ? '0.7rem' : '0.78rem',
               fontFamily: "'IBM Plex Mono', monospace",
               color: `rgba(255,255,255,${1 - i * 0.2})`,
               padding: '2px 0',

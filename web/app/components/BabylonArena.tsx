@@ -25,9 +25,33 @@ interface BabylonArenaProps {
 }
 
 export function BabylonArena({ snapshot, botNames, onMatchEnd, playerBotId, canvasStyle }: BabylonArenaProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<import('../game/PitScene').PitScene | null>(null);
   const destroyedRef = useRef(false);
+  const [canvasSize, setCanvasSize] = React.useState({ width: 900, height: 640 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const container = containerRef.current;
+    const updateCanvasSize = () => {
+      const rect = container.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width));
+      const height = Math.max(1, Math.round(rect.height));
+      setCanvasSize((prev) => (
+        prev.width === width && prev.height === height
+          ? prev
+          : { width, height }
+      ));
+    };
+
+    updateCanvasSize();
+    const observer = new ResizeObserver(updateCanvasSize);
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, []);
 
   // Initialize Babylon.js scene
   useEffect(() => {
@@ -78,24 +102,40 @@ export function BabylonArena({ snapshot, botNames, onMatchEnd, playerBotId, canv
     }
   }, [snapshot, onMatchEnd]);
 
+  useEffect(() => {
+    if (sceneRef.current) {
+      sceneRef.current.resize();
+    }
+  }, [canvasSize.width, canvasSize.height]);
+
   return (
-    <canvas
-      ref={canvasRef}
-      id="babylon-arena"
-      width={900}
-      height={640}
+    <div
+      ref={containerRef}
       style={{
-        width: 900,
-        height: 640,
-        background: '#050510',
-        borderRadius: 8,
-        overflow: 'hidden',
-        border: '2px solid rgba(0, 229, 255, 0.15)',
-        boxShadow: '0 0 40px rgba(0, 229, 255, 0.05), inset 0 0 60px rgba(0, 0, 0, 0.5)',
-        display: 'block',
-        ...canvasStyle,
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        minHeight: 320,
       }}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        id="babylon-arena"
+        width={canvasSize.width}
+        height={canvasSize.height}
+        style={{
+          width: '100%',
+          height: '100%',
+          background: '#050510',
+          borderRadius: 8,
+          overflow: 'hidden',
+          border: '2px solid rgba(0, 229, 255, 0.15)',
+          boxShadow: '0 0 40px rgba(0, 229, 255, 0.05), inset 0 0 60px rgba(0, 0, 0, 0.5)',
+          display: 'block',
+          ...canvasStyle,
+        }}
+      />
+    </div>
   );
 }
 
