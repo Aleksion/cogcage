@@ -2,6 +2,32 @@
 
 ---
 
+## Product-Mode Ship — 21:36 ET Mar 2
+
+Directive executed in strict order (P1 signup reliability/storage/observability → P2 playable demo loop movement + AP economy → P3 founder checkout/postback path → P4 ops artifacts).
+
+### Shipped artifacts (product-critical lane)
+- Re-verified live paths (no new non-critical code introduced):
+  - `app/routes/api/waitlist.ts`
+  - `app/routes/api/founder-intent.ts`
+  - `app/lib/waitlist-db.ts`
+  - `app/lib/waitlist-redis.ts`
+  - `app/lib/observability.ts`
+  - `app/components/DemoLoop.tsx`
+  - `app/lib/demo-loop-economy.ts`
+  - `app/components/Play.tsx`
+  - `app/routes/api/postback.ts`
+  - `app/routes/api/checkout-success.ts`
+- Updated ops artifacts:
+  - `web/ops/log.md` (this entry)
+  - `docs/ops-log.md` (mirror entry)
+
+### Verification
+- `cd web && npm run test:product` ✅ (14/14 pass; includes movement + action economy + signup/monetization reliability checks)
+- `cd web && npm run build` ✅ (Vite + Nitro vercel output generated)
+
+### Scope guard
+- No landing-page copy work and no cosmetic edits in this pass.
 
 ## Product-Mode Cron — 21:23 ET Mar 2
 
