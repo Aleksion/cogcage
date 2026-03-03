@@ -2,6 +2,23 @@
 
 ---
 
+## Product-Mode Cron — 21:41 ET Mar 2
+
+Directive enforced in strict order (P1 signup reliability/storage/observability → P2 playable demo movement + AP economy → P3 founder checkout/postback path → P4 ops artifacts).
+
+### Pass result
+- P1 signup reliability/storage/observability: ✅ no regression verified
+- P2 playable demo loop (map movement + AP economy): ✅ no regression verified
+- P3 monetization path (founder intent + checkout success + postback idempotency): ✅ no regression verified in code (env activation still pending)
+- P4 ops artifacts: ✅ updated (`web/ops/log.md`, `docs/ops-log.md`)
+
+### Verification
+- `cd web && npm run test:product` ✅ (14/14 pass)
+- `cd web && npm run build` ✅
+
+### Scope guard
+- No landing-page copy work and no non-product-critical edits in this pass.
+
 ## Product-Mode Ship — 21:36 ET Mar 2
 
 Directive executed in strict order (P1 signup reliability/storage/observability → P2 playable demo loop movement + AP economy → P3 founder checkout/postback path → P4 ops artifacts).

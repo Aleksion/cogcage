@@ -8,6 +8,25 @@
 
 ---
 
+## [2026-03-02] - chore(product-critical): cron verification pass + ops artifact update (21:41 ET)
+
+**Type:** ops/product-critical | **Budget impact:** n/a
+
+### What
+- `docs/ops-log.md`
+- `web/ops/log.md`
+  - Added new cron pass entries documenting strict P1→P4 execution, verification evidence, and scope guard.
+
+### Why
+- Product-mode directive requires explicit operational artifacts for each cron pass, even when no additional code changes are required beyond prior shipped reliability/demo/monetization work.
+
+### Breaking changes
+- None.
+
+### Verification
+- `cd web && npm run test:product` ✅ (14 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## [2026-03-02] - fix(product-critical): unblock signup reliability harness + re-verify demo loop/monetization lanes (23:20 ET)
 
 **Type:** fix/ops | **Budget impact:** n/a
