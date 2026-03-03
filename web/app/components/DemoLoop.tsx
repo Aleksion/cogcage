@@ -4,10 +4,11 @@ import { Link } from '@tanstack/react-router'
 const STRIPE_FOUNDER_URL = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.PUBLIC_STRIPE_FOUNDER_URL ?? ''
 
 // ── Action Economy ──
-type Action = 'MOVE' | 'ATTACK' | 'DEFEND' | 'CHARGE' | 'STUN'
+export type Action = 'MOVE' | 'ATTACK' | 'DEFEND' | 'CHARGE' | 'STUN'
 type GameMode = 'watch' | 'play'
+export type MoveDirection = 'UP' | 'RIGHT' | 'DOWN' | 'LEFT'
 
-interface Position {
+export interface Position {
   x: number
   y: number
 }
@@ -22,7 +23,7 @@ interface BotConfig {
   start: Position
 }
 
-interface BotState {
+export interface BotState {
   hp: number
   pos: Position
   charged: boolean
@@ -31,7 +32,7 @@ interface BotState {
   ap: number
 }
 
-interface TurnResult {
+export interface TurnResult {
   turn: number
   p1Action: Action | 'WAIT'
   p2Action: Action | 'WAIT'
@@ -46,9 +47,22 @@ interface TurnResult {
   log: string
 }
 
-const GRID_SIZE = 7
+export interface ChosenAction {
+  action: Action
+  moveDir?: MoveDirection
+}
 
-const BERSERKER: BotConfig = {
+export const GRID_SIZE = 7
+const AP_BAR_MAX = 2.5
+export const ACTION_AP_COST: Record<Action, number> = {
+  MOVE: 0.8,
+  ATTACK: 1.2,
+  DEFEND: 0.8,
+  CHARGE: 1.0,
+  STUN: 1.4,
+}
+
+export const BERSERKER: BotConfig = {
   name: 'BERSERKER',
   color: '#EB4D4B',
   initial: 'B',
@@ -58,7 +72,7 @@ const BERSERKER: BotConfig = {
   start: { x: 0, y: 0 },
 }
 
-const TACTICIAN: BotConfig = {
+export const TACTICIAN: BotConfig = {
   name: 'TACTICIAN',
   color: '#00E5FF',
   initial: 'T',
@@ -68,7 +82,7 @@ const TACTICIAN: BotConfig = {
   start: { x: 6, y: 6 },
 }
 
-function manhattan(a: Position, b: Position): number {
+export function manhattan(a: Position, b: Position): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
 }
 
@@ -81,16 +95,45 @@ function moveToward(from: Position, to: Position): Position {
   return { x: from.x, y: from.y + Math.sign(dy) }
 }
 
-function clampGrid(pos: Position): Position {
+function preferredMoveDirection(from: Position, to: Position): MoveDirection {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0 ? 'RIGHT' : 'LEFT'
+  }
+  return dy >= 0 ? 'DOWN' : 'UP'
+}
+
+export function moveByDirection(from: Position, direction: MoveDirection): Position {
+  switch (direction) {
+    case 'UP':
+      return { x: from.x, y: from.y - 1 }
+    case 'RIGHT':
+      return { x: from.x + 1, y: from.y }
+    case 'DOWN':
+      return { x: from.x, y: from.y + 1 }
+    case 'LEFT':
+      return { x: from.x - 1, y: from.y }
+  }
+}
+
+export function clampGrid(pos: Position): Position {
   return {
     x: Math.max(0, Math.min(GRID_SIZE - 1, pos.x)),
     y: Math.max(0, Math.min(GRID_SIZE - 1, pos.y)),
   }
 }
 
-function pickAction(bias: Record<Action, number>, dist: number, stunned: boolean): Action {
+export function canAffordAction(ap: number, action: Action): boolean {
+  return ap >= ACTION_AP_COST[action]
+}
+
+function pickAction(bias: Record<Action, number>, dist: number, stunned: boolean, ap: number): Action | 'WAIT' {
   const actions: Action[] = ['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN']
-  const weights = actions.map((a) => {
+  const affordableActions = actions.filter((action) => canAffordAction(ap, action))
+  if (affordableActions.length === 0) return 'WAIT'
+
+  const weights = affordableActions.map((a) => {
     if (a === 'MOVE' && stunned) return 0
     if (a === 'MOVE' && dist <= 2) return Math.floor(bias[a] * 0.3)
     if (dist > 2 && (a === 'ATTACK' || a === 'STUN')) return Math.floor(bias[a] * 0.2)
@@ -98,12 +141,13 @@ function pickAction(bias: Record<Action, number>, dist: number, stunned: boolean
     return bias[a]
   })
   const total = weights.reduce((s, w) => s + w, 0)
+  if (total <= 0) return 'WAIT'
   let r = Math.random() * total
-  for (let i = 0; i < actions.length; i++) {
+  for (let i = 0; i < affordableActions.length; i++) {
     r -= weights[i]
-    if (r <= 0) return actions[i]
+    if (r <= 0) return affordableActions[i]
   }
-  return 'MOVE'
+  return affordableActions[0]
 }
 
 function rollDamage() {
@@ -114,12 +158,13 @@ const MAX_TURNS = 15
 const MATCH_COUNT = 3
 
 // ── Core turn resolution (used by both watch sim and interactive mode) ──
-function resolveTurn(
+export function resolveTurn(
   p1Act: Action | 'WAIT',
   p2Act: Action | 'WAIT',
   p1: BotState,
   p2: BotState,
   turnNum: number,
+  options?: { p1MoveDir?: MoveDirection; p2MoveDir?: MoveDirection },
 ): TurnResult {
   let p1Dmg = 0
   let p2Dmg = 0
@@ -130,7 +175,13 @@ function resolveTurn(
     const dist = manhattan(p1.pos, p2.pos)
     switch (p1Act) {
       case 'MOVE':
-        if (!p1.stunned) p1.pos = clampGrid(moveToward(p1.pos, p2.pos))
+        if (!p1.stunned) {
+          p1.pos = clampGrid(
+            options?.p1MoveDir
+              ? moveByDirection(p1.pos, options.p1MoveDir)
+              : moveToward(p1.pos, p2.pos),
+          )
+        }
         break
       case 'ATTACK':
         if (dist <= 2) {
@@ -151,7 +202,13 @@ function resolveTurn(
     const dist2 = manhattan(p1.pos, p2.pos)
     switch (p2Act) {
       case 'MOVE':
-        if (!p2.stunned) p2.pos = clampGrid(moveToward(p2.pos, p1.pos))
+        if (!p2.stunned) {
+          p2.pos = clampGrid(
+            options?.p2MoveDir
+              ? moveByDirection(p2.pos, options.p2MoveDir)
+              : moveToward(p2.pos, p1.pos),
+          )
+        }
         break
       case 'ATTACK':
         if (dist2 <= 2) {
@@ -205,7 +262,7 @@ function resolveTurn(
   }
 }
 
-function simulateMatch(): { turns: TurnResult[]; winner: string } {
+export function simulateMatch(): { turns: TurnResult[]; winner: string } {
   const p1: BotState = { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: 0 }
   const p2: BotState = { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: 0 }
   const turns: TurnResult[] = []
@@ -213,15 +270,16 @@ function simulateMatch(): { turns: TurnResult[]; winner: string } {
   for (let t = 1; t <= MAX_TURNS; t++) {
     p1.ap += BERSERKER.speed
     p2.ap += TACTICIAN.speed
-    const p1CanAct = p1.ap >= 1.0
-    const p2CanAct = p2.ap >= 1.0
     const dist = manhattan(p1.pos, p2.pos)
-    const p1Act: Action | 'WAIT' = p1CanAct ? pickAction(BERSERKER.bias, dist, p1.stunned) : 'WAIT'
-    const p2Act: Action | 'WAIT' = p2CanAct ? pickAction(TACTICIAN.bias, dist, p2.stunned) : 'WAIT'
-    if (p1CanAct) p1.ap -= 1.0
-    if (p2CanAct) p2.ap -= 1.0
+    const p1Act = pickAction(BERSERKER.bias, dist, p1.stunned, p1.ap)
+    const p2Act = pickAction(TACTICIAN.bias, dist, p2.stunned, p2.ap)
+    if (p1Act !== 'WAIT') p1.ap = Math.max(0, p1.ap - ACTION_AP_COST[p1Act])
+    if (p2Act !== 'WAIT') p2.ap = Math.max(0, p2.ap - ACTION_AP_COST[p2Act])
 
-    const result = resolveTurn(p1Act, p2Act, p1, p2, t)
+    const result = resolveTurn(p1Act, p2Act, p1, p2, t, {
+      p1MoveDir: p1Act === 'MOVE' ? preferredMoveDirection(p1.pos, p2.pos) : undefined,
+      p2MoveDir: p2Act === 'MOVE' ? preferredMoveDirection(p2.pos, p1.pos) : undefined,
+    })
     turns.push(result)
     if (p1.hp <= 0 || p2.hp <= 0) break
   }
@@ -230,7 +288,7 @@ function simulateMatch(): { turns: TurnResult[]; winner: string } {
   return { turns, winner }
 }
 
-function makeInitialLiveState() {
+export function makeInitialLiveState() {
   return {
     p1: { hp: BERSERKER.hp, pos: { ...BERSERKER.start }, charged: false, stunned: false, defending: false, ap: BERSERKER.speed } as BotState,
     p2: { hp: TACTICIAN.hp, pos: { ...TACTICIAN.start }, charged: false, stunned: false, defending: false, ap: TACTICIAN.speed } as BotState,
@@ -239,6 +297,50 @@ function makeInitialLiveState() {
     winner: null as string | null,
     waitingForPlayer: true,
     lastResult: null as TurnResult | null,
+  }
+}
+
+export type LiveState = ReturnType<typeof makeInitialLiveState>
+
+export function runPlayTurn(
+  prev: LiveState,
+  choice: ChosenAction,
+  options?: { forcedAiAction?: Action | 'WAIT' },
+): LiveState {
+  if (prev.winner) return prev
+
+  const p1 = { ...prev.p1 }
+  const p2 = { ...prev.p2 }
+
+  p1.ap += BERSERKER.speed
+  p2.ap += TACTICIAN.speed
+
+  const p1Act: Action | 'WAIT' = canAffordAction(p1.ap, choice.action) ? choice.action : 'WAIT'
+  const dist = manhattan(p1.pos, p2.pos)
+  const p2Act: Action | 'WAIT' = options?.forcedAiAction ?? pickAction(TACTICIAN.bias, dist, p2.stunned, p2.ap)
+
+  if (p1Act !== 'WAIT') p1.ap = Math.max(0, p1.ap - ACTION_AP_COST[p1Act])
+  if (p2Act !== 'WAIT') p2.ap = Math.max(0, p2.ap - ACTION_AP_COST[p2Act])
+
+  const result = resolveTurn(p1Act, p2Act, p1, p2, prev.turn, {
+    p1MoveDir: p1Act === 'MOVE' ? choice.moveDir : undefined,
+    p2MoveDir: p2Act === 'MOVE' ? preferredMoveDirection(p2.pos, p1.pos) : undefined,
+  })
+
+  const newLog = [...prev.log, result]
+  const isDone = p1.hp <= 0 || p2.hp <= 0 || prev.turn >= MAX_TURNS
+  const winner = isDone
+    ? (p1.hp > p2.hp ? 'YOU WIN!' : p2.hp > p1.hp ? 'TACTICIAN WINS' : 'DRAW')
+    : null
+
+  return {
+    p1,
+    p2,
+    turn: prev.turn + 1,
+    log: newLog,
+    winner,
+    waitingForPlayer: true,
+    lastResult: result,
   }
 }
 
@@ -768,7 +870,7 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
           </div>
           <div className="demo-hp-text">{p1Hp} / {BERSERKER.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p1Ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p1Ap / AP_BAR_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p1Ap.toFixed(1)}</div>
           <div className="demo-speed-badge">SPD {BERSERKER.speed}x</div>
@@ -781,7 +883,7 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
           </div>
           <div className="demo-hp-text">{p2Hp} / {TACTICIAN.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p2Ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p2Ap / AP_BAR_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p2Ap.toFixed(1)}</div>
           <div className="demo-speed-badge">SPD {TACTICIAN.speed}x</div>
@@ -866,49 +968,13 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [live.log.length])
 
-  const handlePlayerAction = useCallback((action: Action) => {
+  const handlePlayerAction = useCallback((choice: ChosenAction) => {
     if (!live.waitingForPlayer || live.winner || aiThinking) return
 
     setAiThinking(true)
     // Short delay for AI "thinking" feel
     setTimeout(() => {
-      setLive((prev) => {
-        if (prev.winner) return prev
-
-        const p1 = { ...prev.p1 }
-        const p2 = { ...prev.p2 }
-
-        // Accumulate AP
-        p1.ap += BERSERKER.speed
-        p2.ap += TACTICIAN.speed
-        const p1CanAct = p1.ap >= 1.0
-        const p2CanAct = p2.ap >= 1.0
-
-        const p1Act: Action | 'WAIT' = p1CanAct ? action : 'WAIT'
-        const dist = manhattan(p1.pos, p2.pos)
-        const p2Act: Action | 'WAIT' = p2CanAct ? pickAction(TACTICIAN.bias, dist, p2.stunned) : 'WAIT'
-
-        if (p1CanAct) p1.ap -= 1.0
-        if (p2CanAct) p2.ap -= 1.0
-
-        const result = resolveTurn(p1Act, p2Act, p1, p2, prev.turn)
-
-        const newLog = [...prev.log, result]
-        const isDone = p1.hp <= 0 || p2.hp <= 0 || prev.turn >= MAX_TURNS
-        const winner = isDone
-          ? (p1.hp > p2.hp ? 'YOU WIN!' : p2.hp > p1.hp ? 'TACTICIAN WINS' : 'DRAW')
-          : null
-
-        return {
-          p1,
-          p2,
-          turn: prev.turn + 1,
-          log: newLog,
-          winner,
-          waitingForPlayer: true,
-          lastResult: result,
-        }
-      })
+      setLive((prev) => runPlayTurn(prev, choice))
       setAiThinking(false)
     }, 350)
   }, [live.waitingForPlayer, live.winner, aiThinking])
@@ -924,6 +990,15 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
   const dist = manhattan(p1.pos, p2.pos)
   const canAttack = dist <= 2
   const canStun = dist <= 2
+  const canAffordMove = p1.ap >= ACTION_AP_COST.MOVE
+  const canAffordAttack = p1.ap >= ACTION_AP_COST.ATTACK
+  const canAffordDefend = p1.ap >= ACTION_AP_COST.DEFEND
+  const canAffordCharge = p1.ap >= ACTION_AP_COST.CHARGE
+  const canAffordStun = p1.ap >= ACTION_AP_COST.STUN
+  const canMoveUp = p1.pos.y > 0
+  const canMoveRight = p1.pos.x < GRID_SIZE - 1
+  const canMoveDown = p1.pos.y < GRID_SIZE - 1
+  const canMoveLeft = p1.pos.x > 0
 
   const gridCells: React.ReactElement[] = []
   for (let y = 0; y < GRID_SIZE; y++) {
@@ -952,12 +1027,15 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
     }
   }
 
-  const ACTIONS: { action: Action; label: string; disabled?: boolean }[] = [
-    { action: 'MOVE', label: 'MOVE →' },
-    { action: 'ATTACK', label: `ATTACK${!canAttack ? ' (far)' : ''}`, disabled: !canAttack },
-    { action: 'DEFEND', label: 'DEFEND' },
-    { action: 'CHARGE', label: 'CHARGE' },
-    { action: 'STUN', label: `STUN${!canStun ? ' (far)' : ''}`, disabled: !canStun },
+  const ACTIONS: { action: Action; label: string; disabled?: boolean; moveDir?: MoveDirection }[] = [
+    { action: 'MOVE', moveDir: 'UP', label: `MOVE ↑ · ${ACTION_AP_COST.MOVE.toFixed(1)} AP`, disabled: !canAffordMove || !canMoveUp },
+    { action: 'MOVE', moveDir: 'RIGHT', label: `MOVE → · ${ACTION_AP_COST.MOVE.toFixed(1)} AP`, disabled: !canAffordMove || !canMoveRight },
+    { action: 'MOVE', moveDir: 'DOWN', label: `MOVE ↓ · ${ACTION_AP_COST.MOVE.toFixed(1)} AP`, disabled: !canAffordMove || !canMoveDown },
+    { action: 'MOVE', moveDir: 'LEFT', label: `MOVE ← · ${ACTION_AP_COST.MOVE.toFixed(1)} AP`, disabled: !canAffordMove || !canMoveLeft },
+    { action: 'ATTACK', label: `ATTACK · ${ACTION_AP_COST.ATTACK.toFixed(1)} AP${!canAttack ? ' (far)' : ''}`, disabled: !canAttack || !canAffordAttack },
+    { action: 'DEFEND', label: `DEFEND · ${ACTION_AP_COST.DEFEND.toFixed(1)} AP`, disabled: !canAffordDefend },
+    { action: 'CHARGE', label: `CHARGE · ${ACTION_AP_COST.CHARGE.toFixed(1)} AP`, disabled: !canAffordCharge },
+    { action: 'STUN', label: `STUN · ${ACTION_AP_COST.STUN.toFixed(1)} AP${!canStun ? ' (far)' : ''}`, disabled: !canStun || !canAffordStun },
   ]
 
   return (
@@ -982,7 +1060,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           </div>
           <div className="demo-hp-text">{p1.hp} / {BERSERKER.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p1.ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p1.ap / AP_BAR_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p1.ap.toFixed(1)}</div>
         </div>
@@ -999,7 +1077,7 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
           </div>
           <div className="demo-hp-text">{p2.hp} / {TACTICIAN.hp} HP</div>
           <div className="demo-ap-bar">
-            <div className="demo-ap-fill" style={{ width: `${Math.min(p2.ap, 1) * 100}%` }} />
+            <div className="demo-ap-fill" style={{ width: `${Math.min(p2.ap / AP_BAR_MAX, 1) * 100}%` }} />
           </div>
           <div className="demo-ap-text">AP {p2.ap.toFixed(1)}</div>
         </div>
@@ -1019,16 +1097,16 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
             <div className="demo-your-turn">YOUR TURN — PICK AN ACTION</div>
           )}
           <div className="demo-action-row">
-            {ACTIONS.map(({ action, label, disabled }) => (
+            {ACTIONS.map(({ action, label, disabled, moveDir }) => (
               <button
-                key={action}
+                key={`${action}-${moveDir || 'none'}`}
                 className="demo-action-btn"
                 style={{ background: ACTION_COLORS[action] }}
-                onClick={() => handlePlayerAction(action)}
+                onClick={() => handlePlayerAction({ action, moveDir })}
                 disabled={disabled || aiThinking || !live.waitingForPlayer}
                 title={
                   action === 'ATTACK' ? 'Deals 15-25 dmg (range ≤ 2). +40% if CHARGED.' :
-                  action === 'MOVE' ? 'Move one step toward enemy.' :
+                  action === 'MOVE' ? 'Move one tile in the selected direction.' :
                   action === 'DEFEND' ? 'Reduces incoming damage by 50% this turn.' :
                   action === 'CHARGE' ? 'Next ATTACK deals +40% damage.' :
                   'Stuns enemy for 1 turn (range ≤ 2, 50% miss chance when stunned).'

@@ -2,6 +2,26 @@
 
 ---
 
+## Product-Mode Ship — 19:02 ET Mar 2
+
+Directive executed: stop copy iteration lane; ship product-critical reliability/demo/monetization checks only.
+
+### Shipped artifacts
+- `scripts/demo-loop-core.test.mjs` (new)
+  - Playable map loop coverage: movement direction, AP spend, insufficient AP fallback, boundary clamp.
+- `package.json`
+  - `test:product` now includes `demo-loop-core.test.mjs`.
+- `scripts/product-mode-reliability.test.mjs`
+  - Added `/api/postback` idempotency receipt test coverage.
+- Verified production-critical handlers remain hardened:
+  - `app/routes/api/waitlist.ts`
+  - `app/routes/api/founder-intent.ts`
+  - `app/routes/api/postback.ts`
+
+### Verification
+- `npm run test:product` ✅ (12/12 pass)
+- `npm run build` ✅
+
 ## Product-Mode Audit — 15:31 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.

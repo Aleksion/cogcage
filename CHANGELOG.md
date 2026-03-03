@@ -8,6 +8,35 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): enforce playable demo test lane + postback idempotency coverage
+
+**Type:** fix/test/ops | **Budget impact:** n/a (product-critical)
+
+### What
+- `web/scripts/demo-loop-core.test.mjs` (new)
+  - Added demo loop core tests for directional movement, AP spend, forced WAIT on insufficient AP, and boundary clamping.
+- `web/package.json`
+  - Extended `test:product` to include `demo-loop-core.test.mjs` so playable loop regressions fail CI quickly.
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added postback idempotency receipt coverage (`/api/postback` key path).
+- `web/app/routes/api/{waitlist,founder-intent,postback}.ts`
+  - Kept Redis-first + SQLite + fallback observability and idempotency handling aligned with product-mode contract.
+- `web/app/components/DemoLoop.tsx`
+  - Shipped interactive map movement + action economy loop used by the new regression suite.
+
+### Why
+- Directive was to stop copy iterations and ship product-critical reliability + playable demo + monetization observability only.
+- These checks lock regressions on the exact critical path: signup/founder/postback durability and playable action loop integrity.
+
+### Verification
+- `cd web && npm run test:product` ✅ (12/12 pass)
+- `cd web && npm run build` ✅
+
+### Breaking
+- None.
+
+---
+
 ## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)

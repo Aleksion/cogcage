@@ -4,6 +4,28 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+### Autopilot Cron — 19:02 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Priorities locked: P1 signup reliability/storage/logging, P2 playable map loop + action economy, P3 founder checkout + postback, P4 ops artifact update.
+
+**Shipped this pass (product-critical only):**
+- Added playable loop regression suite: `web/scripts/demo-loop-core.test.mjs`.
+- Wired suite into product gate: `web/package.json` (`test:product`).
+- Added postback idempotency receipt coverage: `web/scripts/product-mode-reliability.test.mjs`.
+- Confirmed API durability paths remain Redis-first + SQLite + fallback in:
+  - `web/app/routes/api/waitlist.ts`
+  - `web/app/routes/api/founder-intent.ts`
+  - `web/app/routes/api/postback.ts`
+- Confirmed interactive demo loop shipping in `web/app/components/DemoLoop.tsx`.
+
+**Verification evidence:**
+- `cd web && npm run test:product` → ✅ 12/12 pass
+- `cd web && npm run build` → ✅ success (Vite + Nitro)
+
+**Blockers:** none for code lane; env activation still required for live payment ops (`PUBLIC_STRIPE_FOUNDER_URL`, `COGCAGE_POSTBACK_KEY`, `MOLTPIT_OPS_KEY`).
+
+---
+
 ### Autopilot Cron — 14:02 ET, Mar 2 2026
 
 **Directive**: STOP copy iterations. Priorities: P1 signup, P2 demo, P3 monetization, P4 ops log.

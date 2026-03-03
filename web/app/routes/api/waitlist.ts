@@ -112,7 +112,33 @@ export const Route = createFileRoute('/api/waitlist')({
         let source = '';
         let honeypot = '';
 
-        const respond = async (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
+        appendOpsLog({
+          route,
+          level: 'info',
+          event: 'waitlist_request_received',
+          requestId,
+          contentType,
+          hasIdempotencyKey: Boolean(idempotencyKey),
+        });
+
+        const respond = async (
+          body: Record<string, unknown>,
+          status: number,
+          extraHeaders: Record<string, string> = {},
+          outcome: string = 'unknown',
+          detail: Record<string, unknown> = {},
+        ) => {
+          appendOpsLog({
+            route,
+            level: status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info',
+            event: 'waitlist_request_completed',
+            requestId,
+            httpStatus: status,
+            outcome,
+            durationMs: Date.now() - startedAt,
+            ...detail,
+          });
+
           if (idempotencyKey) {
             const receipt = {
               route,
@@ -166,6 +192,16 @@ export const Route = createFileRoute('/api/waitlist')({
             const cached = await redisReadApiRequestReceipt(route, idempotencyKey);
             if (cached) {
               appendOpsLog({ route, level: 'info', event: 'waitlist_idempotency_replay', requestId, idempotencyStore: 'redis', durationMs: Date.now() - startedAt });
+              appendOpsLog({
+                route,
+                level: 'info',
+                event: 'waitlist_request_completed',
+                requestId,
+                httpStatus: cached.responseStatus,
+                outcome: 'idempotent_replay',
+                storage: 'redis',
+                durationMs: Date.now() - startedAt,
+              });
               return new Response(cached.responseBody, {
                 status: cached.responseStatus,
                 headers: {
@@ -189,6 +225,16 @@ export const Route = createFileRoute('/api/waitlist')({
             const cached = readApiRequestReceipt(route, idempotencyKey);
             if (cached) {
               appendOpsLog({ route, level: 'info', event: 'waitlist_idempotency_replay', requestId, idempotencyStore: 'sqlite', durationMs: Date.now() - startedAt });
+              appendOpsLog({
+                route,
+                level: 'info',
+                event: 'waitlist_request_completed',
+                requestId,
+                httpStatus: cached.responseStatus,
+                outcome: 'idempotent_replay',
+                storage: 'sqlite',
+                durationMs: Date.now() - startedAt,
+              });
               return new Response(cached.responseBody, {
                 status: cached.responseStatus,
                 headers: {
@@ -274,7 +320,7 @@ export const Route = createFileRoute('/api/waitlist')({
             ipAddress: getClientIp(request),
             metaJson: JSON.stringify({ contentType }),
           });
-          return respond({ ok: false, error: 'Invalid request payload.' }, 400);
+          return respond({ ok: false, error: 'Invalid request payload.' }, 400, {}, 'payload_invalid', { contentType });
         }
 
         const ipAddress = getClientIp(request);
@@ -285,7 +331,7 @@ export const Route = createFileRoute('/api/waitlist')({
         let rateLimit = { allowed: true, remaining: RATE_LIMIT_MAX, resetMs: 0 };
         try {
           // Prefer Redis rate limiting — survives across Lambda invocations
-          rateLimit = await redisConsumeRateLimit(rateLimitKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+          rateLimit = await redisConsumeRateLimit(rateLimitKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS, 'waitlist');
         } catch {
           try {
             rateLimit = consumeRateLimit(rateLimitKey, 'waitlist', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
@@ -311,7 +357,7 @@ export const Route = createFileRoute('/api/waitlist')({
           });
           return respond({ ok: false, error: 'Too many attempts. Try again in a few minutes.' }, 429, {
             'retry-after': String(Math.ceil(rateLimit.resetMs / 1000)),
-          });
+          }, 'rate_limited', { resetMs: rateLimit.resetMs });
         }
 
         if (honeypot) {
@@ -324,7 +370,7 @@ export const Route = createFileRoute('/api/waitlist')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: false, error: 'Submission blocked.' }, 400);
+          return respond({ ok: false, error: 'Submission blocked.' }, 400, {}, 'blocked_honeypot');
         }
 
         if (!EMAIL_RE.test(email)) {
@@ -336,7 +382,7 @@ export const Route = createFileRoute('/api/waitlist')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: false, error: 'Valid email is required.' }, 400);
+          return respond({ ok: false, error: 'Valid email is required.' }, 400, {}, 'invalid_email');
         }
 
         const payload = {
@@ -387,7 +433,7 @@ export const Route = createFileRoute('/api/waitlist')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
-          return respond({ ok: true, message: 'You\'re on the list!' }, 200);
+          return respond({ ok: true, message: 'You\'re on the list!' }, 200, {}, 'submitted', { storage: 'redis' });
         } catch (error) {
           // Redis failed — try file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
@@ -412,7 +458,7 @@ export const Route = createFileRoute('/api/waitlist')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
-            return respond({ ok: true, degraded: true, message: 'You\'re on the list!' }, 200);
+            return respond({ ok: true, degraded: true, message: 'You\'re on the list!' }, 200, {}, 'submitted_degraded', { storage: 'sqlite' });
           } catch (sqliteFallbackError) {
             appendOpsLog({
               route,
@@ -434,7 +480,7 @@ export const Route = createFileRoute('/api/waitlist')({
               ipAddress,
             });
             appendOpsLog({ route: route, level: 'warn', event: 'waitlist_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
-            return respond({ ok: true, queued: true, message: 'You\'re on the list!' }, 202);
+            return respond({ ok: true, queued: true, message: 'You\'re on the list!' }, 202, {}, 'queued_fallback', { storage: 'fallback-file' });
           } catch (fallbackError) {
             appendOpsLog({ route: route, level: 'error', event: 'waitlist_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
             safeTrackConversion(route, requestId, {
@@ -445,7 +491,7 @@ export const Route = createFileRoute('/api/waitlist')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
-            return respond({ ok: false, error: 'Temporary storage issue. Please retry in 1 minute.' }, 503);
+            return respond({ ok: false, error: 'Temporary storage issue. Please retry in 1 minute.' }, 503, {}, 'failed', { storage: 'none' });
           }
         }
       },

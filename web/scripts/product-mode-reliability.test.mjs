@@ -95,6 +95,16 @@ test('api idempotency receipts are readable and updateable', async (t) => {
   const updated = db.readApiRequestReceipt('/api/waitlist', 'idem-test-1');
   assert.ok(updated);
   assert.equal(updated.responseStatus, 200);
+
+  db.writeApiRequestReceipt({
+    route: '/api/postback',
+    idempotencyKey: 'event:postback:test:1',
+    responseStatus: 202,
+    responseBody: JSON.stringify({ ok: true, queued: true }),
+  });
+  const postback = db.readApiRequestReceipt('/api/postback', 'event:postback:test:1');
+  assert.ok(postback);
+  assert.equal(postback.responseStatus, 202);
 });
 
 test('rate limit enforces cap with clear reset metadata', async (t) => {
