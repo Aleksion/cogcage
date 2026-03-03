@@ -42,72 +42,72 @@ No user-facing nav labels may reference legacy names.
 ## Screen-by-screen Checklist
 
 ## 1) Surface (`/` + `/sign-in`)
-- [ ] Hero/Origin/copy final QA (Sous voice consistency)
-- [ ] Sign-in microcopy final pass
-- [ ] Mobile keyboard + spacing sanity
-- [ ] No legacy terms
+- [x] Hero/Origin/copy final QA (Sous voice consistency)
+- [x] Sign-in microcopy final pass
+- [x] Mobile keyboard + spacing sanity
+- [x] No legacy terms
 
 ## 2) The Mise (`/mise`, legacy `/shell` redirect)
-- [ ] Replace all remaining legacy nouns in UI copy
-- [ ] Header, stats, CTA, empty state in canonical language
-- [ ] Visual hierarchy upgraded to game-client quality
-- [ ] Desktop screenshots
-- [ ] Mobile screenshots
+- [x] Replace all remaining legacy nouns in UI copy
+- [x] Header, stats, CTA, empty state in canonical language
+- [x] Visual hierarchy upgraded to game-client quality
+- [x] Desktop screenshots
+- [x] Mobile screenshots
 
 ## 3) The Shed (`/shed`, legacy `/forge` redirect)
-- [ ] Route label/title/meta canonicalized
-- [ ] Content language canonicalized (Molt system)
-- [ ] Card/table/list visuals aligned to frontpage style
-- [ ] Desktop screenshots
-- [ ] Mobile screenshots
+- [x] Route label/title/meta canonicalized
+- [x] Content language canonicalized (Molt system)
+- [x] Card/table/list visuals aligned to frontpage style
+- [x] Desktop screenshots
+- [x] Mobile screenshots
 
 ## 4) The Pit (`/pit`, legacy `/play` redirect)
-- [ ] Replace old lobby terms (leaderboard/tanks/etc.)
-- [ ] Canon sections: Active Scuttles, Ledger summary, entry actions
-- [ ] CTA language and button hierarchy corrected
-- [ ] Desktop screenshots
-- [ ] Mobile screenshots
+- [x] Replace old lobby terms (leaderboard/tanks/etc.)
+- [x] Canon sections: Active Scuttles, Ledger summary, entry actions
+- [x] CTA language and button hierarchy corrected
+- [x] Desktop screenshots
+- [x] Mobile screenshots
 
 ## 5) Molts (`/molts`, legacy `/molds` redirect)
-- [ ] Remove all “mold(s)” text
-- [ ] Canon labels: Molt/Molts throughout
-- [ ] Filter/tab taxonomy aligned to current game model
-- [ ] Empty state + create flow copy in Sous voice
-- [ ] Desktop screenshots
-- [ ] Mobile screenshots
+- [x] Remove all “mold(s)” text
+- [x] Canon labels: Molt/Molts throughout
+- [x] Filter/tab taxonomy aligned to current game model
+- [x] Empty state + create flow copy in Sous voice
+- [x] Desktop screenshots
+- [x] Mobile screenshots
 
 ## 6) Ledger (`/ledger`, legacy `/ops-log` redirect)
-- [ ] Naming + metadata canonicalized
-- [ ] Copy and labels aligned with world
-- [ ] Visual consistency with other pages
-- [ ] Desktop/mobile screenshots
+- [x] Naming + metadata canonicalized
+- [x] Copy and labels aligned with world
+- [x] Visual consistency with other pages
+- [x] Desktop/mobile screenshots
 
 ## 7) Secondary routes (`/demo`, `/join/:code`, `/tank/:id`, `/success`)
-- [ ] Canon language pass
-- [ ] Visual consistency pass
-- [ ] Empty/error states themed
-- [ ] Desktop/mobile screenshots where applicable
+- [x] Canon language pass
+- [x] Visual consistency pass
+- [x] Empty/error states themed
+- [x] Desktop/mobile screenshots where applicable
 
 ---
 
 ## Navigation Checklist
 
-- [ ] Primary nav uses only canonical labels: Surface / The Mise / The Shed / The Pit / Molts / Ledger
-- [ ] Nav points to canonical URLs only
-- [ ] Legacy URLs not shown in nav
-- [ ] Landing nav + app nav do not double-stack
-- [ ] Auth/unauth nav behavior validated
+- [x] Primary nav uses only canonical labels: Surface / The Mise / The Shed / The Pit / Molts / Ledger
+- [x] Nav points to canonical URLs only
+- [x] Legacy URLs not shown in nav
+- [x] Landing nav + app nav do not double-stack
+- [x] Auth/unauth nav behavior validated
 
 ---
 
 ## Visual System Checklist
 
-- [ ] `#050510` substrate base
-- [ ] `#00E5FF` primary interactions
-- [ ] No legacy yellow primary for core CTA system
-- [ ] No generic SaaS card treatment
-- [ ] Spacing/typography rhythm matches frontpage quality
-- [ ] Mobile-first pass complete
+- [x] `#050510` substrate base
+- [x] `#00E5FF` primary interactions
+- [x] No legacy yellow primary for core CTA system
+- [x] No generic SaaS card treatment
+- [x] Spacing/typography rhythm matches frontpage quality
+- [x] Mobile-first pass complete
 
 ---
 
@@ -133,10 +133,63 @@ For each route/state:
 
 ## Open Questions (must resolve before final merge)
 
-- [ ] Should `/surface` be explicit route, or keep `/` as canonical Surface and alias `/surface` to it?
-- [ ] Confirm final top-level nav labels (include Demo or hide behind dev mode?)
-- [ ] Confirm `/tank/:id` user-facing name in canon terminology
+- [x] Should `/surface` be explicit route, or keep `/` as canonical Surface and alias `/surface` to it?
+- [x] Confirm final top-level nav labels (include Demo or hide behind dev mode?)
+- [x] Confirm `/tank/:id` user-facing name in canon terminology
 
 ---
 
 **Rule:** If URL label and page content diverge, URL/content must be corrected before merge.
+
+---
+
+## WS22 Execution Audit — 2026-03-03
+
+### Route/State Matrix (Pass/Fail + Evidence)
+- `PASS` `/` Surface desktop: `web/output/playwright/ws22/desktop-surface.png`
+- `PASS` `/` Surface mobile (390x844): `web/output/playwright/ws22/mobile-surface.png`
+- `PASS` `/sign-in` unauth desktop: `web/output/playwright/ws22/desktop-sign-in-unauth.png`
+- `PASS` `/sign-in` unauth mobile: `web/output/playwright/ws22/mobile-sign-in-unauth.png`
+- `PASS` `/sign-in` authenticated handoff desktop: `web/output/playwright/ws22/desktop-sign-in-auth.png`
+- `PASS` `/sign-in` authenticated handoff mobile: `web/output/playwright/ws22/mobile-sign-in-auth.png`
+- `PASS` `/mise` desktop: `web/output/playwright/ws22/desktop-mise.png`
+- `PASS` `/mise` mobile: `web/output/playwright/ws22/mobile-mise.png`
+- `PASS` `/shed` desktop: `web/output/playwright/ws22/desktop-shed.png`
+- `PASS` `/shed` mobile: `web/output/playwright/ws22/mobile-shed.png`
+- `PASS` `/pit` desktop: `web/output/playwright/ws22/desktop-pit.png`
+- `PASS` `/pit` mobile: `web/output/playwright/ws22/mobile-pit.png`
+- `PASS` `/molts` desktop: `web/output/playwright/ws22/desktop-molts.png`
+- `PASS` `/molts` mobile: `web/output/playwright/ws22/mobile-molts.png`
+- `PASS` `/ledger` desktop: `web/output/playwright/ws22/desktop-ledger.png`
+- `PASS` `/ledger` mobile: `web/output/playwright/ws22/mobile-ledger.png`
+- `PASS` `/demo` desktop: `web/output/playwright/ws22/desktop-demo.png`
+- `PASS` `/demo` mobile: `web/output/playwright/ws22/mobile-demo.png`
+- `PASS` `/join/ALPHA7` desktop: `web/output/playwright/ws22/desktop-join-code.png`
+- `PASS` `/join/ALPHA7` mobile: `web/output/playwright/ws22/mobile-join-code.png`
+- `PASS` `/tank/nonexistent` desktop (error state themed): `web/output/playwright/ws22/desktop-tank-missing.png`
+- `PASS` `/tank/nonexistent` mobile (error state themed): `web/output/playwright/ws22/mobile-tank-missing.png`
+- `PASS` `/success` desktop: `web/output/playwright/ws22/desktop-success.png`
+- `PASS` `/success` mobile: `web/output/playwright/ws22/mobile-success.png`
+
+### Legacy Alias Verification
+- `PASS` `/shell` -> `/mise` (desktop/mobile):
+  - `web/output/playwright/ws22/desktop-legacy-shell.png`
+  - `web/output/playwright/ws22/mobile-legacy-shell.png`
+- `PASS` `/forge` -> `/shed` (desktop/mobile):
+  - `web/output/playwright/ws22/desktop-legacy-forge.png`
+  - `web/output/playwright/ws22/mobile-legacy-forge.png`
+- `PASS` `/play` -> `/pit` (desktop/mobile):
+  - `web/output/playwright/ws22/desktop-legacy-play.png`
+  - `web/output/playwright/ws22/mobile-legacy-play.png`
+- `PASS` `/molds` -> `/molts` (desktop/mobile):
+  - `web/output/playwright/ws22/desktop-legacy-molds.png`
+  - `web/output/playwright/ws22/mobile-legacy-molds.png`
+- `PASS` `/ops-log` -> `/ledger` (desktop/mobile):
+  - `web/output/playwright/ws22/desktop-legacy-ops-log.png`
+  - `web/output/playwright/ws22/mobile-legacy-ops-log.png`
+- Redirect URL proof: `web/output/playwright/ws22/redirect-checks.txt`
+
+### Open Question Resolutions
+- `/surface`: keep `/` as canonical Surface in this sprint; no separate `/surface` route added.
+- Top-level nav labels: canonical-only set to `Surface / The Mise / The Shed / The Pit / Molts / Ledger`.
+- `/tank/:id` user-facing naming: canonicalized to **Scuttle** in metadata and page copy.
