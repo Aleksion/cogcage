@@ -64,9 +64,9 @@ export function OpsLogPage() {
   return (
     <div
       style={{
-        background: '#0e0e0e',
+        background: '#050510',
         color: '#e0e0e0',
-        fontFamily: "'Courier New', monospace",
+        fontFamily: "'IBM Plex Mono', monospace",
         fontSize: 13,
         lineHeight: 1.5,
         padding: '1.5rem',
@@ -84,7 +84,7 @@ export function OpsLogPage() {
           alignItems: 'center',
         }}
       >
-        <span>OPS LOG</span>
+        <span>LEDGER</span>
         <span style={{ color: '#888', fontSize: 11, fontWeight: 400 }}>
           auto-refresh ·{' '}
           {secondsAgo < 5

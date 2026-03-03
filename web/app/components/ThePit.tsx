@@ -249,7 +249,7 @@ export default function ThePit() {
   const { isAuthenticated, isLoading } = useConvexAuth()
   const navigate = useNavigate()
 
-  // Redirect is now handled by /play route (shows DemoLoop for unauthenticated)
+  // Redirect is now handled by /pit route (shows DemoLoop for unauthenticated)
   // This component only renders when isAuthenticated = true
 
   const { data: topPlayers } = useQuery({
@@ -291,7 +291,7 @@ export default function ThePit() {
 
   const handleEnterMolt = async () => {
     if (!shells || shells.length === 0) {
-      navigate({ to: '/shell' })
+      navigate({ to: '/mise' })
       return
     }
     setEntering(true)
@@ -300,7 +300,7 @@ export default function ThePit() {
       const tankId = await createTank({ hostShellId: shells[0]._id })
       navigate({ to: `/tank/${tankId}` })
     } catch {
-      setEnterError('Could not create tank. Try again.')
+      setEnterError('Could not create scuttle. Try again.')
       setEntering(false)
     }
   }
@@ -356,7 +356,7 @@ export default function ThePit() {
               openTanks.map((tank) => (
                 <div key={tank._id} className="pit-tank-item">
                   <span className="pit-tank-label">
-                    Tank #{String(tank._id).slice(-4)}
+                    Scuttle #{String(tank._id).slice(-4)}
                   </span>
                   <button
                     className="pit-tank-join"

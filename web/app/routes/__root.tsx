@@ -14,7 +14,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: 'description',
         content:
-          'Compete in AI-powered skill ladders. Climb ranks, unlock rewards, and join the alpha waitlist.',
+          'Compete in live AI scuttles. Raise hardness, unlock rewards, and join the alpha waitlist.',
       },
     ],
     links: [

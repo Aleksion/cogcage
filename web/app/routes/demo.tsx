@@ -36,7 +36,7 @@ function DemoPage() {
   const [phase, setPhase] = useState<'build' | 'battle'>('build')
   const [playerMold, setPlayerMold] = useState<Part[] | null>(null)
   const [opponentMold, setOpponentMold] = useState<Part[] | null>(null)
-  const [playerName, setPlayerName] = useState('CRAWLER-1')
+  const [playerName, setPlayerName] = useState('CRUSTIE-1')
   const [webhookUrl, setWebhookUrl] = useState<string | undefined>()
 
   useEffect(() => setMounted(true), [])
@@ -78,7 +78,7 @@ function DemoPage() {
               color: '#FFD600',
             }}
           >
-            LOADING FORGE...
+            LOADING MISE...
           </div>
         }
       >

@@ -1034,7 +1034,7 @@ export default function MoltsCollection() {
           ) : filteredShells.length === 0 ? (
             <div className="molts-empty">
               <div className="molts-empty-title">
-                NO {filter.toUpperCase()} MOLDS
+                NO {filter.toUpperCase()} MOLTS
               </div>
               <div className="molts-empty-sub">
                 Try a different filter or create a new molt.
@@ -1271,7 +1271,7 @@ function MoltEditor({
             {'\u2190'} Back to Molts
           </button>
           <div className="editor-title">
-            {shellId === 'new' ? 'NEW MOLD' : name || 'EDIT MOLD'}
+            {shellId === 'new' ? 'NEW MOLT' : name || 'EDIT MOLT'}
           </div>
           <div className="editor-actions">
             {shellId !== 'new' && (

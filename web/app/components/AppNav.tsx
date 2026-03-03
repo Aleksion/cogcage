@@ -181,12 +181,12 @@ const NAV_STYLES = `
 
 // Lore-correct navigation — The Sous's vocabulary
 const NAV_ITEMS = [
-  { to: '/shed',   label: 'The Shed'   },
+  { to: '/',       label: 'Surface'    },
   { to: '/mise',   label: 'The Mise'   },
+  { to: '/shed',   label: 'The Shed'   },
   { to: '/pit',    label: 'The Pit'    },
-  { to: '/molts',  label: 'The Molts'  },
-  { to: '/ledger', label: 'The Ledger' },
-  { to: '/demo',   label: 'Demo'       },
+  { to: '/molts',  label: 'Molts'      },
+  { to: '/ledger', label: 'Ledger'     },
 ] as const
 
 // Routes where the landing page supplies its own nav — suppress AppNav
@@ -247,7 +247,7 @@ export function AppNav() {
 
         <ul className={`appnav-links${menuOpen ? ' open' : ''}`}>
           {NAV_ITEMS.map((item) => {
-            const isActive = location.pathname.startsWith(item.to)
+            const isActive = item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to)
             return (
               <li key={item.to}>
                 <Link

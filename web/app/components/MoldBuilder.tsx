@@ -46,7 +46,7 @@ function hexToRgba(hex: string, alpha: number): string {
 
 export default function MoldBuilder({ onConfirm }: MoldBuilderProps) {
   const [selected, setSelected] = useState<Record<PartSlot, string>>(getDefaults)
-  const [name, setName] = useState('CRAWLER-1')
+  const [name, setName] = useState('CRUSTIE-1')
   const [webhookUrl, setWebhookUrl] = useState('')
 
   const isWebhookValid = (() => {
@@ -68,7 +68,7 @@ export default function MoldBuilder({ onConfirm }: MoldBuilderProps) {
       return PARTS.find(p => p.id === selected[slot])!
     })
     const opponentMold = randomMold()
-    onConfirm(playerMold, opponentMold, name || 'CRAWLER-1', isWebhookValid ? webhookUrl : undefined)
+    onConfirm(playerMold, opponentMold, name || 'CRUSTIE-1', isWebhookValid ? webhookUrl : undefined)
   }, [selected, name, onConfirm, isWebhookValid, webhookUrl])
 
   return (
@@ -104,7 +104,7 @@ export default function MoldBuilder({ onConfirm }: MoldBuilderProps) {
           margin: '0 0 24px',
           letterSpacing: 2,
         }}>
-          FORGE YOUR MOLD
+          COMPOSE YOUR MOLT
         </h1>
 
         {/* Name input */}
@@ -113,7 +113,7 @@ export default function MoldBuilder({ onConfirm }: MoldBuilderProps) {
             type="text"
             value={name}
             onChange={e => setName(e.target.value.toUpperCase().slice(0, 20))}
-            placeholder="YOUR CRAWLER NAME"
+            placeholder="YOUR CRUSTIE NAME"
             maxLength={20}
             style={{
               fontFamily: "'IBM Plex Mono', monospace",
@@ -225,7 +225,7 @@ export default function MoldBuilder({ onConfirm }: MoldBuilderProps) {
               marginTop: 10,
               lineHeight: 1.6,
             }}>
-              Connect your OpenClaw instance to pilot this crawler. Leave empty to use Molt Pit's AI.
+              Connect your OpenClaw instance to pilot this crustie. Leave empty to use Molt Pit's AI.
             </div>
           )}
 
@@ -412,7 +412,7 @@ export default function MoldBuilder({ onConfirm }: MoldBuilderProps) {
           margin: '16px 0 24px',
           textTransform: 'uppercase',
         }}>
-          --- OPPONENT: RANDOM MOLD ---
+          --- OPPONENT: RANDOM MOLT ---
         </div>
 
         {/* Enter the pit button */}

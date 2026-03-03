@@ -42,10 +42,10 @@ export function SessionPageWrapper({
         </h1>
         <p style={{ color: '#d0d5ef' }}>{error}</p>
         <a
-          href="/play"
+          href="/pit"
           style={{ color: '#8a8fff', textDecoration: 'underline' }}
         >
-          Back to Play
+          Back to The Pit
         </a>
       </div>
     )

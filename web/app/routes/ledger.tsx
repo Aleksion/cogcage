@@ -1,15 +1,14 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+import { ClientOnly } from '~/components/ClientOnly'
+import { OpsLogPage } from '~/components/OpsLogPage'
 
 export const Route = createFileRoute('/ledger')({
-  component: LedgerRedirect,
+  head: () => ({
+    meta: [{ title: 'The Molt Pit — Ledger' }],
+  }),
+  component: OpsLogRoute,
 })
 
-function LedgerRedirect() {
-  const navigate = useNavigate()
-  useEffect(() => {
-    void navigate({ to: '/ops-log', replace: true })
-  }, [navigate])
-
-  return null
+function OpsLogRoute() {
+  return <ClientOnly>{() => <OpsLogPage />}</ClientOnly>
 }

@@ -95,7 +95,7 @@ export function JoinSession({ code }: { code: string }) {
               textAlign: 'center',
             }}
           >
-            Join FFA Tournament
+            Join FFA Scuttle
           </h1>
           <div
             style={{
@@ -121,7 +121,7 @@ export function JoinSession({ code }: { code: string }) {
                   marginBottom: '0.3rem',
                 }}
               >
-                Bot Name
+                Crustie Name
               </label>
               <input
                 id="bot-name"
