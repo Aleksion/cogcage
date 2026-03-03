@@ -8,6 +8,46 @@
 
 ---
 
+## [2026-03-03] - fix(product-mode): signup replay UX + checkout-success idempotent confirmation + ops critical-path summary
+
+**Type:** fix/feature/ops/test | **Budget impact:** n/a (product-critical)
+
+### What
+- `web/app/components/MoltPitLanding.jsx`
+  - Signup/founder replay queue items now persist stable idempotency keys to reduce duplicate risk on retries.
+  - Hero/footer signup flows now surface pending local retry counts and add manual replay controls.
+  - Error messaging now includes pending queued retries for clearer user-visible reliability state.
+- `web/app/components/DemoLoop.tsx`
+  - Added clear action-economy feedback in PLAY mode:
+    - AP regen/spend shown each turn.
+    - Explicit `INSUFFICIENT_AP` WAIT reason surfaced in UI.
+- `web/app/routes/api/checkout-success.ts`
+  - Added idempotency receipt read/write (`Redis -> SQLite`) and replay handling with `x-idempotent-replay`.
+  - Added deterministic response contract fields (`status`, `storage`, `queued`, `degraded`, `replayed`, `requestId`, `eventId`).
+  - Added structured completion logs (`checkout_success_request_completed`) across POST/GET paths.
+- `web/app/routes/api/ops.ts`
+  - Added `criticalPath` summary aggregation for signup + monetization outcomes from recent ops logs.
+  - Updated shipped-artifact manifest lines to current product-critical lane.
+- `web/app/components/OpsLogPage.tsx`
+  - Added Critical Path Summary section for quick inspection of submitted/degraded/queued/failed outcomes.
+- `web/scripts/api-critical-routes.test.mjs`
+  - Added checkout-success idempotency replay test.
+- `web/scripts/demo-loop-core.test.mjs`
+  - Added insufficient AP WAIT-reason/AP-feedback assertions.
+- `web/ops/log.md`, `ops/logs/2026-03-02.md`
+  - Added artifact/evidence/risk entries for this ship pass.
+
+### Why
+- Product-mode required reliability-first delivery with inspectable failure/retry behavior and hardened monetization confirmation semantics.
+- Existing paths were mostly complete, but replay observability and checkout-success idempotent confirmation contracts were not yet as explicit as waitlist/postback.
+
+### Verification
+- `cd web && npm run test:product` ✅
+- `cd web && npm run build` ✅
+
+### Breaking Changes
+- None intended; response bodies include additional stable metadata fields.
+
 ## [2026-03-03] - fix(product-mode): deterministic signup/postback contracts + idempotent replay verification
 
 **Type:** fix/test/ops | **Budget impact:** n/a (product-critical)

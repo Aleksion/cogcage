@@ -25,6 +25,9 @@ test('insufficient AP forces WAIT, then AP regen enables action next turn', () =
 
   const waitTurn = runPlayTurn(start, { action: 'STUN' }, { forcedAiAction: 'WAIT' });
   assert.equal(waitTurn.log[0].p1Action, 'WAIT');
+  assert.equal(waitTurn.log[0].p1WaitReason, 'INSUFFICIENT_AP');
+  assert.ok(waitTurn.log[0].p1ApRecovered > 0);
+  assert.equal(waitTurn.log[0].p1ApSpent, 0);
   assert.ok(waitTurn.p1.ap > 1.0);
 
   const moveTurn = runPlayTurn(waitTurn, { action: 'MOVE', moveDir: 'DOWN' }, { forcedAiAction: 'WAIT' });

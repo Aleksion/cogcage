@@ -44,6 +44,12 @@ export interface TurnResult {
   p2Pos: Position
   p1Ap: number
   p2Ap: number
+  p1ApRecovered?: number
+  p2ApRecovered?: number
+  p1ApSpent?: number
+  p2ApSpent?: number
+  p1WaitReason?: 'INSUFFICIENT_AP' | null
+  p2WaitReason?: 'INSUFFICIENT_AP' | null
   log: string
 }
 
@@ -270,16 +276,26 @@ export function simulateMatch(): { turns: TurnResult[]; winner: string } {
   for (let t = 1; t <= MAX_TURNS; t++) {
     p1.ap += BERSERKER.speed
     p2.ap += TACTICIAN.speed
+    const p1CanAffordAny = (['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN'] as Action[]).some((action) => canAffordAction(p1.ap, action))
+    const p2CanAffordAny = (['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN'] as Action[]).some((action) => canAffordAction(p2.ap, action))
     const dist = manhattan(p1.pos, p2.pos)
     const p1Act = pickAction(BERSERKER.bias, dist, p1.stunned, p1.ap)
     const p2Act = pickAction(TACTICIAN.bias, dist, p2.stunned, p2.ap)
-    if (p1Act !== 'WAIT') p1.ap = Math.max(0, p1.ap - ACTION_AP_COST[p1Act])
-    if (p2Act !== 'WAIT') p2.ap = Math.max(0, p2.ap - ACTION_AP_COST[p2Act])
+    const p1ApSpent = p1Act === 'WAIT' ? 0 : ACTION_AP_COST[p1Act]
+    const p2ApSpent = p2Act === 'WAIT' ? 0 : ACTION_AP_COST[p2Act]
+    if (p1Act !== 'WAIT') p1.ap = Math.max(0, p1.ap - p1ApSpent)
+    if (p2Act !== 'WAIT') p2.ap = Math.max(0, p2.ap - p2ApSpent)
 
     const result = resolveTurn(p1Act, p2Act, p1, p2, t, {
       p1MoveDir: p1Act === 'MOVE' ? preferredMoveDirection(p1.pos, p2.pos) : undefined,
       p2MoveDir: p2Act === 'MOVE' ? preferredMoveDirection(p2.pos, p1.pos) : undefined,
     })
+    result.p1ApRecovered = BERSERKER.speed
+    result.p2ApRecovered = TACTICIAN.speed
+    result.p1ApSpent = p1ApSpent
+    result.p2ApSpent = p2ApSpent
+    result.p1WaitReason = p1Act === 'WAIT' && !p1CanAffordAny ? 'INSUFFICIENT_AP' : null
+    result.p2WaitReason = p2Act === 'WAIT' && !p2CanAffordAny ? 'INSUFFICIENT_AP' : null
     turns.push(result)
     if (p1.hp <= 0 || p2.hp <= 0) break
   }
@@ -316,16 +332,28 @@ export function runPlayTurn(
   p2.ap += TACTICIAN.speed
 
   const p1Act: Action | 'WAIT' = canAffordAction(p1.ap, choice.action) ? choice.action : 'WAIT'
+  const p1WaitReason: 'INSUFFICIENT_AP' | null = p1Act === 'WAIT' ? 'INSUFFICIENT_AP' : null
   const dist = manhattan(p1.pos, p2.pos)
   const p2Act: Action | 'WAIT' = options?.forcedAiAction ?? pickAction(TACTICIAN.bias, dist, p2.stunned, p2.ap)
+  const p2CanAffordAny = (['MOVE', 'ATTACK', 'DEFEND', 'CHARGE', 'STUN'] as Action[]).some((action) => canAffordAction(p2.ap, action))
+  const p2WaitReason: 'INSUFFICIENT_AP' | null =
+    p2Act === 'WAIT' && !p2CanAffordAny ? 'INSUFFICIENT_AP' : null
 
-  if (p1Act !== 'WAIT') p1.ap = Math.max(0, p1.ap - ACTION_AP_COST[p1Act])
-  if (p2Act !== 'WAIT') p2.ap = Math.max(0, p2.ap - ACTION_AP_COST[p2Act])
+  const p1ApSpent = p1Act === 'WAIT' ? 0 : ACTION_AP_COST[p1Act]
+  const p2ApSpent = p2Act === 'WAIT' ? 0 : ACTION_AP_COST[p2Act]
+  if (p1Act !== 'WAIT') p1.ap = Math.max(0, p1.ap - p1ApSpent)
+  if (p2Act !== 'WAIT') p2.ap = Math.max(0, p2.ap - p2ApSpent)
 
   const result = resolveTurn(p1Act, p2Act, p1, p2, prev.turn, {
     p1MoveDir: p1Act === 'MOVE' ? choice.moveDir : undefined,
     p2MoveDir: p2Act === 'MOVE' ? preferredMoveDirection(p2.pos, p1.pos) : undefined,
   })
+  result.p1ApRecovered = BERSERKER.speed
+  result.p2ApRecovered = TACTICIAN.speed
+  result.p1ApSpent = p1ApSpent
+  result.p2ApSpent = p2ApSpent
+  result.p1WaitReason = p1WaitReason
+  result.p2WaitReason = p2WaitReason
 
   const newLog = [...prev.log, result]
   const isDone = p1.hp <= 0 || p2.hp <= 0 || prev.turn >= MAX_TURNS
@@ -1122,9 +1150,12 @@ function PlayMode({ onSwitchToWatch }: { onSwitchToWatch: () => void }) {
       {lastResult && !winner && (
         <div style={{ textAlign: 'center', fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem' }}>
           Last: YOU {lastResult.p1Action}
+          {lastResult.p1WaitReason === 'INSUFFICIENT_AP' && <span style={{ color: '#f39c12' }}> (insufficient AP)</span>}
           {lastResult.p1Dmg > 0 && <span style={{ color: '#EB4D4B' }}> (-{lastResult.p1Dmg})</span>}
           {' · '}AI {lastResult.p2Action}
+          {lastResult.p2WaitReason === 'INSUFFICIENT_AP' && <span style={{ color: '#f39c12' }}> (insufficient AP)</span>}
           {lastResult.p2Dmg > 0 && <span style={{ color: '#EB4D4B' }}> (-{lastResult.p2Dmg})</span>}
+          {' · '}AP +{(lastResult.p1ApRecovered ?? BERSERKER.speed).toFixed(1)} / -{(lastResult.p1ApSpent ?? 0).toFixed(1)}
         </div>
       )}
 

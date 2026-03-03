@@ -78,6 +78,7 @@ export function OpsLogPage() {
     data?.redisFunnel?.conversionEvents ??
     data?.funnel?.conversionEvents ??
     '—'
+  const criticalPath = data?.criticalPath ?? null
 
   return (
     <div
@@ -295,6 +296,54 @@ export function OpsLogPage() {
               </div>
             ))}
           </div>
+
+          {/* ── Critical Path Summary ── */}
+          {criticalPath && (
+            <>
+              <h2
+                style={{
+                  fontSize: '0.85rem',
+                  color: '#5d6bff',
+                  margin: '1.5rem 0 0.5rem',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Critical Path Summary
+              </h2>
+              <div
+                style={{
+                  background: '#111326',
+                  border: '1px solid #23274b',
+                  borderRadius: 4,
+                  padding: '0.75rem 1rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                <div style={{ color: '#9ea7ff', marginBottom: '0.4rem', fontSize: 12 }}>
+                  Signup
+                </div>
+                <div style={{ color: '#d7daf0', marginBottom: '0.65rem' }}>
+                  waitlist submitted {criticalPath.signup.waitlistSubmitted} · degraded {criticalPath.signup.waitlistDegraded} · queued {criticalPath.signup.waitlistQueued} · failed {criticalPath.signup.waitlistFailed}
+                  <br />
+                  founder submitted {criticalPath.signup.founderIntentSubmitted} · degraded {criticalPath.signup.founderIntentDegraded} · queued {criticalPath.signup.founderIntentQueued} · failed {criticalPath.signup.founderIntentFailed}
+                </div>
+
+                <div style={{ color: '#9ea7ff', marginBottom: '0.4rem', fontSize: 12 }}>
+                  Monetization
+                </div>
+                <div style={{ color: '#d7daf0' }}>
+                  checkout confirmed {criticalPath.monetization.checkoutConfirmed} · degraded {criticalPath.monetization.checkoutDegraded} · queued {criticalPath.monetization.checkoutQueued} · failed {criticalPath.monetization.checkoutFailed}
+                  <br />
+                  postback recorded {criticalPath.monetization.postbackRecorded} · replayed {criticalPath.monetization.postbackReplayed} · degraded {criticalPath.monetization.postbackDegraded} · queued {criticalPath.monetization.postbackQueued} · failed {criticalPath.monetization.postbackFailed}
+                </div>
+
+                <div style={{ color: '#888', marginTop: '0.65rem', fontSize: 11 }}>
+                  ops warnings {criticalPath.opsLevels.warn} · errors {criticalPath.opsLevels.error}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* ── Redis Ops Log ── */}
           {data.redisOpsLog && data.redisOpsLog.length > 0 && (

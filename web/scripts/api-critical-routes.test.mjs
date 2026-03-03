@@ -7,6 +7,7 @@ import path from 'node:path';
 import { Route as WaitlistRoute } from '../app/routes/api/waitlist.ts';
 import { Route as FounderIntentRoute } from '../app/routes/api/founder-intent.ts';
 import { Route as PostbackRoute } from '../app/routes/api/postback.ts';
+import { Route as CheckoutSuccessRoute } from '../app/routes/api/checkout-success.ts';
 import * as db from '../app/lib/waitlist-db.ts';
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cogcage-api-critical-'));
@@ -21,6 +22,7 @@ const postWaitlist = WaitlistRoute.options.server.handlers.POST;
 const postFounderIntent = FounderIntentRoute.options.server.handlers.POST;
 const postPostback = PostbackRoute.options.server.handlers.POST;
 const getPostback = PostbackRoute.options.server.handlers.GET;
+const postCheckoutSuccess = CheckoutSuccessRoute.options.server.handlers.POST;
 const opsLogPath = path.join(tmpDir, 'api-events.ndjson');
 
 async function readJson(response) {
@@ -161,6 +163,47 @@ test('postback uses idempotency receipts and returns replay contract on duplicat
   assert.equal(replay.headers.get('x-idempotent-replay'), '1');
   assert.equal(replayBody.status, 'idempotent_replay');
   assert.equal(replayBody.replayed, true);
+});
+
+test('checkout-success uses idempotency receipts and returns replay contract on duplicate conversion event', async () => {
+  const eventId = `checkout-critical-${Date.now()}`;
+  const payload = {
+    eventId,
+    source: 'test-checkout-success',
+    email: 'buyer@example.com',
+    tier: 'founder',
+    page: '/success',
+  };
+
+  const first = await postCheckoutSuccess({
+    request: new Request('http://localhost/api/checkout-success', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    }),
+  });
+  const firstBody = await readJson(first);
+  assert.equal(firstBody.ok, true);
+  assert.equal(firstBody.eventId, eventId);
+  assert.equal(firstBody.replayed, false);
+  assert.ok(
+    firstBody.status === 'recorded' || firstBody.status === 'recorded_degraded' || firstBody.status === 'queued_fallback',
+    `unexpected first checkout-success status: ${firstBody.status}`,
+  );
+
+  const replay = await postCheckoutSuccess({
+    request: new Request('http://localhost/api/checkout-success', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    }),
+  });
+  const replayBody = await readJson(replay);
+  assert.equal(replayBody.ok, true);
+  assert.equal(replayBody.eventId, eventId);
+  assert.equal(replayBody.status, 'idempotent_replay');
+  assert.equal(replayBody.replayed, true);
+  assert.equal(replay.headers.get('x-idempotent-replay'), '1');
 });
 
 test('postback verification GET returns request-id contract and observable verify logs', async () => {

@@ -852,9 +852,9 @@ const createIdempotencyKey = () => {
   return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
 
-const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } = {}) => {
+const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000, idempotencyKey } = {}) => {
   let lastError = null;
-  const idempotencyKey = createIdempotencyKey();
+  const stableIdempotencyKey = idempotencyKey || createIdempotencyKey();
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
@@ -864,7 +864,7 @@ const submitWithRetry = async (url, payload, { retries = 1, timeoutMs = 6000 } =
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-idempotency-key': idempotencyKey,
+          'x-idempotency-key': stableIdempotencyKey,
         },
         body: JSON.stringify(payload),
         signal: controller.signal,
@@ -955,26 +955,31 @@ const enqueueWaitlistReplay = (payload) => {
     ...payload,
     email: String(payload.email || '').trim().toLowerCase(),
     source: payload.source || 'moltpit-replay',
+    idempotencyKey: payload.idempotencyKey || createIdempotencyKey(),
     queuedAt: new Date().toISOString(),
   };
   const deduped = queue.filter((item) => !(item.email === next.email && item.source === next.source));
   deduped.push(next);
   writeWaitlistReplayQueue(deduped);
+  return deduped.length;
 };
 
 const replayWaitlistQueue = async () => {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return { attempted: 0, sent: 0, failed: 0, remaining: readWaitlistReplayQueue().length };
+  }
   const queue = readWaitlistReplayQueue();
-  if (!queue.length) return;
+  if (!queue.length) return { attempted: 0, sent: 0, failed: 0, remaining: 0 };
 
   const remaining = [];
+  let sent = 0;
   for (const item of queue) {
     try {
       await submitWithRetry('/api/waitlist', {
         email: item.email,
         game: item.game || 'Unspecified',
         source: item.source || 'moltpit-replay',
-      }, { retries: 0, timeoutMs: 7000 });
+      }, { retries: 0, timeoutMs: 7000, idempotencyKey: item.idempotencyKey });
       await postJson('/api/events', {
         event: 'waitlist_replay_sent',
         source: item.source || 'moltpit-replay',
@@ -982,6 +987,7 @@ const replayWaitlistQueue = async () => {
         page: '/',
         meta: { queuedAt: item.queuedAt || null },
       });
+      sent += 1;
     } catch (error) {
       if (shouldQueueForReplay(error)) {
         remaining.push(item);
@@ -1000,6 +1006,12 @@ const replayWaitlistQueue = async () => {
   }
 
   writeWaitlistReplayQueue(remaining);
+  return {
+    attempted: queue.length,
+    sent,
+    failed: queue.length - sent,
+    remaining: remaining.length,
+  };
 };
 
 const readFounderIntentReplayQueue = () => {
@@ -1030,22 +1042,31 @@ const enqueueFounderIntentReplay = (payload) => {
   const normalized = {
     ...payload,
     email: String(payload.email || '').trim().toLowerCase(),
+    idempotencyKey: payload.idempotencyKey || createIdempotencyKey(),
     queuedAt: new Date().toISOString(),
   };
   const deduped = queue.filter((item) => String(item.intentId || '') !== intentId);
   deduped.push(normalized);
   writeFounderIntentReplayQueue(deduped);
+  return deduped.length;
 };
 
 const replayFounderIntentQueue = async () => {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return { attempted: 0, sent: 0, failed: 0, remaining: readFounderIntentReplayQueue().length };
+  }
   const queue = readFounderIntentReplayQueue();
-  if (!queue.length) return;
+  if (!queue.length) return { attempted: 0, sent: 0, failed: 0, remaining: 0 };
 
   const remaining = [];
+  let sent = 0;
   for (const item of queue) {
     try {
-      await submitWithRetry('/api/founder-intent', item, { retries: 0, timeoutMs: 7000 });
+      await submitWithRetry('/api/founder-intent', item, {
+        retries: 0,
+        timeoutMs: 7000,
+        idempotencyKey: item.idempotencyKey,
+      });
       await postJson('/api/events', {
         event: 'founder_intent_replay_sent',
         source: item.source || 'moltpit-founder-replay',
@@ -1053,6 +1074,7 @@ const replayFounderIntentQueue = async () => {
         page: '/',
         meta: { queuedAt: item.queuedAt || null, intentId: item.intentId || null },
       });
+      sent += 1;
     } catch (error) {
       if (shouldQueueForReplay(error)) {
         remaining.push(item);
@@ -1072,6 +1094,12 @@ const replayFounderIntentQueue = async () => {
   }
 
   writeFounderIntentReplayQueue(remaining);
+  return {
+    attempted: queue.length,
+    sent,
+    failed: queue.length - sent,
+    remaining: remaining.length,
+  };
 };
 
 // ─── Reusable Components ───────────────────────────────────────────────────────
@@ -1257,6 +1285,8 @@ const HeroSection = ({ sectionRef }) => {
   const [lastSubmittedEmail, setLastSubmittedEmail] = useState('');
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
+  const [pendingWaitlistReplays, setPendingWaitlistReplays] = useState(0);
+  const [replayingWaitlist, setReplayingWaitlist] = useState(false);
   const [botField, setBotField] = useState('');
   const [variant, setVariant] = useState('value');
   const [founderCtaVariant, setFounderCtaVariant] = useState('reserve');
@@ -1268,6 +1298,7 @@ const HeroSection = ({ sectionRef }) => {
     const assignedFounderCtaVariant = getOrCreateFounderCtaVariant();
     setVariant(assignedVariant);
     setFounderCtaVariant(assignedFounderCtaVariant);
+    setPendingWaitlistReplays(readWaitlistReplayQueue().length);
     postJson('/api/events', {
       event: 'landing_view',
       source: `hero-${assignedVariant}`,
@@ -1329,12 +1360,14 @@ const HeroSection = ({ sectionRef }) => {
       setMessage('✓ You\'re on the list. Check your inbox for early access.');
       setEmail('');
     } catch (err) {
+      let queuedCount = pendingWaitlistReplays;
       if (shouldQueueForReplay(err)) {
-        enqueueWaitlistReplay({
+        queuedCount = enqueueWaitlistReplay({
           email: trimmed.toLowerCase(),
           game: 'Unspecified',
           source: `moltpit-hero-${variant}`,
         });
+        setPendingWaitlistReplays(queuedCount);
       }
       void postJson('/api/events', {
         event: 'waitlist_submit_buffered',
@@ -1346,9 +1379,31 @@ const HeroSection = ({ sectionRef }) => {
       setStatus('error');
       const requestRef = err?.requestId ? ` Ref ${err.requestId}.` : '';
       const retryAfter = err?.retryAfter ? ` Retry in ~${err.retryAfter}s.` : '';
+      const pendingRef = queuedCount > 0 ? ` Pending local retries: ${queuedCount}.` : '';
       setMessage(shouldQueueForReplay(err)
-        ? `Temporary network/storage issue. Saved locally and will auto-retry when online.${requestRef}`
+        ? `Temporary network/storage issue. Saved locally and will auto-retry when online.${requestRef}${pendingRef}`
         : `${err?.message || 'Could not submit. Please check your input and retry.'}${retryAfter}${requestRef}`);
+    }
+  };
+
+  const retryQueuedWaitlist = async () => {
+    if (replayingWaitlist) return;
+    setReplayingWaitlist(true);
+    try {
+      const replayResult = await replayWaitlistQueue();
+      setPendingWaitlistReplays(replayResult.remaining);
+      if (replayResult.attempted === 0) {
+        setStatus('success');
+        setMessage('No queued signups pending replay.');
+      } else if (replayResult.remaining === 0) {
+        setStatus('success');
+        setMessage(`Replayed ${replayResult.sent} queued signup${replayResult.sent === 1 ? '' : 's'} successfully.`);
+      } else {
+        setStatus('error');
+        setMessage(`Replayed ${replayResult.sent}/${replayResult.attempted}. ${replayResult.remaining} still queued.`);
+      }
+    } finally {
+      setReplayingWaitlist(false);
     }
   };
 
@@ -1477,6 +1532,29 @@ const HeroSection = ({ sectionRef }) => {
             <div className="waitlist-message" role="status" aria-live="polite" style={{ color: status === 'error' ? 'var(--c-red)' : '#00C853' }}>
               {message}
             </div>
+            {pendingWaitlistReplays > 0 && (
+              <div style={{ marginTop: '0.45rem' }}>
+                <button
+                  type="button"
+                  onClick={() => { void retryQueuedWaitlist(); }}
+                  disabled={status === 'loading' || replayingWaitlist}
+                  style={{
+                    border: '2px solid var(--c-dark)',
+                    background: 'var(--c-cyan)',
+                    color: 'var(--c-dark)',
+                    borderRadius: '999px',
+                    padding: '0.45rem 0.9rem',
+                    fontWeight: 900,
+                    fontFamily: 'var(--f-body)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {replayingWaitlist
+                    ? 'Retrying queued signups...'
+                    : `Retry queued signups (${pendingWaitlistReplays})`}
+                </button>
+              </div>
+            )}
             <div className="waitlist-hint">Early access invites, creator perks, and arena updates.</div>
           </div>
         </div>
@@ -1658,6 +1736,8 @@ const FooterSection = () => {
   const [botField, setBotField] = useState('');
   const [variant, setVariant] = useState('value');
   const [founderCtaVariant, setFounderCtaVariant] = useState('reserve');
+  const [pendingWaitlistReplays, setPendingWaitlistReplays] = useState(0);
+  const [replayingWaitlist, setReplayingWaitlist] = useState(false);
 
   useEffect(() => {
     const assignedVariant = getOrCreateVariant();
@@ -1668,6 +1748,7 @@ const FooterSection = () => {
     if (savedEmail) {
       setEmail(savedEmail);
     }
+    setPendingWaitlistReplays(readWaitlistReplayQueue().length);
   }, []);
 
   const normalizedEmail = () => email.trim().toLowerCase();
@@ -1723,12 +1804,14 @@ const FooterSection = () => {
       });
       setSubmitted(true);
     } catch (err) {
+      let queuedCount = pendingWaitlistReplays;
       if (shouldQueueForReplay(err)) {
-        enqueueWaitlistReplay({
+        queuedCount = enqueueWaitlistReplay({
           email: trimmed,
           game: 'Unspecified',
           source: `moltpit-footer-${variant}`,
         });
+        setPendingWaitlistReplays(queuedCount);
       }
       void postJson('/api/events', {
         event: 'waitlist_submit_buffered',
@@ -1739,11 +1822,30 @@ const FooterSection = () => {
       });
       const requestRef = err?.requestId ? ` Ref ${err.requestId}.` : '';
       const retryAfter = err?.retryAfter ? ` Retry in ~${err.retryAfter}s.` : '';
+      const pendingRef = queuedCount > 0 ? ` Pending local retries: ${queuedCount}.` : '';
       setError(shouldQueueForReplay(err)
-        ? `Could not reach storage. Saved locally and will auto-retry when online.${requestRef}`
+        ? `Could not reach storage. Saved locally and will auto-retry when online.${requestRef}${pendingRef}`
         : `${err?.message || 'Could not submit. Please check your input and retry.'}${retryAfter}${requestRef}`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const retryQueuedWaitlist = async () => {
+    if (replayingWaitlist) return;
+    setReplayingWaitlist(true);
+    try {
+      const replayResult = await replayWaitlistQueue();
+      setPendingWaitlistReplays(replayResult.remaining);
+      if (replayResult.attempted === 0) {
+        setError('No queued signups pending replay.');
+      } else if (replayResult.remaining === 0) {
+        setError('');
+      } else {
+        setError(`Replay sent ${replayResult.sent}/${replayResult.attempted}; ${replayResult.remaining} still queued.`);
+      }
+    } finally {
+      setReplayingWaitlist(false);
     }
   };
 
@@ -1864,6 +1966,26 @@ const FooterSection = () => {
             }}
           />
           {error && <p style={{ color: 'var(--c-red)', fontWeight: 800 }}>{error}</p>}
+          {pendingWaitlistReplays > 0 && (
+            <button
+              type="button"
+              onClick={() => { void retryQueuedWaitlist(); }}
+              disabled={isSubmitting || replayingWaitlist}
+              style={{
+                border: '2px solid var(--c-yellow)',
+                borderRadius: '999px',
+                background: 'transparent',
+                color: 'var(--c-yellow)',
+                fontWeight: 900,
+                padding: '0.4rem 1rem',
+                cursor: 'pointer',
+              }}
+            >
+              {replayingWaitlist
+                ? 'Retrying queued signups...'
+                : `Retry queued signups (${pendingWaitlistReplays})`}
+            </button>
+          )}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             <button
               className="btn-arcade red"

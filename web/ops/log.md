@@ -2,6 +2,38 @@
 
 ---
 
+## Product-Mode Ship — 01:05 ET Mar 3
+
+Directive executed: product-critical lane only (P1 signup reliability/logging, P2 playable loop clarity, P3 founder checkout confirmation hardening, P4 ops artifacts).
+
+### Shipped artifacts
+- `app/components/MoltPitLanding.jsx`
+  - Signup retry durability now keeps stable idempotency keys for queued replays.
+  - Hero/footer signup flows now expose queued retry counts and manual replay buttons.
+  - Error UI now includes pending local retry count so failures are inspectable by users.
+- `app/routes/api/ops.ts`
+  - Added `criticalPath` summary aggregation for signup + monetization outcomes from durable ops logs.
+  - Updated shipped artifact manifest to current product-critical lane.
+- `app/components/OpsLogPage.tsx`
+  - Added Critical Path Summary panel showing submitted/degraded/queued/failed counts for waitlist, founder intent, checkout-success, and postback.
+- `app/components/DemoLoop.tsx`
+  - Added clear AP economy feedback in PLAY mode: regen/spend per turn and explicit insufficient-AP WAIT reason.
+- `app/routes/api/checkout-success.ts`
+  - Added idempotency receipts (Redis + SQLite fallback) and deterministic replay contract with `x-idempotent-replay`.
+  - Added structured completion log event (`checkout_success_request_completed`) across success/error paths.
+- `scripts/api-critical-routes.test.mjs`
+  - Added checkout-success duplicate replay test.
+- `scripts/demo-loop-core.test.mjs`
+  - Added forced-WAIT AP feedback assertions.
+
+### Verification commands
+- `npm run test:product` ✅
+- `npm run build` ✅
+
+### Risks
+- `/api/ops` critical-path summary depends on retained log tails; if Redis ops log is unavailable and file tails are truncated, summary can undercount.
+- Manual replay button only replays currently queued browser-local items and does not include server-side fallback file queue.
+
 ## Product-Mode Ship — 00:20 ET Mar 3
 
 Directive executed: ship only product-critical lane (P1 signup reliability, P2 playable loop verification, P3 founder checkout+postback reliability, P4 ops artifacts).

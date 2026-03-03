@@ -17,6 +17,140 @@ type RuntimeFile = {
   tail: string[];
 };
 
+type CriticalPathSummary = {
+  signup: {
+    waitlistSubmitted: number;
+    waitlistDegraded: number;
+    waitlistQueued: number;
+    waitlistFailed: number;
+    founderIntentSubmitted: number;
+    founderIntentDegraded: number;
+    founderIntentQueued: number;
+    founderIntentFailed: number;
+  };
+  monetization: {
+    checkoutConfirmed: number;
+    checkoutDegraded: number;
+    checkoutQueued: number;
+    checkoutFailed: number;
+    postbackRecorded: number;
+    postbackReplayed: number;
+    postbackDegraded: number;
+    postbackQueued: number;
+    postbackFailed: number;
+  };
+  opsLevels: {
+    warn: number;
+    error: number;
+  };
+};
+
+function parseOpsLine(line: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(line) as unknown;
+    if (parsed && typeof parsed === 'object') return parsed as Record<string, unknown>;
+  } catch {
+    // ignore malformed lines in summary
+  }
+  return null;
+}
+
+function summarizeCriticalPath(lines: string[]): CriticalPathSummary {
+  const summary: CriticalPathSummary = {
+    signup: {
+      waitlistSubmitted: 0,
+      waitlistDegraded: 0,
+      waitlistQueued: 0,
+      waitlistFailed: 0,
+      founderIntentSubmitted: 0,
+      founderIntentDegraded: 0,
+      founderIntentQueued: 0,
+      founderIntentFailed: 0,
+    },
+    monetization: {
+      checkoutConfirmed: 0,
+      checkoutDegraded: 0,
+      checkoutQueued: 0,
+      checkoutFailed: 0,
+      postbackRecorded: 0,
+      postbackReplayed: 0,
+      postbackDegraded: 0,
+      postbackQueued: 0,
+      postbackFailed: 0,
+    },
+    opsLevels: {
+      warn: 0,
+      error: 0,
+    },
+  };
+
+  for (const line of lines) {
+    const entry = parseOpsLine(line);
+    if (!entry) continue;
+
+    const level = typeof entry.level === 'string' ? entry.level : '';
+    if (level === 'warn') summary.opsLevels.warn += 1;
+    if (level === 'error') summary.opsLevels.error += 1;
+
+    const event = typeof entry.event === 'string' ? entry.event : '';
+    const outcome = typeof entry.outcome === 'string' ? entry.outcome : '';
+
+    if (event === 'waitlist_request_completed') {
+      if (outcome === 'submitted') summary.signup.waitlistSubmitted += 1;
+      else if (outcome === 'submitted_degraded') {
+        summary.signup.waitlistSubmitted += 1;
+        summary.signup.waitlistDegraded += 1;
+      } else if (outcome === 'queued_fallback') {
+        summary.signup.waitlistQueued += 1;
+      } else if (outcome === 'failed') {
+        summary.signup.waitlistFailed += 1;
+      }
+    }
+
+    if (event === 'founder_intent_request_completed') {
+      if (outcome === 'submitted') summary.signup.founderIntentSubmitted += 1;
+      else if (outcome === 'submitted_degraded') {
+        summary.signup.founderIntentSubmitted += 1;
+        summary.signup.founderIntentDegraded += 1;
+      } else if (outcome === 'queued_fallback') {
+        summary.signup.founderIntentQueued += 1;
+      } else if (outcome === 'failed') {
+        summary.signup.founderIntentFailed += 1;
+      }
+    }
+
+    if (event === 'checkout_success_request_completed') {
+      if (outcome === 'recorded') summary.monetization.checkoutConfirmed += 1;
+      else if (outcome === 'recorded_degraded') {
+        summary.monetization.checkoutConfirmed += 1;
+        summary.monetization.checkoutDegraded += 1;
+      } else if (outcome === 'queued_fallback') {
+        summary.monetization.checkoutQueued += 1;
+      } else if (outcome === 'idempotent_replay') {
+        summary.monetization.checkoutConfirmed += 1;
+      } else if (outcome === 'failed') {
+        summary.monetization.checkoutFailed += 1;
+      }
+    }
+
+    if (event === 'postback_request_completed') {
+      if (outcome === 'recorded') summary.monetization.postbackRecorded += 1;
+      else if (outcome === 'recorded_degraded') {
+        summary.monetization.postbackRecorded += 1;
+        summary.monetization.postbackDegraded += 1;
+      } else if (outcome === 'queued_fallback') {
+        summary.monetization.postbackQueued += 1;
+      } else if (outcome === 'idempotent_replay') {
+        summary.monetization.postbackReplayed += 1;
+      } else if (outcome === 'failed') {
+        summary.monetization.postbackFailed += 1;
+      }
+    }
+  }
+
+  return summary;
+}
+
 function readTail(filePath: string, tailLines = 20): RuntimeFile {
   if (!fs.existsSync(filePath)) {
     return {
@@ -114,14 +248,16 @@ export const Route = createFileRoute('/api/ops')({
           founderIntentFallbackLines: files.find((file) => file.file === 'founder-intent-fallback.ndjson')?.lines ?? 0,
           eventsFallbackLines: files.find((file) => file.file === 'events-fallback.ndjson')?.lines ?? 0,
         };
+        const fileOpsLogTail = files.find((file) => file.file === 'api-events.ndjson')?.tail ?? [];
+        const criticalPath = summarizeCriticalPath(redisOpsLog.length > 0 ? redisOpsLog : fileOpsLogTail);
 
         // Recent commits — build-time manifest (hardcoded for reliability on serverless)
         const recentCommits = [
-          { sha: 'HEAD', msg: 'fix(p1): sign-in logAuthEvent wired — email OTP + GitHub auth events → Convex authEvents table' },
-          { sha: 'HEAD~1', msg: 'feat(p2/p3): DemoLoop Stripe CTA live — GET FOUNDER PACK replaces /shell link when URL set' },
-          { sha: '90692d3', msg: 'feat(p2): interactive play mode — player picks actions vs AI on 7x7 grid' },
-          { sha: '290542f', msg: 'feat(p3): monetization fallback hardening + env docs' },
-          { sha: 'fbeec01', msg: 'feat(p2): action economy — speed-based AP system in DemoLoop' },
+          { sha: 'HEAD', msg: 'fix(p1): signup retry UX + queued replay controls surfaced on landing forms' },
+          { sha: 'HEAD~1', msg: 'feat(p2): demo loop AP feedback now shows regen/spend and forced WAIT reason' },
+          { sha: 'HEAD~2', msg: 'fix(p3): checkout-success idempotency + deterministic replay contract' },
+          { sha: 'HEAD~3', msg: 'ops(p4): critical-path summary on /api/ops for signup+monetization outcomes' },
+          { sha: 'HEAD~4', msg: 'test: api-critical-routes adds checkout-success duplicate replay coverage' },
         ];
 
         return new Response(JSON.stringify({
@@ -134,6 +270,7 @@ export const Route = createFileRoute('/api/ops')({
           storage,
           runtimeDir: LOG_DIR,
           queueBacklog,
+          criticalPath,
           files,
           recentCommits,
         }), {
