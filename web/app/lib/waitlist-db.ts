@@ -83,6 +83,12 @@ export type ApiRequestReceipt = {
 
 let db: import('better-sqlite3').Database | null = null;
 
+function markSqliteUnavailable(reason: unknown) {
+  Database = null;
+  sqliteLoadError = reason instanceof Error ? reason.message.split('\n')[0] : String(reason);
+  db = null;
+}
+
 export function getDbPath() {
   return process.env.MOLTPIT_DB_PATH ?? resolveRuntimePath('moltpit.db');
 }
@@ -116,10 +122,15 @@ function getDb(): import('better-sqlite3').Database {
   const dbPath = getDbPath();
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  db = new Database!(dbPath);
-  db.pragma('journal_mode = WAL');
-  db.pragma('busy_timeout = 3000');
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    db = new Database!(dbPath);
+    db.pragma('journal_mode = WAL');
+    db.pragma('busy_timeout = 3000');
+  } catch (error) {
+    markSqliteUnavailable(error);
+    throw new Error(`SQLite unavailable — binary load error: ${sqliteLoadError ?? 'unknown'}`);
+  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS waitlist_leads (
@@ -369,16 +380,20 @@ export function getFunnelCounts(): FunnelCounts {
     return { waitlistLeads: 0, founderIntents: 0, conversionEvents: 0 };
   }
 
-  const conn = getDb();
-  const waitlist = conn.prepare('SELECT COUNT(*) AS count FROM waitlist_leads').get() as { count: number };
-  const founders = conn.prepare('SELECT COUNT(*) AS count FROM founder_intents').get() as { count: number };
-  const events = conn.prepare('SELECT COUNT(*) AS count FROM conversion_events').get() as { count: number };
+  try {
+    const conn = getDb();
+    const waitlist = conn.prepare('SELECT COUNT(*) AS count FROM waitlist_leads').get() as { count: number };
+    const founders = conn.prepare('SELECT COUNT(*) AS count FROM founder_intents').get() as { count: number };
+    const events = conn.prepare('SELECT COUNT(*) AS count FROM conversion_events').get() as { count: number };
 
-  return {
-    waitlistLeads: waitlist.count,
-    founderIntents: founders.count,
-    conversionEvents: events.count,
-  };
+    return {
+      waitlistLeads: waitlist.count,
+      founderIntents: founders.count,
+      conversionEvents: events.count,
+    };
+  } catch {
+    return { waitlistLeads: 0, founderIntents: 0, conversionEvents: 0 };
+  }
 }
 
 export function getStorageHealth() {
@@ -396,20 +411,32 @@ export function getStorageHealth() {
   }
 
   const dbPath = getDbPath();
-  const conn = getDb();
-  const probe = conn.prepare('SELECT 1 AS ok').get() as { ok: number };
-  const dbExists = fs.existsSync(dbPath);
-  const dbBytes = dbExists ? fs.statSync(dbPath).size : 0;
+  try {
+    const conn = getDb();
+    const probe = conn.prepare('SELECT 1 AS ok').get() as { ok: number };
+    const dbExists = fs.existsSync(dbPath);
+    const dbBytes = dbExists ? fs.statSync(dbPath).size : 0;
 
-  return {
-    sqliteAvailable: true,
-    sqliteLoadError: null,
-    dbPath,
-    dbExists,
-    dbBytes,
-    writableDir: fs.existsSync(path.dirname(dbPath)),
-    dbProbeOk: probe.ok === 1,
-  };
+    return {
+      sqliteAvailable: true,
+      sqliteLoadError: null,
+      dbPath,
+      dbExists,
+      dbBytes,
+      writableDir: fs.existsSync(path.dirname(dbPath)),
+      dbProbeOk: probe.ok === 1,
+    };
+  } catch {
+    return {
+      sqliteAvailable: false,
+      sqliteLoadError,
+      dbPath,
+      dbExists: false,
+      dbBytes: 0,
+      writableDir: fs.existsSync(path.dirname(dbPath)),
+      dbProbeOk: false,
+    };
+  }
 }
 
 export function getReliabilitySnapshot(windowHours = 24): ReliabilitySnapshot {
@@ -428,33 +455,45 @@ export function getReliabilitySnapshot(windowHours = 24): ReliabilitySnapshot {
     };
   }
 
-  const conn = getDb();
+  try {
+    const conn = getDb();
 
-  const query = conn.prepare(`
-    SELECT event_name AS eventName, COUNT(*) AS count
-    FROM conversion_events
-    WHERE created_at >= datetime('now', ?)
-      AND event_name IN (
-        'waitlist_submitted',
-        'waitlist_queued_fallback',
-        'waitlist_insert_failed',
-        'founder_intent_submitted',
-        'founder_intent_queued_fallback',
-        'founder_intent_insert_failed'
-      )
-    GROUP BY event_name
-  `);
+    const query = conn.prepare(`
+      SELECT event_name AS eventName, COUNT(*) AS count
+      FROM conversion_events
+      WHERE created_at >= datetime('now', ?)
+        AND event_name IN (
+          'waitlist_submitted',
+          'waitlist_queued_fallback',
+          'waitlist_insert_failed',
+          'founder_intent_submitted',
+          'founder_intent_queued_fallback',
+          'founder_intent_insert_failed'
+        )
+      GROUP BY event_name
+    `);
 
-  const rows = runWithBusyRetry('reliability_snapshot', () => query.all(`-${hours} hours`)) as Array<{ eventName: string; count: number }>;
-  const counts = new Map(rows.map((row) => [row.eventName, row.count]));
+    const rows = runWithBusyRetry('reliability_snapshot', () => query.all(`-${hours} hours`)) as Array<{ eventName: string; count: number }>;
+    const counts = new Map(rows.map((row) => [row.eventName, row.count]));
 
-  return {
-    windowHours: hours,
-    waitlistSubmitted: counts.get('waitlist_submitted') ?? 0,
-    waitlistQueuedFallback: counts.get('waitlist_queued_fallback') ?? 0,
-    waitlistFailed: counts.get('waitlist_insert_failed') ?? 0,
-    founderIntentSubmitted: counts.get('founder_intent_submitted') ?? 0,
-    founderIntentQueuedFallback: counts.get('founder_intent_queued_fallback') ?? 0,
-    founderIntentFailed: counts.get('founder_intent_insert_failed') ?? 0,
-  };
+    return {
+      windowHours: hours,
+      waitlistSubmitted: counts.get('waitlist_submitted') ?? 0,
+      waitlistQueuedFallback: counts.get('waitlist_queued_fallback') ?? 0,
+      waitlistFailed: counts.get('waitlist_insert_failed') ?? 0,
+      founderIntentSubmitted: counts.get('founder_intent_submitted') ?? 0,
+      founderIntentQueuedFallback: counts.get('founder_intent_queued_fallback') ?? 0,
+      founderIntentFailed: counts.get('founder_intent_insert_failed') ?? 0,
+    };
+  } catch {
+    return {
+      windowHours: hours,
+      waitlistSubmitted: 0,
+      waitlistQueuedFallback: 0,
+      waitlistFailed: 0,
+      founderIntentSubmitted: 0,
+      founderIntentQueuedFallback: 0,
+      founderIntentFailed: 0,
+    };
+  }
 }

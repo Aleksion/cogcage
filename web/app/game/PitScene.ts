@@ -18,6 +18,7 @@ import {
   Scene,
   SceneLoader,
   UniversalCamera,
+  DirectionalLight,
   PBRMaterial,
   Vector3,
   Color3,
@@ -32,6 +33,8 @@ import {
   AnimationGroup,
   TransformNode,
   GlowLayer,
+  FresnelParameters,
+  Material,
 } from '@babylonjs/core';
 import {
   AdvancedDynamicTexture,
@@ -76,6 +79,25 @@ const ACTOR_COLORS = [
   Color3.FromHexString('#9c27b0'), // purple
 ];
 
+interface TeamVisualStyle {
+  baseTint: Color3;
+  rimTint: Color3;
+  accentTint: Color3;
+}
+
+const TEAM_STYLES: TeamVisualStyle[] = [
+  {
+    baseTint: Color3.FromHexString('#37dfff'),
+    rimTint: Color3.FromHexString('#00e5ff'),
+    accentTint: Color3.FromHexString('#8af4ff'),
+  },
+  {
+    baseTint: Color3.FromHexString('#ff5e3a'),
+    rimTint: Color3.FromHexString('#ff7f50'),
+    accentTint: Color3.FromHexString('#ffc36a'),
+  },
+];
+
 const DEFAULT_SPECIES = ['lobster', 'crab', 'mantis', 'hermit', 'shrimp'];
 
 /* ── Skeletal animation types ───────────────────────────────────── */
@@ -93,6 +115,7 @@ interface CrustieAnims {
 }
 
 const RIGGED_SPECIES = new Set(['lobster', 'mantis', 'shrimp']);
+const ENABLE_REMOTE_ANIM_CLIPS = false; // Visual Director clip URLs have been unstable/404; rely on base GLBs + procedural VFX
 
 const SPECIES_CLIPS: Record<string, AnimClipName[]> = {
   lobster: ['idle', 'walk', 'attack', 'hit', 'death'],
@@ -126,7 +149,7 @@ const CRUSTIE_GLBS: Record<string, string> = {
 
 /* ── GLB scale (Meshy default is large — normalize) ──────────────── */
 
-const GLB_SCALE = 0.5;
+const GLB_SCALE = 1.35;
 
 const C_WALL = Color3.FromHexString('#1a0a2e');
 const C_WALL_TRIM = Color3.FromHexString('#6a1b9a');
@@ -206,6 +229,8 @@ export interface MatchSnapshot {
 interface ActorRenderState {
   node: TransformNode;
   meshes: AbstractMesh[];
+  teamStyle: TeamVisualStyle;
+  rimLight: PointLight;
   loaded: boolean;
   anims: CrustieAnims | null;
   animState: AnimState;
@@ -232,6 +257,50 @@ function hpColorHex(hp: number): string {
   return '#ff1744';
 }
 
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function mixColor(a: Color3, b: Color3, t: number): Color3 {
+  const m = clamp01(t);
+  return new Color3(
+    a.r + (b.r - a.r) * m,
+    a.g + (b.g - a.g) * m,
+    a.b + (b.b - a.b) * m,
+  );
+}
+
+function quantizeColor(source: Color3, levels: number, toneIndex: number): Color3 {
+  const lv = Math.max(2, levels);
+  const lum = (source.r * 0.2126) + (source.g * 0.7152) + (source.b * 0.0722);
+  const baseBand = Math.round(clamp01(lum) * (lv - 1));
+  const band = Math.max(0, Math.min(lv - 1, Math.round((baseBand + toneIndex) * 0.5)));
+  const tone = lv === 3
+    ? [0.46, 0.72, 1.02][band]
+    : 0.5 + (band / (lv - 1)) * 0.5;
+  return new Color3(
+    Math.min(1, source.r * tone),
+    Math.min(1, source.g * tone),
+    Math.min(1, source.b * tone),
+  );
+}
+
+function hashToneIndex(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash) % 3;
+}
+
+function colorToRgba(color: Color3, alpha: number): string {
+  const r = Math.round(clamp01(color.r) * 255);
+  const g = Math.round(clamp01(color.g) * 255);
+  const b = Math.round(clamp01(color.b) * 255);
+  return `rgba(${r}, ${g}, ${b}, ${clamp01(alpha)})`;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    PitScene — Babylon.js Arena (N-actor)
    ══════════════════════════════════════════════════════════════════ */
@@ -240,6 +309,8 @@ export class PitScene {
   private engine: Engine;
   private scene: Scene;
   private canvas: HTMLCanvasElement;
+  private camera!: UniversalCamera;
+  private outlineWidth = 0.08;
 
   /* N-actor state map */
   private actorStates = new Map<string, ActorRenderState>();
@@ -263,6 +334,7 @@ export class PitScene {
   /* Tile meshes for hazard pulse */
   private hazardMeshes: Mesh[] = [];
   private hazardPulseTime = 0;
+  private lastActionTypeByActor = new Map<string, string>();
 
   /* State */
   private disposed = false;
@@ -289,53 +361,110 @@ export class PitScene {
     });
 
     // Handle resize
-    const onResize = () => this.engine.resize();
+    const onResize = () => {
+      this.engine.resize();
+      this.updateResponsiveVisuals();
+    };
     window.addEventListener('resize', onResize);
     this.scene.onDisposeObservable.addOnce(() => {
       window.removeEventListener('resize', onResize);
     });
+
+    this.engine.resize();
+    this.updateResponsiveVisuals();
   }
 
   /* ── Camera ──────────────────────────────────────────────────── */
 
   private setupCamera(): void {
-    const camera = new UniversalCamera('camera', new Vector3(10, 18, -6), this.scene);
-    camera.setTarget(new Vector3(10, 0, 10));
-    camera.mode = UniversalCamera.ORTHOGRAPHIC_CAMERA;
+    this.camera = new UniversalCamera('camera', new Vector3(10, 18, -6), this.scene);
+    this.camera.setTarget(new Vector3(10, 0, 10));
+    this.camera.mode = UniversalCamera.ORTHOGRAPHIC_CAMERA;
+    this.camera.minZ = 0.1;
+    this.camera.maxZ = 100;
+    this.updateCameraFraming();
+  }
 
-    const aspect = this.canvas.width / this.canvas.height;
-    const orthoSize = 13;
-    camera.orthoTop = orthoSize;
-    camera.orthoBottom = -orthoSize;
-    camera.orthoLeft = -orthoSize * aspect;
-    camera.orthoRight = orthoSize * aspect;
+  private updateCameraFraming(): void {
+    if (!this.camera) return;
+    const renderWidth = Math.max(1, this.engine.getRenderWidth());
+    const renderHeight = Math.max(1, this.engine.getRenderHeight());
+    const aspect = renderWidth / renderHeight;
 
-    camera.minZ = 0.1;
-    camera.maxZ = 100;
+    // Keep the arena readable by default, then push in slightly further on narrow screens.
+    let orthoSize = renderWidth <= 460 ? 6.8 : renderWidth <= 820 ? 7.6 : 8.6;
+    if (aspect < 0.8) orthoSize += 0.6;
+
+    this.camera.orthoTop = orthoSize;
+    this.camera.orthoBottom = -orthoSize;
+    this.camera.orthoLeft = -orthoSize * aspect;
+    this.camera.orthoRight = orthoSize * aspect;
+  }
+
+  private getActorScaleForViewport(): number {
+    const width = this.engine.getRenderWidth();
+    if (width <= 420) return 2.15;
+    if (width <= 768) return 1.8;
+    if (width <= 1100) return 1.55;
+    return 1.35;
+  }
+
+  private computeOutlineWidthForViewport(): number {
+    const width = this.engine.getRenderWidth();
+    if (width <= 420) return 0.14;
+    if (width <= 768) return 0.11;
+    if (width <= 1100) return 0.09;
+    return 0.075;
+  }
+
+  private applyMeshOutlines(meshes: AbstractMesh[]): void {
+    for (const mesh of meshes) {
+      if (!(mesh instanceof Mesh)) continue;
+      mesh.renderOutline = true;
+      mesh.outlineColor = Color3.Black();
+      mesh.outlineWidth = this.outlineWidth;
+    }
+  }
+
+  private updateResponsiveVisuals(): void {
+    this.updateCameraFraming();
+    this.outlineWidth = this.computeOutlineWidthForViewport();
+    const actorScale = this.getActorScaleForViewport();
+    for (const [, state] of this.actorStates) {
+      state.node.scaling = new Vector3(actorScale, actorScale, actorScale);
+      this.applyMeshOutlines(state.meshes);
+    }
   }
 
   /* ── Lighting ────────────────────────────────────────────────── */
 
   private setupLighting(): void {
     const ambient = new HemisphericLight('ambient', new Vector3(0, 1, 0), this.scene);
-    ambient.intensity = 0.3;
-    ambient.diffuse = new Color3(0.05, 0.1, 0.15);
-    ambient.groundColor = new Color3(0.02, 0.04, 0.06);
+    ambient.intensity = 0.24;
+    ambient.diffuse = new Color3(0.08, 0.12, 0.18);
+    ambient.groundColor = new Color3(0.02, 0.03, 0.05);
+
+    const key = new DirectionalLight('toonKey', new Vector3(-0.25, -1, 0.35), this.scene);
+    key.position = new Vector3(14, 20, 4);
+    key.diffuse = new Color3(0.95, 0.98, 1);
+    key.specular = new Color3(0.04, 0.04, 0.04);
+    key.intensity = 1.05;
+
+    const fill = new DirectionalLight('toonFill', new Vector3(0.55, -1, -0.2), this.scene);
+    fill.position = new Vector3(3, 14, 18);
+    fill.diffuse = new Color3(0.52, 0.58, 0.72);
+    fill.specular = Color3.Black();
+    fill.intensity = 0.35;
 
     const biolum1 = new PointLight('biolum1', new Vector3(5, 3, 5), this.scene);
     biolum1.diffuse = C_CYAN.clone();
-    biolum1.intensity = 0.4;
+    biolum1.intensity = 0.28;
     biolum1.range = 15;
 
     const biolum2 = new PointLight('biolum2', new Vector3(15, 3, 15), this.scene);
     biolum2.diffuse = C_PURPLE.clone();
-    biolum2.intensity = 0.3;
+    biolum2.intensity = 0.25;
     biolum2.range = 15;
-
-    const fill = new PointLight('fill', new Vector3(10, 8, 10), this.scene);
-    fill.diffuse = new Color3(0.15, 0.2, 0.3);
-    fill.intensity = 0.6;
-    fill.range = 30;
   }
 
   /* ── Grid floor ──────────────────────────────────────────────── */
@@ -447,6 +576,64 @@ export class PitScene {
     }
   }
 
+  private getTeamStyle(index: number): TeamVisualStyle {
+    if (TEAM_STYLES[index]) return TEAM_STYLES[index];
+    const paletteColor = ACTOR_COLORS[index % ACTOR_COLORS.length];
+    const accent = mixColor(paletteColor, Color3.White(), 0.4);
+    return {
+      baseTint: mixColor(paletteColor, new Color3(0.15, 0.15, 0.18), 0.18),
+      rimTint: accent,
+      accentTint: mixColor(accent, Color3.White(), 0.35),
+    };
+  }
+
+  private extractBaseColor(material: Material | null, fallback: Color3): Color3 {
+    if (!material) return fallback.clone();
+    if (material instanceof PBRMaterial) {
+      if (material.albedoColor) return material.albedoColor.clone();
+      return fallback.clone();
+    }
+    if (material instanceof StandardMaterial) {
+      if (material.diffuseColor) return material.diffuseColor.clone();
+      return fallback.clone();
+    }
+    return fallback.clone();
+  }
+
+  private createToonMaterial(
+    actorId: string,
+    meshName: string,
+    sourceColor: Color3,
+    style: TeamVisualStyle,
+  ): StandardMaterial {
+    const toneIndex = hashToneIndex(meshName);
+    const quantized = quantizeColor(sourceColor, 3, toneIndex);
+    const albedo = mixColor(quantized, style.baseTint, 0.33);
+    const isAccentMesh = /eye|shell|carapace|claw|antenna|horn|spike/i.test(meshName);
+    const emissiveCore = isAccentMesh
+      ? mixColor(style.accentTint, Color3.White(), 0.25)
+      : mixColor(albedo, style.rimTint, 0.28);
+    const emissiveStrength = isAccentMesh ? 0.55 : 0.25;
+
+    const mat = new StandardMaterial(`toon_${actorId}_${meshName}`, this.scene);
+    mat.diffuseColor = albedo;
+    mat.ambientColor = albedo.scale(0.58);
+    mat.specularColor = new Color3(0.015, 0.015, 0.015);
+    mat.specularPower = 8;
+    mat.emissiveColor = emissiveCore.scale(emissiveStrength);
+    mat.maxSimultaneousLights = 2;
+    mat.useEmissiveAsIllumination = true;
+
+    const rim = new FresnelParameters();
+    rim.bias = 0.28;
+    rim.power = 3.2;
+    rim.leftColor = style.rimTint.scale(0.8);
+    rim.rightColor = albedo.scale(0.05);
+    mat.emissiveFresnelParameters = rim;
+
+    return mat;
+  }
+
   /* ── Ensure actor exists (create on demand) ────────────────── */
 
   private ensureActor(actorId: string): ActorRenderState {
@@ -458,12 +645,22 @@ export class PitScene {
       this.actorOrder.push(actorId);
     }
     const index = this.actorOrder.indexOf(actorId);
-    const color = ACTOR_COLORS[index % ACTOR_COLORS.length];
+    const teamStyle = this.getTeamStyle(index);
+    const color = teamStyle.baseTint.clone();
     const species = DEFAULT_SPECIES[index % DEFAULT_SPECIES.length];
 
     // Create transform node
     const node = new TransformNode(`actor_${actorId}`, this.scene);
     node.position = new Vector3(-2, 0, -2); // off-grid until first snapshot
+    const actorScale = this.getActorScaleForViewport();
+    node.scaling = new Vector3(actorScale, actorScale, actorScale);
+
+    const rimLight = new PointLight(`rim_${actorId}`, new Vector3(0.8, 0.9, -0.8), this.scene);
+    rimLight.parent = node;
+    rimLight.diffuse = teamStyle.rimTint.clone();
+    rimLight.specular = Color3.Black();
+    rimLight.intensity = 0.75;
+    rimLight.range = 5.5;
 
     // Create HUD panel
     const hud = this.createHudPanel(actorId, color.toHexString(), 20, 8 + index * 44);
@@ -472,6 +669,8 @@ export class PitScene {
     const state: ActorRenderState = {
       node,
       meshes: [],
+      teamStyle,
+      rimLight,
       loaded: false,
       anims: null,
       animState: 'idle',
@@ -522,22 +721,10 @@ export class PitScene {
 
       const meshes: AbstractMesh[] = [];
       for (const m of result.meshes) {
-        if (m.material) {
-          const origMat = m.material;
-          const color = origMat instanceof PBRMaterial
-            ? origMat.albedoColor?.clone() ?? new Color3(1, 1, 1)
-            : (origMat as StandardMaterial).diffuseColor?.clone() ?? new Color3(1, 1, 1);
-          const toonMat = new StandardMaterial(`toon_${actorId}_${m.name}`, this.scene);
-          toonMat.diffuseColor = color;
-          toonMat.specularColor = Color3.Black();
-          toonMat.emissiveColor = color.scale(0.1);
-          m.material = toonMat;
-        }
-
         if (m instanceof Mesh) {
-          m.renderOutline = true;
-          m.outlineColor = Color3.Black();
-          m.outlineWidth = 0.05;
+          const sourceColor = this.extractBaseColor(m.material, state.teamStyle.baseTint);
+          m.material = this.createToonMaterial(actorId, m.name, sourceColor, state.teamStyle);
+          state.rimLight.includedOnlyMeshes.push(m);
         }
 
         meshes.push(m);
@@ -545,9 +732,11 @@ export class PitScene {
 
       state.meshes = meshes;
       state.loaded = true;
+      this.applyMeshOutlines(meshes);
 
-      // Load skeletal animation clips for rigged species
-      if (RIGGED_SPECIES.has(species)) {
+      // Load skeletal animation clips for rigged species (optional).
+      // Disabled by default because remote clip URLs have 404'd in production.
+      if (ENABLE_REMOTE_ANIM_CLIPS && RIGGED_SPECIES.has(species)) {
         const anims = await this.loadAnimationClips(species, result.meshes[0]);
         if (anims) {
           state.anims = anims;
@@ -563,6 +752,7 @@ export class PitScene {
   private createFallbackCapsule(parent: TransformNode, actorId: string): void {
     const state = this.actorStates.get(actorId);
     const color = state?.color ?? C_CYAN;
+    const style = state?.teamStyle ?? this.getTeamStyle(0);
 
     const capsule = MeshBuilder.CreateCapsule(`${actorId}_fallback`, {
       height: 0.8, radius: 0.25,
@@ -570,18 +760,14 @@ export class PitScene {
     capsule.parent = parent;
     capsule.position.y = 0.4;
 
-    const mat = new StandardMaterial(`${actorId}_fallbackMat`, this.scene);
-    mat.diffuseColor = color.scale(0.8);
-    mat.emissiveColor = color.scale(0.3);
-    mat.specularColor = Color3.Black();
+    const mat = this.createToonMaterial(actorId, `${actorId}_fallback`, color, style);
     capsule.material = mat;
-    capsule.renderOutline = true;
-    capsule.outlineColor = Color3.Black();
-    capsule.outlineWidth = 0.05;
 
     if (state) {
       state.meshes = [capsule];
       state.loaded = true;
+      state.rimLight.includedOnlyMeshes.push(capsule);
+      this.applyMeshOutlines(state.meshes);
     }
   }
 
@@ -891,6 +1077,7 @@ export class PitScene {
       const target = targetId ? actors[targetId] : null;
       if (target) {
         this.vfxDamageNumber(posToWorld(target.position), data.amount as number);
+        const attackType = evt.actorId ? this.lastActionTypeByActor.get(evt.actorId) : null;
 
         const targetState = targetId ? this.actorStates.get(targetId) : null;
         if (targetState) {
@@ -898,6 +1085,15 @@ export class PitScene {
             this.playAnimClip(targetState.anims, 'hit', targetId!);
           } else {
             this.vfxHitPulse(targetState.node);
+          }
+
+          if (attackType === 'MELEE_STRIKE') {
+            const source = evt.actorId ? actors[evt.actorId] : null;
+            const sourcePos = source ? posToWorld(source.position) : targetState.node.position.clone().add(new Vector3(-0.5, 0, -0.5));
+            const targetPos = posToWorld(target.position);
+            this.vfxMeleeImpactBurst(targetPos, targetState.teamStyle.accentTint);
+            this.vfxComicFlashFrame();
+            this.applyKnockImpulse(targetState.node, sourcePos, targetPos);
           }
 
           if (target.hp <= 0 && targetState.anims) {
@@ -913,6 +1109,7 @@ export class PitScene {
       const actorId = evt.actorId;
       const actor = actorId ? actors[actorId] : null;
       if (!actor) return;
+      if (actorId) this.lastActionTypeByActor.set(actorId, actionType);
 
       const origin = posToWorld(actor.position);
       const actorState = actorId ? this.actorStates.get(actorId) : null;
@@ -923,12 +1120,12 @@ export class PitScene {
         if (anims && actorId) this.playAnimClip(anims, 'attack', actorId);
         this.playSfx('pinch');
         const target = evt.targetId ? actors[evt.targetId] : null;
-        if (target) this.vfxPinch(origin, posToWorld(target.position));
+        if (target) this.vfxPinch(origin, posToWorld(target.position), actorColor);
       } else if (actionType === 'RANGED_SHOT') {
         if (anims && actorId) this.playAnimClip(anims, 'attack', actorId);
         this.playSfx('spit');
         const target = evt.targetId ? actors[evt.targetId] : null;
-        if (target) this.vfxSpit(origin, posToWorld(target.position));
+        if (target) this.vfxSpit(origin, posToWorld(target.position), actorColor);
       } else if (actionType === 'MOVE') {
         if (anims && actorId) this.playAnimClip(anims, 'walk', actorId);
         this.playSfx('scuttle');
@@ -944,7 +1141,7 @@ export class PitScene {
 
   /* ── VFX: PINCH (melee slash) ────────────────────────────────── */
 
-  private vfxPinch(origin: Vector3, target: Vector3): void {
+  private vfxPinch(origin: Vector3, target: Vector3, color: Color3): void {
     const dir = target.subtract(origin);
     const dist = dir.length();
     const mid = origin.add(dir.scale(0.5));
@@ -957,59 +1154,109 @@ export class PitScene {
     slash.lookAt(target.add(new Vector3(0, 0.5, 0)));
 
     const slashMat = new StandardMaterial('slashMat', this.scene);
-    slashMat.emissiveColor = C_RED;
+    slashMat.emissiveColor = mixColor(color, C_YELLOW, 0.35);
     slashMat.disableLighting = true;
     slashMat.alpha = 0.9;
     slash.material = slashMat;
 
-    const flash = MeshBuilder.CreateSphere('vfx_pinch_flash', { diameter: 0.5 }, this.scene);
+    const flash = MeshBuilder.CreateSphere('vfx_pinch_flash', { diameter: 0.65 }, this.scene);
     flash.position = target.clone();
     flash.position.y = 0.5;
     const flashMat = new StandardMaterial('flashMat', this.scene);
-    flashMat.emissiveColor = Color3.White();
+    flashMat.emissiveColor = mixColor(Color3.White(), C_YELLOW, 0.35);
     flashMat.disableLighting = true;
-    flashMat.alpha = 0.8;
+    flashMat.alpha = 0.92;
     flash.material = flashMat;
 
     this.fadeAndDispose(slash, slashMat, 300);
-    this.fadeAndDispose(flash, flashMat, 200);
+    this.fadeAndDispose(flash, flashMat, 220);
   }
 
   /* ── VFX: SPIT (ranged projectile) ──────────────────────────── */
 
-  private vfxSpit(origin: Vector3, target: Vector3): void {
-    const proj = MeshBuilder.CreateSphere('vfx_spit', { diameter: 0.2 }, this.scene);
+  private vfxSpit(origin: Vector3, target: Vector3, color: Color3): void {
+    const proj = MeshBuilder.CreateSphere('vfx_spit', { diameter: 0.26 }, this.scene);
     proj.position = origin.clone();
     proj.position.y = 0.5;
 
     const projMat = new StandardMaterial('spitMat', this.scene);
-    projMat.emissiveColor = C_PURPLE;
+    projMat.emissiveColor = mixColor(color, C_PURPLE, 0.55);
     projMat.disableLighting = true;
+    projMat.alpha = 0.95;
     proj.material = projMat;
+
+    const core = MeshBuilder.CreateSphere('vfx_spit_core', { diameter: 0.12 }, this.scene);
+    core.parent = proj;
+    const coreMat = new StandardMaterial('spitCoreMat', this.scene);
+    coreMat.emissiveColor = Color3.White();
+    coreMat.disableLighting = true;
+    core.material = coreMat;
+
+    const targetPos = target.clone();
+    targetPos.y = 0.5;
+    const trailPath = [proj.position.clone(), targetPos.clone()];
+    const trail = MeshBuilder.CreateTube('vfx_spit_trail', {
+      path: trailPath,
+      radius: 0.05,
+      tessellation: 8,
+      cap: Mesh.CAP_ALL,
+    }, this.scene);
+    const trailMat = new StandardMaterial('spitTrailMat', this.scene);
+    trailMat.emissiveColor = mixColor(color, Color3.White(), 0.2);
+    trailMat.disableLighting = true;
+    trailMat.alpha = 0.65;
+    trail.material = trailMat;
 
     const anim = new Animation(
       'spit_fly', 'position', FPS,
       Animation.ANIMATIONTYPE_VECTOR3,
       Animation.ANIMATIONLOOPMODE_CONSTANT,
     );
-    const targetPos = target.clone();
-    targetPos.y = 0.5;
     anim.setKeys([
       { frame: 0, value: proj.position.clone() },
       { frame: 15, value: targetPos },
     ]);
     proj.animations = [anim];
 
+    this.fadeAndDispose(trail, trailMat, 180);
+
     this.scene.beginAnimation(proj, 0, 15, false, 1, () => {
-      const burst = MeshBuilder.CreateSphere('vfx_spit_burst', { diameter: 0.6 }, this.scene);
+      const burst = MeshBuilder.CreateSphere('vfx_spit_burst', { diameter: 0.8 }, this.scene);
       burst.position = targetPos.clone();
       const burstMat = new StandardMaterial('burstMat', this.scene);
-      burstMat.emissiveColor = C_PURPLE;
+      burstMat.emissiveColor = mixColor(color, C_PURPLE, 0.4);
       burstMat.disableLighting = true;
-      burstMat.alpha = 0.6;
+      burstMat.alpha = 0.7;
       burst.material = burstMat;
+
+      const ring = MeshBuilder.CreateTorus('vfx_spit_ring', {
+        diameter: 0.7, thickness: 0.08, tessellation: 18,
+      }, this.scene);
+      ring.position = targetPos.clone();
+      const ringMat = new StandardMaterial('spitRingMat', this.scene);
+      ringMat.emissiveColor = mixColor(color, Color3.White(), 0.25);
+      ringMat.disableLighting = true;
+      ringMat.alpha = 0.9;
+      ring.material = ringMat;
+
+      const ringAnim = new Animation(
+        'spit_ring_scale', 'scaling', FPS,
+        Animation.ANIMATIONTYPE_VECTOR3,
+        Animation.ANIMATIONLOOPMODE_CONSTANT,
+      );
+      ringAnim.setKeys([
+        { frame: 0, value: new Vector3(0.8, 0.8, 0.8) },
+        { frame: 12, value: new Vector3(2.1, 2.1, 2.1) },
+      ]);
+      ring.animations = [ringAnim];
+      this.scene.beginAnimation(ring, 0, 12, false);
+
       this.fadeAndDispose(burst, burstMat, 300);
+      this.fadeAndDispose(ring, ringMat, 250);
+      core.dispose();
+      coreMat.dispose();
       proj.dispose();
+      projMat.dispose();
     });
   }
 
@@ -1069,6 +1316,90 @@ export class PitScene {
     this.fadeAndDispose(ring, ringMat, 350);
   }
 
+  private vfxMeleeImpactBurst(target: Vector3, color: Color3): void {
+    const burst = MeshBuilder.CreateSphere('vfx_melee_burst', { diameter: 0.95 }, this.scene);
+    burst.position = target.clone();
+    burst.position.y = 0.5;
+    const burstMat = new StandardMaterial('meleeBurstMat', this.scene);
+    burstMat.emissiveColor = mixColor(color, Color3.White(), 0.5);
+    burstMat.disableLighting = true;
+    burstMat.alpha = 0.92;
+    burst.material = burstMat;
+
+    const ring = MeshBuilder.CreateTorus('vfx_melee_ring', {
+      diameter: 0.8, thickness: 0.09, tessellation: 20,
+    }, this.scene);
+    ring.position = burst.position.clone();
+    const ringMat = new StandardMaterial('meleeRingMat', this.scene);
+    ringMat.emissiveColor = mixColor(color, C_YELLOW, 0.35);
+    ringMat.disableLighting = true;
+    ringMat.alpha = 0.95;
+    ring.material = ringMat;
+
+    const ringAnim = new Animation(
+      'melee_ring_scale', 'scaling', FPS,
+      Animation.ANIMATIONTYPE_VECTOR3,
+      Animation.ANIMATIONLOOPMODE_CONSTANT,
+    );
+    ringAnim.setKeys([
+      { frame: 0, value: new Vector3(0.7, 0.7, 0.7) },
+      { frame: 8, value: new Vector3(1.9, 1.2, 1.9) },
+      { frame: 14, value: new Vector3(2.4, 1.35, 2.4) },
+    ]);
+    ring.animations = [ringAnim];
+    this.scene.beginAnimation(ring, 0, 14, false);
+
+    this.fadeAndDispose(burst, burstMat, 210);
+    this.fadeAndDispose(ring, ringMat, 260);
+  }
+
+  private vfxComicFlashFrame(): void {
+    const flash = new Rectangle(`meleeFlash_${Date.now()}`);
+    flash.width = '100%';
+    flash.height = '100%';
+    flash.thickness = 0;
+    flash.background = colorToRgba(mixColor(Color3.White(), C_YELLOW, 0.32), 0.78);
+    flash.alpha = 0.95;
+    flash.zIndex = 40;
+    this.guiTexture.addControl(flash);
+
+    let elapsed = 0;
+    const observer = this.scene.onBeforeRenderObservable.add(() => {
+      elapsed += this.engine.getDeltaTime();
+      flash.alpha = Math.max(0, 0.95 - (elapsed / 100));
+      if (elapsed >= 100) {
+        this.guiTexture.removeControl(flash);
+        this.scene.onBeforeRenderObservable.remove(observer);
+      }
+    });
+  }
+
+  private applyKnockImpulse(targetNode: TransformNode, source: Vector3, target: Vector3): void {
+    const dir = target.subtract(source);
+    dir.y = 0;
+    if (dir.lengthSquared() < 0.0001) return;
+    dir.normalize();
+
+    const start = targetNode.position.clone();
+    const push = dir.scale(0.28);
+    const recoil = dir.scale(0.12);
+
+    const knock = new Animation(
+      `${targetNode.name}_knock`,
+      'position',
+      FPS,
+      Animation.ANIMATIONTYPE_VECTOR3,
+      Animation.ANIMATIONLOOPMODE_CONSTANT,
+    );
+    knock.setKeys([
+      { frame: 0, value: start.clone() },
+      { frame: 3, value: start.add(push).add(new Vector3(0, 0.04, 0)) },
+      { frame: 7, value: start.add(recoil).add(new Vector3(0, -0.01, 0)) },
+      { frame: 11, value: start.clone() },
+    ]);
+    this.scene.beginDirectAnimation(targetNode, [knock], 0, 11, false, 1.45);
+  }
+
   /* ── VFX: Scale pulse on hit (procedural — models not rigged) ── */
 
   private vfxHitPulse(node: TransformNode): void {
@@ -1090,15 +1421,16 @@ export class PitScene {
 
   private vfxDamageNumber(worldPos: Vector3, amount: number): void {
     const textBlock = new TextBlock('dmg', `-${Math.round(amount)}`);
-    textBlock.color = '#ff1744';
-    textBlock.fontSize = 18;
-    textBlock.fontFamily = '"IBM Plex Mono", monospace';
+    textBlock.color = '#fff0a8';
+    textBlock.fontSize = this.engine.getRenderWidth() <= 500 ? 34 : 28;
+    textBlock.fontFamily = '"Bangers", "IBM Plex Sans", sans-serif';
     textBlock.fontWeight = 'bold';
-    textBlock.outlineColor = '#000000';
-    textBlock.outlineWidth = 3;
+    textBlock.outlineColor = '#220600';
+    textBlock.outlineWidth = 6;
     this.guiTexture.addControl(textBlock);
 
-    textBlock.linkOffsetY = -60;
+    textBlock.linkOffsetY = -72;
+    textBlock.rotation = (Math.random() - 0.5) * 0.22;
 
     const tempNode = new TransformNode('dmgAnchor', this.scene);
     tempNode.position = worldPos.clone();
@@ -1108,7 +1440,12 @@ export class PitScene {
     let elapsed = 0;
     const observer = this.scene.onBeforeRenderObservable.add(() => {
       elapsed += this.engine.getDeltaTime();
-      textBlock.linkOffsetY = -60 - (elapsed * 0.05);
+      textBlock.linkOffsetY = -72 - (elapsed * 0.06);
+      const popT = elapsed < 130
+        ? 1 + (elapsed / 130) * 0.45
+        : 1.45 - ((elapsed - 130) / 570) * 0.4;
+      textBlock.scaleX = Math.max(0.9, popT);
+      textBlock.scaleY = Math.max(0.9, popT);
       textBlock.alpha = Math.max(0, 1 - elapsed / 700);
       if (elapsed >= 700) {
         this.guiTexture.removeControl(textBlock);
@@ -1178,6 +1515,7 @@ export class PitScene {
 
   dispose(): void {
     this.disposed = true;
+    this.lastActionTypeByActor.clear();
 
     // Dispose all actor animation groups
     for (const [, state] of this.actorStates) {
@@ -1190,6 +1528,7 @@ export class PitScene {
           }
         }
       }
+      state.rimLight.dispose();
     }
     this.actorStates.clear();
 

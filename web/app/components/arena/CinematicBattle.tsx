@@ -645,10 +645,10 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
         <div
           style={{
             position: 'fixed',
-            bottom: 60,
+            top: 56,
             left: 0,
             right: 0,
-            padding: '6px 12px',
+            padding: '4px 10px',
             background: 'rgba(0,0,0,0.85)',
             backdropFilter: 'blur(4px)',
             zIndex: 10,

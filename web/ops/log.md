@@ -2,6 +2,20 @@
 
 ---
 
+## Product-Mode Ship — 16:48 ET Mar 2
+
+Directive executed in product mode priority order (P1→P4), with product-critical delta only.
+
+### Shipped artifacts
+- `app/lib/waitlist-db.ts`
+  - SQLite ABI/bootstrap failures are now fail-soft (degraded mode), not fatal.
+  - Health + funnel/reliability snapshot readers now return safe degraded values when SQLite cannot initialize.
+  - This prevents signup reliability observability paths from crashing in runtimes where `better-sqlite3` bindings are unavailable.
+
+### Verification
+- `npm run test:product` ✅ (6 pass / 0 fail / 3 skipped when SQLite unavailable)
+- `npm run build` ✅
+
 ## Product-Mode Audit — 15:31 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.

@@ -8,6 +8,31 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): sqlite ABI failure no longer breaks reliability observability/tests
+
+**Type:** fix/reliability | **Budget impact:** n/a (product-critical hardening)
+
+### What
+- `web/app/lib/waitlist-db.ts`
+  - Added `markSqliteUnavailable(...)` guard that permanently degrades SQLite mode when runtime DB initialization fails (e.g. missing `better-sqlite3` binary for current Node ABI).
+  - Wrapped DB bootstrap (`new Database(...)`) in try/catch so binary errors are converted into degraded-mode state instead of throwing from health checks.
+  - Hardened read-side helpers to fail-soft when SQLite becomes unavailable at runtime:
+    - `getStorageHealth()` now returns degraded health snapshot instead of throwing.
+    - `getFunnelCounts()` now returns zeroed counts on runtime SQLite failure.
+    - `getReliabilitySnapshot()` now returns zeroed snapshot on runtime SQLite failure.
+
+### Why
+- Product reliability checks were failing in environments where `better-sqlite3` bindings are absent for the active Node version.
+- `getStorageHealth()` should never crash because it is used to detect and surface degraded storage status.
+
+### Design Decisions
+- Redis remains primary production durability path; SQLite is explicitly best-effort.
+- Runtime SQLite bootstrap failure is treated as a state transition to degraded mode, not a per-call exceptional condition.
+
+### Verification
+- `cd web && npm run test:product` ✅ (6 pass / 0 fail / 3 skipped when SQLite unavailable)
+- `cd web && npm run build` ✅
+
 ## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)
