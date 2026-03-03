@@ -59,6 +59,17 @@ const SCRIPTED_REASONING: Record<string, string> = {
 /** HUD color palette for N actors (matches PitScene ACTOR_COLORS) */
 const ACTOR_HUD_COLORS = ['#EB4D4B', '#00E5FF', '#FFD600', '#00c853', '#9c27b0']
 
+const MOBILE_MAX_WIDTH = 640
+const TABLET_MAX_WIDTH = 1100
+
+type HudViewport = 'desktop' | 'tablet' | 'mobile'
+
+function getHudViewport(width: number): HudViewport {
+  if (width <= MOBILE_MAX_WIDTH) return 'mobile'
+  if (width <= TABLET_MAX_WIDTH) return 'tablet'
+  return 'desktop'
+}
+
 interface FeedEntry {
   text: string
   reasoning?: string
@@ -201,6 +212,18 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
   // Seed
   const matchSeed = seedProp || ((Date.now() ^ 0x5f3759df) >>> 0) || 1
   const [currentSeed, setCurrentSeed] = useState(matchSeed)
+  const [viewport, setViewport] = useState<HudViewport>(() =>
+    typeof window === 'undefined' ? 'desktop' : getHudViewport(window.innerWidth),
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const onResize = () => setViewport(getHudViewport(window.innerWidth))
+    onResize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   /** Helper: get brain state for an actor */
   const getBrain = (id: string): BotBrainState => brainStates[id] ?? EMPTY_BRAIN
@@ -507,7 +530,6 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
 
   const playerBrain = getBrain(playerBot.id)
   const opponentBrain = getBrain(opponentBot.id)
-  const isMatchLive = phase !== 'ended'
 
   /* ── Render ────────────────────────────────────────────────── */
 
@@ -532,6 +554,10 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
       {/* HUD Overlay */}
       <BattleHUD
         actors={hudActors}
+        playerActorId={playerBot.id}
+        focusedTargetId={hudActors.find((actor) => actor.id !== playerBot.id && actor.hp > 0)?.id ?? null}
+        viewport={viewport}
+        aliveCount={hudActors.filter((actor) => actor.hp > 0).length}
         tick={tick}
         tickRate={TICK_RATE}
         maxTicks={MAX_TICKS}
@@ -541,93 +567,18 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
         onToggleMute={onToggleMute}
       />
 
-      {/* Brain Stream Panels — desktop only */}
-      <div className="brain-panels-desktop">
-        {/* Player brain — always visible */}
-        <BrainStream
-          botName={playerBot.name}
-          botColor={ACTOR_HUD_COLORS[0]}
-          tokens={playerBrain.tokens}
-          isThinking={playerBrain.thinking}
-          lastAction={playerBrain.lastAction}
-          history={playerBrain.history}
-          side="left"
-          isByo={!!webhookUrl}
-        />
-        {/* Opponent brain — hidden during match, visible post-match */}
-        {isMatchLive ? (
-          <div
-            style={{
-              position: 'fixed',
-              top: 60,
-              right: 0,
-              bottom: 80,
-              width: 280,
-              background: 'rgba(0,0,0,0.85)',
-              backdropFilter: 'blur(8px)',
-              borderLeft: `2px solid ${ACTOR_HUD_COLORS[1]}`,
-              zIndex: 10,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              pointerEvents: 'auto',
-            }}
-          >
-            {/* Header */}
-            <div
-              style={{
-                padding: '10px 14px',
-                borderBottom: `1px solid ${ACTOR_HUD_COLORS[1]}33`,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: '#333',
-                }}
-              />
-              <span
-                style={{
-                  fontFamily: "'IBM Plex Mono', monospace",
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  color: ACTOR_HUD_COLORS[1],
-                  letterSpacing: '2px',
-                }}
-              >
-                OPPONENT
-              </span>
-            </div>
-            {/* Redacted content */}
-            <div
-              style={{
-                flex: 1,
-                padding: '10px 14px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: "'IBM Plex Mono', monospace",
-                fontSize: '0.8rem',
-                color: 'rgba(255,255,255,0.15)',
-                textAlign: 'center',
-                gap: 8,
-              }}
-            >
-              <div style={{ fontSize: '2rem', opacity: 0.3 }}>???</div>
-              <div>BRAIN HIDDEN</div>
-              <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.08)' }}>
-                Revealed after match
-              </div>
-            </div>
-          </div>
-        ) : (
+      {phase === 'ended' && (
+        <div className="brain-panels-desktop">
+          <BrainStream
+            botName={playerBot.name}
+            botColor={ACTOR_HUD_COLORS[0]}
+            tokens={playerBrain.tokens}
+            isThinking={playerBrain.thinking}
+            lastAction={playerBrain.lastAction}
+            history={playerBrain.history}
+            side="left"
+            isByo={!!webhookUrl}
+          />
           <BrainStream
             botName={opponentBot.name}
             botColor={ACTOR_HUD_COLORS[1]}
@@ -637,49 +588,8 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
             history={opponentBrain.history}
             side="right"
           />
-        )}
-      </div>
-
-      {/* Mobile brain ticker — only player during match */}
-      <div className="brain-mobile-ticker">
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 60,
-            left: 0,
-            right: 0,
-            padding: '6px 12px',
-            background: 'rgba(0,0,0,0.85)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 10,
-            display: 'flex',
-            gap: 8,
-            fontSize: '0.65rem',
-            fontFamily: "'IBM Plex Mono', monospace",
-            overflow: 'hidden',
-          }}
-        >
-          <span style={{ color: ACTOR_HUD_COLORS[0], flexShrink: 0 }}>{playerBot.name.slice(0, 3)}:</span>
-          <span style={{ color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-            {playerBrain.thinking ? playerBrain.tokens.slice(-60) + '...' : playerBrain.lastAction || 'waiting'}
-          </span>
-          {isMatchLive ? (
-            <>
-              <span style={{ color: ACTOR_HUD_COLORS[1], flexShrink: 0 }}>OPP:</span>
-              <span style={{ color: 'rgba(255,255,255,0.15)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                ???
-              </span>
-            </>
-          ) : (
-            <>
-              <span style={{ color: ACTOR_HUD_COLORS[1], flexShrink: 0 }}>{opponentBot.name.slice(0, 3)}:</span>
-              <span style={{ color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                {opponentBrain.thinking ? opponentBrain.tokens.slice(-60) + '...' : opponentBrain.lastAction || 'waiting'}
-              </span>
-            </>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Loading overlay */}
       {phase === 'loading' && (
@@ -938,6 +848,7 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
 
       {/* Back to home link */}
       <a
+        className="home-link"
         href="/"
         style={{
           position: 'fixed',
@@ -981,10 +892,11 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
           100% { transform: scale(1); opacity: 1; }
         }
         .brain-panels-desktop { display: block; }
-        .brain-mobile-ticker { display: none; }
-        @media (max-width: 900px) {
+        @media (max-width: 1180px) {
           .brain-panels-desktop { display: none; }
-          .brain-mobile-ticker { display: block; }
+        }
+        @media (max-width: 900px) {
+          .home-link { display: none; }
         }
       `}</style>
     </div>
