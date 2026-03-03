@@ -4,7 +4,7 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { ClientOnly } from '~/components/ClientOnly'
 import MoltsCollection from '~/components/MoltsCollection'
 
-export const Route = createFileRoute('/molts')({
+export const Route = createFileRoute('/molds')({
   head: () => ({
     meta: [
       { title: 'The Molt Pit — My Molts' },

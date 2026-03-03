@@ -8,6 +8,34 @@
 
 ---
 
+## [2026-03-02] - fix(product-mode): route consistency + ops artifact refresh
+
+**Type:** fix/docs | **Budget impact:** n/a (product-critical reliability + audit pass)
+
+### What
+- `web/app/routes/molds.tsx`
+  - Corrected route declaration from `/molts` to `/molds` so route key matches file path and navigation target.
+- `web/ops/log.md`
+  - Added 20:53 ET product-mode execution artifact with strict P1→P4 audit and verification outputs.
+
+### Why
+- Route mismatch between filename and route key can break or misroute navigation for the molds collection view.
+- Product-mode cron requested shipped artifacts log update after reliability/demo/monetization validation.
+
+### Design Decisions
+- Kept scope to product-critical correctness only; no landing-page copy/content iterations touched.
+- Treated route/path alignment as reliability-critical because it affects user navigation and route resolution.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Keep cron passes constrained to P1→P4 product lane until explicitly unlocked.
+
+### Verification
+- `cd web && npm run test:product` ✅ (9 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## [2026-03-02] - fix(product-mode): signup rate-limit correctness, redis dedupe, ops funnel visibility
 
 **Type:** fix/ops | **Budget impact:** n/a (product-critical hardening)

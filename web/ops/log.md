@@ -2,6 +2,25 @@
 
 ---
 
+## Product-Mode Execution — 20:53 ET Mar 2
+
+Directive executed: STOP landing-page copy iterations. Priorities locked P1→P4 only.
+
+### Product-critical artifacts in this pass
+- Confirmed P1 reliability path active in code:
+  - `/api/waitlist` + `/api/founder-intent` idempotency receipts, Redis primary persistence, SQLite/file fallback, structured ops events.
+- Confirmed P2 playable loop active in code:
+  - `DemoLoop` ships map movement + action economy (`MOVE`, AP accrual/spend, range-gated `ATTACK`/`STUN`).
+- Confirmed P3 monetization path active in code:
+  - founder intent capture + checkout success + authenticated `/api/postback` conversion persistence.
+- Product-critical bug fix included:
+  - `app/routes/molds.tsx` route key corrected to `/molds` (was `/molts`) so nav/route resolution matches file path.
+- No landing-page copy iteration changes.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+- `npm run build` ✅ (Vite + Nitro)
+
 ## Product-Mode Audit — 15:31 ET Mar 2
 
 Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.
