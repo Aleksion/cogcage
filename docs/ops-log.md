@@ -4,6 +4,28 @@ Maintained by Daedalus. Append-only. Timestamps = ET.
 
 ---
 
+
+### Autopilot Ship — 23:03 ET, Mar 2 2026
+
+**Directive**: STOP landing-page copy iterations. Product-critical only, priority lock P1→P4.
+
+**Shipped in this pass:**
+- `web/app/routes/api/waitlist.ts`
+- `web/app/routes/api/founder-intent.ts`
+- `web/app/routes/api/checkout-success.ts`
+  - Hardened malformed JSON handling to deterministic `400 Invalid request payload` + explicit parse-failure logging.
+- `web/app/lib/demo-loop-economy.ts`
+  - Out-of-range `ATTACK`/`STUN` AI weights now forced to zero so bots move to close distance and preserve visible AP economy flow.
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added malformed JSON regressions for founder-intent + checkout-success; tightened waitlist malformed-body assertion.
+- `web/scripts/demo-loop-economy.test.mjs`
+  - Added deterministic test proving out-of-range offense resolves to `MOVE`.
+
+**Verification:**
+- `cd web && npm run test:product` ✅ (31/31 passing)
+
+**Scope guard:** no landing-page copy edits and no non-product-critical changes.
+
 ### Autopilot Ship — 22:32 ET, Mar 2 2026
 
 **Directive**: STOP landing-page copy iterations. Product-critical lanes only (P1→P4).

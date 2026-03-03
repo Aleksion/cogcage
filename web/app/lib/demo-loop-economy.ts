@@ -64,7 +64,9 @@ export function pickAffordableAction(
     if (!canAffordAction(ap, action)) return { value: action, weight: 0 }
     if (action === 'MOVE' && stunned) return { value: action, weight: 0 }
     if (action === 'MOVE' && dist <= 2) return { value: action, weight: Math.floor((bias[action] ?? 0) * 0.3) }
-    if (dist > 2 && (action === 'ATTACK' || action === 'STUN')) return { value: action, weight: Math.floor((bias[action] ?? 0) * 0.2) }
+    // Out-of-range offensive actions should not consume turns in the demo loop:
+    // force bots to close distance so map movement + AP economy stay legible/playable.
+    if (dist > 2 && (action === 'ATTACK' || action === 'STUN')) return { value: action, weight: 0 }
     if (dist > 2 && action === 'MOVE') return { value: action, weight: (bias[action] ?? 0) * 3 }
     return { value: action, weight: bias[action] ?? 0 }
   })

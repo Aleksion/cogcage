@@ -26,6 +26,16 @@ function optionalString(value: unknown, maxLen = 300) {
   return normalized.length > 0 ? normalized : undefined;
 }
 
+function parseJsonObjectBody(rawBody: string): Record<string, unknown> {
+  const trimmed = rawBody.trim();
+  if (!trimmed) return {};
+  const parsed = JSON.parse(trimmed);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('JSON payload must be an object');
+  }
+  return parsed as Record<string, unknown>;
+}
+
 function getIdempotencyKey(request: Request) {
   return sanitizeIdempotencyKey(request.headers.get('x-idempotency-key'));
 }
@@ -331,7 +341,8 @@ export const Route = createFileRoute('/api/checkout-success')({
 
         try {
           if (contentType.includes('application/json')) {
-            payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+            const rawBody = await request.text();
+            payload = parseJsonObjectBody(rawBody);
           } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
             const formData = await request.formData();
             formData.forEach((value, key) => {
@@ -340,7 +351,7 @@ export const Route = createFileRoute('/api/checkout-success')({
           } else {
             const rawBody = await request.text();
             if (rawBody.trim().startsWith('{')) {
-              payload = (JSON.parse(rawBody) as Record<string, unknown>) ?? {};
+              payload = parseJsonObjectBody(rawBody);
             } else {
               const params = new URLSearchParams(rawBody);
               params.forEach((value, key) => {
@@ -348,8 +359,17 @@ export const Route = createFileRoute('/api/checkout-success')({
               });
             }
           }
-        } catch {
-          payload = {};
+        } catch (error) {
+          appendOpsLog({
+            route,
+            level: 'warn',
+            event: 'checkout_success_payload_parse_failed',
+            requestId,
+            method: 'POST',
+            contentType,
+            error: error instanceof Error ? error.message : 'unknown',
+          });
+          return respond({ ok: false, error: 'Invalid request payload.' }, 400);
         }
 
         const email = optionalString(payload.email);
@@ -368,10 +388,22 @@ export const Route = createFileRoute('/api/checkout-success')({
         const href = optionalString(payload.href, 600);
         const source = optionalString(payload.source, 120);
         const tier = optionalString(payload.tier, 60);
-        const eventId =
+        const explicitEventId =
           optionalString(payload.eventId, 180)
           ?? optionalString(payload.session_id, 180)
-          ?? optionalString(payload.checkout_session_id, 180)
+          ?? optionalString(payload.checkout_session_id, 180);
+        if (!explicitEventId && !email && !page && !href && !source && !tier) {
+          appendOpsLog({
+            route,
+            level: 'warn',
+            event: 'checkout_success_payload_empty',
+            requestId,
+            method: 'POST',
+          });
+          return respond({ ok: false, error: 'Invalid request payload.' }, 400);
+        }
+        const eventId =
+          explicitEventId
           ?? deriveFallbackEventId({ source, email, href, page, tier });
         const meta = payload.meta && typeof payload.meta === 'object' ? (payload.meta as Record<string, unknown>) : undefined;
 

@@ -296,10 +296,49 @@ test('waitlist route returns 400 on malformed JSON payload', async () => {
   assert.equal(response.status, 400);
   const body = await response.json();
   assert.equal(body.ok, false);
-  assert.ok(
-    body.error === 'Invalid request payload.'
-    || body.error === 'Valid email is required.',
-  );
+  assert.equal(body.error, 'Invalid request payload.');
+});
+
+test('founder-intent route returns 400 on malformed JSON payload', async () => {
+  const { Route } = await founderIntentRoutePromise;
+  const postHandler = Route.options?.server?.handlers?.POST;
+  assert.equal(typeof postHandler, 'function');
+
+  const request = new Request('http://localhost/api/founder-intent', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'user-agent': 'node-test',
+    },
+    body: '{',
+  });
+
+  const response = await postHandler({ request });
+  assert.equal(response.status, 400);
+  const body = await response.json();
+  assert.equal(body.ok, false);
+  assert.equal(body.error, 'Invalid request payload.');
+});
+
+test('checkout-success route returns 400 on malformed JSON payload', async () => {
+  const { Route } = await checkoutSuccessRoutePromise;
+  const postHandler = Route.options?.server?.handlers?.POST;
+  assert.equal(typeof postHandler, 'function');
+
+  const request = new Request('http://localhost/api/checkout-success', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'user-agent': 'node-test',
+    },
+    body: '{',
+  });
+
+  const response = await postHandler({ request });
+  assert.equal(response.status, 400);
+  const body = await response.json();
+  assert.equal(body.ok, false);
+  assert.equal(body.error, 'Invalid request payload.');
 });
 
 test('founder-intent route captures durable checkout intent state', async (t) => {

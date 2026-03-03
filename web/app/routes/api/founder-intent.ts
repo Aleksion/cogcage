@@ -68,6 +68,16 @@ function normalizeString(value: unknown, maxLen = 300) {
   return normalized.slice(0, maxLen);
 }
 
+function parseJsonObjectBody(rawBody: string): Record<string, unknown> {
+  const trimmed = rawBody.trim();
+  if (!trimmed) return {};
+  const parsed = JSON.parse(trimmed);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('JSON payload must be an object');
+  }
+  return parsed as Record<string, unknown>;
+}
+
 function getIdempotencyKey(request: Request) {
   return sanitizeIdempotencyKey(request.headers.get('x-idempotency-key'));
 }
@@ -225,7 +235,8 @@ export const Route = createFileRoute('/api/founder-intent')({
 
         try {
           if (contentType.includes('application/json')) {
-            const json = await request.json().catch(() => ({}));
+            const rawBody = await request.text();
+            const json = parseJsonObjectBody(rawBody);
             email = normalizeString(json.email ?? null, 180);
             source = normalizeString(json.source ?? null, 120);
             intentId = normalizeString(json.intentId ?? json.intent_id ?? null, 180);
@@ -249,7 +260,7 @@ export const Route = createFileRoute('/api/founder-intent')({
             // Content-Type can be missing/misconfigured from edge clients; recover by sniffing body.
             const rawBody = await request.text();
             if (rawBody.trim().startsWith('{')) {
-              const json = JSON.parse(rawBody) as Record<string, unknown>;
+              const json = parseJsonObjectBody(rawBody);
               email = normalizeString(json.email ?? null, 180);
               source = normalizeString(json.source ?? null, 120);
               intentId = normalizeString(json.intentId ?? json.intent_id ?? null, 180);

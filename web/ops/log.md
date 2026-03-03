@@ -2,6 +2,32 @@
 
 ---
 
+
+## Product-Mode Ship — 23:03 ET Mar 2
+
+Directive enforced in strict order (P1 signup reliability/storage/observability → P2 playable demo loop movement + AP economy → P3 founder checkout/postback path hardening → P4 ops artifacts). No landing-page copy edits.
+
+### Shipped artifacts
+- `app/routes/api/waitlist.ts`
+- `app/routes/api/founder-intent.ts`
+- `app/routes/api/checkout-success.ts`
+  - Strict JSON-object parsing for `application/json` requests.
+  - Deterministic malformed JSON response contract: `400 { ok:false, error: "Invalid request payload." }`.
+  - Added parse-failure/empty-payload ops events for observability.
+- `app/lib/demo-loop-economy.ts`
+  - AI action weighting now disallows out-of-range `ATTACK`/`STUN`, forcing distance-closing movement to keep the map + AP loop playable.
+- `scripts/product-mode-reliability.test.mjs`
+  - Added malformed JSON regression tests for founder-intent and checkout-success; tightened waitlist malformed-body expectation.
+- `scripts/demo-loop-economy.test.mjs`
+  - Added deterministic assertion that out-of-range offensive bias resolves to `MOVE`.
+
+### Verification
+- `cd web && npm run test:product` ✅ (31/31 pass)
+
+### Scope guard
+- No landing-page copy edits.
+- No non-product-critical changes.
+
 ## Product-Mode Ship — 03:55 UTC Mar 3
 
 Directive enforced in strict order (P1 signup reliability/storage/logs → P2 playable demo loop guardrails → P3 founder checkout/postback lifecycle → P4 ops artifacts). No landing-page copy edits.
@@ -498,3 +524,35 @@ Directive enforced: STOP landing-page copy iterations. Product-critical sequence
 ### Scope guard
 - No landing-page copy edits.
 - No non-product-critical code changes.
+
+## Product-Mode Ship — 23:07 ET Mar 2
+
+Directive executed in strict order: P1 signup reliability/storage/observable logs → P2 playable demo loop movement + action economy → P3 founder checkout/postback conversion path → P4 ops artifacts.
+
+### P1 — Signup reliability/storage/observable logs
+- `app/routes/api/waitlist.ts`
+  - Tightened JSON body parsing to require object payloads and fail malformed JSON deterministically with `400 Invalid request payload`.
+- `app/routes/api/founder-intent.ts`
+  - Tightened JSON body parsing with the same malformed-payload behavior and existing ops logging.
+- `scripts/product-mode-reliability.test.mjs`
+  - Added explicit malformed JSON assertions for waitlist + founder-intent routes.
+
+### P2 — Playable demo loop (map movement + action economy)
+- `app/lib/demo-loop-economy.ts`
+  - Out-of-range `ATTACK`/`STUN` are now disallowed in AI weighted picks so bots close distance and keep map movement/AP flow playable.
+- `scripts/demo-loop-economy.test.mjs`
+  - Added deterministic test asserting out-of-range AI picks `MOVE` instead of impossible offense.
+
+### P3 — Monetization path (founder checkout + postback)
+- `app/routes/api/checkout-success.ts`
+  - Tightened POST payload parsing: malformed JSON now returns `400 Invalid request payload`.
+  - Added guard for empty payload signals to block synthetic conversion writes from blank bodies.
+- `scripts/product-mode-reliability.test.mjs`
+  - Added malformed JSON assertion for checkout-success POST.
+
+### P4 — Ops artifacts
+- Updated this log entry with shipped artifacts and validation outputs.
+
+### Validation
+- `cd web && npm run test:product` ✅
+- `cd web && npm run build` ✅

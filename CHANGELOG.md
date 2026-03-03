@@ -8,6 +8,49 @@
 
 ---
 
+
+
+## [2026-03-03] - fix(product-critical): harden malformed-payload handling and force playable move choices (04:03 UTC)
+
+**Type:** fix/product-critical | **Budget impact:** n/a
+
+### What
+- `web/app/routes/api/waitlist.ts`
+- `web/app/routes/api/founder-intent.ts`
+- `web/app/routes/api/checkout-success.ts`
+  - Enforced strict JSON object parsing for `application/json` payloads.
+  - Malformed JSON now returns deterministic `400 { ok:false, error:"Invalid request payload." }` instead of drifting into downstream validation paths.
+  - Added explicit parse-failure and empty-payload ops events for visibility.
+- `web/app/lib/demo-loop-economy.ts`
+  - Prevented out-of-range `ATTACK`/`STUN` from being selected by AI action weighting so demo agents close distance and keep the AP loop playable.
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added route-level malformed JSON regressions for `/api/founder-intent` and `/api/checkout-success`.
+  - Tightened malformed JSON expectation for `/api/waitlist` to the explicit payload-parse contract.
+- `web/scripts/demo-loop-economy.test.mjs`
+  - Added deterministic assertion that out-of-range high-bias offense resolves to `MOVE`.
+- `web/ops/log.md`
+- `docs/ops-log.md`
+  - Appended shipped-artifact + verification evidence for this pass.
+
+### Why
+- Product-mode P1 requires signup/checkout handlers to fail safely and observably on malformed bodies.
+- Product-mode P2 requires the demo loop to remain legible/playable (movement + AP economy) instead of burning turns on impossible actions.
+
+### Design Decisions
+- Use a shared parse policy per route: only JSON objects are accepted; arrays/primitives are rejected.
+- Treat malformed/empty payloads as client errors (`400`) with explicit ops-log events.
+- Bias movement when out of range by zeroing impossible offensive weights, rather than adding ad-hoc action retries.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Mirror parse-object helper into a shared utility to remove route-level duplication.
+- Add integration checks against real edge-client payload variance once staging traffic is available.
+
+### Verification
+- `cd web && npm run test:product` ✅ (31 pass / 0 fail)
+
 ## [2026-03-03] - fix(product-critical): durable checkout state transitions + callback verification hardening (03:55 UTC)
 
 **Type:** fix/product-critical | **Budget impact:** n/a

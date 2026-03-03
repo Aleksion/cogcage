@@ -50,6 +50,22 @@ test('AI action picker prevents MOVE while stunned', () => {
   }
 })
 
+test('AI action picker closes distance instead of picking out-of-range attacks', () => {
+  const originalRandom = Math.random
+  Math.random = () => 0
+  try {
+    const action = pickAffordableAction(
+      { MOVE: 1, ATTACK: 100, DEFEND: 0, CHARGE: 0, STUN: 100 },
+      6,
+      false,
+      2,
+    )
+    assert.equal(action, 'MOVE')
+  } finally {
+    Math.random = originalRandom
+  }
+})
+
 test('grid movement advances one tile and clamps to arena bounds', () => {
   assert.deepEqual(moveTowardOnGrid({ x: 0, y: 0 }, { x: 6, y: 2 }, 7), { x: 1, y: 0 })
   assert.deepEqual(moveTowardOnGrid({ x: 3, y: 3 }, { x: 3, y: 0 }, 7), { x: 3, y: 2 })
