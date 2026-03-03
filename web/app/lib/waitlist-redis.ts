@@ -25,6 +25,7 @@ const CONVERSIONS_KEY = 'moltpit:conversions';
 const OPS_LOG_KEY = 'moltpit:ops-log';
 const RATE_LIMIT_PREFIX = 'moltpit:ratelimit:';
 const IDEMPOTENCY_PREFIX = 'moltpit:idempotency:';
+const CHECKOUT_STATE_PREFIX = 'moltpit:checkout:state:';
 const WAITLIST_EMAIL_PREFIX = 'moltpit:waitlist:email:';
 const FOUNDER_INTENT_ID_PREFIX = 'moltpit:founder-intent:id:';
 const CONVERSION_EVENT_ID_PREFIX = 'moltpit:conversion:event-id:';
@@ -57,6 +58,17 @@ type RedisApiRequestReceipt = {
   responseStatus: number;
   responseBody: string;
   createdAt?: string;
+};
+
+type RedisCheckoutState = {
+  transactionId: string;
+  state: string;
+  source?: string;
+  email?: string;
+  providerEventId?: string;
+  metaJson?: string;
+  requestId?: string;
+  updatedAt?: string;
 };
 
 function idempotencyRedisKey(route: string, idempotencyKey: string) {
@@ -233,6 +245,41 @@ export async function redisWriteApiRequestReceipt(receipt: {
   });
   await r.set(key, value);
   await r.expire(key, IDEMPOTENCY_TTL_SECONDS);
+}
+
+// ── Checkout State ───────────────────────────────────────────────────────────
+
+export async function redisUpsertCheckoutState(state: {
+  transactionId: string;
+  state: string;
+  source?: string;
+  email?: string;
+  providerEventId?: string;
+  metaJson?: string;
+  requestId?: string;
+}): Promise<void> {
+  const r = getRedis();
+  const key = `${CHECKOUT_STATE_PREFIX}${state.transactionId}`;
+  const value = JSON.stringify({
+    ...state,
+    updatedAt: new Date().toISOString(),
+  });
+  await r.set(key, value);
+  await r.expire(key, DEDUPE_TTL_SECONDS);
+}
+
+export async function redisReadCheckoutState(transactionId: string): Promise<RedisCheckoutState | null> {
+  const r = getRedis();
+  const raw = await r.get(`${CHECKOUT_STATE_PREFIX}${transactionId}`);
+  if (typeof raw !== 'string' || raw.length === 0) return null;
+  try {
+    const parsed = JSON.parse(raw) as RedisCheckoutState;
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (typeof parsed.transactionId !== 'string' || typeof parsed.state !== 'string') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 // ── Rate Limiting (Redis-native, survives across Lambda invocations) ──────────

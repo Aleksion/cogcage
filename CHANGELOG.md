@@ -8,6 +8,54 @@
 
 ---
 
+## [2026-03-03] - fix(product-critical): durable checkout state transitions + callback verification hardening (03:55 UTC)
+
+**Type:** fix/product-critical | **Budget impact:** n/a
+
+### What
+- `web/app/lib/checkout-state.ts` (new)
+  - Added shared durable checkout-state recorder with Redis+SQLite writes, bounded metadata serialization, and structured ops logs (`checkout_state_*`).
+- `web/app/lib/waitlist-db.ts`
+  - Added durable `checkout_states` table with upsert/read helpers keyed by `transaction_id`.
+- `web/app/lib/waitlist-redis.ts`
+  - Added Redis checkout-state upsert/read helpers.
+- `web/app/routes/api/founder-intent.ts`
+  - Added explicit transaction-state transitions: `intent_captured`, `intent_captured_degraded`, `intent_buffered`, `intent_failed`.
+- `web/app/routes/api/checkout-success.ts`
+  - Stabilized fallback callback event IDs across retries.
+  - Added durable transaction-state transitions for success/failure.
+  - Added GET callback idempotency receipt replay/write path with `x-idempotent-replay` and `x-request-id`.
+- `web/app/routes/api/postback.ts`
+  - Stabilized fallback event ID derivation (no day-bound drift).
+  - Added durable transaction-state transitions: `postback_received`, `fulfillment_recorded`, `fulfillment_queued`, `fulfillment_failed`.
+- `web/app/lib/idempotency.ts`
+  - Stabilized fallback checkout-success idempotency key derivation for repeat callbacks without provider session IDs.
+- `web/scripts/product-mode-reliability.test.mjs`
+  - Added callback verification tests (unauthorized + unsupported type).
+  - Added state-transition durability tests (direct table upsert, founder-intent capture, postback fulfillment, checkout-success GET idempotency replay).
+  - Updated checkout fallback idempotency expectation for new stable prefix.
+
+### Why
+- P1/P3 reliability required durable, queryable transaction-state transitions across founder intent, checkout callback, and postback fulfillment.
+- Callback retries can cross day boundaries; day-scoped fallback IDs could produce duplicate conversion writes and weaken idempotency guarantees.
+- Product-critical coverage needed explicit callback verification and state-transition assertions.
+
+### Design Decisions
+- Keep transaction state keyed by `transaction_id` and use upsert semantics so the latest state is always readable.
+- Preserve existing conversion/founder tables as source-of-truth artifacts while layering a dedicated state ledger for observability.
+- Treat Redis as primary durability tier and SQLite as secondary, with structured log evidence when either tier is unavailable.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Surface `checkout_states` on `/api/ops` for operator-facing transition visibility by transaction ID.
+- Add an authenticated internal endpoint to query a single transaction state directly for support workflows.
+
+### Verification
+- `cd web && npm run test:product` ✅ (28 pass / 0 fail)
+- `cd web && npm run build` ✅
+
 ## [2026-03-02] - fix(product-critical): add route-level reliability regressions for signup and monetization paths (22:32 ET)
 
 **Type:** fix/product-critical | **Budget impact:** n/a

@@ -78,14 +78,13 @@ export function deriveCheckoutSuccessIdempotencyKey(
     return `checkout_success:${normalizedEventId}`.slice(0, 120);
   }
 
-  const day = isoDay(now);
   const fingerprint = [
     normalizeLower(source, 120) || 'stripe-success',
     normalizeLower(email, 180) || 'anon',
     normalizeLower(page, 120),
     normalizeLower(href, 600),
     normalizeLower(tier, 60) || 'founder',
-    day,
+    'fallback-v1',
   ].join('|');
-  return `checkout_success:${day}:${hashString(fingerprint)}`.slice(0, 120);
+  return `checkout_success:fallback:${hashString(fingerprint)}`.slice(0, 120);
 }

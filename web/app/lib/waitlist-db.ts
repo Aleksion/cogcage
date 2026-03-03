@@ -81,6 +81,18 @@ export type ApiRequestReceipt = {
   responseBody: string;
 };
 
+export type CheckoutState = {
+  transactionId: string;
+  state: string;
+  source?: string;
+  email?: string;
+  providerEventId?: string;
+  metaJson?: string;
+  requestId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 let db: import('better-sqlite3').Database | null = null;
 
 export function getDbPath() {
@@ -191,6 +203,21 @@ function getDb(): import('better-sqlite3').Database {
 
     CREATE INDEX IF NOT EXISTS idx_api_request_receipts_created_at
     ON api_request_receipts (created_at);
+
+    CREATE TABLE IF NOT EXISTS checkout_states (
+      transaction_id TEXT NOT NULL PRIMARY KEY,
+      state TEXT NOT NULL,
+      source TEXT,
+      email TEXT,
+      provider_event_id TEXT,
+      meta_json TEXT,
+      request_id TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_checkout_states_updated_at
+    ON checkout_states (updated_at);
   `);
 
   return db;
@@ -361,6 +388,68 @@ export function writeApiRequestReceipt(receipt: ApiRequestReceipt) {
     DELETE FROM api_request_receipts
     WHERE created_at < datetime('now', '-3 days')
   `).run());
+}
+
+export function upsertCheckoutState(state: CheckoutState) {
+  const conn = getDb();
+  const row = {
+    transactionId: state.transactionId,
+    state: state.state,
+    source: state.source ?? null,
+    email: state.email ?? null,
+    providerEventId: state.providerEventId ?? null,
+    metaJson: state.metaJson ?? null,
+    requestId: state.requestId ?? null,
+  };
+
+  runWithBusyRetry('checkout_state_upsert', () => conn.prepare(`
+    INSERT INTO checkout_states (
+      transaction_id,
+      state,
+      source,
+      email,
+      provider_event_id,
+      meta_json,
+      request_id
+    )
+    VALUES (
+      @transactionId,
+      @state,
+      @source,
+      @email,
+      @providerEventId,
+      @metaJson,
+      @requestId
+    )
+    ON CONFLICT(transaction_id) DO UPDATE SET
+      state=excluded.state,
+      source=COALESCE(excluded.source, checkout_states.source),
+      email=COALESCE(excluded.email, checkout_states.email),
+      provider_event_id=COALESCE(excluded.provider_event_id, checkout_states.provider_event_id),
+      meta_json=COALESCE(excluded.meta_json, checkout_states.meta_json),
+      request_id=COALESCE(excluded.request_id, checkout_states.request_id),
+      updated_at=CURRENT_TIMESTAMP
+  `).run(row));
+}
+
+export function getCheckoutState(transactionId: string): CheckoutState | null {
+  const conn = getDb();
+  const row = runWithBusyRetry('checkout_state_read', () => conn.prepare(`
+    SELECT
+      transaction_id AS transactionId,
+      state,
+      source,
+      email,
+      provider_event_id AS providerEventId,
+      meta_json AS metaJson,
+      request_id AS requestId,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM checkout_states
+    WHERE transaction_id = ?
+  `).get(transactionId)) as CheckoutState | undefined;
+
+  return row ?? null;
 }
 
 export function getFunnelCounts(): FunnelCounts {

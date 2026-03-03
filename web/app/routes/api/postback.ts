@@ -13,6 +13,7 @@ import {
   redisWriteApiRequestReceipt,
 } from '~/lib/waitlist-redis'
 import { sanitizeIdempotencyKey } from '~/lib/idempotency'
+import { recordCheckoutState } from '~/lib/checkout-state'
 
 type CheckoutPostback = {
   type?: string;
@@ -77,10 +78,9 @@ function hashString(input: string) {
 }
 
 function deriveFallbackEventId({ eventType, source, email, created, metadata }: { eventType: string; source: string; email?: string; created?: number; metadata?: Record<string, unknown> }) {
-  const day = new Date().toISOString().slice(0, 10);
   const metadataPreview = JSON.stringify(metadata ?? {}).slice(0, 512);
-  const fingerprint = `${eventType}|${source}|${email || 'anon'}|${created || ''}|${metadataPreview}|${day}`;
-  return `postback:${day}:${hashString(fingerprint)}`;
+  const fingerprint = `${eventType}|${source}|${email || 'anon'}|${created || ''}|${metadataPreview}|fallback-v1`;
+  return `postback:fallback:${hashString(fingerprint)}`;
 }
 
 function safeMetaJson(meta: Record<string, unknown>) {
@@ -352,6 +352,21 @@ export const Route = createFileRoute('/api/postback')({
           });
         }
 
+        await recordCheckoutState({
+          route,
+          requestId,
+          transactionId: eventId,
+          state: 'postback_received',
+          source,
+          email,
+          providerEventId: eventId,
+          meta: {
+            eventType,
+            created: payload.created,
+            hasEmail: Boolean(email),
+          },
+        });
+
         const conversionPayload = {
           eventName: 'paid_conversion_confirmed',
           eventId,
@@ -464,6 +479,17 @@ export const Route = createFileRoute('/api/postback')({
             durationMs: Date.now() - startedAt,
           });
 
+          await recordCheckoutState({
+            route,
+            requestId,
+            transactionId: eventId,
+            state: 'fulfillment_recorded',
+            source,
+            email,
+            providerEventId: eventId,
+            meta: { eventType, hasEmail: Boolean(email), degraded: false, queued: false },
+          });
+
           return respond({ ok: true, eventId }, 200, idempotencyKey);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
@@ -509,6 +535,17 @@ export const Route = createFileRoute('/api/postback')({
               durationMs: Date.now() - startedAt,
             });
 
+            await recordCheckoutState({
+              route,
+              requestId,
+              transactionId: eventId,
+              state: 'fulfillment_recorded',
+              source,
+              email,
+              providerEventId: eventId,
+              meta: { eventType, hasEmail: Boolean(email), degraded: true, queued: false },
+            });
+
             return respond({ ok: true, degraded: true, eventId }, 200, idempotencyKey);
           } catch (sqliteError) {
             const sqliteErrorMessage = sqliteError instanceof Error ? sqliteError.message : 'unknown-error';
@@ -536,6 +573,16 @@ export const Route = createFileRoute('/api/postback')({
                 eventId,
                 durationMs: Date.now() - startedAt,
               });
+              await recordCheckoutState({
+                route,
+                requestId,
+                transactionId: eventId,
+                state: 'fulfillment_queued',
+                source,
+                email,
+                providerEventId: eventId,
+                meta: { eventType, hasEmail: Boolean(email), degraded: true, queued: true, reason: sqliteErrorMessage },
+              });
               return respond({ ok: true, queued: true, eventId }, 202, idempotencyKey);
             } catch (fallbackError) {
               appendOpsLog({
@@ -548,6 +595,23 @@ export const Route = createFileRoute('/api/postback')({
                 eventId,
                 error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error',
                 durationMs: Date.now() - startedAt,
+              });
+
+              await recordCheckoutState({
+                route,
+                requestId,
+                transactionId: eventId,
+                state: 'fulfillment_failed',
+                source,
+                email,
+                providerEventId: eventId,
+                meta: {
+                  eventType,
+                  hasEmail: Boolean(email),
+                  degraded: true,
+                  queued: false,
+                  reason: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error',
+                },
               });
 
               return respond({ ok: false, error: 'Postback processing failed' }, 500, idempotencyKey);

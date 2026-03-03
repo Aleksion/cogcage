@@ -3,6 +3,7 @@ import { insertConversionEvent, readApiRequestReceipt, writeApiRequestReceipt } 
 import { appendEventsFallback, appendOpsLog } from '~/lib/observability'
 import { redisInsertConversionEvent, redisReadApiRequestReceipt, redisWriteApiRequestReceipt } from '~/lib/waitlist-redis'
 import { deriveCheckoutSuccessIdempotencyKey, sanitizeIdempotencyKey } from '~/lib/idempotency'
+import { recordCheckoutState } from '~/lib/checkout-state'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -39,9 +40,8 @@ function hashString(input: string) {
 }
 
 function deriveFallbackEventId({ source, email, href, page, tier }: { source?: string; email?: string; href?: string; page?: string; tier?: string }) {
-  const day = new Date().toISOString().slice(0, 10);
-  const fingerprint = `${source || 'stripe-success'}|${email || 'anon'}|${href || ''}|${page || ''}|${tier || 'founder'}|${day}`;
-  return `checkout-success:${day}:${hashString(fingerprint)}`;
+  const fingerprint = `${source || 'stripe-success'}|${email || 'anon'}|${href || ''}|${page || ''}|${tier || 'founder'}|fallback-v1`;
+  return `checkout-success:fallback:${hashString(fingerprint)}`;
 }
 
 function safeMetaJson(meta: Record<string, unknown> | undefined) {
@@ -57,6 +57,7 @@ function safeMetaJson(meta: Record<string, unknown> | undefined) {
 }
 
 const recordSuccess = async ({
+  requestId,
   eventId,
   page,
   href,
@@ -66,6 +67,7 @@ const recordSuccess = async ({
   meta,
   request,
 }: {
+  requestId: string;
   eventId?: string;
   page?: string;
   href?: string;
@@ -78,7 +80,6 @@ const recordSuccess = async ({
   const startedAt = Date.now();
   const ipAddress = getClientIp(request);
   const userAgent = request.headers.get('user-agent') ?? undefined;
-  const requestId = crypto.randomUUID();
   const payload = {
     eventName: 'paid_conversion_confirmed',
     eventId,
@@ -398,6 +399,7 @@ export const Route = createFileRoute('/api/checkout-success')({
 
         try {
           const result = await recordSuccess({
+            requestId,
             eventId,
             page,
             href,
@@ -408,21 +410,49 @@ export const Route = createFileRoute('/api/checkout-success')({
             request,
           });
 
+          await recordCheckoutState({
+            route,
+            requestId,
+            transactionId: eventId,
+            state: result.queued ? 'checkout_success_buffered' : 'checkout_success_recorded',
+            source: source ?? 'stripe-success',
+            email,
+            providerEventId: eventId,
+            meta: {
+              page,
+              href,
+              tier: tier ?? 'founder',
+              degraded: result.degraded || undefined,
+              queued: result.queued || undefined,
+            },
+          });
+
           return respond({
             ok: true,
-            requestId: result.requestId,
+            requestId,
             queued: result.queued || undefined,
             degraded: result.degraded || undefined,
           }, result.queued ? 202 : 200);
         } catch {
+          await recordCheckoutState({
+            route,
+            requestId,
+            transactionId: eventId,
+            state: 'checkout_success_failed',
+            source: source ?? 'stripe-success',
+            email,
+            providerEventId: eventId,
+            meta: { page, href, tier: tier ?? 'founder' },
+          });
           return respond({ ok: false, error: 'Conversion storage unavailable.' }, 503);
         }
       },
       GET: async ({ request }) => {
         const requestId = crypto.randomUUID();
+        const route = '/api/checkout-success';
         const url = new URL(request.url);
         appendOpsLog({
-          route: '/api/checkout-success',
+          route,
           level: 'info',
           event: 'checkout_success_received',
           requestId,
@@ -432,7 +462,7 @@ export const Route = createFileRoute('/api/checkout-success')({
         const email = optionalString(url.searchParams.get('email'));
         if (email && !EMAIL_RE.test(email)) {
           appendOpsLog({
-            route: '/api/checkout-success',
+            route,
             level: 'warn',
             event: 'checkout_success_invalid_email',
             requestId,
@@ -440,7 +470,7 @@ export const Route = createFileRoute('/api/checkout-success')({
           });
           return new Response(JSON.stringify({ ok: false, error: 'Invalid email format.' }), {
             status: 400,
-            headers: { 'content-type': 'application/json' },
+            headers: { 'content-type': 'application/json', 'x-request-id': requestId },
           });
         }
 
@@ -453,9 +483,80 @@ export const Route = createFileRoute('/api/checkout-success')({
           ?? optionalString(url.searchParams.get('session_id'), 180)
           ?? optionalString(url.searchParams.get('checkout_session_id'), 180)
           ?? deriveFallbackEventId({ source, email, href, page, tier });
+        const idempotencyKey = deriveCheckoutSuccessIdempotencyKey({
+          eventId,
+          source,
+          email,
+          page,
+          href,
+          tier,
+        });
+
+        try {
+          const cached = await redisReadApiRequestReceipt(route, idempotencyKey);
+          if (cached) {
+            appendOpsLog({
+              route,
+              level: 'info',
+              event: 'checkout_success_idempotency_replay',
+              requestId,
+              method: 'GET',
+              idempotencyStore: 'redis',
+            });
+            return new Response(cached.responseBody, {
+              status: cached.responseStatus,
+              headers: {
+                'content-type': 'application/json',
+                'x-request-id': requestId,
+                'x-idempotent-replay': '1',
+              },
+            });
+          }
+        } catch (error) {
+          appendOpsLog({
+            route,
+            level: 'warn',
+            event: 'checkout_success_idempotency_redis_read_failed',
+            requestId,
+            method: 'GET',
+            error: error instanceof Error ? error.message : 'unknown',
+          });
+        }
+
+        try {
+          const cached = readApiRequestReceipt(route, idempotencyKey);
+          if (cached) {
+            appendOpsLog({
+              route,
+              level: 'info',
+              event: 'checkout_success_idempotency_replay',
+              requestId,
+              method: 'GET',
+              idempotencyStore: 'sqlite',
+            });
+            return new Response(cached.responseBody, {
+              status: cached.responseStatus,
+              headers: {
+                'content-type': 'application/json',
+                'x-request-id': requestId,
+                'x-idempotent-replay': '1',
+              },
+            });
+          }
+        } catch (error) {
+          appendOpsLog({
+            route,
+            level: 'warn',
+            event: 'checkout_success_idempotency_sqlite_read_failed',
+            requestId,
+            method: 'GET',
+            error: error instanceof Error ? error.message : 'unknown',
+          });
+        }
 
         try {
           const result = await recordSuccess({
+            requestId,
             eventId,
             page,
             href,
@@ -469,19 +570,80 @@ export const Route = createFileRoute('/api/checkout-success')({
             request,
           });
 
-          return new Response(JSON.stringify({
+          await recordCheckoutState({
+            route,
+            requestId,
+            transactionId: eventId,
+            state: result.queued ? 'checkout_success_buffered' : 'checkout_success_recorded',
+            source: source ?? 'stripe-success',
+            email,
+            providerEventId: eventId,
+            meta: {
+              page,
+              href,
+              tier: tier ?? 'founder',
+              method: 'GET',
+              degraded: result.degraded || undefined,
+              queued: result.queued || undefined,
+            },
+          });
+
+          const body = JSON.stringify({
             ok: true,
-            requestId: result.requestId,
+            requestId,
             queued: result.queued || undefined,
             degraded: result.degraded || undefined,
-          }), {
+          });
+
+          const receipt = {
+            route,
+            idempotencyKey,
+            responseStatus: result.queued ? 202 : 200,
+            responseBody: body,
+          };
+          try {
+            await redisWriteApiRequestReceipt(receipt);
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'checkout_success_idempotency_redis_write_failed',
+              requestId,
+              method: 'GET',
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+          try {
+            writeApiRequestReceipt(receipt);
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'checkout_success_idempotency_sqlite_write_failed',
+              requestId,
+              method: 'GET',
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+
+          return new Response(body, {
             status: result.queued ? 202 : 200,
-            headers: { 'content-type': 'application/json' },
+            headers: { 'content-type': 'application/json', 'x-request-id': requestId },
           });
         } catch {
+          await recordCheckoutState({
+            route,
+            requestId,
+            transactionId: eventId,
+            state: 'checkout_success_failed',
+            source: source ?? 'stripe-success',
+            email,
+            providerEventId: eventId,
+            meta: { page, href, tier: tier ?? 'founder', method: 'GET' },
+          });
           return new Response(JSON.stringify({ ok: false, error: 'Conversion storage unavailable.' }), {
             status: 503,
-            headers: { 'content-type': 'application/json' },
+            headers: { 'content-type': 'application/json', 'x-request-id': requestId },
           });
         }
       },

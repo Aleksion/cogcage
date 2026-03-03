@@ -17,6 +17,7 @@ import {
   redisWriteApiRequestReceipt,
 } from '~/lib/waitlist-redis'
 import { deriveFounderIntentIdempotencyKey, sanitizeIdempotencyKey } from '~/lib/idempotency'
+import { recordCheckoutState } from '~/lib/checkout-state'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ['company', 'website', 'nickname'];
@@ -417,6 +418,16 @@ export const Route = createFileRoute('/api/founder-intent')({
             userAgent: request.headers.get('user-agent') ?? undefined,
             ipAddress,
           });
+          await recordCheckoutState({
+            route,
+            requestId,
+            transactionId: resolvedIntentId,
+            state: 'intent_captured',
+            source: payload.source,
+            email: payload.email,
+            providerEventId: resolvedIntentId,
+            meta: { degraded: false, queued: false },
+          });
           return respond({ ok: true }, 200);
         } catch (error) {
           // Redis failed — try file fallback
@@ -442,6 +453,16 @@ export const Route = createFileRoute('/api/founder-intent')({
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
             });
+            await recordCheckoutState({
+              route,
+              requestId,
+              transactionId: resolvedIntentId,
+              state: 'intent_captured_degraded',
+              source: payload.source,
+              email: payload.email,
+              providerEventId: resolvedIntentId,
+              meta: { degraded: true, queued: false, reason: errorMessage },
+            });
             return respond({ ok: true, degraded: true }, 200);
           } catch (sqliteFallbackError) {
             appendOpsLog({
@@ -464,6 +485,16 @@ export const Route = createFileRoute('/api/founder-intent')({
               ipAddress,
             });
             appendOpsLog({ route: '/api/founder-intent', level: 'warn', event: 'founder_intent_saved_to_fallback', requestId, durationMs: Date.now() - startedAt });
+            await recordCheckoutState({
+              route,
+              requestId,
+              transactionId: resolvedIntentId,
+              state: 'intent_buffered',
+              source: payload.source,
+              email: payload.email,
+              providerEventId: resolvedIntentId,
+              meta: { degraded: true, queued: true, reason: errorMessage },
+            });
             return respond({ ok: true, queued: true }, 202);
           } catch (fallbackError) {
             appendOpsLog({ route: '/api/founder-intent', level: 'error', event: 'founder_intent_fallback_write_failed', requestId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
@@ -474,6 +505,20 @@ export const Route = createFileRoute('/api/founder-intent')({
               metaJson: JSON.stringify({ error: errorMessage }),
               userAgent: request.headers.get('user-agent') ?? undefined,
               ipAddress,
+            });
+            await recordCheckoutState({
+              route,
+              requestId,
+              transactionId: resolvedIntentId,
+              state: 'intent_failed',
+              source: payload.source,
+              email: payload.email,
+              providerEventId: resolvedIntentId,
+              meta: {
+                degraded: true,
+                queued: false,
+                reason: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error',
+              },
             });
             return respond({ ok: false, error: 'Temporary storage issue. Please retry.' }, 503);
           }

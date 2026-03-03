@@ -2,6 +2,28 @@
 
 ---
 
+## Product-Mode Ship — 03:55 UTC Mar 3
+
+Directive enforced in strict order (P1 signup reliability/storage/logs → P2 playable demo loop guardrails → P3 founder checkout/postback lifecycle → P4 ops artifacts). No landing-page copy edits.
+
+### Shipped artifacts
+- `app/lib/checkout-state.ts` (new): durable checkout transaction-state recorder + structured logs.
+- `app/lib/waitlist-db.ts`: new `checkout_states` durable table with `upsertCheckoutState`/`getCheckoutState`.
+- `app/lib/waitlist-redis.ts`: Redis checkout-state read/write helpers.
+- `app/routes/api/founder-intent.ts`: records `intent_*` state transitions durably.
+- `app/routes/api/checkout-success.ts`: stable fallback event IDs, GET callback idempotency replay/write path, durable checkout-success state transitions.
+- `app/routes/api/postback.ts`: stable fallback event IDs, callback receive/fulfillment state transitions stored durably.
+- `app/lib/idempotency.ts`: stable fallback checkout-success idempotency key derivation.
+- `scripts/product-mode-reliability.test.mjs`: callback verification + state-transition test coverage.
+- `CHANGELOG.md`: shipped details/decisions/verification.
+
+### Commit
+- `COMMIT_HASH_PLACEHOLDER`
+
+### Verification commands run
+- `cd web && npm run test:product` ✅ (28/28 pass)
+- `cd web && npm run build` ✅
+
 ## Product-Mode Ship — 22:32 ET Mar 2
 
 Directive enforced: STOP landing-page copy iteration work. Scope constrained to product-critical reliability/demo/checkout lanes.
