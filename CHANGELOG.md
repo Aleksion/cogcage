@@ -8,6 +8,30 @@
 
 ---
 
+## [2026-03-02] - fix(product-critical): restore `/molds` route registration + ops artifact refresh
+
+**Type:** fix/ops | **Budget impact:** n/a (product-critical lane)
+
+### What
+- `web/app/routes/molds.tsx`
+  - Corrected route registration from `createFileRoute('/molts')` to `createFileRoute('/molds')` so direct navigation and generated route matching remain consistent.
+- `web/ops/log.md`
+  - Added 23:20 ET product-mode ship entry with verification evidence for this cron pass.
+
+### Why
+- Product-mode directive requires reliability-first scope only.
+- Route mismatch on a production path is reliability debt and qualifies as product-critical.
+
+### Design Decisions
+- Kept scope minimal: one route registration fix + operational evidence update only.
+- No landing-page copy iterations or non-critical features touched.
+
+### Breaking changes
+- None.
+
+### Next steps
+- Continue strict product-critical lane: signup reliability, playable demo integrity, founder checkout/postback correctness.
+
 ## [2026-03-02] - fix(product-critical): signup reliability telemetry, playable `/demo` loop, founder checkout intent + postback purchase recording
 
 **Type:** fix/feature/ops | **Budget impact:** n/a (product-critical lane only)

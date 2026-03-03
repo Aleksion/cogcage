@@ -2,6 +2,20 @@
 
 ---
 
+## Product-Mode Ship — 23:20 ET Mar 2
+
+Directive enforced: STOP landing-page copy iterations. Priority lock unchanged: P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder monetization + postback capture, P4 ops artifact update.
+
+### Shipped artifacts
+- `app/routes/molds.tsx`
+  - Fixed route registration mismatch by correcting `createFileRoute('/molts')` to `createFileRoute('/molds')`, restoring reliability for direct navigation to the molds screen.
+- `ops/log.md`
+  - Added this artifact-backed ship entry for the current cron pass.
+
+### Verification
+- `npm run test:product` ✅ (13/13 pass)
+- `npm run build` ✅
+
 ## Product-Mode Ship — 22:12 ET Mar 2
 
 Directive enforced: STOP landing-page copy iterations. Priority lock remained P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder monetization + postback capture, P4 ops artifact update.
