@@ -51,7 +51,7 @@ function safeMetaJson(meta: Record<string, unknown> | undefined) {
   }
 }
 
-const recordSuccess = ({
+const recordSuccess = async ({
   eventId,
   page,
   href,
@@ -88,24 +88,94 @@ const recordSuccess = ({
   };
 
   try {
-    insertConversionEvent(payload);
-    // Fire-and-forget Redis write — durable across Lambda invocations
-    void redisInsertConversionEvent(payload).catch((e: unknown) => {
-      appendOpsLog({ route: '/api/checkout-success', level: 'warn', event: 'checkout_success_redis_write_failed', requestId, source: payload.source, error: e instanceof Error ? e.message : 'unknown' });
+    await redisInsertConversionEvent(payload);
+    try {
+      insertConversionEvent(payload);
+    } catch (sqliteError) {
+      appendOpsLog({
+        route: '/api/checkout-success',
+        level: 'warn',
+        event: 'checkout_success_sqlite_write_failed',
+        requestId,
+        source: payload.source,
+        eventId: payload.eventId,
+        error: sqliteError instanceof Error ? sqliteError.message : 'unknown',
+      });
+    }
+    appendOpsLog({
+      route: '/api/checkout-success',
+      level: 'info',
+      event: 'paid_conversion_confirmed',
+      requestId,
+      source: payload.source,
+      eventId: payload.eventId,
+      storage: 'redis',
+      durationMs: Date.now() - startedAt,
     });
-    appendOpsLog({ route: '/api/checkout-success', level: 'info', event: 'paid_conversion_confirmed', requestId, source: payload.source, eventId: payload.eventId, durationMs: Date.now() - startedAt });
-    return { requestId, queued: false };
+    return { requestId, queued: false, degraded: false };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'unknown-error';
-    appendOpsLog({ route: '/api/checkout-success', level: 'error', event: 'paid_conversion_db_write_failed', requestId, source: payload.source, eventId: payload.eventId, error: errorMessage, durationMs: Date.now() - startedAt });
+    const redisError = error instanceof Error ? error.message : 'unknown-error';
+    appendOpsLog({
+      route: '/api/checkout-success',
+      level: 'error',
+      event: 'checkout_success_redis_write_failed',
+      requestId,
+      source: payload.source,
+      eventId: payload.eventId,
+      error: redisError,
+      durationMs: Date.now() - startedAt,
+    });
 
     try {
-      appendEventsFallback({ route: '/api/checkout-success', requestId, ...payload, reason: errorMessage });
-      appendOpsLog({ route: '/api/checkout-success', level: 'warn', event: 'paid_conversion_saved_to_fallback', requestId, source: payload.source, eventId: payload.eventId, durationMs: Date.now() - startedAt });
-      return { requestId, queued: true };
-    } catch (fallbackError) {
-      appendOpsLog({ route: '/api/checkout-success', level: 'error', event: 'paid_conversion_fallback_write_failed', requestId, source: payload.source, eventId: payload.eventId, error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error', durationMs: Date.now() - startedAt });
-      throw error;
+      insertConversionEvent(payload);
+      appendOpsLog({
+        route: '/api/checkout-success',
+        level: 'warn',
+        event: 'paid_conversion_saved_sqlite_fallback',
+        requestId,
+        source: payload.source,
+        eventId: payload.eventId,
+        durationMs: Date.now() - startedAt,
+      });
+      return { requestId, queued: false, degraded: true };
+    } catch (sqliteError) {
+      const sqliteErrorMessage = sqliteError instanceof Error ? sqliteError.message : 'unknown-error';
+      appendOpsLog({
+        route: '/api/checkout-success',
+        level: 'error',
+        event: 'paid_conversion_db_write_failed',
+        requestId,
+        source: payload.source,
+        eventId: payload.eventId,
+        error: sqliteErrorMessage,
+        durationMs: Date.now() - startedAt,
+      });
+
+      try {
+        appendEventsFallback({ route: '/api/checkout-success', requestId, ...payload, reason: sqliteErrorMessage });
+        appendOpsLog({
+          route: '/api/checkout-success',
+          level: 'warn',
+          event: 'paid_conversion_saved_to_fallback',
+          requestId,
+          source: payload.source,
+          eventId: payload.eventId,
+          durationMs: Date.now() - startedAt,
+        });
+        return { requestId, queued: true, degraded: true };
+      } catch (fallbackError) {
+        appendOpsLog({
+          route: '/api/checkout-success',
+          level: 'error',
+          event: 'paid_conversion_fallback_write_failed',
+          requestId,
+          source: payload.source,
+          eventId: payload.eventId,
+          error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error',
+          durationMs: Date.now() - startedAt,
+        });
+        throw sqliteError;
+      }
     }
   }
 };
@@ -114,7 +184,16 @@ export const Route = createFileRoute('/api/checkout-success')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const requestId = crypto.randomUUID();
         const contentType = request.headers.get('content-type') ?? '';
+        appendOpsLog({
+          route: '/api/checkout-success',
+          level: 'info',
+          event: 'checkout_success_received',
+          requestId,
+          method: 'POST',
+          contentType,
+        });
         let payload: Record<string, unknown> = {};
 
         try {
@@ -142,6 +221,13 @@ export const Route = createFileRoute('/api/checkout-success')({
 
         const email = optionalString(payload.email);
         if (email && !EMAIL_RE.test(email)) {
+          appendOpsLog({
+            route: '/api/checkout-success',
+            level: 'warn',
+            event: 'checkout_success_invalid_email',
+            requestId,
+            method: 'POST',
+          });
           return new Response(JSON.stringify({ ok: false, error: 'Invalid email format.' }), {
             status: 400,
             headers: { 'content-type': 'application/json' },
@@ -160,7 +246,7 @@ export const Route = createFileRoute('/api/checkout-success')({
         const meta = payload.meta && typeof payload.meta === 'object' ? (payload.meta as Record<string, unknown>) : undefined;
 
         try {
-          const result = recordSuccess({
+          const result = await recordSuccess({
             eventId,
             page,
             href,
@@ -171,7 +257,12 @@ export const Route = createFileRoute('/api/checkout-success')({
             request,
           });
 
-          return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined }), {
+          return new Response(JSON.stringify({
+            ok: true,
+            requestId: result.requestId,
+            queued: result.queued || undefined,
+            degraded: result.degraded || undefined,
+          }), {
             status: result.queued ? 202 : 200,
             headers: { 'content-type': 'application/json' },
           });
@@ -183,9 +274,25 @@ export const Route = createFileRoute('/api/checkout-success')({
         }
       },
       GET: async ({ request }) => {
+        const requestId = crypto.randomUUID();
         const url = new URL(request.url);
+        appendOpsLog({
+          route: '/api/checkout-success',
+          level: 'info',
+          event: 'checkout_success_received',
+          requestId,
+          method: 'GET',
+          sessionId: url.searchParams.get('session_id') ?? url.searchParams.get('checkout_session_id') ?? undefined,
+        });
         const email = optionalString(url.searchParams.get('email'));
         if (email && !EMAIL_RE.test(email)) {
+          appendOpsLog({
+            route: '/api/checkout-success',
+            level: 'warn',
+            event: 'checkout_success_invalid_email',
+            requestId,
+            method: 'GET',
+          });
           return new Response(JSON.stringify({ ok: false, error: 'Invalid email format.' }), {
             status: 400,
             headers: { 'content-type': 'application/json' },
@@ -202,7 +309,7 @@ export const Route = createFileRoute('/api/checkout-success')({
         const tier = optionalString(url.searchParams.get('tier'), 60);
 
         try {
-          const result = recordSuccess({
+          const result = await recordSuccess({
             eventId,
             page,
             href,
@@ -216,7 +323,12 @@ export const Route = createFileRoute('/api/checkout-success')({
             request,
           });
 
-          return new Response(JSON.stringify({ ok: true, requestId: result.requestId, queued: result.queued || undefined }), {
+          return new Response(JSON.stringify({
+            ok: true,
+            requestId: result.requestId,
+            queued: result.queued || undefined,
+            degraded: result.degraded || undefined,
+          }), {
             status: result.queued ? 202 : 200,
             headers: { 'content-type': 'application/json' },
           });

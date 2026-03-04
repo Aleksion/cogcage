@@ -11,13 +11,14 @@ The full item designs (flavor text, effects, downsides) live in the Game Ontolog
 
 ## Quick Reference
 
-### Carapace (13)
+### Carapace (14)
 | Name | Rarity | HP | Key Effect | Downside |
 |------|--------|-----|------------|----------|
 | BLOCK-7 | Common | +30 | 10% dmg reduction | Speed -15% |
 | THE ORIGINAL | Common | +15 | None | None either |
 | HARDCASE | Common | +40 | Heaviest armor | No BURST, move costs energy |
 | SILKWORM | Rare | ±0 | Scatters 20% dmg | -10 HP below base |
+| THE ROLL | Rare | -10 | Dodge any hit when moving | No reduction while stationary |
 | ECHO | Rare | +10 | Auto counter on hit | No HP bonus pays off only if hit |
 | THE MOLT | Rare | -5 start | +5% resist per 20 ticks | Weak early |
 | WIDOW | Rare | -15 | Survive 1 lethal hit | Low base HP |

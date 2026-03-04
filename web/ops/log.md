@@ -2,6 +2,87 @@
 
 ---
 
+## Product-Mode Audit — 15:31 ET Mar 2
+
+Directive executed: STOP landing-page copy iterations. Priority lock remains P1 signup reliability/storage/logging, P2 playable demo loop, P3 founder checkout + postback, P4 ops artifacts.
+
+### Shipped artifacts this pass
+- No new copy or non-critical scope touched.
+- Re-verified product-critical lane already shipped and active:
+  - Signup reliability path (`/api/waitlist`, `/api/founder-intent`) with Redis → SQLite → fallback queue behavior.
+  - Playable demo loop (`DemoLoop` + `Play`) with map movement and AP/action economy.
+  - Monetization path (`PUBLIC_STRIPE_FOUNDER_URL`, `/api/postback`, `/api/checkout-success`) and event lifecycle.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+
+
+## Product-Mode Ship — 16:46 ET Mar 2
+
+Directive executed: prioritize P1 signup reliability, P2 playable loop, P3 monetization postback lifecycle, P4 ops artifacts.
+
+### Shipped artifacts
+- `app/lib/waitlist-redis.ts`
+  - Corrected Redis rate-limit `resetMs` semantics to relative milliseconds for accurate `Retry-After` handling.
+  - Added deterministic Redis dedupe keys:
+    - waitlist leads dedupe by normalized email
+    - founder intents dedupe by `intentId` (derived fallback when absent)
+    - postback/checkout conversion dedupe by `eventId`
+- `app/components/OpsLogPage.tsx`
+  - Funnel cards now read `counts`/`redisCounts` from `/api/ops`, fixing visibility of live signup/founder/conversion totals.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+- `npm run build` ✅
+
+## Product-Mode Ship — 16:18 ET Mar 2
+
+Directive executed: prioritize P1 signup reliability, P2 playable loop, P3 monetization postback lifecycle, P4 ops artifacts.
+
+### Shipped artifacts
+- `app/lib/waitlist-redis.ts`
+  - Added Redis idempotency receipt APIs with TTL-backed keys.
+- `app/routes/api/waitlist.ts`
+  - Idempotency replay now checks Redis before SQLite; idempotency receipts are written to both stores.
+- `app/routes/api/founder-intent.ts`
+  - Same Redis-first idempotency behavior as waitlist.
+- `app/routes/api/postback.ts`
+  - Paid conversion persistence now runs Redis-first, then SQLite fallback, then file queue.
+  - Founder-intent side-write from postback now includes SQLite + fallback path if Redis is down.
+- `app/routes/api/checkout-success.ts`
+  - Checkout success conversion persistence now runs Redis-first, then SQLite fallback, then file queue.
+  - API response includes `degraded` flag when fallback persistence is used.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+- `npm run build` ✅
+- `npx tsc --noEmit` ⚠️ pre-existing repo-wide failures unrelated to this ship lane (Phaser typings/route typing/import-style errors).
+
+## Product-Mode Ship — 15:40 ET Mar 2
+
+Directive executed in strict order: P1 signup reliability, P2 playable loop, P3 monetization lifecycle, P4 ops artifacts.
+
+### Shipped
+- **P1 signup/storage reliability**
+  - `app/routes/api/waitlist.ts` now attempts SQLite fallback write if Redis fails, then file queue as final fallback.
+  - `app/routes/api/founder-intent.ts` now attempts SQLite fallback write if Redis fails, then file queue as final fallback.
+  - `app/routes/api/founder-intent.ts` fixed telemetry runtime bug (missing `redisInsertConversionEvent` import).
+  - `app/lib/waitlist-db.ts` uses ESM-safe SQLite load and migrated unique indexes so `ON CONFLICT(intent_id|event_id)` is valid.
+- **P2 playable loop verification**
+  - `scripts/ws2-core.test.mjs` now includes movement + action-economy assertions (`MOVE_COMPLETED`, energy spend).
+- **P3 founder checkout + postback lifecycle**
+  - `app/components/Play.tsx` now records checkout lifecycle events and persists founder intent before Stripe redirect.
+  - `app/routes/api/postback.ts` now logs `postback_received`, invalid payload, and unsupported type outcomes.
+  - `app/routes/api/checkout-success.ts` now logs request receipt + validation failures for both GET and POST.
+- **P4 ops/testing artifacts**
+  - `scripts/product-mode-reliability.test.mjs` added (idempotent persistence + receipt + rate-limit checks).
+  - `package.json` added `test:product`.
+  - `scripts/replay-fallback.mjs` updated index migration for reliable replay upserts.
+
+### Verification
+- `npm run test:product` ✅ (9/9 pass)
+- `npm run build` ✅ (Vite + Nitro Vercel output)
+
 ## Autopilot Checkpoint — 00:50 ET Mar 2 (cron 3a2fb22f, pass 48)
 
 **Directive:** STOP landing-page copy. Priorities: (1) signup reliability, (2) playable demo loop, (3) monetization, (4) ops log.

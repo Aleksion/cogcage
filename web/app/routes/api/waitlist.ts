@@ -13,7 +13,8 @@ import {
   redisInsertWaitlistLead,
   redisInsertConversionEvent,
   redisConsumeRateLimit,
-  redisAppendOpsLog,
+  redisReadApiRequestReceipt,
+  redisWriteApiRequestReceipt,
 } from '~/lib/waitlist-redis'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '../../../convex/_generated/api'
@@ -79,12 +80,16 @@ function safeTrackConversion(route: string, requestId: string, event: Conversion
   void redisInsertConversionEvent(event).catch((redisError: unknown) => {
     appendOpsLog({ route, level: 'warn', event: 'conversion_event_redis_write_failed', requestId, conversionEventName: event.eventName, error: redisError instanceof Error ? redisError.message : 'unknown' });
   });
-  // Try SQLite as local-dev secondary — best-effort, warn on failure (not error)
+  // Try SQLite as local-dev secondary — best-effort, warn on unexpected failure only.
+  // Known Vercel limitation: better-sqlite3 require() unavailable in ESM runtime — skip silently.
   try {
     insertConversionEvent(event);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'unknown-error';
-    appendOpsLog({ route, level: 'warn', event: 'conversion_event_sqlite_write_failed', requestId, conversionEventName: event.eventName, error: errorMessage });
+    // Only log if it's an unexpected error, not the expected Vercel binary unavailability.
+    if (!errorMessage.includes('binary load error') && !errorMessage.includes('require is not defined')) {
+      appendOpsLog({ route, level: 'warn', event: 'conversion_event_sqlite_write_failed', requestId, conversionEventName: event.eventName, error: errorMessage });
+    }
     try {
       appendEventsFallback({ route, requestId, ...event, reason: errorMessage });
     } catch {
@@ -107,22 +112,48 @@ export const Route = createFileRoute('/api/waitlist')({
         let source = '';
         let honeypot = '';
 
-        const respond = (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
+        const respond = async (body: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) => {
           if (idempotencyKey) {
+            const receipt = {
+              route,
+              idempotencyKey,
+              responseStatus: status,
+              responseBody: JSON.stringify({ ...body, requestId }),
+            };
+            let persisted = false;
+
             try {
-              writeApiRequestReceipt({
-                route,
-                idempotencyKey,
-                responseStatus: status,
-                responseBody: JSON.stringify({ ...body, requestId }),
-              });
+              await redisWriteApiRequestReceipt(receipt);
+              persisted = true;
             } catch (error) {
               appendOpsLog({
                 route,
                 level: 'warn',
-                event: 'waitlist_idempotency_write_failed',
+                event: 'waitlist_idempotency_redis_write_failed',
                 requestId,
                 error: error instanceof Error ? error.message : 'unknown',
+              });
+            }
+
+            try {
+              writeApiRequestReceipt(receipt);
+              persisted = true;
+            } catch (error) {
+              appendOpsLog({
+                route,
+                level: 'warn',
+                event: 'waitlist_idempotency_sqlite_write_failed',
+                requestId,
+                error: error instanceof Error ? error.message : 'unknown',
+              });
+            }
+
+            if (!persisted) {
+              appendOpsLog({
+                route,
+                level: 'error',
+                event: 'waitlist_idempotency_write_failed',
+                requestId,
               });
             }
           }
@@ -132,9 +163,9 @@ export const Route = createFileRoute('/api/waitlist')({
 
         if (idempotencyKey) {
           try {
-            const cached = readApiRequestReceipt(route, idempotencyKey);
+            const cached = await redisReadApiRequestReceipt(route, idempotencyKey);
             if (cached) {
-              appendOpsLog({ route, level: 'info', event: 'waitlist_idempotency_replay', requestId, durationMs: Date.now() - startedAt });
+              appendOpsLog({ route, level: 'info', event: 'waitlist_idempotency_replay', requestId, idempotencyStore: 'redis', durationMs: Date.now() - startedAt });
               return new Response(cached.responseBody, {
                 status: cached.responseStatus,
                 headers: {
@@ -148,7 +179,30 @@ export const Route = createFileRoute('/api/waitlist')({
             appendOpsLog({
               route,
               level: 'warn',
-              event: 'waitlist_idempotency_read_failed',
+              event: 'waitlist_idempotency_redis_read_failed',
+              requestId,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+
+          try {
+            const cached = readApiRequestReceipt(route, idempotencyKey);
+            if (cached) {
+              appendOpsLog({ route, level: 'info', event: 'waitlist_idempotency_replay', requestId, idempotencyStore: 'sqlite', durationMs: Date.now() - startedAt });
+              return new Response(cached.responseBody, {
+                status: cached.responseStatus,
+                headers: {
+                  'content-type': 'application/json',
+                  'x-request-id': requestId,
+                  'x-idempotent-replay': '1',
+                },
+              });
+            }
+          } catch (error) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'waitlist_idempotency_sqlite_read_failed',
               requestId,
               error: error instanceof Error ? error.message : 'unknown',
             });
@@ -338,6 +392,36 @@ export const Route = createFileRoute('/api/waitlist')({
           // Redis failed — try file fallback
           const errorMessage = error instanceof Error ? error.message : 'unknown-error';
           appendOpsLog({ route: route, level: 'error', event: 'waitlist_redis_write_failed', requestId, error: errorMessage, durationMs: Date.now() - startedAt });
+
+          // Try SQLite directly when Redis is unavailable.
+          try {
+            insertWaitlistLead(payload);
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'waitlist_saved_sqlite_fallback',
+              requestId,
+              source: payload.source,
+              durationMs: Date.now() - startedAt,
+            });
+            safeTrackConversion(route, requestId, {
+              eventName: 'waitlist_saved_sqlite_fallback',
+              source: payload.source,
+              email: normalizedEmail,
+              metaJson: JSON.stringify({ error: errorMessage }),
+              userAgent: request.headers.get('user-agent') ?? undefined,
+              ipAddress,
+            });
+            return respond({ ok: true, degraded: true, message: 'You\'re on the list!' }, 200);
+          } catch (sqliteFallbackError) {
+            appendOpsLog({
+              route,
+              level: 'warn',
+              event: 'waitlist_sqlite_fallback_failed',
+              requestId,
+              error: sqliteFallbackError instanceof Error ? sqliteFallbackError.message : 'unknown',
+            });
+          }
 
           try {
             appendWaitlistFallback({ route: route, requestId, ...payload, reason: errorMessage });

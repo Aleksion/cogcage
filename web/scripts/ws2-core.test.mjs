@@ -7,11 +7,12 @@ import {
   runMatchFromLog,
   runMatchWithProvider,
   createStandardActors,
+  resolveTick,
 } from '../app/lib/ws2/engine.ts';
 import { hashEvents, replayMatch } from '../app/lib/ws2/replay.ts';
 import { Rng } from '../app/lib/ws2/rng.ts';
 import { createBot } from '../app/lib/ws2/bots.ts';
-import { UNIT_SCALE } from '../app/lib/ws2/constants.ts';
+import { ACTION_COST, MOVE_DISTANCE, UNIT_SCALE } from '../app/lib/ws2/constants.ts';
 
 const findEvent = (events, type) => events.find((event) => event.type === type);
 
@@ -76,4 +77,33 @@ test('replay parity matches event hash and winner', () => {
   const replay = replayMatch({ seed: 42, actors: createStandardActors(), actionLog });
   assert.equal(hashEvents(state.events), replay.eventHash);
   assert.equal(state.winnerId, replay.state.winnerId);
+});
+
+test('move action changes map position and emits movement event', () => {
+  const actors = createStandardActors();
+  const startX = actors.alpha.position.x;
+
+  const state = runMatchFromLog({
+    seed: 12,
+    actors,
+    actionLog: [{ tick: 0, actorId: 'alpha', type: 'MOVE', dir: 'E' }],
+  });
+
+  const actor = state.actors.alpha;
+  assert.equal(actor.position.x, startX + MOVE_DISTANCE);
+  const moveEvent = state.events.find((event) => event.type === 'MOVE_COMPLETED' && event.actorId === 'alpha');
+  assert.ok(moveEvent, 'expected MOVE_COMPLETED event');
+});
+
+test('action economy spends move energy on accepted move action', () => {
+  const actors = createStandardActors();
+  const state = createInitialState({ seed: 13, actors });
+  const startEnergy = state.actors.alpha.energy;
+  const actionsByActor = new Map([
+    ['alpha', { tick: 0, actorId: 'alpha', type: 'MOVE', dir: 'E' }],
+  ]);
+  resolveTick(state, actionsByActor);
+
+  const expectedEnergy = startEnergy - ACTION_COST.MOVE;
+  assert.equal(state.actors.alpha.energy, expectedEnergy);
 });

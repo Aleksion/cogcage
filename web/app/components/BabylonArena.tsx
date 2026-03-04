@@ -18,9 +18,13 @@ interface BabylonArenaProps {
   snapshot: MatchSnapshot | null;
   botNames?: Record<string, string>;
   onMatchEnd?: (winnerId: string | null) => void;
+  /** Which actor is "ours" (for future camera focus / highlight) */
+  playerBotId?: string;
+  /** Override canvas style (e.g. fullscreen) */
+  canvasStyle?: React.CSSProperties;
 }
 
-export function BabylonArena({ snapshot, botNames, onMatchEnd }: BabylonArenaProps) {
+export function BabylonArena({ snapshot, botNames, onMatchEnd, playerBotId, canvasStyle }: BabylonArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<import('../game/PitScene').PitScene | null>(null);
   const destroyedRef = useRef(false);
@@ -78,17 +82,16 @@ export function BabylonArena({ snapshot, botNames, onMatchEnd }: BabylonArenaPro
     <canvas
       ref={canvasRef}
       id="babylon-arena"
-      width={900}
-      height={640}
       style={{
-        width: 900,
-        height: 640,
+        width: '900px',
+        height: '640px',
         background: '#050510',
         borderRadius: 8,
         overflow: 'hidden',
         border: '2px solid rgba(0, 229, 255, 0.15)',
         boxShadow: '0 0 40px rgba(0, 229, 255, 0.05), inset 0 0 60px rgba(0, 0, 0, 0.5)',
         display: 'block',
+        ...canvasStyle,
       }}
     />
   );

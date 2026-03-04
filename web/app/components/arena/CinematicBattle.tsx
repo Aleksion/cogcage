@@ -3,8 +3,10 @@ import { runMatchAsync } from '~/lib/ws2/run-match'
 import { HP_MAX, TICK_RATE, MAX_TICKS, UNIT_SCALE, MELEE_RANGE, RANGED_MAX } from '~/lib/ws2/index'
 import type { BotConfig, MatchSnapshot } from '~/lib/ws2/match-types'
 import { PARTS, composeMold, type Part } from '~/lib/ws2/parts'
-import ArenaCanvas, { type ArenaHandle } from './ArenaCanvas'
+import { BabylonArena } from '../BabylonArena'
+import type { MatchSnapshot as PitSnapshot } from '~/game/PitScene'
 import BattleHUD from './BattleHUD'
+import type { BotHudEntry } from './BattleHUD'
 import BrainStream from './BrainStream'
 import {
   playAttackSound,
@@ -54,10 +56,35 @@ const SCRIPTED_REASONING: Record<string, string> = {
   NO_OP: 'Conserving energy.',
 }
 
+/** HUD color palette for N actors (matches PitScene ACTOR_COLORS) */
+const ACTOR_HUD_COLORS = ['#EB4D4B', '#00E5FF', '#FFD600', '#00c853', '#9c27b0']
+
+const MOBILE_MAX_WIDTH = 640
+const TABLET_MAX_WIDTH = 1100
+
+type HudViewport = 'desktop' | 'tablet' | 'mobile'
+
+function getHudViewport(width: number): HudViewport {
+  if (width <= MOBILE_MAX_WIDTH) return 'mobile'
+  if (width <= TABLET_MAX_WIDTH) return 'tablet'
+  return 'desktop'
+}
+
 interface FeedEntry {
   text: string
   reasoning?: string
 }
+
+/* ── Brain state per bot ──────────────────────────────────────── */
+
+interface BotBrainState {
+  tokens: string
+  thinking: boolean
+  lastAction: string | null
+  history: string[]
+}
+
+const EMPTY_BRAIN: BotBrainState = { tokens: '', thinking: false, lastAction: null, history: [] }
 
 /* ── Streaming brain helper ──────────────────────────────────── */
 
@@ -148,16 +175,18 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
     'OPPONENT',
     { x: 16, y: 10 },
   ), [opponentMold])
-  const arenaRef = useRef<ArenaHandle>(null)
+
+  /** Generic bot list — currently 2 but supports N */
+  const matchBots = useMemo(() => [playerBot, opponentBot], [playerBot, opponentBot])
+
+  const [arenaSnapshot, setArenaSnapshot] = useState<PitSnapshot | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const prevEventsLenRef = useRef(0)
   const streamAbortRef = useRef<AbortController | null>(null)
 
-  // Match state
-  const [botAHp, setBotAHp] = useState(HP_MAX)
-  const [botBHp, setBotBHp] = useState(HP_MAX)
-  const [botAEnergy, setBotAEnergy] = useState(0)
-  const [botBEnergy, setBotBEnergy] = useState(0)
+  // Match state — generic N-player
+  const [actorHp, setActorHp] = useState<Record<string, number>>({})
+  const [actorEnergy, setActorEnergy] = useState<Record<string, number>>({})
   const [tick, setTick] = useState(0)
   const [feed, setFeed] = useState<FeedEntry[]>([])
   const [phase, setPhase] = useState<'loading' | 'countdown' | 'playing' | 'ended'>('loading')
@@ -165,15 +194,8 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
   const [winnerId, setWinnerId] = useState<string | null>(null)
   const [endReason, setEndReason] = useState('')
 
-  // Brain stream state
-  const [brainTokensA, setBrainTokensA] = useState('')
-  const [brainTokensB, setBrainTokensB] = useState('')
-  const [thinkingA, setThinkingA] = useState(false)
-  const [thinkingB, setThinkingB] = useState(false)
-  const [lastActionA, setLastActionA] = useState<string | null>(null)
-  const [lastActionB, setLastActionB] = useState<string | null>(null)
-  const [historyA, setHistoryA] = useState<string[]>([])
-  const [historyB, setHistoryB] = useState<string[]>([])
+  // Brain stream state — per-bot Record
+  const [brainStates, setBrainStates] = useState<Record<string, BotBrainState>>({})
 
   // Sound
   const [muted, setMutedState] = useState(false)
@@ -184,46 +206,68 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
     })
   }, [])
 
-  // Stats for post-match
-  const statsRef = useRef({ hitsA: 0, hitsB: 0, dmgA: 0, dmgB: 0 })
+  // Stats for post-match — generic per-actor
+  const statsRef = useRef<Record<string, { hits: number; dmg: number }>>({})
 
   // Seed
   const matchSeed = seedProp || ((Date.now() ^ 0x5f3759df) >>> 0) || 1
   const [currentSeed, setCurrentSeed] = useState(matchSeed)
+  const [viewport, setViewport] = useState<HudViewport>(() =>
+    typeof window === 'undefined' ? 'desktop' : getHudViewport(window.innerWidth),
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const onResize = () => setViewport(getHudViewport(window.innerWidth))
+    onResize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  /** Helper: get brain state for an actor */
+  const getBrain = (id: string): BotBrainState => brainStates[id] ?? EMPTY_BRAIN
+
+  /** Helper: find bot config by id */
+  const botById = useCallback(
+    (id: string) => matchBots.find(b => b.id === id),
+    [matchBots],
+  )
+
+  /** Helper: get display name */
+  const nameOf = useCallback(
+    (id: string) => botById(id)?.name ?? id,
+    [botById],
+  )
 
   /* ── Snapshot handler ──────────────────────────────────────── */
 
   const handleSnapshot = useCallback((snap: MatchSnapshot) => {
     const s = snap.state
-    const a = s.actors?.botA
-    const b = s.actors?.botB
-    if (!a || !b) return
+    if (!s.actors || Object.keys(s.actors).length === 0) return
 
-    setBotAHp(a.hp)
-    setBotBHp(b.hp)
-    setTick(s.tick)
-    if (typeof a.energy === 'number') setBotAEnergy(a.energy)
-    if (typeof b.energy === 'number') setBotBEnergy(b.energy)
-
-    // Update arena positions
-    if (a.position && arenaRef.current) {
-      arenaRef.current.updatePositions(
-        a.position,
-        b.position,
-      )
+    // Update HP and energy for all actors
+    for (const [id, actor] of Object.entries(s.actors)) {
+      setActorHp(prev => ({ ...prev, [id]: actor.hp }))
+      if (typeof actor.energy === 'number') {
+        setActorEnergy(prev => ({ ...prev, [id]: actor.energy }))
+      }
     }
+    setTick(s.tick)
 
-    // Process new events
+    // Process new events (diff from cumulative list)
     const events: any[] = s.events || []
     const prev = prevEventsLenRef.current
     const newEvents = events.slice(prev)
     prevEventsLenRef.current = events.length
 
+    // Forward snapshot to BabylonArena / PitScene
+    setArenaSnapshot({ state: s, decisions: [], newEvents })
+
     const entries: FeedEntry[] = []
 
     for (const evt of newEvents) {
-      const who = evt.actorId === 'botA' ? playerBot.name : opponentBot.name
-      const isA = evt.actorId === 'botA'
+      const who = nameOf(evt.actorId)
 
       if (evt.type === 'ACTION_ACCEPTED') {
         const d = evt.data
@@ -234,7 +278,6 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
             ? `${d.type} ${d.dir}`
             : d.type
 
-        // Find reasoning
         const reasoningEvt = newEvents.find(
           (e: any) =>
             e.type === 'BOT_REASONING' && e.actorId === evt.actorId && e.tick === evt.tick,
@@ -244,25 +287,21 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
 
         entries.push({ text: `${icon} ${who}: ${label}`, reasoning })
 
-        // Trigger arena animations
-        if (arenaRef.current) {
-          if (d.type === 'MELEE_STRIKE') {
-            arenaRef.current.triggerAttack(isA ? 'botA' : 'botB', 'melee')
-            playAttackSound('melee')
-          } else if (d.type === 'RANGED_SHOT') {
-            arenaRef.current.triggerAttack(isA ? 'botA' : 'botB', 'ranged')
-            playAttackSound('ranged')
-          } else if (d.type === 'GUARD') {
-            arenaRef.current.triggerGuard(isA ? 'botA' : 'botB')
-            playAttackSound('guard')
-          } else if (d.type === 'DASH') {
-            playAttackSound('dash')
-          }
+        if (d.type === 'MELEE_STRIKE') {
+          playAttackSound('melee')
+        } else if (d.type === 'RANGED_SHOT') {
+          playAttackSound('ranged')
+        } else if (d.type === 'GUARD') {
+          playAttackSound('guard')
+        } else if (d.type === 'DASH') {
+          playAttackSound('dash')
         }
 
         // Update brain stream last action
-        if (isA) setLastActionA(d.type)
-        else setLastActionB(d.type)
+        setBrainStates(prev => ({
+          ...prev,
+          [evt.actorId]: { ...(prev[evt.actorId] ?? EMPTY_BRAIN), lastAction: d.type },
+        }))
       }
 
       if (evt.type === 'MOVE_COMPLETED') {
@@ -286,28 +325,19 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
       }
 
       if (evt.type === 'DAMAGE_APPLIED') {
-        const target = evt.targetId === 'botA' ? playerBot.name : opponentBot.name
-        const isTargetA = evt.targetId === 'botA'
+        const target = nameOf(evt.targetId)
         const amount = evt.data?.amount ?? 0
         const guarded = evt.data?.defenderGuarded ? ' (guarded)' : ''
         entries.push({
           text: `\uD83D\uDCA5 ${who} hits ${target} for ${amount} dmg${guarded}`,
         })
-
-        if (arenaRef.current) {
-          arenaRef.current.triggerHit(isTargetA ? 'botA' : 'botB', amount)
-          if (amount > 15) arenaRef.current.shakeCamera()
-        }
         playHitSound(amount)
 
         // Track stats
-        if (evt.actorId === 'botA') {
-          statsRef.current.hitsA++
-          statsRef.current.dmgA += amount
-        } else {
-          statsRef.current.hitsB++
-          statsRef.current.dmgB += amount
-        }
+        const actorId = evt.actorId as string
+        if (!statsRef.current[actorId]) statsRef.current[actorId] = { hits: 0, dmg: 0 }
+        statsRef.current[actorId].hits++
+        statsRef.current[actorId].dmg += amount
       }
 
       if (evt.type === 'MATCH_END') {
@@ -323,30 +353,21 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
       setWinnerId(snap.winnerId)
       setEndReason(s.endReason || 'UNKNOWN')
       setPhase('ended')
-      if (snap.winnerId) {
-        const loser = snap.winnerId === 'botA' ? 'botB' : 'botA'
-        arenaRef.current?.triggerDeath(loser)
-      }
       playKOSound()
       stopAmbient()
     }
-  }, [playerBot.name, opponentBot.name])
+  }, [nameOf])
 
   /* ── Brain stream integration ─────────────────────────────── */
 
   const runBrainStream = useCallback(
     (snap: any, botId: string, bot: BotConfig, opponentIds: string[]) => {
-      // Skip LLM streaming for BYO agents — action log shows in BrainStream via history
       if (bot.webhookUrl) return
 
-      const isA = botId === 'botA'
-      if (isA) {
-        setThinkingA(true)
-        setBrainTokensA('')
-      } else {
-        setThinkingB(true)
-        setBrainTokensB('')
-      }
+      setBrainStates(prev => ({
+        ...prev,
+        [botId]: { ...(prev[botId] ?? EMPTY_BRAIN), thinking: true, tokens: '' },
+      }))
 
       streamAbortRef.current = new AbortController()
 
@@ -356,27 +377,24 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
         bot,
         opponentIds,
         (delta) => {
-          if (isA) setBrainTokensA((prev) => prev + delta)
-          else setBrainTokensB((prev) => prev + delta)
+          setBrainStates(prev => ({
+            ...prev,
+            [botId]: { ...(prev[botId] ?? EMPTY_BRAIN), tokens: (prev[botId]?.tokens ?? '') + delta },
+          }))
         },
         (action) => {
-          if (isA) {
-            setThinkingA(false)
+          setBrainStates(prev => {
+            const cur = prev[botId] ?? EMPTY_BRAIN
+            const updated: BotBrainState = { ...cur, thinking: false }
             if (action?.type && action.type !== 'NO_OP') {
-              setLastActionA(action.type)
-              setHistoryA((prev) =>
-                [...prev, `${action.type}${action.dir ? ' ' + action.dir : ''}: ${action.reasoning || '...'}`].slice(-10),
-              )
+              updated.lastAction = action.type
+              updated.history = [
+                ...cur.history,
+                `${action.type}${action.dir ? ' ' + action.dir : ''}: ${action.reasoning || '...'}`,
+              ].slice(-10)
             }
-          } else {
-            setThinkingB(false)
-            if (action?.type && action.type !== 'NO_OP') {
-              setLastActionB(action.type)
-              setHistoryB((prev) =>
-                [...prev, `${action.type}${action.dir ? ' ' + action.dir : ''}: ${action.reasoning || '...'}`].slice(-10),
-              )
-            }
-          }
+            return { ...prev, [botId]: updated }
+          })
         },
         streamAbortRef.current.signal,
       )
@@ -390,67 +408,48 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
     (newSeed?: number) => {
       const seed = newSeed || ((Date.now() ^ 0x5f3759df) >>> 0) || 1
       setCurrentSeed(seed)
-      setBotAHp(HP_MAX)
-      setBotBHp(HP_MAX)
-      setBotAEnergy(0)
-      setBotBEnergy(0)
+      setActorHp({})
+      setActorEnergy({})
       setTick(0)
       setFeed([])
       setWinnerId(null)
       setEndReason('')
       setPhase('playing')
-      setBrainTokensA('')
-      setBrainTokensB('')
-      setThinkingA(false)
-      setThinkingB(false)
-      setLastActionA(null)
-      setLastActionB(null)
-      setHistoryA([])
-      setHistoryB([])
+      setBrainStates({})
       prevEventsLenRef.current = 0
-      statsRef.current = { hitsA: 0, hitsB: 0, dmgA: 0, dmgB: 0 }
+      statsRef.current = {}
 
       const controller = new AbortController()
       abortRef.current = controller
 
-      // Start ambient sound
       startAmbient()
 
-      // Use both streaming brain AND the normal match runner
-      // The match runner uses /api/agent/decide (non-streaming)
-      // Brain streams run in parallel for the visual effect
       const wrappedSnapshot = (snap: MatchSnapshot) => {
         handleSnapshot(snap)
 
-        // Fire brain streams on each decision tick
         const s = snap.state
         if (!snap.ended && s.tick > 0) {
-          const a = s.actors?.botA
-          const b = s.actors?.botB
-          if (a?.hp > 0) {
-            runBrainStream(
-              { tick: s.tick, actors: s.actors, events: (s.events || []).slice(-10) },
-              'botA',
-              playerBot,
-              ['botB'],
-            )
-          }
-          if (b?.hp > 0) {
-            runBrainStream(
-              { tick: s.tick, actors: s.actors, events: (s.events || []).slice(-10) },
-              'botB',
-              opponentBot,
-              ['botA'],
-            )
+          const actorIds = Object.keys(s.actors)
+          for (const bot of matchBots) {
+            const actor = s.actors[bot.id]
+            if (actor && actor.hp > 0) {
+              const opponents = actorIds.filter(id => id !== bot.id)
+              runBrainStream(
+                { tick: s.tick, actors: s.actors, events: (s.events || []).slice(-10) },
+                bot.id,
+                bot,
+                opponents,
+              )
+            }
           }
         }
       }
 
-      runMatchAsync(seed, [playerBot, opponentBot], wrappedSnapshot, '/api/agent/decide', controller.signal).catch(
+      runMatchAsync(seed, matchBots, wrappedSnapshot, '/api/agent/decide', controller.signal).catch(
         (err) => console.error('[CinematicBattle] match error:', err),
       )
     },
-    [handleSnapshot, runBrainStream, playerBot, opponentBot],
+    [handleSnapshot, runBrainStream, matchBots],
   )
 
   /* ── Auto-start with countdown ───────────────────────────── */
@@ -459,7 +458,6 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
     let cancelled = false
     const timers: ReturnType<typeof setTimeout>[] = []
 
-    // Loading phase, then countdown, then fight
     timers.push(setTimeout(() => {
       if (cancelled) return
       setPhase('countdown')
@@ -504,9 +502,10 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
   }
 
   const winnerName =
-    winnerId === 'botA' ? playerBot.name : winnerId === 'botB' ? opponentBot.name : null
-  const winnerColor =
-    winnerId === 'botA' ? '#EB4D4B' : winnerId === 'botB' ? '#00E5FF' : '#FFD600'
+    winnerId ? (botById(winnerId)?.name ?? winnerId) : null
+  const winnerColor = winnerId
+    ? ACTOR_HUD_COLORS[matchBots.findIndex(b => b.id === winnerId) % ACTOR_HUD_COLORS.length] ?? '#FFD600'
+    : '#FFD600'
 
   const shareUrl = `themoltpit.com/demo?seed=${currentSeed}`
   const [copied, setCopied] = useState(false)
@@ -516,83 +515,81 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
     setTimeout(() => setCopied(false), 2000)
   }
 
+  /* ── Build HUD actors array ─────────────────────────────── */
+
+  const hudActors: BotHudEntry[] = matchBots.map((bot, i) => ({
+    id: bot.id,
+    name: bot.name,
+    hp: actorHp[bot.id] ?? HP_MAX,
+    energy: actorEnergy[bot.id] ?? 0,
+    color: ACTOR_HUD_COLORS[i % ACTOR_HUD_COLORS.length],
+    isPlayer: bot.id === playerBot.id,
+  }))
+
+  /* ── Brain stream data ──────────────────────────────────── */
+
+  const playerBrain = getBrain(playerBot.id)
+  const opponentBrain = getBrain(opponentBot.id)
+
   /* ── Render ────────────────────────────────────────────────── */
 
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: '#050510' }}>
-      {/* Three.js Arena — behind everything */}
-      <ArenaCanvas ref={arenaRef} />
+      {/* Babylon.js Arena — behind everything */}
+      <BabylonArena
+        snapshot={arenaSnapshot}
+        botNames={Object.fromEntries(matchBots.map(b => [b.id, b.name]))}
+        playerBotId={playerBot.id}
+        canvasStyle={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          borderRadius: 0,
+          border: 'none',
+          boxShadow: 'none',
+        }}
+      />
 
       {/* HUD Overlay */}
       <BattleHUD
-        botAHp={botAHp}
-        botBHp={botBHp}
-        botAEnergy={botAEnergy}
-        botBEnergy={botBEnergy}
+        actors={hudActors}
+        playerActorId={playerBot.id}
+        focusedTargetId={hudActors.find((actor) => actor.id !== playerBot.id && actor.hp > 0)?.id ?? null}
+        viewport={viewport}
+        aliveCount={hudActors.filter((actor) => actor.hp > 0).length}
         tick={tick}
         tickRate={TICK_RATE}
         maxTicks={MAX_TICKS}
         feed={feed}
         phase={phase === 'ended' ? 'ended' : 'playing'}
-        /* countdown and loading also show 'playing' state in HUD */
         muted={muted}
         onToggleMute={onToggleMute}
-        botAName={playerBot.name}
-        botBName={opponentBot.name}
       />
 
-      {/* Brain Stream Panels — desktop only */}
-      <div className="brain-panels-desktop">
-        <BrainStream
-          botName={playerBot.name}
-          botColor="#EB4D4B"
-          tokens={brainTokensA}
-          isThinking={thinkingA}
-          lastAction={lastActionA}
-          history={historyA}
-          side="left"
-          isByo={!!webhookUrl}
-        />
-        <BrainStream
-          botName={opponentBot.name}
-          botColor="#00E5FF"
-          tokens={brainTokensB}
-          isThinking={thinkingB}
-          lastAction={lastActionB}
-          history={historyB}
-          side="right"
-        />
-      </div>
-
-      {/* Mobile brain ticker */}
-      <div className="brain-mobile-ticker">
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 60,
-            left: 0,
-            right: 0,
-            padding: '6px 12px',
-            background: 'rgba(0,0,0,0.85)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 10,
-            display: 'flex',
-            gap: 8,
-            fontSize: '0.65rem',
-            fontFamily: "'IBM Plex Mono', monospace",
-            overflow: 'hidden',
-          }}
-        >
-          <span style={{ color: '#EB4D4B', flexShrink: 0 }}>{playerBot.name.slice(0, 3)}:</span>
-          <span style={{ color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-            {thinkingA ? brainTokensA.slice(-60) + '...' : lastActionA || 'waiting'}
-          </span>
-          <span style={{ color: '#00E5FF', flexShrink: 0 }}>{opponentBot.name.slice(0, 3)}:</span>
-          <span style={{ color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-            {thinkingB ? brainTokensB.slice(-60) + '...' : lastActionB || 'waiting'}
-          </span>
+      {phase === 'ended' && (
+        <div className="brain-panels-desktop">
+          <BrainStream
+            botName={playerBot.name}
+            botColor={ACTOR_HUD_COLORS[0]}
+            tokens={playerBrain.tokens}
+            isThinking={playerBrain.thinking}
+            lastAction={playerBrain.lastAction}
+            history={playerBrain.history}
+            side="left"
+            isByo={!!webhookUrl}
+          />
+          <BrainStream
+            botName={opponentBot.name}
+            botColor={ACTOR_HUD_COLORS[1]}
+            tokens={opponentBrain.tokens}
+            isThinking={opponentBrain.thinking}
+            lastAction={opponentBrain.lastAction}
+            history={opponentBrain.history}
+            side="right"
+          />
         </div>
-      </div>
+      )}
 
       {/* Loading overlay */}
       {phase === 'loading' && (
@@ -725,56 +722,44 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
             by {endReason.replace(/_/g, ' ')}
           </div>
 
-          {/* Stats */}
+          {/* Stats — generic N-player */}
           <div
             style={{
               display: 'flex',
               gap: 24,
               marginTop: 24,
               animation: 'slide-up 0.5s ease-out 0.7s both',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
             }}
           >
-            {/* Player stats */}
-            <div
-              style={{
-                background: 'rgba(235,77,75,0.1)',
-                border: '2px solid rgba(235,77,75,0.3)',
-                borderRadius: 12,
-                padding: '16px 24px',
-                textAlign: 'center',
-                minWidth: 140,
-              }}
-            >
-              <div style={{ fontFamily: "'Bangers', display", fontSize: '1.2rem', color: '#EB4D4B', marginBottom: 8 }}>
-                {playerBot.name}
-              </div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.8 }}>
-                HP: {botAHp}<br />
-                Hits: {statsRef.current.hitsA}<br />
-                Dmg: {statsRef.current.dmgA}
-              </div>
-            </div>
-
-            {/* Opponent stats */}
-            <div
-              style={{
-                background: 'rgba(0,229,255,0.1)',
-                border: '2px solid rgba(0,229,255,0.3)',
-                borderRadius: 12,
-                padding: '16px 24px',
-                textAlign: 'center',
-                minWidth: 140,
-              }}
-            >
-              <div style={{ fontFamily: "'Bangers', display", fontSize: '1.2rem', color: '#00E5FF', marginBottom: 8 }}>
-                {opponentBot.name}
-              </div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.8 }}>
-                HP: {botBHp}<br />
-                Hits: {statsRef.current.hitsB}<br />
-                Dmg: {statsRef.current.dmgB}
-              </div>
-            </div>
+            {matchBots.map((bot, i) => {
+              const color = ACTOR_HUD_COLORS[i % ACTOR_HUD_COLORS.length]
+              const stats = statsRef.current[bot.id] ?? { hits: 0, dmg: 0 }
+              const hp = actorHp[bot.id] ?? 0
+              return (
+                <div
+                  key={bot.id}
+                  style={{
+                    background: `${color}15`,
+                    border: `2px solid ${color}4D`,
+                    borderRadius: 12,
+                    padding: '16px 24px',
+                    textAlign: 'center',
+                    minWidth: 140,
+                  }}
+                >
+                  <div style={{ fontFamily: "'Bangers', display", fontSize: '1.2rem', color, marginBottom: 8 }}>
+                    {bot.name}
+                  </div>
+                  <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.8 }}>
+                    HP: {hp}<br />
+                    Hits: {stats.hits}<br />
+                    Dmg: {stats.dmg}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           {/* Buttons */}
@@ -863,6 +848,7 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
 
       {/* Back to home link */}
       <a
+        className="home-link"
         href="/"
         style={{
           position: 'fixed',
@@ -906,10 +892,11 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
           100% { transform: scale(1); opacity: 1; }
         }
         .brain-panels-desktop { display: block; }
-        .brain-mobile-ticker { display: none; }
-        @media (max-width: 900px) {
+        @media (max-width: 1180px) {
           .brain-panels-desktop { display: none; }
-          .brain-mobile-ticker { display: block; }
+        }
+        @media (max-width: 900px) {
+          .home-link { display: none; }
         }
       `}</style>
     </div>

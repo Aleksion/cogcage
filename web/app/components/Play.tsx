@@ -313,6 +313,7 @@ interface ArenaTask {
 
 const GRID_SIZE = 8;
 const EMAIL_KEY = 'moltpit_email';
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
 const ACTION_INFO: Record<string, { label: string; cost: number; desc: string }> = {
   MOVE: { label: 'Move', cost: 4, desc: 'Move 1 cell in any direction' },
@@ -374,6 +375,57 @@ const hashString = (input: string) => {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
+};
+
+const createIdempotencyKey = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const postJson = async (url: string, payload: Record<string, unknown>, timeoutMs = 6000) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-idempotency-key': createIdempotencyKey(),
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    const text = await response.text();
+    let body: Record<string, unknown> = {};
+    if (text) {
+      try {
+        body = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        body = { raw: text.slice(0, 400) };
+      }
+    }
+
+    return { ok: response.ok, status: response.status, body };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      body: { error: error instanceof Error ? error.message : 'network_error' },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const postEvent = async (event: string, payload: Record<string, unknown>) => {
+  await postJson('/api/events', {
+    event,
+    page: '/play',
+    ...payload,
+  }, 3000);
 };
 
 /* ============================================================
@@ -844,43 +896,84 @@ const Play = () => {
   // --- Founder CTA ---
   const handleFounderCheckout = async () => {
     const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail || !/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+    if (!normalizedEmail || !EMAIL_RE.test(normalizedEmail)) {
       setCheckoutMessage('Enter a valid email to reserve founder pricing.');
-      return;
-    }
-    if (!founderCheckoutUrl) {
-      // No Stripe URL configured — capture email intent instead
-      setCheckoutBusy(true);
-      setCheckoutMessage(null);
-      try {
-        const res = await fetch('/api/founder-intent', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ email: normalizedEmail, source: 'play-founder-cta' }),
-        });
-        const data = await res.json();
-        if (data.ok) {
-          setCheckoutMessage('✓ Reserved! You\'ll get early access pricing when checkout opens.');
-        } else {
-          setCheckoutMessage(data.error || 'Could not reserve spot. Try again.');
-        }
-      } catch {
-        setCheckoutMessage('Network error. Please try again.');
-      } finally {
-        setCheckoutBusy(false);
-      }
+      await postEvent('founder_checkout_validation_failed', {
+        source: 'play-page-founder-cta',
+        email: normalizedEmail || undefined,
+        meta: { reason: 'invalid_email' },
+      });
       return;
     }
     if (typeof window !== 'undefined') window.localStorage.setItem(EMAIL_KEY, normalizedEmail);
+
     setCheckoutBusy(true);
     setCheckoutMessage(null);
+
+    const checkoutSource = 'play-page-founder-cta';
+    const intentSource = 'play-page-founder-checkout';
+    const intentId = `intent:${new Date().toISOString().slice(0, 10)}:${hashString(`${normalizedEmail}|${intentSource}`)}`;
+
     try {
+      await postEvent('founder_checkout_clicked', {
+        source: checkoutSource,
+        email: normalizedEmail,
+        tier: 'founder',
+      });
+
+      const intentResponse = await postJson('/api/founder-intent', {
+        email: normalizedEmail,
+        source: intentSource,
+        intentId,
+      });
+
+      if (!intentResponse.ok || intentResponse.body?.ok !== true) {
+        const reason = String(intentResponse.body?.error || `status_${intentResponse.status}`);
+        await postEvent('founder_intent_submit_failed', {
+          source: intentSource,
+          email: normalizedEmail,
+          tier: 'founder',
+          meta: { reason, intentId },
+        });
+        if (!founderCheckoutUrl) {
+          setCheckoutMessage('Could not reserve spot. Try again.');
+          return;
+        }
+      } else {
+        await postEvent('founder_intent_submitted', {
+          source: intentSource,
+          email: normalizedEmail,
+          tier: 'founder',
+          meta: { intentId },
+        });
+      }
+
+      if (!founderCheckoutUrl) {
+        setCheckoutMessage('✓ Reserved! You\'ll get early access pricing when checkout opens.');
+        return;
+      }
+
       const url = new URL(founderCheckoutUrl);
       url.searchParams.set('prefilled_email', normalizedEmail);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('moltpit_last_founder_checkout_source', checkoutSource);
+        window.localStorage.setItem('moltpit_last_founder_intent_source', intentSource);
+      }
+      await postEvent('founder_checkout_redirected', {
+        source: checkoutSource,
+        email: normalizedEmail,
+        tier: 'founder',
+      });
       window.location.href = url.toString();
     } catch {
-      setCheckoutBusy(false);
       setCheckoutMessage('Could not start checkout. Try again.');
+      await postEvent('founder_checkout_redirect_failed', {
+        source: checkoutSource,
+        email: normalizedEmail,
+        tier: 'founder',
+      });
+    } finally {
+      setCheckoutBusy(false);
     }
   };
 

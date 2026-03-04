@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { appendEventsFallback, appendOpsLog } from '~/lib/observability'
+import { appendEventsFallback, appendFounderIntentFallback, appendOpsLog } from '~/lib/observability'
 import { insertConversionEvent, insertFounderIntent } from '~/lib/waitlist-db'
 import { redisInsertConversionEvent, redisInsertFounderIntent } from '~/lib/waitlist-redis'
 
@@ -35,6 +35,14 @@ function normalizeEmail(value: unknown): string | undefined {
   const email = value.trim().toLowerCase();
   if (!email || !EMAIL_RE.test(email)) return undefined;
   return email;
+}
+
+function getClientIp(request: Request) {
+  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  const realIp = request.headers.get('x-real-ip')?.trim();
+  const cfIp = request.headers.get('cf-connecting-ip')?.trim();
+  const flyIp = request.headers.get('fly-client-ip')?.trim();
+  return forwarded || realIp || cfIp || flyIp || undefined;
 }
 
 function authorize(request: Request): boolean {
@@ -97,6 +105,15 @@ export const Route = createFileRoute('/api/postback')({
       POST: async ({ request }) => {
         const startedAt = Date.now();
         const requestId = crypto.randomUUID();
+        const contentType = request.headers.get('content-type') ?? '';
+
+        appendOpsLog({
+          route: '/api/postback',
+          level: 'info',
+          event: 'postback_received',
+          requestId,
+          contentType,
+        });
 
         // Test mode stub: ?test=1 returns 200 without processing, for deploy verification
         const url = new URL(request.url);
@@ -115,7 +132,6 @@ export const Route = createFileRoute('/api/postback')({
           });
         }
 
-        const contentType = request.headers.get('content-type') ?? '';
         let payload: CheckoutPostback | null = null;
 
         try {
@@ -152,6 +168,14 @@ export const Route = createFileRoute('/api/postback')({
         }
 
         if (!payload) {
+          appendOpsLog({
+            route: '/api/postback',
+            level: 'warn',
+            event: 'postback_payload_invalid',
+            requestId,
+            contentType,
+            durationMs: Date.now() - startedAt,
+          });
           return new Response(JSON.stringify({ ok: false, error: 'Invalid request payload', requestId }), {
             status: 400,
             headers: { 'content-type': 'application/json' },
@@ -162,6 +186,14 @@ export const Route = createFileRoute('/api/postback')({
         const eventType = typeof rawType === 'string' ? rawType : '';
         const acceptedTypes = new Set(['checkout.session.completed', 'founder_pack.paid']);
         if (!acceptedTypes.has(eventType)) {
+          appendOpsLog({
+            route: '/api/postback',
+            level: 'warn',
+            event: 'postback_type_unsupported',
+            requestId,
+            eventType,
+            durationMs: Date.now() - startedAt,
+          });
           return new Response(JSON.stringify({ ok: false, error: 'Unsupported postback type', requestId }), {
             status: 422,
             headers: { 'content-type': 'application/json' },
@@ -195,28 +227,95 @@ export const Route = createFileRoute('/api/postback')({
           email,
           metaJson: safeMetaJson(meta),
           userAgent: request.headers.get('user-agent') ?? undefined,
+          ipAddress: getClientIp(request),
         };
+        const founderIntentPayload = email ? {
+          email,
+          source: `${source}-postback`,
+          intentId: `paid:${eventId}`,
+          userAgent: request.headers.get('user-agent') ?? undefined,
+          ipAddress: getClientIp(request),
+        } : null;
 
         try {
-          insertConversionEvent(conversionPayload);
-
-          // Fire-and-forget Redis writes — durable across Lambda invocations
-          void redisInsertConversionEvent(conversionPayload).catch((e: unknown) => {
-            appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_redis_conversion_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
-          });
-
-          if (email) {
-            const founderIntentPayload = {
-              email,
-              source: `${source}-postback`,
-              intentId: `paid:${eventId}`,
-              userAgent: request.headers.get('user-agent') ?? undefined,
-              ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,
-            };
-            insertFounderIntent(founderIntentPayload);
-            void redisInsertFounderIntent(founderIntentPayload).catch((e: unknown) => {
-              appendOpsLog({ route: '/api/postback', level: 'warn', event: 'postback_redis_founder_intent_write_failed', requestId, error: e instanceof Error ? e.message : 'unknown' });
+          await redisInsertConversionEvent(conversionPayload);
+          try {
+            insertConversionEvent(conversionPayload);
+          } catch (sqliteError) {
+            appendOpsLog({
+              route: '/api/postback',
+              level: 'warn',
+              event: 'postback_sqlite_conversion_write_failed',
+              requestId,
+              eventType,
+              source,
+              eventId,
+              error: sqliteError instanceof Error ? sqliteError.message : 'unknown',
             });
+          }
+
+          if (founderIntentPayload) {
+            try {
+              await redisInsertFounderIntent(founderIntentPayload);
+              try {
+                insertFounderIntent(founderIntentPayload);
+              } catch (sqliteError) {
+                appendOpsLog({
+                  route: '/api/postback',
+                  level: 'warn',
+                  event: 'postback_sqlite_founder_intent_write_failed',
+                  requestId,
+                  eventType,
+                  source,
+                  eventId,
+                  error: sqliteError instanceof Error ? sqliteError.message : 'unknown',
+                });
+              }
+            } catch (redisFounderError) {
+              appendOpsLog({
+                route: '/api/postback',
+                level: 'warn',
+                event: 'postback_redis_founder_intent_write_failed',
+                requestId,
+                eventType,
+                source,
+                eventId,
+                error: redisFounderError instanceof Error ? redisFounderError.message : 'unknown',
+              });
+              try {
+                insertFounderIntent(founderIntentPayload);
+                appendOpsLog({
+                  route: '/api/postback',
+                  level: 'warn',
+                  event: 'postback_founder_intent_saved_sqlite_fallback',
+                  requestId,
+                  eventType,
+                  source,
+                  eventId,
+                });
+              } catch (sqliteFounderError) {
+                appendOpsLog({
+                  route: '/api/postback',
+                  level: 'error',
+                  event: 'postback_founder_intent_sqlite_fallback_failed',
+                  requestId,
+                  eventType,
+                  source,
+                  eventId,
+                  error: sqliteFounderError instanceof Error ? sqliteFounderError.message : 'unknown',
+                });
+                try {
+                  appendFounderIntentFallback({
+                    route: '/api/postback',
+                    requestId,
+                    ...founderIntentPayload,
+                    reason: sqliteFounderError instanceof Error ? sqliteFounderError.message : 'unknown',
+                  });
+                } catch {
+                  // best-effort founder-intent fallback only
+                }
+              }
+            }
           }
 
           appendOpsLog({
@@ -228,6 +327,7 @@ export const Route = createFileRoute('/api/postback')({
             source,
             eventId,
             hasEmail: Boolean(email),
+            storage: 'redis',
             durationMs: Date.now() - startedAt,
           });
 
@@ -240,7 +340,7 @@ export const Route = createFileRoute('/api/postback')({
           appendOpsLog({
             route: '/api/postback',
             level: 'error',
-            event: 'postback_record_failed',
+            event: 'postback_redis_conversion_write_failed',
             requestId,
             eventType,
             source,
@@ -250,38 +350,87 @@ export const Route = createFileRoute('/api/postback')({
           });
 
           try {
-            appendEventsFallback({ route: '/api/postback', requestId, ...conversionPayload, reason: errorMessage });
+            insertConversionEvent(conversionPayload);
+            if (founderIntentPayload) {
+              try {
+                insertFounderIntent(founderIntentPayload);
+              } catch (sqliteFounderError) {
+                appendOpsLog({
+                  route: '/api/postback',
+                  level: 'warn',
+                  event: 'postback_sqlite_founder_intent_write_failed',
+                  requestId,
+                  eventType,
+                  source,
+                  eventId,
+                  error: sqliteFounderError instanceof Error ? sqliteFounderError.message : 'unknown',
+                });
+              }
+            }
             appendOpsLog({
               route: '/api/postback',
               level: 'warn',
-              event: 'postback_saved_to_fallback',
+              event: 'postback_recorded_sqlite_fallback',
               requestId,
               eventType,
               source,
               eventId,
-              durationMs: Date.now() - startedAt,
-            });
-            return new Response(JSON.stringify({ ok: true, queued: true, requestId, eventId }), {
-              status: 202,
-              headers: { 'content-type': 'application/json' },
-            });
-          } catch (fallbackError) {
-            appendOpsLog({
-              route: '/api/postback',
-              level: 'error',
-              event: 'postback_fallback_write_failed',
-              requestId,
-              eventType,
-              source,
-              eventId,
-              error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error',
+              hasEmail: Boolean(email),
               durationMs: Date.now() - startedAt,
             });
 
-            return new Response(JSON.stringify({ ok: false, error: 'Postback processing failed', requestId }), {
-              status: 500,
+            return new Response(JSON.stringify({ ok: true, degraded: true, requestId, eventId }), {
+              status: 200,
               headers: { 'content-type': 'application/json' },
             });
+          } catch (sqliteError) {
+            const sqliteErrorMessage = sqliteError instanceof Error ? sqliteError.message : 'unknown-error';
+            appendOpsLog({
+              route: '/api/postback',
+              level: 'error',
+              event: 'postback_record_failed',
+              requestId,
+              eventType,
+              source,
+              eventId,
+              error: sqliteErrorMessage,
+              durationMs: Date.now() - startedAt,
+            });
+
+            try {
+              appendEventsFallback({ route: '/api/postback', requestId, ...conversionPayload, reason: sqliteErrorMessage });
+              appendOpsLog({
+                route: '/api/postback',
+                level: 'warn',
+                event: 'postback_saved_to_fallback',
+                requestId,
+                eventType,
+                source,
+                eventId,
+                durationMs: Date.now() - startedAt,
+              });
+              return new Response(JSON.stringify({ ok: true, queued: true, requestId, eventId }), {
+                status: 202,
+                headers: { 'content-type': 'application/json' },
+              });
+            } catch (fallbackError) {
+              appendOpsLog({
+                route: '/api/postback',
+                level: 'error',
+                event: 'postback_fallback_write_failed',
+                requestId,
+                eventType,
+                source,
+                eventId,
+                error: fallbackError instanceof Error ? fallbackError.message : 'unknown-fallback-error',
+                durationMs: Date.now() - startedAt,
+              });
+
+              return new Response(JSON.stringify({ ok: false, error: 'Postback processing failed', requestId }), {
+                status: 500,
+                headers: { 'content-type': 'application/json' },
+              });
+            }
           }
         }
       },

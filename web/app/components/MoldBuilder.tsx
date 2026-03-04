@@ -17,9 +17,23 @@ const SLOT_ORDER: { slot: PartSlot; label: string }[] = [
 ]
 
 const RARITY_BADGE: Record<string, { label: string; color: string }> = {
-  common: { label: 'COMMON', color: 'rgba(255,255,255,0.35)' },
-  rare: { label: 'RARE', color: '#9C27B0' },
+  common: { label: 'COMMON', color: 'rgba(180,180,200,0.5)' },
+  rare: { label: 'RARE', color: '#00E5FF' },
   legendary: { label: 'LEGENDARY', color: '#FFD600' },
+}
+
+// Border/glow colors keyed by rarity — matches site palette
+const RARITY_COLORS: Record<string, { border: string; glow: string; text: string }> = {
+  common: { border: 'rgba(180,180,200,0.28)', glow: 'rgba(180,180,200,0.08)', text: 'rgba(200,200,220,0.9)' },
+  rare:   { border: '#00E5FF',               glow: 'rgba(0,229,255,0.18)',    text: '#00E5FF' },
+  legendary: { border: '#FFD600',            glow: 'rgba(255,214,0,0.2)',     text: '#FFD600' },
+}
+
+const SLOT_ICONS: Record<string, string> = {
+  shell:     '🦪',
+  claws:     '🦀',
+  directive: '⚡',
+  trait:     '💎',
 }
 
 /* ── Default selections (one common from each slot) ───────────── */
@@ -286,79 +300,97 @@ export default function MoldBuilder({ onConfirm }: MoldBuilderProps) {
                 {parts.map(part => {
                   const isSelected = selected[slot] === part.id
                   const badge = RARITY_BADGE[part.rarity]
+                  const rc = RARITY_COLORS[part.rarity]
                   return (
                     <button
                       key={part.id}
                       onClick={() => handleSelect(slot, part.id)}
                       style={{
                         background: isSelected
-                          ? hexToRgba(part.color, 0.15)
-                          : 'rgba(0,0,0,0.6)',
+                          ? 'rgba(5,5,20,0.9)'
+                          : 'rgba(0,0,0,0.5)',
                         border: isSelected
-                          ? `2px solid ${part.color}`
-                          : '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 10,
-                        padding: '14px 14px 12px',
+                          ? `1px solid ${rc.border}`
+                          : '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: 12,
+                        padding: '16px 14px 14px',
                         cursor: 'pointer',
                         textAlign: 'left',
                         transition: 'all 0.15s ease',
                         position: 'relative',
                         outline: 'none',
                         boxShadow: isSelected
-                          ? `0 0 20px ${hexToRgba(part.color, 0.25)}, inset 0 0 30px ${hexToRgba(part.color, 0.05)}`
-                          : 'none',
+                          ? `0 0 20px ${rc.glow}`
+                          : '0 1px 6px rgba(0,0,0,0.5)',
                       }}
                     >
-                      {/* Rarity badge */}
-                      <div style={{
+                      {/* Rarity badge — absolute top-right */}
+                      <span style={{
                         position: 'absolute',
-                        top: 8,
-                        right: 10,
+                        top: 10,
+                        right: 12,
                         fontFamily: "'IBM Plex Mono', monospace",
-                        fontSize: '0.6rem',
-                        fontWeight: 600,
+                        fontSize: '0.58rem',
+                        fontWeight: 700,
                         color: badge.color,
                         letterSpacing: 1,
                         textTransform: 'uppercase',
                       }}>
                         {badge.label}
+                      </span>
+
+                      {/* Icon box — 64px, prominent */}
+                      <div style={{
+                        width: 64,
+                        height: 64,
+                        fontSize: '2.6rem',
+                        lineHeight: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: isSelected
+                          ? `rgba(${rc.border === '#00E5FF' ? '0,229,255' : rc.border === '#FFD600' ? '255,214,0' : '180,180,200'},0.08)`
+                          : 'rgba(255,255,255,0.04)',
+                        borderRadius: 10,
+                        marginBottom: 12,
+                        filter: isSelected ? 'none' : 'grayscale(0.3)',
+                        opacity: isSelected ? 1 : 0.7,
+                      }}>
+                        {SLOT_ICONS[part.slot]}
                       </div>
 
                       {/* Name */}
                       <div style={{
                         fontFamily: "'Bangers', display",
-                        fontSize: '1rem',
-                        color: isSelected ? part.color : '#fff',
+                        fontSize: '1.15rem',
+                        letterSpacing: 1,
+                        color: isSelected ? rc.text : '#e8e8f0',
                         marginBottom: 6,
-                        lineHeight: 1.2,
-                        paddingRight: 60,
-                        textShadow: isSelected ? `0 0 10px ${hexToRgba(part.color, 0.4)}` : 'none',
+                        lineHeight: 1.1,
+                        textShadow: isSelected ? `0 0 12px ${rc.glow}` : 'none',
                       }}>
                         {part.name}
                       </div>
 
-                      {/* Lore */}
+                      {/* Mechanic description — 1-liner */}
                       <div style={{
                         fontFamily: "'IBM Plex Mono', monospace",
-                        fontSize: '0.68rem',
-                        color: 'rgba(255,255,255,0.45)',
-                        lineHeight: 1.4,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical' as const,
-                        overflow: 'hidden',
+                        fontSize: '0.63rem',
+                        color: 'rgba(255,255,255,0.42)',
+                        lineHeight: 1.5,
+                        marginBottom: 2,
                       }}>
                         {part.lore}
                       </div>
 
                       {/* Stat chips */}
-                      <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 5, marginTop: 8, flexWrap: 'wrap' }}>
                         {part.statDelta.hpBonus != null && part.statDelta.hpBonus > 0 && (
                           <span style={{
                             fontFamily: "'IBM Plex Mono', monospace",
-                            fontSize: '0.6rem',
+                            fontSize: '0.58rem',
                             color: '#4CAF50',
-                            background: 'rgba(76,175,80,0.15)',
+                            background: 'rgba(76,175,80,0.12)',
                             padding: '2px 6px',
                             borderRadius: 4,
                             fontWeight: 600,
@@ -369,9 +401,9 @@ export default function MoldBuilder({ onConfirm }: MoldBuilderProps) {
                         {part.statDelta.armorType && (
                           <span style={{
                             fontFamily: "'IBM Plex Mono', monospace",
-                            fontSize: '0.6rem',
+                            fontSize: '0.58rem',
                             color: '#FFD600',
-                            background: 'rgba(255,214,0,0.1)',
+                            background: 'rgba(255,214,0,0.08)',
                             padding: '2px 6px',
                             borderRadius: 4,
                             fontWeight: 600,
@@ -383,9 +415,9 @@ export default function MoldBuilder({ onConfirm }: MoldBuilderProps) {
                         {part.statDelta.damageMultiplier != null && part.statDelta.damageMultiplier !== 1.0 && (
                           <span style={{
                             fontFamily: "'IBM Plex Mono', monospace",
-                            fontSize: '0.6rem',
-                            color: '#F44336',
-                            background: 'rgba(244,67,54,0.15)',
+                            fontSize: '0.58rem',
+                            color: '#EB4D4B',
+                            background: 'rgba(235,77,75,0.12)',
                             padding: '2px 6px',
                             borderRadius: 4,
                             fontWeight: 600,

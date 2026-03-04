@@ -62,6 +62,11 @@ Before every Scuttle, you head to The Forge. You build a **Molt** — the battle
 - +10 HP. Medium. Every hit you take triggers counter-aggression subroutines.
 - Prompt fragment: *After every hit you take, counter-attack immediately. Pain is a trigger, not a setback.*
 
+**THE ROLL** | Kinetic Evasion Shell | *Rare*
+> "The most popular shell in The Brine for three consecutive Tides. Pitmasters love it. The House loves that they love it. There is a reason it is called what it is called. No one in The Brine knows what that reason is. The House has decided not to explain."
+- −10 HP. Light, frictionless, built for constant motion. You are only safe while moving. Stopping is dying.
+- Prompt fragment: *Never stop moving. A moving target cannot be hit. A stationary target is dinner. Move first, strike second, never stand still.*
+
 ---
 
 ### 🦞 CLAWS *(weapons — what you do with your hands)*

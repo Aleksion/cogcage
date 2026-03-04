@@ -1,7 +1,7 @@
 # MULTIPLAYER
 *FFA, Team Modes, Tournament Brackets — Design Specification*
 *Deep Brine Studios | WS18 | Lead Game Designer*
-*Locked: March 1, 2026*
+*Locked: March 2, 2026 (WS18.1 hand update)*
 
 ---
 
@@ -9,11 +9,27 @@
 
 1v1 is the canonical Molt Pit experience. Everything is designed around it.
 
+## Arena Size by Mode (critical)
+
+- **1v1:** 20×20
+- **2v2:** 22×22
+- **3-4 player FFA:** 24×24
+- **4v4:** 24×24 baseline, escalate to 26×26 if congestion metrics fail
+
+**Congestion fail conditions (trigger size increase):**
+- >18% of movement actions resolve as blocked collisions over 50+ matches
+- Median distance-to-engagement drops below 6 tiles in first 5 windows
+- Ranged loadouts underperform melee by >12% due to lack of spacing
+
+Reason: 20×20 is tuned for 1v1 tempo. Multi-agent modes need more lane depth and separation to keep tactical play meaningful.
+
 At 150ms ticks with 750ms Decision Windows, a 1v1 Scuttle runs at:
 - 6.67 ticks/second
-- ~8.3 Decision Windows/second (decision windows are not per-second — 1 window per 5 ticks)
+- ~1.33 Decision Windows/second (1 window per 5 ticks)
 - 1 decision window per 750ms
 - ~40 Decision Windows in a 45-second fight
+- queue cap: 3 actions
+- hand swap action duration: 1 window (750ms)
 
 **How 1v1 feels at 150ms:**
 Fast enough that it reads as real-time to spectators. Slow enough that LLM agents can reason between windows. The 750ms window is the key — fast models (GPT-4o-mini at ~200ms) have time to queue ahead. Slow models (Claude Opus with chain-of-thought at ~1500ms) miss windows regularly.
@@ -34,6 +50,14 @@ Fast enough that it reads as real-time to spectators. Slow enough that LLM agent
 - Last Crustie standing wins the Scuttle
 - HP bar and damage resolution rules are identical to 1v1
 - Fog of War is recommended for FFA (see below)
+- Hand rules are identical to 1v1: `main_hand` + `off_hand`, reserve carry, timed `SWAP_HAND`.
+
+### Multi-Agent Swap Determinism
+
+- Every swap is local to one Crustie and resolves at that Crustie's end-of-window boundary.
+- Simultaneous swaps from different Crusties do not conflict.
+- If a Crustie dies before swap completion, the pending swap is canceled.
+- Stun/Hold do not retroactively cancel a swap already started in that window.
 
 ### Targeting
 
@@ -47,7 +71,12 @@ Each agent receives a state snapshot that includes ALL opponents:
     "hp": 72,
     "energy": 6,
     "carapace": "BLOCK-7",
-    "claws": "THE_FLICKER",
+    "hands": {
+      "main_hand": {"item_id": "THE_FLICKER", "class": "weapon", "weapon_tag": "melee"},
+      "off_hand": {"item_id": "REVERSAL", "class": "shield"},
+      "reserve_count": 1,
+      "swap_pending": false
+    },
     "tomalley": "THE_RED_GENE",
     "status_effects": ["BLEED_STACKS_3"]
   },
@@ -57,7 +86,12 @@ Each agent receives a state snapshot that includes ALL opponents:
     "hp": 31,
     "energy": 2,
     "carapace": "GHOST_SHELL",
-    "claws": "BUZZ",
+    "hands": {
+      "main_hand": {"item_id": "BUZZ", "class": "weapon", "weapon_tag": "ranged"},
+      "off_hand": {"item_id": "THE_ORIGINAL_APPENDAGE", "class": "shield"},
+      "reserve_count": 0,
+      "swap_pending": true
+    },
     "tomalley": "SURVIVAL_INSTINCT",
     "status_effects": []
   }
@@ -65,6 +99,7 @@ Each agent receives a state snapshot that includes ALL opponents:
 ```
 
 SPIT auto-targets: in FFA, SPIT requires a target parameter. The agent must specify `"target": "lobster_b"` or `"target": "lobster_c"`. SPIT at an invalid target or out-of-range target: NO_OP (range check per target). PINCH still only hits adjacent tiles — if both opponents are adjacent, the agent must specify `"direction"` and only the Crustie in that direction is hit.
+`main_hand` is weapon-only by validation, so PINCH/SPIT behavior is deterministic in all multiplayer modes.
 
 ### Multi-Target and LLM Context
 
@@ -174,7 +209,12 @@ Each agent receives:
     "hp": 85,
     "energy": 4,
     "carapace": "THE_MOLT",
-    "claws": "REVERSAL",
+    "hands": {
+      "main_hand": {"item_id": "MAXINE", "class": "weapon", "weapon_tag": "melee"},
+      "off_hand": {"item_id": "REVERSAL", "class": "shield"},
+      "reserve_count": 2,
+      "swap_pending": false
+    },
     "tomalley": "STANDARD_ISSUE",
     "status_effects": []
   }
@@ -240,7 +280,7 @@ The Molt Pit runs in Tides — competitive seasons lasting X weeks. Each Tide ha
 - Registration closes X days before bracket start
 - Single elimination bracket seeded by Hardness rank
 - All Tide Tournament Scuttles are streamed events (mandatory Coral Feed)
-- Tournament Scuttles have no item restrictions — all 40 items available
+- Tournament Scuttles have no item restrictions — all 41 items available
 - Tournament bracket size: powers of 2 (8, 16, 32, 64 Crusties)
 - The winner of the Tide Tournament earns Red status for that Tide
 
@@ -317,6 +357,6 @@ This is correct. The game should reward specialization. A 1v1 champion may be me
 
 ---
 
-*MULTIPLAYER locked: March 1, 2026*
+*MULTIPLAYER locked: March 2, 2026 (WS18.1 hand update)*
 *Author: WS18 Lead Game Designer, Deep Brine Studios*
 *Implementation: FFA in Tide 2, 2v2 in Tide 3. Tournament in Tide 2.*

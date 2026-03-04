@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { resolveRuntimePath } from './runtime-paths';
 
 // Lazy-load better-sqlite3 to gracefully handle binary ABI mismatches
@@ -10,8 +11,10 @@ let Database: typeof import('better-sqlite3') | null = null;
 let sqliteLoadError: string | null = null;
 
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Database = require('better-sqlite3') as typeof import('better-sqlite3');
+  const dynamicRequire = typeof require === 'function'
+    ? require
+    : createRequire(import.meta.url);
+  Database = dynamicRequire('better-sqlite3') as typeof import('better-sqlite3');
 } catch (err) {
   sqliteLoadError = err instanceof Error ? err.message.split('\n')[0] : String(err);
 }
@@ -140,9 +143,9 @@ function getDb(): import('better-sqlite3').Database {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    DROP INDEX IF EXISTS idx_founder_intents_intent_id;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_founder_intents_intent_id
-    ON founder_intents (intent_id)
-    WHERE intent_id IS NOT NULL;
+    ON founder_intents (intent_id);
 
     CREATE TABLE IF NOT EXISTS conversion_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -165,9 +168,9 @@ function getDb(): import('better-sqlite3').Database {
     CREATE INDEX IF NOT EXISTS idx_conversion_events_email_created_at
     ON conversion_events (email, created_at);
 
+    DROP INDEX IF EXISTS idx_conversion_events_event_id;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_conversion_events_event_id
-    ON conversion_events (event_id)
-    WHERE event_id IS NOT NULL;
+    ON conversion_events (event_id);
 
     CREATE TABLE IF NOT EXISTS rate_limits (
       ip_address TEXT NOT NULL,

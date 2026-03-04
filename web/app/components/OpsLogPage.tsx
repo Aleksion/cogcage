@@ -60,6 +60,24 @@ export function OpsLogPage() {
 
   const redisWaitlistCount =
     data?.redisCounts?.waitlistLeads ?? data?.redisFunnel?.waitlistLeads ?? null
+  const waitlistCount =
+    data?.redisCounts?.waitlistLeads ??
+    data?.counts?.waitlistLeads ??
+    data?.redisFunnel?.waitlistLeads ??
+    data?.funnel?.waitlistLeads ??
+    '—'
+  const founderIntentCount =
+    data?.redisCounts?.founderIntents ??
+    data?.counts?.founderIntents ??
+    data?.redisFunnel?.founderIntents ??
+    data?.funnel?.founderIntents ??
+    '—'
+  const conversionCount =
+    data?.redisCounts?.conversionEvents ??
+    data?.counts?.conversionEvents ??
+    data?.redisFunnel?.conversionEvents ??
+    data?.funnel?.conversionEvents ??
+    '—'
 
   return (
     <div
@@ -238,26 +256,17 @@ export function OpsLogPage() {
             {[
               {
                 label: 'Waitlist Leads',
-                value:
-                  data.funnel?.waitlistLeads ??
-                  data.redisFunnel?.waitlistLeads ??
-                  '—',
+                value: waitlistCount,
                 color: '#2ecc71',
               },
               {
                 label: 'Founder Intents',
-                value:
-                  data.funnel?.founderIntents ??
-                  data.redisFunnel?.founderIntents ??
-                  '—',
+                value: founderIntentCount,
                 color: '#ffd600',
               },
               {
                 label: 'Conversions',
-                value:
-                  data.funnel?.conversionEvents ??
-                  data.redisFunnel?.conversionEvents ??
-                  '—',
+                value: conversionCount,
                 color: '#ffd600',
               },
             ].map((s) => (
