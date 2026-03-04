@@ -1,0 +1,5 @@
+/shell -> http://127.0.0.1:4321/mise?returnTo=
+/forge -> http://127.0.0.1:4321/shed
+/play -> http://127.0.0.1:4321/pit
+/molds -> http://127.0.0.1:4321/molts
+/ops-log -> http://127.0.0.1:4321/ledger

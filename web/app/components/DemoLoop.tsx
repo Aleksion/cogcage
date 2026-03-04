@@ -843,7 +843,7 @@ function WatchMode({ onSwitchToPlay }: { onSwitchToPlay: () => void }) {
           </div>
           <div className="demo-winner-sub">
             {match.winner === 'DRAW'
-              ? 'Both crawlers still standing after 15 rounds.'
+              ? 'Both crusties still standing after 15 rounds.'
               : `${match.winner} crushed the opposition.`}
           </div>
           {STRIPE_FOUNDER_URL

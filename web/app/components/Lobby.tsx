@@ -202,7 +202,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
     try {
       const res = await fetch(`/api/tank/${lobbyId}`);
       if (!res.ok) {
-        if (loading) setError('Tank not found'); // only show on first load
+        if (loading) setError('Scuttle not found'); // only show on first load
         setLoading(false);
         return;
       }
@@ -250,7 +250,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
   const handleLeave = async () => {
     try {
       await fetch(`/api/tank/${lobbyId}`, { method: 'DELETE' });
-      window.location.href = '/play';
+      window.location.href = '/pit';
     } catch { /* ignore */ }
   };
 
@@ -284,9 +284,9 @@ export default function Lobby({ lobbyId }: LobbyProps) {
           botA={matchData.botA}
           botB={matchData.botB}
           seed={matchData.seed}
-          onBack={() => { window.location.href = '/play'; }}
+          onBack={() => { window.location.href = '/pit'; }}
           backLabel="Back to The Den"
-          onTweakBot={() => { window.location.href = '/shell'; }}
+          onTweakBot={() => { window.location.href = '/mise'; }}
         />
       </div>
     );
@@ -297,10 +297,10 @@ export default function Lobby({ lobbyId }: LobbyProps) {
       <div className="lby-root">
         <header className="lby-header">
           <a href="/" className="lby-logo">The Molt Pit</a>
-          <span className="lby-title">The Tank</span>
+          <span className="lby-title">The Scuttle</span>
           <div />
         </header>
-        <div className="lby-loading">Loading tank...</div>
+        <div className="lby-loading">Loading scuttle...</div>
       </div>
     );
   }
@@ -310,13 +310,13 @@ export default function Lobby({ lobbyId }: LobbyProps) {
       <div className="lby-root">
         <header className="lby-header">
           <a href="/" className="lby-logo">The Molt Pit</a>
-          <span className="lby-title">The Tank</span>
+          <span className="lby-title">The Scuttle</span>
           <div />
         </header>
         <div className="lby-loading">
-          {error || 'Tank not found'}
+          {error || 'Scuttle not found'}
           <div style={{ marginTop: '1rem' }}>
-            <a href="/play" style={{ color: '#FFD600', textDecoration: 'underline' }}>Back to The Den</a>
+            <a href="/pit" style={{ color: '#FFD600', textDecoration: 'underline' }}>Back to The Den</a>
           </div>
         </div>
       </div>
@@ -332,7 +332,7 @@ export default function Lobby({ lobbyId }: LobbyProps) {
       {/* Header */}
       <header className="lby-header">
         <a href="/" className="lby-logo">The Molt Pit</a>
-        <span className="lby-title">The Tank</span>
+        <span className="lby-title">The Scuttle</span>
         <button className="lby-leave-btn" onClick={handleLeave}>Leave</button>
       </header>
 
@@ -372,8 +372,8 @@ export default function Lobby({ lobbyId }: LobbyProps) {
                   </div>
                 )}
                 <div style={{ marginTop: 'auto', paddingTop: '0.8rem' }}>
-                  <a href={`/shell?returnTo=/lobby/${lobbyId}`} className="lby-btn configure">
-                    Configure Crawler
+                  <a href={`/mise?returnTo=/tank/${lobbyId}`} className="lby-btn configure">
+                    Tune Crustie
                   </a>
                 </div>
               </>

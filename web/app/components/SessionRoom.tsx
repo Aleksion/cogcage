@@ -307,7 +307,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
     for (const bot of bots) botNamesRecord[bot.id] = bot.name;
 
     const matchLabel = participants.map((p) => p.bot.name).join(' vs ');
-    setFeed([`FFA Molt: ${matchLabel}`, `Seed: ${seed}`, `${participants.length} crawlers enter the arena`].reverse());
+    setFeed([`FFA Molt: ${matchLabel}`, `Seed: ${seed}`, `${participants.length} crusties enter the arena`].reverse());
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -520,10 +520,10 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
     </div>
   );
 
-  /* ── Render: The Ladder ──────────────────────────────────── */
+  /* ── Render: The Ledger ──────────────────────────────────── */
   const renderLeaderboard = () => (
     <div style={{ marginTop: '1rem' }}>
-      <div className="section-label">The Ladder</div>
+      <div className="section-label">The Ledger</div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
         <thead>
           <tr style={{ borderBottom: '2px solid var(--c-dark)', fontWeight: 900, textTransform: 'uppercase', fontSize: '0.8rem' }}>
@@ -560,7 +560,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
         <a className="logo" href="/">THE MOLT PIT</a>
         <div className="header-links">
           <a className="header-link" href="/">Home</a>
-          <a className="header-link" href="/play">Play</a>
+          <a className="header-link" href="/pit">Play</a>
           <span className="header-link active">Session</span>
         </div>
       </header>
@@ -571,9 +571,9 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
           <div className="lobby-container">
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ fontFamily: 'var(--f-display)', fontSize: '2.2rem', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                FFA Tournament Tank
+                FFA Scuttle
               </h2>
-              <p className="hint">Share the code below so others can join. Configure your crawler, then the host starts the tournament.</p>
+              <p className="hint">Share the code below so others can join. Tune your crustie, then the host starts the tournament.</p>
             </div>
 
             {/* Join code */}
@@ -630,7 +630,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
             {/* Edit my crawler */}
             {editBot && (
               <div className="panel" style={{ maxWidth: '700px', margin: '0 auto 1.5rem' }}>
-                <h2 style={{ fontSize: '1.3rem' }}>Your Crawler Config</h2>
+                <h2 style={{ fontSize: '1.3rem' }}>Your Crustie Config</h2>
                 <div className="bot-config-card">
                   <h3>Identity</h3>
                   <input
@@ -721,7 +721,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
             {/* Molt header */}
             <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
               <h2 style={{ fontFamily: 'var(--f-display)', fontSize: '1.8rem', textTransform: 'uppercase' }}>
-                FFA Molt Arena — {ffaActors.length} Crawlers ({aliveCount} alive)
+                FFA Molt Arena — {ffaActors.length} Crusties ({aliveCount} alive)
               </h2>
               <div className="hint">
                 {!isHost && '(spectating) '}Last bot standing wins
@@ -828,7 +828,7 @@ const SessionRoom: React.FC<Props> = ({ session: initialSession, participantId }
               <button
                 className="cta-btn"
                 onClick={() => {
-                  window.location.href = '/play';
+                  window.location.href = '/pit';
                 }}
               >
                 Play Again

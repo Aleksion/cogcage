@@ -1170,7 +1170,7 @@ const NavBar = ({ onNavClick }) => {
     setPlayPressed(true);
     setTimeout(() => setPlayPressed(false), 300);
     setMenuOpen(false);
-    window.location.href = '/play';
+    window.location.href = '/pit';
   };
 
   const handleNav = (section) => {

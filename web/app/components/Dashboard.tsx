@@ -294,7 +294,7 @@ export default function Dashboard() {
           <div className="dash-bot-card">
             <div className="dash-bot-header">
               <span className="dash-bot-name">{myBot.name}</span>
-              <a href="/shell" className="dash-btn configure">Configure</a>
+              <a href="/mise" className="dash-btn configure">Configure</a>
             </div>
             <div className="dash-bot-icons">
               {myBot.cards.map((cid, i) => {
@@ -318,7 +318,7 @@ export default function Dashboard() {
         ) : (
           <div className="dash-bot-card empty">
             <div className="dash-bot-info">No crawler configured yet</div>
-            <a href="/shell" className="dash-btn build">Build Your Crawler</a>
+            <a href="/mise" className="dash-btn build">Build Your Crawler</a>
           </div>
         )}
 

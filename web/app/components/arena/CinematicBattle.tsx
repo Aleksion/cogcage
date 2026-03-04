@@ -163,7 +163,7 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
   const playerBot = useMemo(() => composeMold(
     playerMold ?? DEFAULT_PLAYER_MOLD,
     'botA',
-    playerName ?? 'YOUR CRAWLER',
+    playerName ?? 'YOUR CRUSTIE',
     { x: 4, y: 10 },
     undefined,
     webhookUrl,
@@ -811,7 +811,7 @@ export default function CinematicBattle({ seed: seedProp, playerMold, opponentMo
                 boxShadow: '4px 4px 0 #000',
               }}
             >
-              BUILD YOUR CRAWLER
+              BUILD YOUR CRUSTIE
             </a>
           </div>
 

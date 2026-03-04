@@ -1008,7 +1008,7 @@ const Play = () => {
         <input
           className="prompt-box"
           style={{ minHeight: 'unset', height: '40px', marginBottom: '0.5rem' }}
-          placeholder="Crawler name (e.g. Iron Vanguard)"
+          placeholder="Crustie name (e.g. Iron Vanguard)"
           value={config.name}
           onChange={(e) => setConfig((prev) => ({ ...prev, name: e.target.value }))}
         />
@@ -1178,7 +1178,7 @@ const Play = () => {
     <div className="leaderboard">
       <div className="section-label">Unlock Founder Pricing</div>
       <div className="hint" style={{ marginBottom: '0.7rem' }}>
-        Lock $29/mo before launch pricing moves to $49/mo. Configure and pit your AI crawlers against each other with full analytics.
+        Lock $29/mo before launch pricing moves to $49/mo. Configure and pit your AI crusties against each other with full analytics.
       </div>
       <input
         className="prompt-box"
@@ -1202,7 +1202,7 @@ const Play = () => {
         <a className="logo" href="/">THE MOLT PIT</a>
         <div className="header-links">
           <a className="header-link" href="/">Home</a>
-          <a className="header-link active" href="/play">Play</a>
+          <a className="header-link active" href="/pit">Play</a>
         </div>
       </header>
 
@@ -1212,14 +1212,14 @@ const Play = () => {
           <div className="lobby-container">
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ fontFamily: 'var(--f-display)', fontSize: '2.2rem', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                Configure Your Crawlers
+                Configure Your Crusties
               </h2>
-              <p className="hint">Two LLM-driven crawlers fight autonomously. You design their brains and shells, then watch.</p>
+              <p className="hint">Two LLM-driven crusties fight autonomously. You design directives and claws, then watch.</p>
             </div>
 
             <div className="lobby-grid">
-              {renderBotConfigPanel(botAConfig, setBotAConfig, 'Crawler A (Cyan)', false)}
-              {renderBotConfigPanel(botBConfig, setBotBConfig, 'Crawler B (Red)', true)}
+              {renderBotConfigPanel(botAConfig, setBotAConfig, 'Crustie A (Cyan)', false)}
+              {renderBotConfigPanel(botBConfig, setBotBConfig, 'Crustie B (Red)', true)}
             </div>
 
             {/* Advanced: Seed + BYO toggle */}
@@ -1250,7 +1250,7 @@ const Play = () => {
             {/* Room system */}
             {showRoomPanel && (
               <div className="panel" style={{ maxWidth: '700px', margin: '1rem auto 0' }}>
-                <h2 style={{ fontSize: '1.4rem' }}>Tank Rooms</h2>
+                <h2 style={{ fontSize: '1.4rem' }}>Scuttle Rooms</h2>
 
                 {/* Create room */}
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
@@ -1298,7 +1298,7 @@ const Play = () => {
                   <div style={{ marginBottom: '1rem', padding: '0.6rem', background: 'rgba(0,229,255,0.1)', borderRadius: '8px', textAlign: 'center' }}>
                     <div className="section-label" style={{ fontSize: '0.8rem' }}>Invite Link</div>
                     <code style={{ fontWeight: 900, fontSize: '0.95rem', letterSpacing: '1px' }}>
-                      {typeof window !== 'undefined' ? `${window.location.origin}/play?room=${roomId}` : `*/play?room=${roomId}`}
+                      {typeof window !== 'undefined' ? `${window.location.origin}/pit?room=${roomId}` : `*/pit?room=${roomId}`}
                     </code>
                     <div className="hint" style={{ marginTop: '0.3rem' }}>Code: {roomInviteCode}</div>
                   </div>

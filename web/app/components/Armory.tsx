@@ -434,7 +434,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
       const card = getCard(cardId);
       if (!card) return;
       if (!canAdd(card)) {
-        if (loadout.length >= MAX_LOADOUT_SLOTS) setError('Shell full (6 cards max)');
+        if (loadout.length >= MAX_LOADOUT_SLOTS) setError('Molt full (6 cards max)');
         else setError('Only 1 armor card allowed');
         return;
       }
@@ -473,7 +473,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
         setBrainPrompt('');
         setEquippedSkills([]);
         if (wasFirstSave) {
-          navigate({ to: '/play' });
+          navigate({ to: '/pit' });
           return;
         }
       }
@@ -496,7 +496,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
     const params = new URLSearchParams();
     params.set('loadout', saved.cards.join(','));
     params.set('loadoutName', saved.name);
-    window.location.href = `/play?${params.toString()}`;
+    window.location.href = `/pit?${params.toString()}`;
   };
 
   const handleLoadFromSaved = (saved: SavedLoadout) => {
@@ -512,7 +512,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
     <div className="armory-root">
       <main className="armory-shell">
         {resolvedReturnTo && (
-          <a href={resolvedReturnTo} className="armory-back-link">← Back to Tank</a>
+          <a href={resolvedReturnTo} className="armory-back-link">← Back to Scuttle</a>
         )}
         <div className="armory-layout">
           {/* Left: Card Gallery */}
@@ -552,7 +552,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
           {/* Right: Loadout Builder */}
           <div className="builder-panel" style={{ position: 'sticky', top: 70 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.6rem' }}>
-              <div className="panel-title" style={{ marginBottom: 0 }}>Shell</div>
+              <div className="panel-title" style={{ marginBottom: 0 }}>Active Molt</div>
               {loadout.length > 0 && (
                 <button className="clear-btn" onClick={() => { setLoadout([]); setError(''); }}>
                   Clear all
@@ -641,7 +641,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
               <input
                 className="save-input"
                 type="text"
-                placeholder="Shell name..."
+                placeholder="Molt name..."
                 value={loadoutName}
                 onChange={(e) => setLoadoutName(e.target.value)}
                 maxLength={30}
@@ -665,7 +665,7 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
                   borderRadius: '8px', textDecoration: 'none',
                 }}
               >
-                Back to The Tank
+                Back to The Pit
               </a>
             )}
           </div>
@@ -757,10 +757,10 @@ export default function Armory({ returnTo }: { returnTo?: string }) {
           <div className="char-count">{brainPrompt.length} / {MAX_BRAIN_CHARS} chars</div>
         </div>
 
-        {/* Bottom: Saved Shells */}
+        {/* Bottom: Saved Molts */}
         {savedLoadouts.length > 0 && (
           <div className="saved-panel" style={{ marginTop: '1.5rem' }}>
-            <div className="panel-title">Saved Shells</div>
+            <div className="panel-title">Saved Molts</div>
             <div className="saved-strip">
               {savedLoadouts.map((saved) => (
                 <div key={saved.id} className="saved-card">
